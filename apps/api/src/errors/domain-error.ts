@@ -77,6 +77,52 @@ export class UnauthenticatedError extends DomainError {
   }
 }
 
+/**
+ * Deliberately says nothing about *which* half was wrong. "Unknown email" and
+ * "wrong password" are the same response, because the difference is an account
+ * enumeration oracle.
+ */
+export class InvalidCredentialsError extends DomainError {
+  readonly code = 'INVALID_CREDENTIALS' as const;
+  readonly httpStatus = 401;
+
+  constructor() {
+    super('Invalid email or password');
+  }
+}
+
+export class TokenExpiredError extends DomainError {
+  readonly code = 'TOKEN_EXPIRED' as const;
+  readonly httpStatus = 401;
+
+  constructor(message = 'The token has expired') {
+    super(message);
+  }
+}
+
+/**
+ * Raised when a refresh token that was already rotated is presented again.
+ * Either the user replayed an old token or somebody stole one; the response is
+ * the same, and the whole token family is revoked.
+ */
+export class TokenReuseDetectedError extends DomainError {
+  readonly code = 'TOKEN_REUSE_DETECTED' as const;
+  readonly httpStatus = 401;
+
+  constructor() {
+    super('The session was terminated because a used token was presented again');
+  }
+}
+
+export class RateLimitedError extends DomainError {
+  readonly code = 'RATE_LIMITED' as const;
+  readonly httpStatus = 429;
+
+  constructor(message: string, retryAfterSeconds?: number) {
+    super(message, retryAfterSeconds === undefined ? {} : { retryAfterSeconds });
+  }
+}
+
 export class ValidationError extends DomainError {
   readonly code = 'VALIDATION_ERROR' as const;
   readonly httpStatus = 400;

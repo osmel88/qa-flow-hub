@@ -3,6 +3,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 
 /**
@@ -21,6 +22,7 @@ import { HealthModule } from './modules/health/health.module';
     // to domain events instead of being called inline from services.
     EventEmitterModule.forRoot({ global: true, wildcard: true, verboseMemoryLeak: true }),
     HealthModule,
+    AuthModule,
   ],
 })
 export class AppModule implements NestModule {

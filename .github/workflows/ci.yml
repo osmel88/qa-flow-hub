@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  # Fast feedback: everything that does not need a database.
+  static:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run build -w @qa-flow-hub/shared
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: qaflow
+          POSTGRES_PASSWORD: qaflow
+          POSTGRES_DB: qa_flow_hub_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U qaflow -d qa_flow_hub_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://qaflow:qaflow@localhost:5433/qa_flow_hub_test?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-value-with-enough-length
+      JWT_REFRESH_SECRET: ci-refresh-secret-value-with-enough-length
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run build -w @qa-flow-hub/shared
+      - name: Apply migrations to the test database
+        run: npm run db:migrate
+      - run: npm run test:integration
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: qaflow
+          POSTGRES_PASSWORD: qaflow
+          POSTGRES_DB: qa_flow_hub_e2e
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U qaflow -d qa_flow_hub_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://qaflow:qaflow@localhost:5434/qa_flow_hub_e2e?schema=public
+      JWT_ACCESS_SECRET: e2e-access-secret-value-with-enough-length
+      JWT_REFRESH_SECRET: e2e-refresh-secret-value-with-enough-length
+      CORS_ORIGINS: http://localhost:4173
+      SWAGGER_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run build
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: Start the API and wait until it is live
+        run: |
+          nohup node apps/api/dist/main.js > api.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -sf http://localhost:3000/health > /dev/null; then
+              echo "API is live"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not become live in 60s" >&2
+          cat api.log >&2
+          exit 1
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7

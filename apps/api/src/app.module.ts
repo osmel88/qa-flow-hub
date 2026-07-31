@@ -1,6 +1,8 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { AppConfigModule } from './config/config.module';
+import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './modules/health/health.module';
 
 /**
@@ -14,10 +16,17 @@ import { HealthModule } from './modules/health/health.module';
 @Module({
   imports: [
     AppConfigModule,
+    DatabaseModule,
     // In-process event bus. Audit and future integration side effects subscribe
     // to domain events instead of being called inline from services.
     EventEmitterModule.forRoot({ global: true, wildcard: true, verboseMemoryLeak: true }),
     HealthModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    // Every route, including the health probe: a request without a context is
+    // a request whose logs cannot be correlated.
+    consumer.apply(RequestContextMiddleware).forRoutes('*');
+  }
+}

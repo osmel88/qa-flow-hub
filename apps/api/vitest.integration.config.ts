@@ -17,6 +17,7 @@ export default defineConfig({
     root: './',
     include: ['test/**/*.int-spec.ts'],
     setupFiles: ['test/setup.ts'],
+    globalSetup: ['test/global-setup.ts'],
     fileParallelism: false,
     pool: 'threads',
     poolOptions: { threads: { singleThread: true } },

@@ -1,0 +1,16 @@
+// ---------------------------------------------------------------------------
+// qa-flow-hub data model.
+//
+// Phase 0 declares only the datasource and generator so that `prisma generate`
+// and the Docker build work from the first commit. The entities arrive in the
+// data-model phase; see docs/domain-model.md.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

@@ -1,0 +1,58 @@
+{
+  "name": "@qa-flow-hub/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "qa-flow-hub HTTP API: NestJS on the Fastify adapter, PostgreSQL through Prisma.",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --config vitest.unit.config.ts",
+    "test:watch": "vitest --config vitest.unit.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset": "prisma migrate reset --force"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "@fastify/helmet": "^13.0.0",
+    "@fastify/rate-limit": "^10.2.1",
+    "@fastify/static": "^8.3.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/event-emitter": "^3.0.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/platform-fastify": "^11.0.0",
+    "@nestjs/swagger": "^11.0.0",
+    "@prisma/client": "^6.3.0",
+    "@qa-flow-hub/shared": "*",
+    "argon2": "^0.41.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
+    "@swc/core": "^1.10.9",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^6.0.2",
+    "prisma": "^6.3.0",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "unplugin-swc": "^1.5.1",
+    "vitest": "^3.0.4"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "name": "qa-flow-hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "QA management SaaS platform: requirements, test cases, runs, defects and traceability for QA teams.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=11.0.0"
+  },
+  "workspaces": [
+    "packages/config",
+    "packages/shared",
+    "packages/ui",
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev -w @qa-flow-hub/api\" \"npm run dev -w @qa-flow-hub/web\"",
+    "build": "npm run build -w @qa-flow-hub/shared && npm run build -w @qa-flow-hub/ui && npm run build -w @qa-flow-hub/api && npm run build -w @qa-flow-hub/web",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:integration": "npm run test:integration -w @qa-flow-hub/api",
+    "test:e2e": "npm run test:e2e -w @qa-flow-hub/web",
+    "db:migrate": "npm run db:migrate -w @qa-flow-hub/api",
+    "db:seed": "npm run db:seed -w @qa-flow-hub/api",
+    "db:reset": "npm run db:reset -w @qa-flow-hub/api",
+    "db:generate": "npm run db:generate -w @qa-flow-hub/api",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down"
+  },
+  "overrides": {
+    "find-my-way": "^9.7.0",
+    "@nestjs/swagger": {
+      "js-yaml": "^4.3.1"
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.21.0"
+  },
+  "allowScripts": {
+    "@prisma/client": true,
+    "@prisma/engines": true,
+    "@swc/core": true,
+    "argon2": true,
+    "esbuild": true,
+    "prisma": true
+  }
+}

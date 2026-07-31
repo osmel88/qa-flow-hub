@@ -1,0 +1,54 @@
+/*
+ * Component styles for @qa-flow-hub/ui. They consume the design tokens defined
+ * by the host application, so the same component adapts to any theme that
+ * provides the custom properties.
+ */
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 0.5rem);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 4px);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.ui-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ui-button--sm {
+  padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
+  font-size: 0.875rem;
+}
+
+.ui-button--md {
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+}
+
+.ui-button--primary {
+  background: var(--color-primary, #1f5fbf);
+  color: var(--color-primary-contrast, #fff);
+}
+
+.ui-button--secondary {
+  background: var(--color-surface, #fff);
+  border-color: var(--color-border, #d9dde3);
+  color: var(--color-text, #16191d);
+}
+
+.ui-button--danger {
+  background: var(--color-danger, #b3261e);
+  color: #fff;
+}
+
+.ui-button--ghost {
+  background: transparent;
+  color: var(--color-primary, #1f5fbf);
+}

@@ -10,7 +10,7 @@ describe('authentication', () => {
   let app: NestFastifyApplication;
   let prisma: PrismaService;
 
-  const post = (url: string, payload: unknown, headers: Record<string, string> = {}) =>
+  const post = (url: string, payload: object, headers: Record<string, string> = {}) =>
     app.inject({ method: 'POST', url, payload, headers });
 
   const get = (url: string, headers: Record<string, string> = {}) =>

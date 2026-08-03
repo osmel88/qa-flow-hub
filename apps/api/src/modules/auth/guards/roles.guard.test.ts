@@ -15,7 +15,7 @@ import { RolesGuard } from './roles.guard';
 function reflectorReturning(roles: OrganizationRole[] | undefined): Reflector {
   const reflector = new Reflector();
   reflector.getAllAndOverride = ((key: string) =>
-    key === ROLES_KEY ? roles : undefined) as Reflector['getAllAndOverride'];
+    key === ROLES_KEY ? roles : undefined) as unknown as Reflector['getAllAndOverride'];
   return reflector;
 }
 

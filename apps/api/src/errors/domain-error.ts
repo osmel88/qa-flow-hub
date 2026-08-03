@@ -39,6 +39,10 @@ export class NotFoundError extends DomainError {
 export class ConflictError extends DomainError {
   readonly code = 'CONFLICT' as const;
   readonly httpStatus = 409;
+
+  constructor(message: string, context: Record<string, unknown> = {}) {
+    super(message, context);
+  }
 }
 
 export class DuplicateResourceError extends DomainError {

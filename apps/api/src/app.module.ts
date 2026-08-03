@@ -3,8 +3,11 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
+import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { OrganizationsModule } from './modules/organizations/organizations.module';
+import { ProjectsModule } from './modules/projects/projects.module';
 
 /**
  * Composition root of the modular monolith.
@@ -21,8 +24,11 @@ import { HealthModule } from './modules/health/health.module';
     // In-process event bus. Audit and future integration side effects subscribe
     // to domain events instead of being called inline from services.
     EventEmitterModule.forRoot({ global: true, wildcard: true, verboseMemoryLeak: true }),
+    AuditModule,
     HealthModule,
     AuthModule,
+    OrganizationsModule,
+    ProjectsModule,
   ],
 })
 export class AppModule implements NestModule {

@@ -36,6 +36,13 @@ export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   fullName: z.string().trim().min(2).max(120),
+  /**
+   * Optional invitation token, for the "somebody invited me and I have no
+   * account yet" path. Signing up and joining have to be one request: two would
+   * leave a user stranded with an account and no organization if the second
+   * failed, and would ask them to paste a token they were never shown.
+   */
+  invitationToken: z.string().min(16).max(256).optional(),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 

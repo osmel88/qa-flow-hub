@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TenantContextService } from '../../database/tenant-context.service';
-import { OrganizationMembersRepository } from '../organizations/organization-members.repository';
+import { OrganizationsModule } from '../organizations/organizations.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { CurrentUserContextHolder } from './decorators/current-user.decorator';
@@ -22,7 +22,7 @@ import { UsersRepository } from './users.repository';
  * security pipeline.
  */
 @Module({
-  imports: [JwtModule.register({})],
+  imports: [JwtModule.register({}), OrganizationsModule],
   controllers: [AuthController],
   providers: [
     AuthService,
@@ -30,7 +30,6 @@ import { UsersRepository } from './users.repository';
     TokenService,
     UsersRepository,
     SessionsRepository,
-    OrganizationMembersRepository,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: ActiveOrganizationGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

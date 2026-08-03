@@ -89,6 +89,10 @@ export class AppConfigService {
     return this.get('INVITATION_TTL_DAYS');
   }
 
+  get webBaseUrl(): string {
+    return this.get('WEB_BASE_URL').replace(/\/+$/, '');
+  }
+
   get swaggerEnabled(): boolean {
     return this.get('SWAGGER_ENABLED');
   }

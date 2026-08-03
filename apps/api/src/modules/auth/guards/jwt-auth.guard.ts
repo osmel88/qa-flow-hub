@@ -54,7 +54,7 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthenticatedError('The session is no longer valid');
     }
 
-    this.context.setUser(payload.sub);
+    this.context.setUser(payload.sub, payload.email);
     return true;
   }
 }

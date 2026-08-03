@@ -36,3 +36,12 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
 export function zodBody<T>(schema: ZodSchema<T>): ZodValidationPipe<T> {
   return new ZodValidationPipe(schema);
 }
+
+/**
+ * Same pipe, named for the other call site: `@Query(zodQuery(listQuerySchema))`.
+ * Query strings arrive as strings, which is why the pagination schema coerces
+ * numbers — `?page=2` must become `2`, not fail validation.
+ */
+export function zodQuery<T>(schema: ZodSchema<T>): ZodValidationPipe<T> {
+  return new ZodValidationPipe(schema);
+}

@@ -19,6 +19,8 @@ export interface RequestContext {
   readonly userAgent?: string;
   /** Filled in by the authentication guard. */
   userId?: string;
+  /** The authenticated address, carried so audit lines read without a join. */
+  email?: string;
   /** Filled in by the active-organization guard. */
   organizationId?: string;
   role?: OrganizationRole;
@@ -42,10 +44,11 @@ export class TenantContextService {
    * Mutating the store rather than re-running it keeps the whole request in a
    * single asynchronous context.
    */
-  setUser(userId: string): void {
+  setUser(userId: string, email: string): void {
     const store = this.storage.getStore();
     if (store !== undefined) {
       store.userId = userId;
+      store.email = email;
     }
   }
 
@@ -64,6 +67,10 @@ export class TenantContextService {
 
   get userId(): string | undefined {
     return this.storage.getStore()?.userId;
+  }
+
+  get email(): string | undefined {
+    return this.storage.getStore()?.email;
   }
 
   get organizationId(): string | undefined {

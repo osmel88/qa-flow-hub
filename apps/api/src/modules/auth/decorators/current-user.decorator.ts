@@ -3,10 +3,42 @@ import { OrganizationRole } from '@prisma/client';
 import { TenantContextService } from '../../../database/tenant-context.service';
 import { UnauthenticatedError } from '../../../errors';
 
-export interface CurrentUserContext {
-  userId: string;
-  organizationId?: string;
-  role?: OrganizationRole;
+/**
+ * The caller, as handlers see it.
+ *
+ * A class with accessors rather than a plain object, so that the two shapes of
+ * "authenticated" are both typed without `!` or `?.` in every controller:
+ *
+ *   - `userId` and `email` always exist — the authentication guard ran;
+ *   - `organizationId` and `role` exist only on routes that require a tenant,
+ *     so reading them on a `@SkipOrganization()` route throws instead of
+ *     returning `undefined` and silently producing an unscoped query.
+ */
+export class CurrentUserContext {
+  constructor(
+    readonly userId: string,
+    readonly email: string,
+    private readonly tenant?: { organizationId: string; role: OrganizationRole },
+  ) {}
+
+  get organizationId(): string {
+    if (this.tenant === undefined) {
+      throw new UnauthenticatedError('No active organization for this request');
+    }
+    return this.tenant.organizationId;
+  }
+
+  get role(): OrganizationRole {
+    if (this.tenant === undefined) {
+      throw new UnauthenticatedError('No active organization for this request');
+    }
+    return this.tenant.role;
+  }
+
+  /** For handlers that legitimately work with or without a tenant. */
+  get organizationIdOrNull(): string | null {
+    return this.tenant?.organizationId ?? null;
+  }
 }
 
 /**
@@ -21,15 +53,18 @@ export const CurrentUser = createParamDecorator(
     // The context service is a singleton reading an AsyncLocalStorage, so the
     // decorator can reach it without the Nest injector.
     const context = CurrentUserContextHolder.service?.get();
-    if (context?.userId === undefined) {
+    if (context?.userId === undefined || context.email === undefined) {
       void executionContext;
       throw new UnauthenticatedError();
     }
-    return {
-      userId: context.userId,
-      ...(context.organizationId === undefined ? {} : { organizationId: context.organizationId }),
-      ...(context.role === undefined ? {} : { role: context.role }),
-    };
+
+    return new CurrentUserContext(
+      context.userId,
+      context.email,
+      context.organizationId === undefined || context.role === undefined
+        ? undefined
+        : { organizationId: context.organizationId, role: context.role },
+    );
   },
 );
 

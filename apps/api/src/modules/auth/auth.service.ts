@@ -18,6 +18,7 @@ import {
   TokenReuseDetectedError,
   UnauthenticatedError,
 } from '../../errors';
+import { InvitationsService } from '../organizations/invitations.service';
 import { PasswordService } from './password.service';
 import { SessionsRepository } from './sessions.repository';
 import { TokenService } from './token.service';
@@ -34,6 +35,7 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly config: AppConfigService,
     private readonly context: TenantContextService,
+    private readonly invitations: InvitationsService,
   ) {}
 
   async register(input: RegisterInput): Promise<AuthSession> {
@@ -50,6 +52,15 @@ export class AuthService {
       fullName: input.fullName,
       passwordHash: await this.passwords.hash(input.password),
     });
+
+    // Accepting the invitation happens after the account exists, and its
+    // failure is *not* swallowed: a user who signed up through an invitation
+    // link and silently ended up in no organization would see an empty product
+    // and no explanation. The account is kept, so retrying acceptance is one
+    // login away.
+    if (input.invitationToken !== undefined) {
+      await this.invitations.accept(input.invitationToken, user.id, user.email);
+    }
 
     return this.startSession(user);
   }

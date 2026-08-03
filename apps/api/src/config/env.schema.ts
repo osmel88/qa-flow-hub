@@ -38,6 +38,14 @@ export const envSchema = z.object({
 
   INVITATION_TTL_DAYS: z.coerce.number().int().min(1).default(7),
 
+  /**
+   * Public URL of the web client. Used to build the invitation acceptance link.
+   * It is configuration and not a request header on purpose: deriving links
+   * from `Host` or `Origin` lets an attacker mint a phishing link that a real
+   * email from us would then carry.
+   */
+  WEB_BASE_URL: z.string().url().default('http://localhost:5173'),
+
   SWAGGER_ENABLED: z
     .enum(['true', 'false'])
     .default('true')

@@ -119,7 +119,46 @@ deliberately **not** approved.
 - **Assessment:** the warning is the correct outcome. It is documented here so
   that nobody "fixes" it by approving the package.
 
-## 10. Single OpenAPI version
+## 10. Invitation tokens are returned in the API response
+
+There is no email provider, so `POST /organizations/current/invitations` returns
+the plaintext token and an `acceptUrl` in its response body. It is the only way
+the inviter can pass the link to the invitee today.
+
+- **Cost:** the token appears in the inviter's browser and in any log that
+  records response bodies. It is single-use, expiring and bound to one email
+  address, so the blast radius is one pending invitation — but a token that
+  grants organization access should not travel this way.
+- **Assessment:** acceptable for an MVP with no real users. Not acceptable in
+  production.
+- **Trigger to fix:** wiring the email provider described in
+  [`integrations-roadmap.md`](integrations-roadmap.md). Removing `token` and
+  `acceptUrl` from `CreatedInvitationView` is the definition of done.
+
+## 11. Audit immutability is enforced only in application code
+
+`AuditService` has no `update` or `delete` method, so nothing in the codebase can
+modify an entry. The database, however, would happily accept an `UPDATE` from
+anyone holding the application's credentials.
+
+- **Cost:** an attacker with database access could erase their tracks.
+- **Trigger to fix:** a dedicated database role for the API with
+  `GRANT INSERT, SELECT` and no `UPDATE`/`DELETE` on `audit_logs`, or shipping
+  entries to an append-only store. Needed before the first compliance audit.
+
+## 12. Invitation expiry is settled lazily
+
+Overdue invitations move to `expired` when `expireOverdue()` runs, which happens
+when somebody invites or lists invitations — not on a schedule.
+
+- **Cost:** a row can sit in `pending` past its expiry date. Acceptance is safe
+  regardless, because `findAcceptable` compares `expiresAt` against the clock
+  instead of trusting the status, but a listing shown to an admin can be briefly
+  stale.
+- **Trigger to fix:** a scheduled job, once there is a job runner. Doing it now
+  would add a scheduler for one query.
+
+## 13. Single OpenAPI version
 
 The API is versioned by URI (`/api/v1`) but only one version exists, and there
 is no deprecation policy yet.

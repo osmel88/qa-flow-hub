@@ -205,7 +205,9 @@ export class InvitationsService {
         throw new ConflictError('The invitation is no longer pending');
       }
 
-      const existing = await this.members.findAnyMembership(userId, organization.id);
+      // Read through `tx`: a read on the pooled client would run on another
+      // connection and could not see the write above.
+      const existing = await this.members.findAnyMembership(userId, organization.id, tx);
       if (existing === null) {
         await this.members.create(
           {

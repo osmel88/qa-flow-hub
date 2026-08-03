@@ -46,8 +46,12 @@ export class OrganizationMembersRepository {
   }
 
   /** Any membership, including suspended and soft-deleted ones. */
-  findAnyMembership(userId: string, organizationId: string): Promise<OrganizationMember | null> {
-    return this.prisma.organizationMember.findUnique({
+  findAnyMembership(
+    userId: string,
+    organizationId: string,
+    tx?: PrismaTransaction,
+  ): Promise<OrganizationMember | null> {
+    return (tx ?? this.prisma).organizationMember.findUnique({
       where: { organizationId_userId: { organizationId, userId } },
     });
   }

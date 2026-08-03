@@ -30,10 +30,14 @@ export type CreateProjectInput = z.infer<typeof createProjectSchema>;
  * types. It has its own endpoints, `POST /projects/:id/archive` and
  * `/restore`, so the audit trail records the intent rather than a diff.
  */
-export const updateProjectSchema = z.object({
-  name: z.string().trim().min(2).max(120).optional(),
-  description: z.string().trim().max(2000).nullish(),
-});
+export const updateProjectSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    description: z.string().trim().max(2000).nullish(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'Provide at least one field to update',
+  });
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 
 export const listProjectsQuerySchema = paginationQuerySchema.extend({

@@ -5,8 +5,8 @@ import { createTestApp } from './utils/create-test-app';
 import { TestWorkspace, createWorkspace, injector } from './utils/workspace';
 
 /**
- * Smoke coverage of the test design module while it is still being built: the
- * happy path plus the invariants that would be expensive to discover later.
+ * The happy path, plus the invariants that are expensive to discover late:
+ * tenant isolation, tree bounds, step consistency and counter behaviour.
  */
 describe('test design', () => {
   let app: NestFastifyApplication;
@@ -211,15 +211,404 @@ describe('test design', () => {
     expect(response.statusCode).toBe(403);
   });
 
-  it('never exposes another organization’s suites', async () => {
-    await createSuite();
-    const stranger = await createWorkspace(app, { emailPrefix: 'stranger', slug: 'globex' });
+  describe('cross-organization isolation', () => {
+    /**
+     * The realistic attack: a legitimate user of another organization who knows
+     * the exact ids. Every one of these must fail, and fail with 404 rather
+     * than 403, because 403 would confirm the resource exists.
+     */
+    let stranger: TestWorkspace;
+    let suiteId: string;
+    let sectionId: string;
+    let caseId: string;
 
-    const response = await request('GET', `/api/v1/test-suites?projectId=${workspace.projectId}`, {
+    const asStranger = (payload?: object) => ({
+      ...(payload === undefined ? {} : { payload }),
       token: stranger.owner.accessToken,
       organizationId: stranger.organizationId,
     });
 
-    expect(response.json()).toEqual([]);
+    beforeEach(async () => {
+      suiteId = (await createSuite()).json().id;
+      sectionId = (
+        await request('POST', '/api/v1/test-sections', asOwner({ suiteId, name: 'Cart' }))
+      ).json().id;
+      caseId = (
+        await createCase(suiteId, { sectionId, steps: [{ action: 'Open the cart' }] })
+      ).json().id;
+      stranger = await createWorkspace(app, { emailPrefix: 'stranger', slug: 'globex' });
+    });
+
+    it('does not list another organization’s suites', async () => {
+      const response = await request(
+        'GET',
+        `/api/v1/test-suites?projectId=${workspace.projectId}`,
+        asStranger(),
+      );
+
+      expect(response.json()).toEqual([]);
+    });
+
+    it('does not list another organization’s cases', async () => {
+      const response = await request(
+        'GET',
+        `/api/v1/test-cases?projectId=${workspace.projectId}`,
+        asStranger(),
+      );
+
+      expect(response.json().data).toEqual([]);
+    });
+
+    it('hides a case behind a 404, steps included', async () => {
+      const response = await request('GET', `/api/v1/test-cases/${caseId}`, asStranger());
+
+      expect(response.statusCode).toBe(404);
+      expect(response.body).not.toContain('Open the cart');
+    });
+
+    it('refuses to edit, archive or delete a case it cannot see', async () => {
+      const edited = await request(
+        'PATCH',
+        `/api/v1/test-cases/${caseId}`,
+        asStranger({ title: 'Owned' }),
+      );
+      const archived = await request(
+        'POST',
+        `/api/v1/test-cases/${caseId}/archive`,
+        asStranger({}),
+      );
+      const deleted = await request('DELETE', `/api/v1/test-cases/${caseId}`, asStranger());
+
+      expect([edited.statusCode, archived.statusCode, deleted.statusCode]).toEqual([
+        404, 404, 404,
+      ]);
+      const untouched = await prisma.testCase.findUniqueOrThrow({ where: { id: caseId } });
+      expect(untouched.title).toBe('Pay with a valid card');
+      expect(untouched.archivedAt).toBeNull();
+      expect(untouched.deletedAt).toBeNull();
+    });
+
+    it('refuses to rewrite the steps of a case it cannot see', async () => {
+      const response = await request(
+        'POST',
+        `/api/v1/test-cases/${caseId}/steps`,
+        asStranger({ steps: [{ action: 'Injected' }] }),
+      );
+
+      expect(response.statusCode).toBe(404);
+      expect(await prisma.testStep.count({ where: { testCaseId: caseId } })).toBe(1);
+    });
+
+    it('refuses to duplicate another organization’s case', async () => {
+      const response = await request(
+        'POST',
+        `/api/v1/test-cases/${caseId}/duplicate`,
+        asStranger({}),
+      );
+
+      expect(response.statusCode).toBe(404);
+      expect(await prisma.testCase.count()).toBe(1);
+    });
+
+    it('refuses to read or delete another organization’s section tree', async () => {
+      const tree = await request(
+        'GET',
+        `/api/v1/test-suites/${suiteId}/sections`,
+        asStranger(),
+      );
+      const deleted = await request(
+        'DELETE',
+        `/api/v1/test-sections/${sectionId}`,
+        asStranger(),
+      );
+
+      expect(tree.statusCode).toBe(404);
+      expect(deleted.statusCode).toBe(404);
+      const section = await prisma.testSection.findUniqueOrThrow({ where: { id: sectionId } });
+      expect(section.deletedAt).toBeNull();
+    });
+
+    it('does not let a case be filed under another organization’s section', async () => {
+      const ownSuite = (
+        await request(
+          'POST',
+          '/api/v1/test-suites',
+          asStranger({ projectId: stranger.projectId, name: 'Checkout' }),
+        )
+      ).json().id;
+
+      const response = await request(
+        'POST',
+        '/api/v1/test-cases',
+        asStranger({ suiteId: ownSuite, title: 'Cross tenant filing', sectionId }),
+      );
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('section tree bounds', () => {
+    it('allows five levels and rejects the sixth', async () => {
+      const suiteId = (await createSuite()).json().id;
+
+      let parentId: string | null = null;
+      for (let level = 1; level <= 5; level += 1) {
+        const response = await request(
+          'POST',
+          '/api/v1/test-sections',
+          asOwner({
+            suiteId,
+            name: `Level ${level}`,
+            ...(parentId === null ? {} : { parentId }),
+          }),
+        );
+        expect(response.statusCode).toBe(201);
+        parentId = response.json().id;
+      }
+
+      const sixth = await request(
+        'POST',
+        '/api/v1/test-sections',
+        asOwner({ suiteId, name: 'Level 6', parentId }),
+      );
+
+      expect(sixth.statusCode).toBe(409);
+      expect(sixth.json().error.message).toContain('5 levels');
+    });
+
+    it('refuses to reparent a section into a different suite', async () => {
+      const first = (await createSuite('Checkout')).json().id;
+      const second = (await createSuite('Search')).json().id;
+      const section = await request(
+        'POST',
+        '/api/v1/test-sections',
+        asOwner({ suiteId: first, name: 'Cart' }),
+      );
+      const foreignParent = await request(
+        'POST',
+        '/api/v1/test-sections',
+        asOwner({ suiteId: second, name: 'Filters' }),
+      );
+
+      const response = await request(
+        'PATCH',
+        `/api/v1/test-sections/${section.json().id}`,
+        asOwner({ parentId: foreignParent.json().id }),
+      );
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('deletes a suite together with its sections and cases', async () => {
+      const suiteId = (await createSuite()).json().id;
+      const section = await request(
+        'POST',
+        '/api/v1/test-sections',
+        asOwner({ suiteId, name: 'Cart' }),
+      );
+      await createCase(suiteId, { sectionId: section.json().id });
+
+      await request('DELETE', `/api/v1/test-suites/${suiteId}`, asOwner());
+
+      const listed = await request(
+        'GET',
+        `/api/v1/test-cases?projectId=${workspace.projectId}`,
+        asOwner(),
+      );
+      expect(listed.json().data).toEqual([]);
+      expect((await request('GET', '/api/v1/test-suites?projectId=' + workspace.projectId, asOwner())).json()).toEqual([]);
+      // Soft delete: the rows survive so audit entries keep pointing at them.
+      expect(await prisma.testCase.count()).toBe(1);
+    });
+  });
+
+  describe('steps', () => {
+    it('rejects an empty action', async () => {
+      const suiteId = (await createSuite()).json().id;
+
+      const response = await createCase(suiteId, { steps: [{ action: '   ' }] });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('rejects more than a hundred steps', async () => {
+      const suiteId = (await createSuite()).json().id;
+      const steps = Array.from({ length: 101 }, (_, index) => ({ action: `Step ${index}` }));
+
+      const response = await createCase(suiteId, { steps });
+
+      expect(response.statusCode).toBe(400);
+      expect(await prisma.testCase.count()).toBe(0);
+    });
+
+    it('accepts exactly a hundred', async () => {
+      const suiteId = (await createSuite()).json().id;
+      const steps = Array.from({ length: 100 }, (_, index) => ({ action: `Step ${index}` }));
+
+      const response = await createCase(suiteId, { steps });
+
+      expect(response.json().steps).toHaveLength(100);
+      expect(response.json().steps[99].position).toBe(100);
+    });
+
+    it('empties the list when given no steps', async () => {
+      const suiteId = (await createSuite()).json().id;
+      const id = (await createCase(suiteId, { steps: [{ action: 'Only step' }] })).json().id;
+
+      const response = await request(
+        'POST',
+        `/api/v1/test-cases/${id}/steps`,
+        asOwner({ steps: [] }),
+      );
+
+      expect(response.json().steps).toEqual([]);
+      expect(await prisma.testStep.count({ where: { testCaseId: id } })).toBe(0);
+    });
+  });
+
+  describe('key reservation', () => {
+    it('does not consume the counter when creation fails', async () => {
+      const suiteId = (await createSuite()).json().id;
+      await createCase(suiteId);
+
+      // 101 steps fail validation before anything is written.
+      const rejected = await createCase(suiteId, {
+        steps: Array.from({ length: 101 }, () => ({ action: 'Too many' })),
+      });
+      expect(rejected.statusCode).toBe(400);
+
+      // A section from another suite fails inside the service, after the
+      // request has been accepted but before the transaction starts.
+      const otherSuite = (await createSuite('Search')).json().id;
+      const foreignSection = await request(
+        'POST',
+        '/api/v1/test-sections',
+        asOwner({ suiteId: otherSuite, name: 'Filters' }),
+      );
+      const alsoRejected = await createCase(suiteId, { sectionId: foreignSection.json().id });
+      expect(alsoRejected.statusCode).toBe(400);
+
+      expect((await createCase(suiteId)).json().key).toBe('WEB-C-2');
+    });
+
+    it('numbers cases and requirements from separate counters', async () => {
+      const suiteId = (await createSuite()).json().id;
+
+      const requirement = await request(
+        'POST',
+        '/api/v1/requirements',
+        asOwner({ projectId: workspace.projectId, title: 'The user can pay' }),
+      );
+      const testCase = await createCase(suiteId);
+
+      expect(requirement.json().key).toBe('WEB-R-1');
+      expect(testCase.json().key).toBe('WEB-C-1');
+    });
+  });
+
+  describe('duplication', () => {
+    it('duplicates an archived case into an unarchived copy', async () => {
+      const suiteId = (await createSuite()).json().id;
+      const id = (await createCase(suiteId, { steps: [{ action: 'Open the cart' }] })).json().id;
+      await request('POST', `/api/v1/test-cases/${id}/archive`, asOwner({}));
+
+      const copy = await request('POST', `/api/v1/test-cases/${id}/duplicate`, asOwner({}));
+
+      // Duplicating is how a team revives an old case: the copy has to be
+      // usable, so it does not inherit the archive.
+      expect(copy.statusCode).toBe(201);
+      expect(copy.json().archivedAt).toBeNull();
+      expect(copy.json().status).toBe('draft');
+      expect(copy.json().steps).toHaveLength(1);
+    });
+
+    it('duplicates into another section of the same suite', async () => {
+      const suiteId = (await createSuite()).json().id;
+      const origin = await request(
+        'POST',
+        '/api/v1/test-sections',
+        asOwner({ suiteId, name: 'Cart' }),
+      );
+      const target = await request(
+        'POST',
+        '/api/v1/test-sections',
+        asOwner({ suiteId, name: 'Payment' }),
+      );
+      const id = (await createCase(suiteId, { sectionId: origin.json().id })).json().id;
+
+      const copy = await request(
+        'POST',
+        `/api/v1/test-cases/${id}/duplicate`,
+        asOwner({ sectionId: target.json().id, title: 'Pay with an expired card' }),
+      );
+
+      expect(copy.json().sectionId).toBe(target.json().id);
+      expect(copy.json().title).toBe('Pay with an expired card');
+    });
+
+    it('refuses to duplicate into a section of another suite', async () => {
+      const suiteId = (await createSuite('Checkout')).json().id;
+      const otherSuite = (await createSuite('Search')).json().id;
+      const foreignSection = await request(
+        'POST',
+        '/api/v1/test-sections',
+        asOwner({ suiteId: otherSuite, name: 'Filters' }),
+      );
+      const id = (await createCase(suiteId)).json().id;
+
+      const response = await request(
+        'POST',
+        `/api/v1/test-cases/${id}/duplicate`,
+        asOwner({ sectionId: foreignSection.json().id }),
+      );
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('audit', () => {
+    const entriesFor = (entityId: string) =>
+      prisma.auditLog.findMany({
+        where: { entityType: 'TestCase', entityId },
+        orderBy: { createdAt: 'asc' },
+      });
+
+    it('records archiving and restoring with the acting user', async () => {
+      const suiteId = (await createSuite()).json().id;
+      const id = (await createCase(suiteId)).json().id;
+
+      await request('POST', `/api/v1/test-cases/${id}/archive`, asOwner({}));
+      await request('POST', `/api/v1/test-cases/${id}/restore`, asOwner({}));
+
+      const entries = await entriesFor(id);
+      expect(entries.map((entry) => entry.action)).toEqual(['create', 'archive', 'restore']);
+      expect(entries.every((entry) => entry.userId === workspace.owner.userId)).toBe(true);
+      expect(entries.every((entry) => entry.organizationId === workspace.organizationId)).toBe(
+        true,
+      );
+    });
+
+    it('records a duplication against the copy, naming the source', async () => {
+      const suiteId = (await createSuite()).json().id;
+      const id = (await createCase(suiteId)).json().id;
+
+      const copy = await request('POST', `/api/v1/test-cases/${id}/duplicate`, asOwner({}));
+
+      const entries = await entriesFor(copy.json().id);
+      expect(entries.map((entry) => entry.summary)).toEqual([
+        'Duplicated WEB-C-1 as WEB-C-2',
+      ]);
+    });
+
+    it('writes nothing when the operation was rejected', async () => {
+      const suiteId = (await createSuite()).json().id;
+      const id = (await createCase(suiteId)).json().id;
+      await request('POST', `/api/v1/test-cases/${id}/archive`, asOwner({}));
+
+      const again = await request('POST', `/api/v1/test-cases/${id}/archive`, asOwner({}));
+
+      expect(again.statusCode).toBe(409);
+      expect((await entriesFor(id)).filter((entry) => entry.action === 'archive')).toHaveLength(1);
+    });
   });
 });

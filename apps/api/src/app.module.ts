@@ -5,12 +5,14 @@ import { AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { DefectsModule } from './modules/defects/defects.module';
 import { HealthModule } from './modules/health/health.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { RequirementsModule } from './modules/requirements/requirements.module';
 import { TestDesignModule } from './modules/test-design/test-design.module';
 import { TestRunsModule } from './modules/test-runs/test-runs.module';
+import { TraceabilityModule } from './modules/traceability/traceability.module';
 
 /**
  * Composition root of the modular monolith.
@@ -35,6 +37,8 @@ import { TestRunsModule } from './modules/test-runs/test-runs.module';
     RequirementsModule,
     TestDesignModule,
     TestRunsModule,
+    DefectsModule,
+    TraceabilityModule,
   ],
 })
 export class AppModule implements NestModule {

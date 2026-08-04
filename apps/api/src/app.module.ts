@@ -4,7 +4,9 @@ import { RequestContextMiddleware } from './common/middleware/request-context.mi
 import { AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { IntegrationsModule } from './integrations/integrations.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DefectsModule } from './modules/defects/defects.module';
 import { HealthModule } from './modules/health/health.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
@@ -39,6 +41,8 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     TestRunsModule,
     DefectsModule,
     TraceabilityModule,
+    DashboardModule,
+    IntegrationsModule,
   ],
 })
 export class AppModule implements NestModule {

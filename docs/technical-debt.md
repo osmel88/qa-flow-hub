@@ -165,3 +165,65 @@ is no deprecation policy yet.
 
 - **Trigger to fix:** the first external consumer that is not our own web
   client.
+
+## 14. Traceability links have no foreign keys
+
+`TraceabilityLink` is polymorphic (`sourceType` + `sourceId`), so PostgreSQL
+cannot enforce that either end exists. The service checks both endpoints against
+the active organization before creating a link, and the matrix skips links whose
+entity is gone.
+
+- **Cost:** a direct database write, or a future code path that forgets the
+  check, can leave a link pointing at nothing. Nothing crashes, but the matrix
+  quietly under-reports.
+- **Trigger to fix:** a periodic integrity job, or a trigger per entity type,
+  once link volume makes a silent gap expensive. Deliberate: the alternative is
+  six join tables and a migration per new relation type.
+
+## 15. Deleted entities keep their links
+
+Soft-deleting a case leaves its requirement links in place; the matrix ignores
+them. This is intentional — the link records a decision that was made — but it
+means the link table only grows.
+
+- **Trigger to fix:** an archival policy, once a project's history is large
+  enough for the table to matter.
+
+## 16. Dashboard aggregates are computed on every request
+
+Eight `count`/`groupBy` queries per call, all indexed, none loading rows. Fine at
+current scale; not fine for an organization with hundreds of thousands of
+results refreshing a dashboard every minute.
+
+- **Trigger to fix:** measured p95 above ~300 ms. Then materialize per project
+  and invalidate on write, which needs a job runner.
+
+## 17. Coverage counts links, not intent
+
+A requirement is "covered" if any `requirement → test_case` link exists. Nothing
+checks that the case is meaningful, current, or of the right depth.
+
+- **Cost:** coverage can be gamed by linking one trivial case to everything.
+  `verified` (executed, passed, no open defect) is the honest metric and is
+  reported alongside it.
+- **Trigger to fix:** risk-weighted coverage, when customers start reporting on
+  it externally.
+
+## 18. Integration adapters are contracts with noop providers
+
+No provider talks to the network. Writes reject with
+`IntegrationNotConfiguredError` and reads return empty, deliberately rather than
+returning plausible fake data.
+
+- **Cost:** `IntegrationConnection` rows can be created but do nothing;
+  `secretRef` is stored and never resolved.
+- **Trigger to fix:** the first paying customer that needs Jira. The work is one
+  adapter plus a provider token swap in `IntegrationsModule`, not a migration.
+
+## 19. The audit log has no retention policy
+
+`audit_logs` grows without bound and is only exposed to owners and admins,
+paginated, with no export.
+
+- **Trigger to fix:** partitioning by month plus a retention window, before the
+  table makes vacuum painful or a customer asks for a compliance export.

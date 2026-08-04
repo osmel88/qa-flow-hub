@@ -1,4 +1,5 @@
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
+import { MatrixRow } from '@qa-flow-hub/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../src/database/prisma.service';
 import { createTestApp } from './utils/create-test-app';
@@ -337,11 +338,11 @@ describe('defects and traceability', () => {
 
       const result = await matrix();
 
-      const rows = new Map(
-        result.rows.map((row: { requirementId: string }) => [row.requirementId, row]),
+      const rows = new Map<string, MatrixRow>(
+        result.rows.map((row: MatrixRow) => [row.requirementId, row]),
       );
       expect(rows.get(written.id)).toMatchObject({ covered: true, verified: false });
-      expect(rows.get(written.id).cases[0].lastStatus).toBe('untested');
+      expect(rows.get(written.id)?.cases[0]?.lastStatus).toBe('untested');
       expect(rows.get(executed.id)).toMatchObject({ covered: true, verified: true });
       expect(result.summary).toMatchObject({ requirements: 2, covered: 2, verified: 1 });
     });

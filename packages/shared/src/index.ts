@@ -8,3 +8,4 @@ export * from './test-design/test-design.contracts.js';
 export * from './test-runs/test-run.contracts.js';
 export * from './defects/defect.contracts.js';
 export * from './traceability/traceability.contracts.js';
+export * from './dashboard/dashboard.contracts.js';

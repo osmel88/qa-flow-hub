@@ -10,6 +10,7 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
 import { ProjectsModule } from './modules/projects/projects.module';
 import { RequirementsModule } from './modules/requirements/requirements.module';
 import { TestDesignModule } from './modules/test-design/test-design.module';
+import { TestRunsModule } from './modules/test-runs/test-runs.module';
 
 /**
  * Composition root of the modular monolith.
@@ -33,6 +34,7 @@ import { TestDesignModule } from './modules/test-design/test-design.module';
     ProjectsModule,
     RequirementsModule,
     TestDesignModule,
+    TestRunsModule,
   ],
 })
 export class AppModule implements NestModule {

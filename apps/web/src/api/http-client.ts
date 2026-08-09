@@ -1,9 +1,8 @@
-import type { ApiErrorResponse, AuthSession } from '@qa-flow-hub/shared';
+import type { ApiErrorResponse, AuthTokens } from '@qa-flow-hub/shared';
 import {
   clearSession,
   getAccessToken,
   getActiveOrganizationId,
-  getRefreshToken,
   storeSession,
 } from './session-store';
 
@@ -38,16 +37,17 @@ export function setSessionLostHandler(handler: () => void): void {
  */
 let refreshInFlight: Promise<boolean> | null = null;
 
-async function refreshSession(): Promise<boolean> {
-  const refreshToken = getRefreshToken();
-  if (refreshToken === null) {
-    return false;
-  }
-
+/**
+ * No token is sent: the refresh credential is an `HttpOnly` cookie the browser
+ * attaches itself. `credentials: 'include'` is what makes it travel, and a 401
+ * here is the only way the client learns it has no session.
+ */
+export async function refreshSession(): Promise<boolean> {
   const response = await fetch(`${API_BASE}/auth/refresh`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ refreshToken }),
+    body: '{}',
   });
 
   if (!response.ok) {
@@ -55,7 +55,7 @@ async function refreshSession(): Promise<boolean> {
     return false;
   }
 
-  storeSession((await response.json()) as AuthSession);
+  storeSession((await response.json()) as AuthTokens);
   return true;
 }
 
@@ -71,6 +71,8 @@ interface RequestOptions {
   body?: unknown;
   /** Endpoints outside a tenant (login, listing my organizations). */
   withoutOrganization?: boolean;
+  /** Login and register: a 401 there means bad credentials, not a stale token. */
+  skipRefresh?: boolean;
   signal?: AbortSignal;
 }
 
@@ -80,6 +82,8 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
 
   return fetch(`${API_BASE}${path}`, {
     method: options.method ?? 'GET',
+    // The auth endpoints need the refresh cookie; the rest ignore it.
+    credentials: 'include',
     ...(options.signal === undefined ? {} : { signal: options.signal }),
     headers: {
       Accept: 'application/json',
@@ -101,7 +105,9 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   let response = await send(path, options);
 
-  if (response.status === 401 && getRefreshToken() !== null) {
+  // Whether a refresh cookie exists is no longer knowable from script, so the
+  // 401 itself is the trigger and the refresh call decides.
+  if (response.status === 401 && options.skipRefresh !== true) {
     if (await ensureRefresh()) {
       response = await send(path, options);
     } else {

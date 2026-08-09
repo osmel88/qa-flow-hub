@@ -54,10 +54,20 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+/**
+ * The refresh token normally travels in an `HttpOnly` cookie the browser sends
+ * on its own, so the body is optional. It stays supported for clients without a
+ * cookie jar — CI scripts, integration tests, future server-to-server callers —
+ * which ask for it explicitly with the `X-Refresh-Transport: body` header.
+ */
 export const refreshSchema = z.object({
-  refreshToken: z.string().min(16),
+  refreshToken: z.string().min(16).optional(),
 });
 export type RefreshInput = z.infer<typeof refreshSchema>;
+
+/** Header a non-browser client sends to get the refresh token in the body. */
+export const REFRESH_TRANSPORT_HEADER = 'x-refresh-transport';
+export const REFRESH_COOKIE_NAME = 'qafh_refresh';
 
 export const changePasswordSchema = z
   .object({
@@ -86,6 +96,25 @@ export const ORGANIZATION_ROLES = [
 ] as const;
 export type OrganizationRoleName = (typeof ORGANIZATION_ROLES)[number];
 
+/**
+ * Role hierarchy, lower being more powerful. Shared so the API and the client
+ * cannot drift: the server enforces it, and the client uses it to avoid
+ * offering an action the server is going to refuse.
+ */
+export const ROLE_RANK: Record<OrganizationRoleName, number> = {
+  organization_owner: 0,
+  organization_admin: 1,
+  project_manager: 2,
+  qa_lead: 3,
+  tester: 4,
+  viewer: 5,
+};
+
+/** True when `actor` is at least as powerful as `other`. */
+export function outranksOrEquals(actor: OrganizationRoleName, other: OrganizationRoleName): boolean {
+  return ROLE_RANK[actor] <= ROLE_RANK[other];
+}
+
 export interface AuthenticatedUser {
   id: string;
   email: string;
@@ -103,11 +132,11 @@ export interface OrganizationSummary {
 export interface AuthTokens {
   accessToken: string;
   /**
-   * Returned in the body rather than only in a cookie because the web client
-   * is a separate origin in development. The trade-off and the cookie plan are
-   * recorded in docs/security-model.md.
+   * `null` for browsers: the token was set as an `HttpOnly` cookie and script
+   * on the page must not be able to read it. Only clients that asked for
+   * `X-Refresh-Transport: body` get the value here.
    */
-  refreshToken: string;
+  refreshToken: string | null;
   expiresIn: number;
 }
 

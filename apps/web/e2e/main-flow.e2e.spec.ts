@@ -100,3 +100,34 @@ test('a QA lead can go from requirement to traced defect', async ({ page }) => {
     await expect(page.getByText('0 of 1 covered')).toBeVisible();
   });
 });
+
+/**
+ * The refresh token is a 30-day credential, so the browser must be able to use
+ * it and unable to read it. This is the assertion that would have failed while
+ * it lived in localStorage.
+ */
+test('a session survives a reload without any credential reachable from script', async ({
+  page,
+}) => {
+  const email = `e2e-cookie-${Date.now()}@example.com`;
+
+  await page.goto('/register');
+  await page.getByLabel('Full name').fill('Cookie Person');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(account.password);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
+
+  const stored = await page.evaluate(() => JSON.stringify(localStorage));
+  expect(stored).not.toContain('refreshToken');
+  expect(stored).not.toContain('qafh.refreshToken');
+
+  const cookie = (await page.context().cookies()).find((item) => item.name === 'qafh_refresh');
+  expect(cookie?.httpOnly).toBe(true);
+  expect(cookie?.sameSite).toBe('Strict');
+
+  // Reload with nothing in memory: the session comes back only if the cookie
+  // rotated successfully on boot.
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
+});

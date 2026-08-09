@@ -91,10 +91,12 @@ chapter 10 of the backend course. Summary:
 These are real and deliberate, not oversights. Also tracked in
 [`technical-debt.md`](technical-debt.md).
 
-1. **Refresh tokens are returned in the response body**, not in an `HttpOnly`
-   cookie, because the SPA runs on a different origin in development. A cookie
-   plus CSRF protection is the intended end state and is a breaking change for
-   clients, so it belongs before the first paying customer, not after.
+1. **A refresh token still reaches non-browser clients in the response body.**
+   Browsers get it as an `HttpOnly`, `SameSite=Strict` cookie scoped to
+   `/api/v1/auth` and never see the value; a client that asks with
+   `X-Refresh-Transport: body` gets it inline instead, which is what CI scripts
+   and the integration suite use. The default is the safe one, but any script
+   holding a 30-day credential in a variable is still a credential to protect.
 2. **Rate limiting is per instance.** Two API replicas allow twice the
    configured rate. A shared store is the fix and it implies Redis, which is
    explicitly out of scope for now.

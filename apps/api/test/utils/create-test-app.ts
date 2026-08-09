@@ -18,6 +18,10 @@ export async function createTestApp(): Promise<NestFastifyApplication> {
     logger: false,
   });
 
+  // Registered in main.ts too: without it, `request.cookies` is undefined and
+  // the refresh cookie tests would fail for the wrong reason.
+  await app.register(import('@fastify/cookie'));
+
   app.setGlobalPrefix('api', { exclude: ['health'] });
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
   app.useGlobalFilters(new AllExceptionsFilter());

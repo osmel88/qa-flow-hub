@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, apiFetch } from './http-client';
+import { ApiError, apiFetch, refreshSession } from './http-client';
 import { clearSession, setAccessToken, setActiveOrganizationId, storeSession } from './session-store';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -13,6 +13,15 @@ function headersOfCall(call: unknown[] | undefined): Record<string, string> {
     throw new Error('fetch was not called with a request init');
   }
   return (init as RequestInit).headers as Record<string, string>;
+}
+
+/** The request init a stubbed fetch was called with, or a failed assertion. */
+function initOfCall(call: unknown[] | undefined): RequestInit {
+  const init = call?.[1];
+  if (init === undefined) {
+    throw new Error('fetch was not called with a request init');
+  }
+  return init as RequestInit;
 }
 
 beforeEach(() => {
@@ -50,24 +59,12 @@ describe('apiFetch', () => {
   });
 
   it('refreshes once for concurrent 401s instead of racing the token rotation', async () => {
-    storeSession({
-      accessToken: 'expired',
-      refreshToken: 'refresh-1',
-      expiresIn: 900,
-      user: { id: 'u1', email: 'a@b.c', fullName: 'A', avatarUrl: null },
-      organizations: [],
-    });
+    storeSession({ accessToken: 'expired', refreshToken: null, expiresIn: 900 });
 
     const fetchMock = vi.fn(async (input: unknown, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith('/auth/refresh')) {
-        return jsonResponse({
-          accessToken: 'fresh',
-          refreshToken: 'refresh-2',
-          expiresIn: 900,
-          user: { id: 'u1', email: 'a@b.c', fullName: 'A', avatarUrl: null },
-          organizations: [],
-        });
+        return jsonResponse({ accessToken: 'fresh', refreshToken: null, expiresIn: 900 });
       }
       const headers = (init?.headers ?? {}) as Record<string, string>;
       return headers['Authorization'] === 'Bearer fresh'
@@ -99,5 +96,27 @@ describe('apiFetch', () => {
       status: 403,
     });
     await expect(apiFetch('/defects')).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('never keeps a refresh token where script can read it', async () => {
+    storeSession({ accessToken: 'access-1', refreshToken: null, expiresIn: 900 });
+
+    // The cookie is the credential; anything in localStorage would be readable
+    // by an XSS payload for the next 30 days.
+    expect(JSON.stringify(localStorage)).not.toContain('access-1');
+    expect(localStorage.getItem('qafh.refreshToken')).toBeNull();
+  });
+
+  it('sends the refresh cookie and no body token when rotating', async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ accessToken: 'fresh', refreshToken: null, expiresIn: 900 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await refreshSession();
+
+    const init = initOfCall(fetchMock.mock.calls[0]);
+    expect(init.credentials).toBe('include');
+    expect(String(init.body)).not.toContain('refreshToken');
   });
 });

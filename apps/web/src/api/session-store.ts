@@ -1,19 +1,19 @@
-import type { AuthSession } from '@qa-flow-hub/shared';
+import type { AuthTokens } from '@qa-flow-hub/shared';
 
-const REFRESH_KEY = 'qafh.refreshToken';
 const ORGANIZATION_KEY = 'qafh.organizationId';
 
 /**
- * Where the two tokens live, and why they live in different places.
+ * What the browser keeps, and what it deliberately cannot keep.
  *
- * The access token stays in memory: it is short lived, and a variable is gone
- * when the tab closes, so an XSS payload has to run while the tab is open to
- * see it. The refresh token goes to localStorage so that reloading the page
- * does not log the user out.
+ * The access token lives in a module variable: short lived, gone when the tab
+ * closes, and unreachable from another tab. The refresh token is never here at
+ * all — the API sets it as an `HttpOnly` cookie, so no script on this page can
+ * read it even if an XSS payload runs. Reloading the page still restores the
+ * session, because the cookie travels with the refresh call on its own.
  *
- * This is a deliberate compromise, not an oversight. The safe answer is an
- * HttpOnly cookie, which the API cannot set yet because the client is a
- * different origin in development. Recorded in docs/technical-debt.md.
+ * The active organization is not a credential: it is a preference, and the
+ * server re-checks membership on every request, so localStorage is the right
+ * place for it.
  */
 let accessToken: string | null = null;
 
@@ -25,18 +25,12 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
-export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_KEY);
-}
-
-export function storeSession(session: AuthSession): void {
-  accessToken = session.accessToken;
-  localStorage.setItem(REFRESH_KEY, session.refreshToken);
+export function storeSession(tokens: AuthTokens): void {
+  accessToken = tokens.accessToken;
 }
 
 export function clearSession(): void {
   accessToken = null;
-  localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(ORGANIZATION_KEY);
 }
 

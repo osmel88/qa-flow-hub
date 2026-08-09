@@ -10,7 +10,20 @@ describe('authentication', () => {
   let app: NestFastifyApplication;
   let prisma: PrismaService;
 
+  /**
+   * Acts as a client without a cookie jar, which is what a test runner is: it
+   * asks for the refresh token in the body. Browser behaviour — cookie only —
+   * is covered by `browserPost` and its own describe block.
+   */
   const post = (url: string, payload: object, headers: Record<string, string> = {}) =>
+    app.inject({
+      method: 'POST',
+      url,
+      payload,
+      headers: { 'x-refresh-transport': 'body', ...headers },
+    });
+
+  const browserPost = (url: string, payload: object, headers: Record<string, string> = {}) =>
     app.inject({ method: 'POST', url, payload, headers });
 
   const get = (url: string, headers: Record<string, string> = {}) =>
@@ -152,6 +165,67 @@ describe('authentication', () => {
       const user = await prisma.user.findUniqueOrThrow({ where: { email: 'ada@example.test' } });
       expect(user.failedLoginAttempts).toBe(0);
       expect(user.lastLoginAt).not.toBeNull();
+    });
+  });
+
+  describe('refresh token transport', () => {
+    it('hands a browser an HttpOnly cookie and nothing readable in the body', async () => {
+      const response = await browserPost('/api/v1/auth/register', REGISTER);
+
+      // The whole point: script on the page cannot read a 30-day credential.
+      expect(response.json().refreshToken).toBeNull();
+
+      const cookie = response.headers['set-cookie'];
+      const header = Array.isArray(cookie) ? cookie.join(';') : String(cookie);
+      expect(header).toContain('qafh_refresh=');
+      expect(header).toContain('HttpOnly');
+      expect(header).toContain('SameSite=Strict');
+      expect(header).toContain('Path=/api/v1/auth');
+    });
+
+    it('rotates using only the cookie, with an empty body', async () => {
+      const registered = await browserPost('/api/v1/auth/register', REGISTER);
+      const cookie = registered.cookies[0];
+
+      const refreshed = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/refresh',
+        payload: {},
+        cookies: { [String(cookie?.name)]: String(cookie?.value) },
+      });
+
+      expect(refreshed.statusCode).toBe(200);
+      expect(refreshed.json().accessToken).toBeTypeOf('string');
+      expect(refreshed.json().refreshToken).toBeNull();
+      // Rotation still happened: the browser gets a different cookie back.
+      expect(refreshed.cookies[0]?.value).not.toBe(cookie?.value);
+    });
+
+    it('refuses a caller that presents no token at all', async () => {
+      const response = await browserPost('/api/v1/auth/refresh', {});
+
+      expect(response.statusCode).toBe(401);
+      expect(response.json().error.code).toBe('UNAUTHENTICATED');
+    });
+
+    it('expires the cookie on logout so the browser stops presenting it', async () => {
+      const registered = await browserPost('/api/v1/auth/register', REGISTER);
+      const cookie = registered.cookies[0];
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/logout',
+        payload: {},
+        cookies: { [String(cookie?.name)]: String(cookie?.value) },
+      });
+
+      expect(response.statusCode).toBe(204);
+      expect(response.cookies[0]?.value).toBe('');
+
+      const replayed = await post('/api/v1/auth/refresh', {
+        refreshToken: String(cookie?.value),
+      });
+      expect(replayed.statusCode).toBe(401);
     });
   });
 

@@ -2,11 +2,10 @@ import type { AuthSession, LoginInput, OrganizationSummary, RegisterInput } from
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../api/endpoints';
-import { setSessionLostHandler } from '../api/http-client';
+import { refreshSession, setSessionLostHandler } from '../api/http-client';
 import {
   clearSession,
   getActiveOrganizationId,
-  getRefreshToken,
   setActiveOrganizationId,
   storeSession,
 } from '../api/session-store';
@@ -39,10 +38,11 @@ const EMPTY: AuthState = {
 /**
  * Session state for the whole client.
  *
- * On boot it does not trust localStorage to describe the user: it holds a
- * refresh token and asks the API who that is. A cached user object would let a
- * revoked account keep rendering an authenticated shell until the first
- * request failed.
+ * On boot there is no access token in memory and the refresh token is a cookie
+ * this code cannot read, so restoring a session means asking the API: rotate the
+ * cookie, then fetch the profile. Nothing about the user is cached — a cached
+ * user object would let a revoked account keep rendering an authenticated shell
+ * until the first request failed.
  */
 export function AuthProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const [state, setState] = useState<AuthState>(EMPTY);
@@ -73,16 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
   }, [signOut]);
 
   useEffect(() => {
-    if (getRefreshToken() === null) {
-      setState({ ...EMPTY, isRestoring: false });
-      return;
-    }
-
     let cancelled = false;
-    void authApi
-      .me()
+    void refreshSession()
+      .then((restored) => (restored ? authApi.me() : null))
       .then((profile) => {
         if (cancelled) {
+          return;
+        }
+        if (profile === null) {
+          setState({ ...EMPTY, isRestoring: false });
           return;
         }
         const stored = getActiveOrganizationId();
@@ -124,12 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
         applySession(await authApi.register(input));
       },
       logout: async () => {
-        const refreshToken = getRefreshToken();
-        if (refreshToken !== null) {
-          // Best effort: the server may already have revoked the session, and
-          // failing to reach it must not trap the user in a logged-in shell.
-          await authApi.logout(refreshToken).catch(() => undefined);
-        }
+        // Best effort: the server may already have revoked the session, and
+        // failing to reach it must not trap the user in a logged-in shell.
+        await authApi.logout().catch(() => undefined);
         signOut();
       },
       selectOrganization: (organizationId) => {

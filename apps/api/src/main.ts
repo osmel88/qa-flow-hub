@@ -29,6 +29,9 @@ async function bootstrap(): Promise<void> {
     contentSecurityPolicy: config.isProduction ? undefined : false,
   });
 
+  // Refresh tokens travel as an HttpOnly cookie; see RefreshCookieService.
+  await app.register(import('@fastify/cookie'));
+
   await app.register(import('@fastify/cors'), {
     origin: config.corsOrigins,
     credentials: true,

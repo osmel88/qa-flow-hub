@@ -10,6 +10,7 @@ import { ActiveOrganizationGuard } from './guards/active-organization.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { PasswordService } from './password.service';
+import { RefreshCookieService } from './refresh-cookie.service';
 import { SessionsRepository } from './sessions.repository';
 import { TokenService } from './token.service';
 import { UsersRepository } from './users.repository';
@@ -27,6 +28,7 @@ import { UsersRepository } from './users.repository';
   providers: [
     AuthService,
     PasswordService,
+    RefreshCookieService,
     TokenService,
     UsersRepository,
     SessionsRepository,

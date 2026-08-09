@@ -46,14 +46,26 @@ import { apiFetch, query } from './http-client';
 
 export const authApi = {
   register: (body: RegisterInput) =>
-    apiFetch<AuthSession>('/auth/register', { method: 'POST', body, withoutOrganization: true }),
+    apiFetch<AuthSession>('/auth/register', {
+      method: 'POST',
+      body,
+      withoutOrganization: true,
+      skipRefresh: true,
+    }),
   login: (body: LoginInput) =>
-    apiFetch<AuthSession>('/auth/login', { method: 'POST', body, withoutOrganization: true }),
-  logout: (refreshToken: string) =>
+    apiFetch<AuthSession>('/auth/login', {
+      method: 'POST',
+      body,
+      withoutOrganization: true,
+      skipRefresh: true,
+    }),
+  /** The refresh cookie is the credential; the client has nothing to send. */
+  logout: () =>
     apiFetch<void>('/auth/logout', {
       method: 'POST',
-      body: { refreshToken },
+      body: {},
       withoutOrganization: true,
+      skipRefresh: true,
     }),
   me: () =>
     apiFetch<AuthSession['user'] & { organizations: OrganizationSummary[] }>('/auth/me', {

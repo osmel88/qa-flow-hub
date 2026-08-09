@@ -6,6 +6,7 @@ import {
   MemberView,
   OrganizationView,
   Paginated,
+  ROLE_RANK,
   UpdateOrganizationInput,
 } from '@qa-flow-hub/shared';
 import { ConflictError, DuplicateResourceError, ForbiddenError, NotFoundError } from '../../errors';
@@ -14,19 +15,11 @@ import { MemberWithUser, OrganizationMembersRepository } from './organization-me
 import { OrganizationsRepository } from './organizations.repository';
 
 /**
- * Ranking of roles, used only to answer "can this person hand out that role?".
- * A lower number is more powerful. This is not a permission system — see
- * docs/permissions-matrix.md for why six roles do not need one — it exists
- * solely to stop privilege escalation through the member form.
+ * The ranking lives in the shared package so the client can grey out an action
+ * instead of offering one the server will refuse. It is used only to answer
+ * "can this person hand out that role?" — not as a permission system, see
+ * docs/permissions-matrix.md — and the check below is the one that counts.
  */
-const ROLE_RANK: Record<OrganizationRole, number> = {
-  organization_owner: 0,
-  organization_admin: 1,
-  project_manager: 2,
-  qa_lead: 3,
-  tester: 4,
-  viewer: 5,
-};
 
 @Injectable()
 export class OrganizationsService {

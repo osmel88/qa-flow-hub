@@ -227,3 +227,27 @@ paginated, with no export.
 
 - **Trigger to fix:** partitioning by month plus a retention window, before the
   table makes vacuum painful or a customer asks for a compliance export.
+
+## 20. Refresh tokens still have a body transport
+
+Browsers receive the refresh token as an `HttpOnly`, `SameSite=Strict` cookie
+scoped to `/api/v1/auth`, and the response body carries `refreshToken: null`.
+Clients without a cookie jar — the integration suite, CI scripts — opt into the
+old behaviour with `X-Refresh-Transport: body`.
+
+- **Cost:** two code paths for one credential, and a script that opts in holds a
+  30-day token in memory with no rotation help from the browser.
+- **Trigger to fix:** the first machine-to-machine consumer. The right answer for
+  it is a scoped API key with its own lifecycle, not a session refresh token;
+  once that exists, the header and the body transport can both go.
+
+## 21. Project-scoped roles are not enforced
+
+`ProjectMember` exists in the schema and no guard reads it, so an
+`organization_qa_lead` is a QA lead in every project of the organization. The
+Members screen mirrors the organization-level rules the API does enforce
+(rank, no self-demotion, ownership never handed out by invitation), so it does
+not offer actions that fail — but there is no per-project UI to mirror yet.
+
+- **Trigger to fix:** the first customer running two projects with different
+  teams. It is a guard change plus a membership lookup, not a schema change.

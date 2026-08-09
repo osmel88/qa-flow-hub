@@ -429,6 +429,31 @@ describe('organizations, invitations and projects', () => {
 
       expect(response.statusCode).toBe(403);
     });
+
+    it('refuses to invite an owner at all, so no admin can outrank the person who hired them', async () => {
+      const owner = await registerAccount('owner@example.test');
+      const admin = await registerAccount('admin@example.test');
+      const organizationId = await createOrganization(owner, 'acme');
+      const invitation = await invite(owner, organizationId, admin.email, 'organization_admin');
+      await request('POST', '/api/v1/organizations/invitations/accept', {
+        payload: { token: invitation.token },
+        token: admin.accessToken,
+      });
+
+      const response = await request('POST', '/api/v1/organizations/current/invitations', {
+        payload: { email: 'newowner@example.test', role: 'organization_owner' },
+        token: admin.accessToken,
+        organizationId,
+      });
+
+      // Two layers say no: the contract does not accept `organization_owner` as
+      // an invitable role (400 here), and the service refuses any role more
+      // powerful than the inviter's even if the contract ever widens.
+      expect(response.statusCode).toBe(400);
+      expect(await prisma.organizationInvitation.count({ where: { role: 'organization_owner' } })).toBe(
+        0,
+      );
+    });
   });
 
   describe('members and roles', () => {

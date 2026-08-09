@@ -10,10 +10,16 @@ import {
   CreateInvitationInput,
   CreatedInvitationView,
   InvitationView,
+  ROLE_RANK,
 } from '@qa-flow-hub/shared';
 import { AppConfigService } from '../../config/app-config.service';
 import { PrismaService } from '../../database/prisma.service';
-import { ConflictError, DuplicateResourceError, NotFoundError } from '../../errors';
+import {
+  ConflictError,
+  DuplicateResourceError,
+  ForbiddenError,
+  NotFoundError,
+} from '../../errors';
 import { AuditService } from '../audit/audit.service';
 import { OrganizationInvitationsRepository } from './organization-invitations.repository';
 import {
@@ -56,11 +62,21 @@ export class InvitationsService {
     private readonly config: AppConfigService,
   ) {}
 
+  /**
+   * `invitedBy` carries the inviter's role, not just their id: without the rank
+   * check an admin could invite an owner and end up outranked by someone they
+   * created. `changeMemberRole` refuses the same move, so allowing it here would
+   * make the invitation form the way around the rule.
+   */
   async invite(
     organizationId: string,
-    invitedById: string,
+    invitedBy: { userId: string; role: OrganizationRole },
     input: CreateInvitationInput,
   ): Promise<CreatedInvitationView> {
+    if (ROLE_RANK[input.role] < ROLE_RANK[invitedBy.role]) {
+      throw new ForbiddenError('You cannot invite somebody with a role more powerful than your own');
+    }
+
     // Lapsed invitations are settled first, otherwise the partial unique index
     // on (organizationId, email) WHERE status = 'pending' would keep rejecting
     // a legitimate re-invite for a week after the first one went stale.
@@ -84,7 +100,7 @@ export class InvitationsService {
       role: input.role,
       tokenHash: issued.tokenHash,
       expiresAt: this.expiryFromNow(),
-      invitedById,
+      invitedById: invitedBy.userId,
     });
 
     await this.audit.record({

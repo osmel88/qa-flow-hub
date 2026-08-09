@@ -152,7 +152,11 @@ export class OrganizationsController {
     @CurrentUser() user: CurrentUserContext,
     @Body(zodBody(createInvitationSchema)) body: CreateInvitationInput,
   ) {
-    return this.invitations.invite(user.organizationId, user.userId, body);
+    return this.invitations.invite(
+      user.organizationId,
+      { userId: user.userId, role: user.role },
+      body,
+    );
   }
 
   @ApiHeader({ name: 'X-Organization-Id', required: true })

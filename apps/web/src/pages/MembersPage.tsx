@@ -1,4 +1,5 @@
-import { ORGANIZATION_ROLES } from '@qa-flow-hub/shared';
+import { ORGANIZATION_ROLES, invitableRoleSchema, outranksOrEquals } from '@qa-flow-hub/shared';
+import type { MemberView, OrganizationRoleName } from '@qa-flow-hub/shared';
 import { Badge, Button, DataState, SelectField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -8,7 +9,72 @@ import { useAuth } from '../auth/auth-context';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 
-const INVITABLE = ORGANIZATION_ROLES.filter((role) => role !== 'organization_owner');
+/**
+ * The rules the API enforces, mirrored here so the screen stops offering moves
+ * that come back as a 403. The API is still the authority: this only decides
+ * what is worth showing, and every disabled control says why.
+ */
+function assignableRoles(actor: OrganizationRoleName): OrganizationRoleName[] {
+  return ORGANIZATION_ROLES.filter((role) => outranksOrEquals(actor, role));
+}
+
+function blockedReason(
+  actor: OrganizationRoleName,
+  member: MemberView,
+  isSelf: boolean,
+): string | null {
+  if (isSelf) {
+    return 'You cannot change your own role; ask another owner or admin.';
+  }
+  if (!outranksOrEquals(actor, member.role)) {
+    return `Your role (${humanize(actor)}) cannot change a member who is ${humanize(member.role)}.`;
+  }
+  return null;
+}
+
+function RoleCell({
+  actorRole,
+  member,
+  isSelf,
+  onChange,
+}: {
+  actorRole: OrganizationRoleName;
+  member: MemberView;
+  isSelf: boolean;
+  onChange: (role: string) => void;
+}): React.JSX.Element {
+  const reason = blockedReason(actorRole, member, isSelf);
+  const hintId = `role-hint-${member.userId}`;
+
+  return (
+    <>
+      <select
+        className="ui-input"
+        aria-label={`Change role of ${member.email}`}
+        value=""
+        disabled={reason !== null}
+        {...(reason === null ? {} : { 'aria-describedby': hintId })}
+        onChange={(event) => {
+          onChange(event.target.value);
+        }}
+      >
+        <option value="">Choose…</option>
+        {assignableRoles(actorRole)
+          .filter((value) => value !== member.role)
+          .map((value) => (
+            <option key={value} value={value}>
+              {humanize(value)}
+            </option>
+          ))}
+      </select>
+      {reason !== null && (
+        <p className="muted" id={hintId}>
+          {reason}
+        </p>
+      )}
+    </>
+  );
+}
 
 export function MembersPage(): React.JSX.Element {
   const { user, activeOrganization } = useAuth();
@@ -18,9 +84,14 @@ export function MembersPage(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [issuedToken, setIssuedToken] = useState<string | null>(null);
 
-  const canManage =
-    activeOrganization?.role === 'organization_owner' ||
-    activeOrganization?.role === 'organization_admin';
+  const actorRole = activeOrganization?.role ?? null;
+  const canManage = actorRole === 'organization_owner' || actorRole === 'organization_admin';
+  // Two rules narrow the list: ownership is never handed out by invitation, and
+  // nobody invites somebody more powerful than themselves.
+  const invitable =
+    actorRole === null
+      ? []
+      : invitableRoleSchema.options.filter((role) => outranksOrEquals(actorRole, role));
 
   const members = useQuery({ queryKey: ['members'], queryFn: () => organizationsApi.members() });
   const invitations = useQuery({
@@ -90,7 +161,8 @@ export function MembersPage(): React.JSX.Element {
           />
           <SelectField
             label="Role"
-            options={INVITABLE.map((value) => ({ value, label: humanize(value) }))}
+            hint="You can only invite somebody at your own level or below."
+            options={invitable.map((value) => ({ value, label: humanize(value) }))}
             value={role}
             onChange={(event) => {
               setRole(event.target.value);
@@ -144,26 +216,16 @@ export function MembersPage(): React.JSX.Element {
                 <td>
                   <Badge tone={toneFor(member.status)}>{humanize(member.status)}</Badge>
                 </td>
-                {canManage && (
+                {canManage && actorRole !== null && (
                   <td>
-                    <select
-                      className="ui-input"
-                      aria-label={`Change role of ${member.email}`}
-                      value=""
-                      // Changing your own role is refused by the API; disabling
-                      // it here keeps the UI from offering an action that fails.
-                      disabled={member.userId === user?.id}
-                      onChange={(event) => {
-                        changeRole.mutate({ userId: member.userId, role: event.target.value });
+                    <RoleCell
+                      actorRole={actorRole}
+                      member={member}
+                      isSelf={member.userId === user?.id}
+                      onChange={(next) => {
+                        changeRole.mutate({ userId: member.userId, role: next });
                       }}
-                    >
-                      <option value="">Choose…</option>
-                      {ORGANIZATION_ROLES.filter((value) => value !== member.role).map((value) => (
-                        <option key={value} value={value}>
-                          {humanize(value)}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </td>
                 )}
               </tr>

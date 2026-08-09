@@ -1,6 +1,23 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { RouterProvider, createBrowserRouter } from 'react-router-dom';
-import { HealthPage } from '../pages/HealthPage';
+import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { AuthProvider } from '../auth/auth-context';
+import { AppLayout } from '../components/AppLayout';
+import { ProtectedRoute } from '../components/ProtectedRoute';
+import { ProjectProvider } from '../project/project-context';
+import { DashboardPage } from '../pages/DashboardPage';
+import { DefectsPage } from '../pages/DefectsPage';
+import { LoginPage } from '../pages/LoginPage';
+import { MembersPage } from '../pages/MembersPage';
+import { OrganizationsPage } from '../pages/OrganizationsPage';
+import { ProfilePage } from '../pages/ProfilePage';
+import { ProjectsPage } from '../pages/ProjectsPage';
+import { RegisterPage } from '../pages/RegisterPage';
+import { RequirementsPage } from '../pages/RequirementsPage';
+import { RunExecutionPage } from '../pages/RunExecutionPage';
+import { TestCaseEditorPage } from '../pages/TestCaseEditorPage';
+import { TestCasesPage } from '../pages/TestCasesPage';
+import { TestRunsPage } from '../pages/TestRunsPage';
+import { TraceabilityPage } from '../pages/TraceabilityPage';
 
 /**
  * Query defaults chosen for an internal tool: data is refetched when the user
@@ -15,12 +32,42 @@ export const queryClient = new QueryClient({
   },
 });
 
-const router = createBrowserRouter([{ path: '*', element: <HealthPage /> }]);
+const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <RegisterPage /> },
+  {
+    element: <ProtectedRoute />,
+    children: [
+      { path: '/organizations', element: <OrganizationsPage /> },
+      {
+        element: <AppLayout />,
+        children: [
+          { path: '/dashboard', element: <DashboardPage /> },
+          { path: '/projects', element: <ProjectsPage /> },
+          { path: '/requirements', element: <RequirementsPage /> },
+          { path: '/test-cases', element: <TestCasesPage /> },
+          { path: '/test-cases/:caseId', element: <TestCaseEditorPage /> },
+          { path: '/test-runs', element: <TestRunsPage /> },
+          { path: '/test-runs/:runId', element: <RunExecutionPage /> },
+          { path: '/defects', element: <DefectsPage /> },
+          { path: '/traceability', element: <TraceabilityPage /> },
+          { path: '/members', element: <MembersPage /> },
+          { path: '/profile', element: <ProfilePage /> },
+        ],
+      },
+    ],
+  },
+  { path: '*', element: <Navigate to="/dashboard" replace /> },
+]);
 
 export function App(): React.JSX.Element {
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <ProjectProvider>
+          <RouterProvider router={router} />
+        </ProjectProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

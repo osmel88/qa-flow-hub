@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
+import '@qa-flow-hub/ui/styles.css';
 import './styles/global.css';
 
 const container = document.getElementById('root');

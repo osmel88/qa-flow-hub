@@ -52,3 +52,91 @@
   background: transparent;
   color: var(--color-primary, #1f5fbf);
 }
+
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  margin-bottom: var(--space-4, 1rem);
+}
+
+.ui-field__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.ui-field__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #5b6472);
+}
+
+.ui-field__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-danger, #b3261e);
+}
+
+.ui-input {
+  width: 100%;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  font: inherit;
+  color: inherit;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #d9dde3);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.ui-input[aria-invalid='true'] {
+  border-color: var(--color-danger, #b3261e);
+}
+
+.ui-input--textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.ui-badge {
+  display: inline-block;
+  padding: 0 var(--space-2, 0.5rem);
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  white-space: nowrap;
+}
+
+.ui-badge--neutral {
+  color: var(--color-text-muted, #5b6472);
+}
+.ui-badge--info {
+  color: var(--color-primary, #1f5fbf);
+}
+.ui-badge--success {
+  color: var(--color-success, #1e7d3c);
+}
+.ui-badge--danger {
+  color: var(--color-danger, #b3261e);
+}
+.ui-badge--warning {
+  color: var(--color-warning, #9a6400);
+}
+
+.ui-state {
+  margin: 0;
+  padding: var(--space-6, 1.5rem);
+  text-align: center;
+  color: var(--color-text-muted, #5b6472);
+}
+
+.ui-state--error {
+  color: var(--color-danger, #b3261e);
+}
+
+.ui-state--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+}

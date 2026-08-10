@@ -8,6 +8,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { DefectsPage } from '../pages/DefectsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { MembersPage } from '../pages/MembersPage';
+import { ProjectAccessPage } from '../pages/ProjectAccessPage';
 import { OrganizationsPage } from '../pages/OrganizationsPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { ProjectsPage } from '../pages/ProjectsPage';
@@ -52,6 +53,7 @@ const router = createBrowserRouter([
           { path: '/defects', element: <DefectsPage /> },
           { path: '/traceability', element: <TraceabilityPage /> },
           { path: '/members', element: <MembersPage /> },
+          { path: '/project-access', element: <ProjectAccessPage /> },
           { path: '/profile', element: <ProfilePage /> },
         ],
       },

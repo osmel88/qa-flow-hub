@@ -18,8 +18,14 @@ import {
   UpdateTestCaseInput,
 } from '@qa-flow-hub/shared';
 import { PrismaService } from '../../database/prisma.service';
-import { ConflictError, DuplicateResourceError, NotFoundError, ValidationError } from '../../errors';
+import {
+  ConflictError,
+  DuplicateResourceError,
+  NotFoundError,
+  ValidationError,
+} from '../../errors';
 import { AuditService } from '../audit/audit.service';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { TestDesignRepository } from './test-design.repository';
 
@@ -34,6 +40,7 @@ export class TestDesignService {
   constructor(
     private readonly repository: TestDesignRepository,
     private readonly projects: ProjectsRepository,
+    private readonly access: ProjectAccessService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
@@ -45,6 +52,7 @@ export class TestDesignService {
     if (project === null) {
       throw new NotFoundError('Project');
     }
+    await this.access.assertRouteAccess(project.id);
     if ((await this.repository.findSuiteByName(project.id, input.name)) !== null) {
       throw new DuplicateResourceError('test suite', 'name');
     }
@@ -280,9 +288,7 @@ export class TestDesignService {
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.type === undefined ? {} : { type: query.type }),
       ...(query.priority === undefined ? {} : { priority: query.priority }),
-      ...(query.automationStatus === undefined
-        ? {}
-        : { automationStatus: query.automationStatus }),
+      ...(query.automationStatus === undefined ? {} : { automationStatus: query.automationStatus }),
       ...(query.tag === undefined ? {} : { tag: query.tag }),
       ...(query.search === undefined ? {} : { search: query.search }),
     });
@@ -313,9 +319,7 @@ export class TestDesignService {
       ...(input.type === undefined ? {} : { type: input.type }),
       ...(input.priority === undefined ? {} : { priority: input.priority }),
       ...(input.status === undefined ? {} : { status: input.status }),
-      ...(input.automationStatus === undefined
-        ? {}
-        : { automationStatus: input.automationStatus }),
+      ...(input.automationStatus === undefined ? {} : { automationStatus: input.automationStatus }),
       ...(input.estimateMinutes === undefined ? {} : { estimateMinutes: input.estimateMinutes }),
       ...(input.tags === undefined ? {} : { tags: input.tags }),
       ...(sectionId === undefined ? {} : { sectionId }),
@@ -486,6 +490,7 @@ export class TestDesignService {
     if (suite === null) {
       throw new NotFoundError('Test suite');
     }
+    await this.access.assertRouteAccess(suite.projectId);
     return suite;
   }
 
@@ -494,6 +499,9 @@ export class TestDesignService {
     if (section === null) {
       throw new NotFoundError('Test section');
     }
+    // A section has no project of its own; its suite is what places it in one,
+    // and loading the suite is also what proves the section is reachable.
+    await this.requireSuite(section.suiteId);
     return section;
   }
 
@@ -502,6 +510,7 @@ export class TestDesignService {
     if (testCase === null) {
       throw new NotFoundError('Test case');
     }
+    await this.access.assertRouteAccess(testCase.projectId);
     return testCase;
   }
 
@@ -538,10 +547,7 @@ export class TestDesignService {
    * Moving a section under its own descendant would detach the whole branch
    * from the tree: it would still exist, but no root would reach it.
    */
-  private async assertReparentable(
-    section: TestSection,
-    parentId: string | null,
-  ): Promise<void> {
+  private async assertReparentable(section: TestSection, parentId: string | null): Promise<void> {
     if (parentId === null) {
       return;
     }

@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   ChangeDefectStatusInput,
@@ -22,6 +12,7 @@ import {
 } from '@qa-flow-hub/shared';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
+import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { DefectsService } from './defects.service';
 
@@ -37,6 +28,7 @@ const REPORTERS = [
 @ApiTags('defects')
 @ApiBearerAuth()
 @ApiHeader({ name: 'X-Organization-Id', required: true })
+@ProjectScoped()
 @Controller('defects')
 export class DefectsController {
   constructor(private readonly defects: DefectsService) {}

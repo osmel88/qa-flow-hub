@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { OrganizationsModule } from '../organizations/organizations.module';
+import { ProjectsModule } from '../projects/projects.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { CurrentUserContextHolder } from './decorators/current-user.decorator';
@@ -23,7 +24,10 @@ import { UsersRepository } from './users.repository';
  * security pipeline.
  */
 @Module({
-  imports: [JwtModule.register({}), OrganizationsModule],
+  // `ProjectsModule` is here for `ProjectAccessService`, which the roles guard
+  // consults on project-scoped routes. The dependency stays one-directional:
+  // projects know nothing about auth.
+  imports: [JwtModule.register({}), OrganizationsModule, ProjectsModule],
   controllers: [AuthController],
   providers: [
     AuthService,

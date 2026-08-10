@@ -241,13 +241,42 @@ old behaviour with `X-Refresh-Transport: body`.
   it is a scoped API key with its own lifecycle, not a session refresh token;
   once that exists, the header and the body transport can both go.
 
-## 21. Project-scoped roles are not enforced
+## 21. Project-scoped roles are not enforced — resolved
 
-`ProjectMember` exists in the schema and no guard reads it, so an
-`organization_qa_lead` is a QA lead in every project of the organization. The
-Members screen mirrors the organization-level rules the API does enforce
-(rank, no self-demotion, ownership never handed out by invitation), so it does
-not offer actions that fail — but there is no per-project UI to mirror yet.
+`ProjectMember` is now read on every project-scoped route: the effective role is
+the grant if there is one and the organization role otherwise, and the route's
+own `@Roles` list is re-applied to it (`ProjectAccessService`,
+`@ProjectScoped`). Endpoints and UI exist to manage grants, and
+[`permissions-matrix.md`](permissions-matrix.md) documents the resolution order.
 
-- **Trigger to fix:** the first customer running two projects with different
-  teams. It is a guard change plus a membership lookup, not a schema change.
+What remains is narrower and listed as its own limitation below, because
+conflating the two would make the matrix read as more restrictive than it is.
+
+## 22. A project role does not restrict reading
+
+Grants change what somebody may **do** in a project, never what they can
+**see**: every member of an organization can read every project in it. This is
+intentional for now — hiding a project means giving the tenant filter a second
+dimension and auditing every list endpoint for it — but it is not what a
+customer assumes when they set somebody to `viewer` on one project only.
+
+- **Cost:** an organization cannot host two clients' projects side by side
+  without both seeing each other's test data.
+- **Trigger to fix:** the first customer asking for a project a colleague cannot
+  open. It touches every list endpoint, so it is a phase, not a patch.
+
+## 23. The roles guard fails open on project-scoped routes
+
+On a route marked `@ProjectScoped`, a caller whose organization role is
+insufficient still passes the guard when *any* grant they hold would allow the
+action; the service then decides against the actual project. The alternative was
+worse — with a strict guard a grant could only ever take power away — but it
+means the guard is no longer the last line of defence on those routes.
+
+- **Cost:** a project-scoped route that forgets to call `assertRouteAccess()`
+  would let a grant holder act in a project where they hold nothing. Every route
+  is covered today, and the integration suite asserts the asymmetry, but this is
+  a convention rather than something the compiler enforces.
+- **Trigger to fix:** an interceptor that fails the response when a
+  project-scoped handler completed without resolving a project — cheap to add
+  once, and it turns the convention into a check.

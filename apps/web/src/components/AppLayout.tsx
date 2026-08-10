@@ -11,6 +11,7 @@ const NAV = [
   { to: '/defects', label: 'Defects' },
   { to: '/traceability', label: 'Traceability' },
   { to: '/members', label: 'Members' },
+  { to: '/project-access', label: 'Project access' },
   { to: '/profile', label: 'Profile' },
 ];
 

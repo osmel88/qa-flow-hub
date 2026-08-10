@@ -18,6 +18,7 @@ import {
 import { PrismaService } from '../../database/prisma.service';
 import { ConflictError, NotFoundError } from '../../errors';
 import { AuditService } from '../audit/audit.service';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { RequirementsRepository } from './requirements.repository';
 
@@ -42,6 +43,7 @@ export class RequirementsService {
   constructor(
     private readonly requirements: RequirementsRepository,
     private readonly projects: ProjectsRepository,
+    private readonly access: ProjectAccessService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
@@ -51,6 +53,7 @@ export class RequirementsService {
     if (project === null) {
       throw new NotFoundError('Project');
     }
+    await this.access.assertRouteAccess(project.id);
 
     // Reserving the key increments a counter on the project, so it must roll
     // back with the requirement it was reserved for. Otherwise a failed create
@@ -223,6 +226,9 @@ export class RequirementsService {
     if (requirement === null) {
       throw new NotFoundError('Requirement');
     }
+    // The requirement carries the project, so this is the first point at which
+    // the project-scoped role can be checked.
+    await this.access.assertRouteAccess(requirement.projectId);
     return requirement;
   }
 }

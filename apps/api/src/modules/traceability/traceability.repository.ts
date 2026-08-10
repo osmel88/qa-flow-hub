@@ -1,11 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  Prisma,
-  Requirement,
-  RequirementStatus,
-  TestCase,
-  TestResultStatus,
-} from '@prisma/client';
+import { Prisma, Requirement, RequirementStatus, TestCase, TestResultStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { TenantAwareRepository } from '../../database/tenant-aware.repository';
 import { TenantContextService } from '../../database/tenant-context.service';
@@ -65,27 +59,47 @@ export class TraceabilityRepository extends TenantAwareRepository {
     return new Map(rows.map((row) => [row.testCaseId, row.latestStatus]));
   }
 
-  /** Entity existence check for a link, one query per type. */
-  async entityExists(type: Prisma.TraceabilityLinkWhereInput['sourceType'], id: string): Promise<boolean> {
+  /**
+   * Locates one end of a link: does the entity exist in this organization, and
+   * which project does it belong to?
+   *
+   * Existence and project come from the same query because both answers are
+   * needed for every end of every link — existence to reject a dangling link,
+   * the project to check the role the caller holds *there*. `null` means "no
+   * such entity here", and a `projectId` of `null` means the type has no
+   * project (an automated test lives in the customer's CI and is identified by
+   * an ExternalReference).
+   */
+  async locateEntity(
+    type: Prisma.TraceabilityLinkWhereInput['sourceType'],
+    id: string,
+  ): Promise<{ projectId: string | null } | null> {
     const where = this.scope({ id });
+    const select = { projectId: true };
 
     switch (type) {
       case 'requirement':
-        return (await this.prisma.requirement.count({ where })) > 0;
+        return this.prisma.requirement.findFirst({ where, select });
       case 'test_case':
-        return (await this.prisma.testCase.count({ where })) > 0;
+        return this.prisma.testCase.findFirst({ where, select });
       case 'test_run':
-        return (await this.prisma.testRun.count({ where })) > 0;
-      case 'test_result':
-        return (await this.prisma.testResult.count({ where })) > 0;
+        return this.prisma.testRun.findFirst({ where, select });
+      case 'test_result': {
+        // A result carries no project of its own; the run it belongs to does.
+        const result = await this.prisma.testResult.findFirst({
+          where,
+          select: { testRun: { select: { projectId: true } } },
+        });
+        return result === null ? null : { projectId: result.testRun.projectId };
+      }
       case 'defect':
-        return (await this.prisma.defect.count({ where })) > 0;
-      case 'project':
-        return (await this.prisma.project.count({ where })) > 0;
-      // An automated test is not a row here yet: it lives in the customer's CI
-      // and is only identified by an ExternalReference.
+        return this.prisma.defect.findFirst({ where, select });
+      case 'project': {
+        const project = await this.prisma.project.findFirst({ where, select: { id: true } });
+        return project === null ? null : { projectId: project.id };
+      }
       default:
-        return true;
+        return { projectId: null };
     }
   }
 }

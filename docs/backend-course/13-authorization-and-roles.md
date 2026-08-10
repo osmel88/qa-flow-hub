@@ -102,6 +102,56 @@ más maquinaria de la que justifican seis roles y cero clientes. La ruta de
 migración está pensada: el decorador `@Roles` se queda con el mismo nombre y
 cambia lo que comprueba por dentro, así que los handlers no se tocan.
 
+## Roles por proyecto: el problema del orden
+
+El rol vive en la organización, pero el trabajo vive en proyectos. Un QA
+contratado para la app móvil no debería poder editar la web. La tabla
+`ProjectMember` guarda ese matiz: "dentro de este proyecto, trata a esta persona
+como *este* rol".
+
+Lo interesante no es la tabla, es **por qué no cabe en un guard**. Mira estas
+dos rutas:
+
+```
+POST  /test-suites          { projectId, name }   ← el proyecto viene en el cuerpo
+PATCH /test-cases/:id       { name }              ← el proyecto no aparece
+```
+
+En la segunda, saber a qué proyecto pertenece el caso exige **cargarlo**. Un
+guard que lo hiciera duplicaría la consulta del servicio y tendría que conocer,
+para cada ruta, de qué entidad sacar el proyecto. Es un guard que sabe demasiado.
+
+La solución tiene tres piezas:
+
+1. `RolesGuard` comprueba el rol de organización. Si basta, la petición sigue.
+2. Si no basta y la ruta está marcada con `@ProjectScoped()`, el guard pregunta
+   si **algún** grant del usuario permitiría la acción. Sin este paso, un grant
+   solo podría quitar poder, nunca darlo: el guard cerraría la puerta antes de
+   que nadie mirase la tabla.
+3. El servicio carga la entidad, resuelve el proyecto y vuelve a aplicar la
+   **misma** lista de `@Roles` de la ruta al rol efectivo:
+
+```ts
+private async require(id: string): Promise<TestSuite> {
+  const suite = await this.repository.findSuiteById(id);
+  if (suite === null) {
+    throw new NotFoundError('Test suite');
+  }
+  await this.access.assertRouteAccess(suite.projectId);
+  return suite;
+}
+```
+
+`assertRouteAccess` no repite la lista de roles: el guard la dejó en el contexto
+de la petición (`AsyncLocalStorage`). Así una ruta declara sus roles una sola
+vez, y el rol resuelto se memoriza por petición para no consultar dos veces.
+
+El precio, escrito sin adornos: en esas rutas el guard **falla abierto** y la
+decisión real está en el servicio. Es un contrato — toda ruta `@ProjectScoped`
+debe llegar a `assertRouteAccess` antes de escribir — y está anotado como deuda
+23. `POST /projects` no lleva la marca a propósito: todavía no hay proyecto, y
+un grant en otro no puede convertirse en permiso para crear uno.
+
 ## Autorización en el backend, siempre
 
 El frontend oculta botones. Eso es **experiencia de usuario, no seguridad**: la
@@ -153,6 +203,6 @@ de integración lo comprueban sin pasar por la interfaz.
 | Tema | MVP | Futuro |
 | --- | --- | --- |
 | Modelo | Seis roles fijos | Permisos por recurso y acción |
-| Alcance | Por organización | Roles por proyecto sobre `ProjectMember` |
+| Alcance | Organización y proyecto | Restringir además la lectura por proyecto |
 | Auditoría | Registro de acciones | Registro también de denegaciones |
 | Delegación | No | Roles personalizados por cliente |

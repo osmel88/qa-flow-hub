@@ -9,12 +9,14 @@ import {
 } from '@qa-flow-hub/shared';
 import { ConflictError, DuplicateResourceError, NotFoundError } from '../../errors';
 import { AuditService } from '../audit/audit.service';
+import { ProjectAccessService } from './project-access.service';
 import { ProjectsRepository } from './projects.repository';
 
 @Injectable()
 export class ProjectsService {
   constructor(
     private readonly projects: ProjectsRepository,
+    private readonly access: ProjectAccessService,
     private readonly audit: AuditService,
   ) {}
 
@@ -151,6 +153,10 @@ export class ProjectsService {
       // the same answer on purpose.
       throw new NotFoundError('Project');
     }
+
+    // The project is only known now, which is why this is not in a guard: the
+    // route's roles are re-checked against the role this project grants.
+    await this.access.assertRouteAccess(project.id);
     return project;
   }
 }

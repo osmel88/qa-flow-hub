@@ -30,6 +30,7 @@ import { TenantContextService } from '../../database/tenant-context.service';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../../errors';
 import { AuditService } from '../audit/audit.service';
 import { OrganizationMembersRepository } from '../organizations/organization-members.repository';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { TestRunsRepository } from './test-runs.repository';
 
@@ -45,6 +46,7 @@ export class TestRunsService {
   constructor(
     private readonly runs: TestRunsRepository,
     private readonly projects: ProjectsRepository,
+    private readonly access: ProjectAccessService,
     private readonly members: OrganizationMembersRepository,
     private readonly tenant: TenantContextService,
     private readonly prisma: PrismaService,
@@ -58,6 +60,7 @@ export class TestRunsService {
     if (project === null) {
       throw new NotFoundError('Project');
     }
+    await this.access.assertRouteAccess(project.id);
 
     const run = await this.prisma.runInTransaction(async (tx) => {
       const created = await this.runs.create(
@@ -289,11 +292,7 @@ export class TestRunsService {
 
     // Testers execute what they were given. Anyone senior can record for
     // anybody, because leads do fill in for absent testers.
-    if (
-      role === 'tester' &&
-      runCase.assignedToId !== null &&
-      runCase.assignedToId !== userId
-    ) {
+    if (role === 'tester' && runCase.assignedToId !== null && runCase.assignedToId !== userId) {
       throw new ForbiddenError('This case is assigned to somebody else');
     }
 
@@ -433,6 +432,9 @@ export class TestRunsService {
     if (run === null) {
       throw new NotFoundError('Test run');
     }
+    // Every run route goes through here, including the tester recording a
+    // result, so the project role is checked once for all of them.
+    await this.access.assertRouteAccess(run.projectId);
     return run;
   }
 

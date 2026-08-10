@@ -24,6 +24,19 @@ export interface RequestContext {
   /** Filled in by the active-organization guard. */
   organizationId?: string;
   role?: OrganizationRole;
+  /**
+   * The roles the matched route declared with `@Roles`, stashed by the roles
+   * guard so that the project-scoped check can apply *the same* list against
+   * the role that project grants. Duplicating the list at every call site is
+   * how the two layers would drift.
+   */
+  requiredRoles?: readonly OrganizationRole[];
+  /**
+   * Per-request memo of resolved project roles. A single request may touch the
+   * same project several times (loader, service, audit), and re-reading the
+   * grant each time buys nothing: membership cannot change mid-request.
+   */
+  projectRoles?: Map<string, OrganizationRole>;
 }
 
 @Injectable()
@@ -81,6 +94,31 @@ export class TenantContextService {
     return this.storage.getStore()?.role;
   }
 
+  /** Called by the roles guard with whatever `@Roles` declared for the route. */
+  setRequiredRoles(roles: readonly OrganizationRole[]): void {
+    const store = this.storage.getStore();
+    if (store !== undefined) {
+      store.requiredRoles = roles;
+    }
+  }
+
+  get requiredRoles(): readonly OrganizationRole[] {
+    return this.storage.getStore()?.requiredRoles ?? [];
+  }
+
+  cachedProjectRole(projectId: string): OrganizationRole | undefined {
+    return this.storage.getStore()?.projectRoles?.get(projectId);
+  }
+
+  rememberProjectRole(projectId: string, role: OrganizationRole): void {
+    const store = this.storage.getStore();
+    if (store === undefined) {
+      return;
+    }
+    store.projectRoles ??= new Map();
+    store.projectRoles.set(projectId, role);
+  }
+
   /**
    * The organization every tenant-scoped query must filter by.
    *
@@ -94,6 +132,21 @@ export class TenantContextService {
       throw new UnauthenticatedError('No active organization in the request context');
     }
     return organizationId;
+  }
+
+  /**
+   * The organization role the active-organization guard resolved.
+   *
+   * Throwing rather than defaulting: a project check that ran without an
+   * organization role has no baseline to narrow, and guessing `viewer` would
+   * turn a wiring bug into a silent authorization decision.
+   */
+  requireRole(): OrganizationRole {
+    const role = this.storage.getStore()?.role;
+    if (role === undefined) {
+      throw new UnauthenticatedError('No organization role in the request context');
+    }
+    return role;
   }
 
   requireUserId(): string {

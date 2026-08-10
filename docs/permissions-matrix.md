@@ -6,8 +6,10 @@ the short version is that a resource/action permission engine is more machinery
 than six roles justify, and the migration path keeps `@Roles` as the public API
 of the decorator.
 
-Roles are scoped to an **organization**. The same person can be a `qa_lead` in
-one organization and a `viewer` in another.
+Roles are scoped to an **organization**, and may be overridden **per project**.
+The same person can be a `qa_lead` in one organization and a `viewer` in
+another — and, inside one organization, a `qa_lead` on the mobile project and a
+`viewer` on the web one.
 
 ## Roles
 
@@ -78,6 +80,51 @@ somebody else's" cannot be answered without loading the object, so it lives in
 the service. Putting it in a guard would mean fetching the row twice and
 scattering a business rule away from the code that owns it.
 
+## Project-scoped roles
+
+A row in `ProjectMember` says "inside this project, treat this person as *this*
+role instead". It may raise or lower them, and it applies to exactly one
+project. Revoking the row returns them to their organization role; there is no
+separate "removed from project" state, because a member who can read every
+project in the organization already could.
+
+The effective role is resolved by `ProjectAccessService`:
+
+```
+effectiveRole(project) =
+  organization_owner            -> organization_owner   (never narrowed)
+  ProjectMember.role, if any    -> that role
+  otherwise                     -> the organization role
+```
+
+Enforcement is split, and the split is forced by a real constraint rather than
+chosen: for most routes the project is a property of the entity being touched
+(`PATCH /test-cases/:id` names no project), so no guard can know it without
+loading that entity.
+
+1. `RolesGuard` checks the organization role. If it passes, the request
+   continues.
+2. If it fails on a route marked `@ProjectScoped`, the guard asks whether *any*
+   grant the caller holds would allow the action. This is what makes a grant
+   able to raise somebody, and it is deliberately weaker than the final answer.
+3. The service loads the entity, resolves the project, and re-applies the very
+   same `@Roles` list to the effective role — `assertRouteAccess()`. This is the
+   authoritative check, and the resolved role is memoized per request.
+
+The contract a `@ProjectScoped` route signs is therefore: it **must** reach
+`assertRouteAccess()` before it writes. `POST /projects` is deliberately *not*
+project-scoped — there is no project yet, so no grant may become permission to
+create one.
+
+Rules on granting, all enforced in `ProjectMembersService`:
+
+- the target must be an active member of the organization;
+- nobody grants a role more powerful than their own effective role here;
+- nobody changes their own project role;
+- an `organization_owner` is never narrowed;
+- an archived project is read-only, including its access list;
+- every grant, change and revocation is an audited `role_change`.
+
 ## Invariants that override the matrix
 
 Rules that hold even for an owner:
@@ -92,8 +139,10 @@ Rules that hold even for an owner:
 
 ## Not implemented yet
 
-- **Per-project roles.** `ProjectMember` exists in the schema and is not yet
-  consulted by the guards: today a `qa_lead` is a `qa_lead` in every project of
-  the organization. Narrowing by project is the first extension.
+- **Per-project read restrictions.** A grant changes what somebody may *do* in a
+  project, not whether they can see it: every member of the organization can
+  read every project. Hiding a project is a different feature — it needs the
+  tenant filter to gain a second dimension, and every list endpoint to respect
+  it — and pretending a narrowed role hides data would be worse than saying so.
 - **Custom roles per customer.** Requires the permission engine.
 - **Denial auditing.** A burst of 403s is a useful signal, currently unrecorded.

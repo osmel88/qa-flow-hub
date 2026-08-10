@@ -12,6 +12,7 @@ import {
 import { ConflictError, NotFoundError, ValidationError } from '../../errors';
 import { AuditService } from '../audit/audit.service';
 import { DefectsRepository, OUTSTANDING_STATUSES } from '../defects/defects.repository';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { TraceabilityRepository } from './traceability.repository';
 
@@ -21,6 +22,7 @@ export class TraceabilityService {
     private readonly links: DefectsRepository,
     private readonly reads: TraceabilityRepository,
     private readonly projects: ProjectsRepository,
+    private readonly access: ProjectAccessService,
     private readonly audit: AuditService,
   ) {}
 
@@ -31,9 +33,7 @@ export class TraceabilityService {
       [input.sourceType, input.sourceId],
       [input.targetType, input.targetId],
     ] as const) {
-      if (!(await this.reads.entityExists(type, id))) {
-        throw new ValidationError(`No ${type} with id ${id} in this organization`);
-      }
+      await this.locateEnd(type, id);
     }
 
     const existing = await this.links.findLink({
@@ -71,6 +71,17 @@ export class TraceabilityService {
   }
 
   async removeLink(id: string): Promise<void> {
+    const link = await this.links.findLinkById(id);
+    if (link === null) {
+      throw new NotFoundError('Traceability link');
+    }
+
+    // Both ends are checked, not one: removing a link changes what the matrix
+    // reports for the requirement *and* for the case, so being allowed to edit
+    // either project alone is not enough.
+    await this.locateEnd(link.sourceType, link.sourceId);
+    await this.locateEnd(link.targetType, link.targetId);
+
     if (!(await this.links.deleteLink(id))) {
       throw new NotFoundError('Traceability link');
     }
@@ -93,6 +104,7 @@ export class TraceabilityService {
     if (project === null) {
       throw new NotFoundError('Project');
     }
+    await this.access.assertRouteAccess(project.id);
 
     const requirements = await this.reads.listRequirements(project.id);
     const requirementIds = requirements.map((requirement) => requirement.id);
@@ -175,12 +187,25 @@ export class TraceabilityService {
         requirements: rows.length,
         covered,
         verified,
-        coverage:
-          rows.length === 0 ? 0 : Math.round((covered / rows.length) * 1000) / 10,
+        coverage: rows.length === 0 ? 0 : Math.round((covered / rows.length) * 1000) / 10,
         uncovered: rows.length - covered,
         openDefects: openDefectIds.size,
       },
     };
+  }
+
+  /**
+   * Proves one end of a link exists in this organization and that the caller's
+   * role in *that end's project* allows the current route.
+   */
+  private async locateEnd(type: CreateTraceLinkInput['sourceType'], id: string): Promise<void> {
+    const located = await this.reads.locateEntity(type, id);
+    if (located === null) {
+      throw new ValidationError(`No ${type} with id ${id} in this organization`);
+    }
+    if (located.projectId !== null) {
+      await this.access.assertRouteAccess(located.projectId);
+    }
   }
 }
 

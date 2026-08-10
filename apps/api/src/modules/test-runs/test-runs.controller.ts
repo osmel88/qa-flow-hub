@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   AddRunCasesInput,
@@ -28,6 +18,7 @@ import {
 } from '@qa-flow-hub/shared';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
+import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { TestRunsService } from './test-runs.service';
 
@@ -42,6 +33,7 @@ const PLANNERS = [
 @ApiTags('test-runs')
 @ApiBearerAuth()
 @ApiHeader({ name: 'X-Organization-Id', required: true })
+@ProjectScoped()
 @Controller('test-runs')
 export class TestRunsController {
   constructor(private readonly runs: TestRunsService) {}
@@ -130,10 +122,7 @@ export class TestRunsController {
   @Delete(':id/cases/:runCaseId')
   @HttpCode(204)
   @ApiOperation({ summary: 'Remove a case that has not been executed yet' })
-  async removeCase(
-    @Param('id') id: string,
-    @Param('runCaseId') runCaseId: string,
-  ): Promise<void> {
+  async removeCase(@Param('id') id: string, @Param('runCaseId') runCaseId: string): Promise<void> {
     await this.runs.removeCase(id, runCaseId);
   }
 
@@ -141,10 +130,7 @@ export class TestRunsController {
   @Post(':id/assignments')
   @HttpCode(200)
   @ApiOperation({ summary: 'Assign or unassign cases in bulk' })
-  assign(
-    @Param('id') id: string,
-    @Body(zodBody(assignRunCasesSchema)) body: AssignRunCasesInput,
-  ) {
+  assign(@Param('id') id: string, @Body(zodBody(assignRunCasesSchema)) body: AssignRunCasesInput) {
     return this.runs.assign(id, body);
   }
 

@@ -19,6 +19,7 @@ import type {
   MemberView,
   OrganizationSummary,
   Paginated,
+  ProjectMemberView,
   ProjectView,
   RegisterInput,
   RecordResultInput,
@@ -114,6 +115,17 @@ export const projectsApi = {
     apiFetch<ProjectView>('/projects', { method: 'POST', body }),
   archive: (id: string) => apiFetch<ProjectView>(`/projects/${id}/archive`, { method: 'POST' }),
   restore: (id: string) => apiFetch<ProjectView>(`/projects/${id}/restore`, { method: 'POST' }),
+  members: (projectId: string) =>
+    apiFetch<Paginated<ProjectMemberView>>(
+      `/projects/${projectId}/members${query({ pageSize: 100 })}`,
+    ),
+  grantRole: (projectId: string, userId: string, role: string) =>
+    apiFetch<ProjectMemberView>(`/projects/${projectId}/members`, {
+      method: 'POST',
+      body: { userId, role },
+    }),
+  revokeRole: (projectId: string, userId: string) =>
+    apiFetch<void>(`/projects/${projectId}/members/${userId}`, { method: 'DELETE' }),
 };
 
 export const requirementsApi = {
@@ -185,6 +197,5 @@ export const traceabilityApi = {
 };
 
 export const dashboardApi = {
-  summary: (projectId?: string) =>
-    apiFetch<DashboardSummary>(`/dashboard${query({ projectId })}`),
+  summary: (projectId?: string) => apiFetch<DashboardSummary>(`/dashboard${query({ projectId })}`),
 };

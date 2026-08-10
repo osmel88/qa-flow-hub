@@ -13,6 +13,7 @@ import { TenantContextService } from '../../database/tenant-context.service';
 import { ConflictError, NotFoundError, ValidationError } from '../../errors';
 import { AuditService } from '../audit/audit.service';
 import { OrganizationMembersRepository } from '../organizations/organization-members.repository';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { DefectsRepository } from './defects.repository';
 
@@ -36,6 +37,7 @@ export class DefectsService {
   constructor(
     private readonly defects: DefectsRepository,
     private readonly projects: ProjectsRepository,
+    private readonly access: ProjectAccessService,
     private readonly members: OrganizationMembersRepository,
     private readonly tenant: TenantContextService,
     private readonly prisma: PrismaService,
@@ -47,6 +49,7 @@ export class DefectsService {
     if (project === null) {
       throw new NotFoundError('Project');
     }
+    await this.access.assertRouteAccess(project.id);
 
     await this.assertAssignee(input.assigneeId);
 
@@ -171,7 +174,9 @@ export class DefectsService {
         ? {}
         : {
             assignee:
-              input.assigneeId === null ? { disconnect: true } : { connect: { id: input.assigneeId } },
+              input.assigneeId === null
+                ? { disconnect: true }
+                : { connect: { id: input.assigneeId } },
           }),
     });
     if (updated === null) {
@@ -205,9 +210,7 @@ export class DefectsService {
       // Timestamps are set once and cleared on reopen, so "time to resolution"
       // measures the current life of the defect, not the first one.
       ...(input.status === 'resolved' ? { resolvedAt: new Date() } : {}),
-      ...(input.status === 'closed' || input.status === 'rejected'
-        ? { closedAt: new Date() }
-        : {}),
+      ...(input.status === 'closed' || input.status === 'rejected' ? { closedAt: new Date() } : {}),
       ...(input.status === 'reopened' ? { resolvedAt: null, closedAt: null } : {}),
     });
     if (updated === null) {
@@ -262,6 +265,7 @@ export class DefectsService {
     if (defect === null) {
       throw new NotFoundError('Defect');
     }
+    await this.access.assertRouteAccess(defect.projectId);
     return defect;
   }
 }

@@ -151,6 +151,10 @@ export class DefectsRepository extends TenantAwareRepository {
     return this.prisma.traceabilityLink.findFirst({ where: this.scope(where) });
   }
 
+  findLinkById(id: string): Promise<TraceabilityLink | null> {
+    return this.prisma.traceabilityLink.findFirst({ where: this.scope({ id }) });
+  }
+
   /** Both directions: a link is a fact about two entities, not about one. */
   linksFor(
     entityType: Prisma.TraceabilityLinkWhereInput['sourceType'],

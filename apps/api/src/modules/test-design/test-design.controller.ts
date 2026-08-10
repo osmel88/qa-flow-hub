@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateSectionInput,
@@ -32,20 +22,17 @@ import {
 } from '@qa-flow-hub/shared';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
+import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { TestDesignService } from './test-design.service';
 
 /** Everyone who designs tests. Testers execute them but do not author them. */
-const AUTHORS = [
-  'organization_owner',
-  'organization_admin',
-  'project_manager',
-  'qa_lead',
-] as const;
+const AUTHORS = ['organization_owner', 'organization_admin', 'project_manager', 'qa_lead'] as const;
 
 @ApiTags('test-design')
 @ApiBearerAuth()
 @ApiHeader({ name: 'X-Organization-Id', required: true })
+@ProjectScoped()
 @Controller()
 export class TestDesignController {
   constructor(private readonly design: TestDesignService) {}
@@ -68,10 +55,7 @@ export class TestDesignController {
   @Roles(...AUTHORS)
   @Patch('test-suites/:id')
   @ApiOperation({ summary: 'Rename or reposition a suite' })
-  updateSuite(
-    @Param('id') id: string,
-    @Body(zodBody(updateSuiteSchema)) body: UpdateSuiteInput,
-  ) {
+  updateSuite(@Param('id') id: string, @Body(zodBody(updateSuiteSchema)) body: UpdateSuiteInput) {
     return this.design.updateSuite(id, body);
   }
 

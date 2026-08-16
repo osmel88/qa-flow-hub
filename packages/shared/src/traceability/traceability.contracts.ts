@@ -64,6 +64,12 @@ export interface MatrixCase {
   title: string;
   /** Worst outcome across every run the case took part in. */
   lastStatus: 'untested' | 'passed' | 'failed' | 'blocked' | 'skipped';
+  /**
+   * An archived case keeps its link and stays listed, but it does not count
+   * towards coverage: a requirement whose only test is deprecated is not
+   * covered in any useful sense. Restoring the case restores the coverage.
+   */
+  archived: boolean;
 }
 
 export interface MatrixRow {
@@ -74,6 +80,7 @@ export interface MatrixRow {
   priority: string;
   cases: MatrixCase[];
   defectIds: string[];
+  /** At least one linked case that is not archived. */
   covered: boolean;
   verified: boolean;
 }

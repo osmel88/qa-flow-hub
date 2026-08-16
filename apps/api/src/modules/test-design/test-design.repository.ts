@@ -55,20 +55,31 @@ export class TestDesignRepository extends TenantAwareRepository {
     return count === 0 ? null : this.findSuiteById(id);
   }
 
-  async softDeleteSuite(id: string, tx: PrismaTransaction): Promise<boolean> {
+  /**
+   * Returns the ids of the cases that went down with the suite, or `null` when
+   * there was no suite to delete. The caller needs them: whatever else points
+   * at those cases has to be cleaned up in this same transaction, and after the
+   * update they are no longer reachable by any query.
+   */
+  async softDeleteSuite(id: string, tx: PrismaTransaction): Promise<string[] | null> {
     const deletedAt = new Date();
+    const cases = await tx.testCase.findMany({
+      where: this.active({ suiteId: id }),
+      select: { id: true },
+    });
+
     const { count } = await tx.testSuite.updateMany({
       where: this.active({ id }),
       data: { deletedAt },
     });
     if (count === 0) {
-      return false;
+      return null;
     }
     // Children go with the parent. Leaving them behind would produce cases that
     // no listing reaches but that still count in every aggregate.
     await tx.testSection.updateMany({ where: this.active({ suiteId: id }), data: { deletedAt } });
     await tx.testCase.updateMany({ where: this.active({ suiteId: id }), data: { deletedAt } });
-    return true;
+    return cases.map((testCase) => testCase.id);
   }
 
   countCasesInSuite(suiteId: string): Promise<number> {
@@ -189,8 +200,8 @@ export class TestDesignRepository extends TenantAwareRepository {
     return client.testCase.findFirst({ where: this.active({ id }) });
   }
 
-  async softDeleteCase(id: string): Promise<boolean> {
-    const { count } = await this.prisma.testCase.updateMany({
+  async softDeleteCase(id: string, tx?: PrismaTransaction): Promise<boolean> {
+    const { count } = await (tx ?? this.prisma).testCase.updateMany({
       where: this.active({ id }),
       data: { deletedAt: new Date() },
     });

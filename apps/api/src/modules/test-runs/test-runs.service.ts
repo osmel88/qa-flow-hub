@@ -32,6 +32,7 @@ import { AuditService } from '../audit/audit.service';
 import { OrganizationMembersRepository } from '../organizations/organization-members.repository';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
+import { TraceabilityLinksRepository } from '../traceability/traceability-links.repository';
 import { TestRunsRepository } from './test-runs.repository';
 
 const RUN_TRANSITIONS: Record<string, string[]> = {
@@ -48,6 +49,7 @@ export class TestRunsService {
     private readonly projects: ProjectsRepository,
     private readonly access: ProjectAccessService,
     private readonly members: OrganizationMembersRepository,
+    private readonly links: TraceabilityLinksRepository,
     private readonly tenant: TenantContextService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -175,15 +177,32 @@ export class TestRunsService {
 
   async remove(id: string): Promise<void> {
     const run = await this.require(id);
-    if (!(await this.runs.softDelete(id))) {
-      throw new NotFoundError('Test run');
-    }
 
-    await this.audit.record({
-      action: AuditAction.delete,
-      entityType: 'TestRun',
-      entityId: id,
-      summary: `Deleted run ${run.name}`,
+    await this.prisma.runInTransaction(async (tx) => {
+      const resultIds = await this.runs.resultIdsForRun(id, tx);
+
+      if (!(await this.runs.softDelete(id, tx))) {
+        throw new NotFoundError('Test run');
+      }
+
+      // The run and the results it contains. The results themselves survive —
+      // they are never deleted — but nothing can reach them once their run is
+      // gone, so a link pointing at one is exactly the dangling reference this
+      // cleanup exists to prevent.
+      const purged =
+        (await this.links.purgeFor('test_run', [id], tx)) +
+        (await this.links.purgeFor('test_result', resultIds, tx));
+
+      await this.audit.record(
+        {
+          action: AuditAction.delete,
+          entityType: 'TestRun',
+          entityId: id,
+          summary: `Deleted run ${run.name}`,
+          ...(purged === 0 ? {} : { changes: { removedTraceabilityLinks: purged } }),
+        },
+        tx,
+      );
     });
   }
 

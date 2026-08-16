@@ -15,6 +15,7 @@ import { AuditService } from '../audit/audit.service';
 import { OrganizationMembersRepository } from '../organizations/organization-members.repository';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
+import { TraceabilityLinksRepository } from '../traceability/traceability-links.repository';
 import { DefectsRepository } from './defects.repository';
 
 /**
@@ -39,6 +40,7 @@ export class DefectsService {
     private readonly projects: ProjectsRepository,
     private readonly access: ProjectAccessService,
     private readonly members: OrganizationMembersRepository,
+    private readonly links: TraceabilityLinksRepository,
     private readonly tenant: TenantContextService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -235,15 +237,27 @@ export class DefectsService {
 
   async remove(id: string): Promise<void> {
     const defect = await this.require(id);
-    if (!(await this.defects.softDelete(id))) {
-      throw new NotFoundError('Defect');
-    }
 
-    await this.audit.record({
-      action: AuditAction.delete,
-      entityType: 'Defect',
-      entityId: id,
-      summary: `Deleted defect ${defect.key}`,
+    await this.prisma.runInTransaction(async (tx) => {
+      if (!(await this.defects.softDelete(id, tx))) {
+        throw new NotFoundError('Defect');
+      }
+
+      // Including the link back to the result the defect came from. The result
+      // is untouched: the evidence that a test failed is not the same fact as
+      // the claim that a defect explains it.
+      const purged = await this.links.purgeFor('defect', [id], tx);
+
+      await this.audit.record(
+        {
+          action: AuditAction.delete,
+          entityType: 'Defect',
+          entityId: id,
+          summary: `Deleted defect ${defect.key}`,
+          ...(purged === 0 ? {} : { changes: { removedTraceabilityLinks: purged } }),
+        },
+        tx,
+      );
     });
   }
 

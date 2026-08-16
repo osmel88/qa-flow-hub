@@ -83,8 +83,8 @@ export class RequirementsRepository extends TenantAwareRepository {
     return client.requirement.findFirst({ where: this.active({ id }) });
   }
 
-  async softDelete(id: string): Promise<boolean> {
-    const { count } = await this.prisma.requirement.updateMany({
+  async softDelete(id: string, tx?: PrismaTransaction): Promise<boolean> {
+    const { count } = await (tx ?? this.prisma).requirement.updateMany({
       where: this.active({ id }),
       data: { deletedAt: new Date() },
     });

@@ -20,6 +20,7 @@ import { ConflictError, NotFoundError } from '../../errors';
 import { AuditService } from '../audit/audit.service';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
+import { TraceabilityLinksRepository } from '../traceability/traceability-links.repository';
 import { RequirementsRepository } from './requirements.repository';
 
 /**
@@ -44,6 +45,7 @@ export class RequirementsService {
     private readonly requirements: RequirementsRepository,
     private readonly projects: ProjectsRepository,
     private readonly access: ProjectAccessService,
+    private readonly links: TraceabilityLinksRepository,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
@@ -204,15 +206,27 @@ export class RequirementsService {
 
   async remove(id: string): Promise<void> {
     const requirement = await this.require(id);
-    if (!(await this.requirements.softDelete(id))) {
-      throw new NotFoundError('Requirement');
-    }
 
-    await this.audit.record({
-      action: AuditAction.delete,
-      entityType: 'Requirement',
-      entityId: id,
-      summary: `Deleted ${requirement.key}`,
+    await this.prisma.runInTransaction(async (tx) => {
+      if (!(await this.requirements.softDelete(id, tx))) {
+        throw new NotFoundError('Requirement');
+      }
+
+      // A link to a deleted requirement is not history, it is a claim about
+      // coverage that nothing backs. It goes in the same transaction, so the
+      // matrix can never observe a requirement that is gone but still linked.
+      const purged = await this.links.purgeFor('requirement', [id], tx);
+
+      await this.audit.record(
+        {
+          action: AuditAction.delete,
+          entityType: 'Requirement',
+          entityId: id,
+          summary: `Deleted ${requirement.key}`,
+          ...(purged === 0 ? {} : { changes: { removedTraceabilityLinks: purged } }),
+        },
+        tx,
+      );
     });
   }
 

@@ -169,9 +169,10 @@ is no deprecation policy yet.
 ## 14. Traceability links have no foreign keys
 
 `TraceabilityLink` is polymorphic (`sourceType` + `sourceId`), so PostgreSQL
-cannot enforce that either end exists. The service checks both endpoints against
-the active organization before creating a link, and the matrix skips links whose
-entity is gone.
+cannot enforce that either end exists. The service checks that both endpoints are
+**alive and in the active organization** before creating a link, deletion purges
+the links of the entity in the same transaction (entry 15), and the matrix still
+skips a link whose case it cannot find.
 
 - **Cost:** a direct database write, or a future code path that forgets the
   check, can leave a link pointing at nothing. Nothing crashes, but the matrix
@@ -180,14 +181,23 @@ entity is gone.
   once link volume makes a silent gap expensive. Deliberate: the alternative is
   six join tables and a migration per new relation type.
 
-## 15. Deleted entities keep their links
+## 15. Deleted entities keep their links — resolved
 
-Soft-deleting a case leaves its requirement links in place; the matrix ignores
-them. This is intentional — the link records a decision that was made — but it
-means the link table only grows.
+Soft-deleting a requirement, case, run or defect now deletes its links **inside
+the same transaction** as the soft delete, in both directions, scoped to the
+organization. Deleting a suite purges the links of the cases it takes with it,
+and deleting a run purges the links of its results, which are unreachable once
+their run is gone. The link row is removed rather than flagged: removing a link
+by hand has always been a real `DELETE`, and `AuditLog` keeps the history,
+including how many links went (`removedTraceabilityLinks`).
 
-- **Trigger to fix:** an archival policy, once a project's history is large
-  enough for the table to matter.
+Archiving is deliberately different. An archived case **keeps** its link and
+stays visible in the matrix flagged as archived, but it does not count towards
+coverage or verification: a requirement whose only test is deprecated is not
+tested today. Restoring the case brings the coverage back with no new link.
+
+- **What remains:** links are still not constrained by the database, so a direct
+  SQL write can create an orphan (entry 14).
 
 ## 16. Dashboard aggregates are computed on every request
 
@@ -200,8 +210,8 @@ results refreshing a dashboard every minute.
 
 ## 17. Coverage counts links, not intent
 
-A requirement is "covered" if any `requirement → test_case` link exists. Nothing
-checks that the case is meaningful, current, or of the right depth.
+A requirement is "covered" if any link to a **live, non-archived** case exists.
+Nothing checks that the case is meaningful or of the right depth.
 
 - **Cost:** coverage can be gamed by linking one trivial case to everything.
   `verified` (executed, passed, no open defect) is the honest metric and is

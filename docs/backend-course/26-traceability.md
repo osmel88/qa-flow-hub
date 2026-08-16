@@ -62,7 +62,8 @@ base de datos no impide un enlace a un id que no existe. Por eso la integridad s
 comprueba en el servicio, contra el tenant, antes de crear el enlace:
 
 ```ts
-if (!(await this.reads.entityExists(type, id))) {
+const located = await this.reads.locateEntity(type, id);
+if (located === null) {
   throw new ValidationError(`No ${type} with id ${id} in this organization`);
 }
 ```
@@ -90,15 +91,24 @@ Es la distinción que hace útil la matriz:
 
 | Campo | Significa |
 | --- | --- |
-| `covered` | Alguien **escribió** al menos una prueba para el requisito |
+| `covered` | Alguien **escribió** al menos una prueba **viva** para el requisito |
 | `verified` | Todas esas pruebas **se ejecutaron y pasaron**, y no hay ningún defecto abierto asociado |
 
 ```ts
+const active = linked.filter((testCase) => !testCase.archived);
+// ...
+covered: active.length > 0,
 verified:
-  linked.length > 0 &&
-  linked.every((testCase) => testCase.lastStatus === 'passed') &&
+  active.length > 0 &&
+  active.every((testCase) => testCase.lastStatus === 'passed') &&
   (defectsByRequirement.get(requirement.id) ?? []).length === 0,
 ```
+
+Un caso **archivado** conserva su enlace y sigue apareciendo en la fila marcado
+como `archived`, pero no cuenta: un requisito cuya única prueba está deprecada no
+está probado hoy. Y como el enlace no se toca, restaurar el caso devuelve la
+cobertura sin que nadie tenga que volver a enlazar nada. Archivar es reversible;
+la métrica también.
 
 Un informe que solo mide cobertura invita a escribir casos vacíos: la métrica
 sube y no se prueba nada. Con las dos columnas, la diferencia entre ellas es
@@ -125,9 +135,42 @@ Después, dos `Map` y un recorrido en memoria. El coste es constante en número 
 consultas y lineal en filas, que es exactamente lo que se puede defender ante
 cualquier tamaño de proyecto razonable.
 
-Un detalle que importa: si un caso fue borrado, su enlace **sobrevive** y
-simplemente no aparece en la fila. Borrar el enlace en cascada dejaría un
-historial que no coincide con lo que se decidió en su día.
+## Borrar un extremo borra el enlace, en la misma transacción
+
+Una tabla polimórfica no tiene claves foráneas, así que nada en PostgreSQL
+impide que un enlace sobreviva a la entidad que señala. Ese hueco lo cierra el
+código por los dos lados:
+
+- **al crear**, `locateEntity` exige entidad **viva** (`this.active`), no solo
+  existente, y para un `test_result` exige además que su run siga vivo, porque un
+  resultado cuyo run desapareció es inalcanzable;
+- **al borrar**, cada servicio purga los enlaces de su entidad dentro de la
+  **misma transacción** que el borrado lógico, en las dos direcciones y siempre
+  filtrado por organización:
+
+```ts
+await this.prisma.runInTransaction(async (tx) => {
+  if (!(await this.requirements.softDelete(id, tx))) {
+    throw new NotFoundError('Requirement');
+  }
+  const purged = await this.links.purgeFor('requirement', [id], tx);
+  await this.audit.record({ /* ... */ changes: { removedTraceabilityLinks: purged } }, tx);
+});
+```
+
+La transacción no es decorativa: si el borrado y la limpieza fueran dos
+operaciones, un fallo entre ambas dejaría exactamente el estado que se quiere
+evitar. Borrar una suite purga los enlaces de los casos que se lleva consigo, y
+borrar un run purga también los de sus resultados —que **no** se borran: la
+evidencia de que una prueba falló es historia—.
+
+La fila se elimina de verdad en lugar de marcarse: quitar un enlace a mano
+siempre fue un `DELETE`, y el historial vive en `AuditLog`, que registra cuántos
+enlaces cayeron. Una columna `deletedAt` que nadie restaura es deuda disfrazada
+de prudencia.
+
+Con esto, el hueco defensivo de la matriz es inalcanzable. Se conserva de todas
+formas, porque en un informe mostrar menos es mejor que adivinar:
 
 ```ts
 const testCase = caseById.get(link.targetId);

@@ -130,7 +130,9 @@ export class TraceabilityService {
     for (const link of caseLinks) {
       const testCase = caseById.get(link.targetId);
       if (testCase === undefined) {
-        // The case was deleted; the link survives so history stays readable.
+        // Deleting a case purges its links in the same transaction, so this
+        // should be unreachable. Kept as defence in depth: a report is the one
+        // place where guessing is worse than showing less.
         continue;
       }
       const row = casesByRequirement.get(link.sourceId) ?? [];
@@ -139,6 +141,7 @@ export class TraceabilityService {
         key: testCase.key,
         title: testCase.title,
         lastStatus: statuses.get(testCase.id) ?? 'untested',
+        archived: testCase.archivedAt !== null,
       });
       casesByRequirement.set(link.sourceId, row);
     }
@@ -158,6 +161,9 @@ export class TraceabilityService {
 
     const rows: MatrixRow[] = requirements.map((requirement) => {
       const linked = casesByRequirement.get(requirement.id) ?? [];
+      // Archived cases stay in the row so the reader can see why the coverage
+      // dropped, but only live ones answer "is this requirement tested today?".
+      const active = linked.filter((testCase) => !testCase.archived);
       return {
         requirementId: requirement.id,
         key: requirement.key,
@@ -166,12 +172,12 @@ export class TraceabilityService {
         priority: requirement.priority,
         cases: linked,
         defectIds: defectsByRequirement.get(requirement.id) ?? [],
-        covered: linked.length > 0,
+        covered: active.length > 0,
         // Covered means somebody wrote a test. Verified means it ran and
         // passed, and nothing linked to it is currently broken.
         verified:
-          linked.length > 0 &&
-          linked.every((testCase) => testCase.lastStatus === 'passed') &&
+          active.length > 0 &&
+          active.every((testCase) => testCase.lastStatus === 'passed') &&
           (defectsByRequirement.get(requirement.id) ?? []).length === 0,
       };
     });

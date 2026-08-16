@@ -69,12 +69,18 @@ export class TraceabilityRepository extends TenantAwareRepository {
    * such entity here", and a `projectId` of `null` means the type has no
    * project (an automated test lives in the customer's CI and is identified by
    * an ExternalReference).
+   *
+   * "Exists" means **not deleted**: soft-deleted rows are invisible everywhere
+   * else, so accepting one here would be the only way in the product to create a
+   * link that is dangling the moment it is written. Archived is different and
+   * deliberately allowed — an archived case can be restored, and its link is
+   * what makes the coverage come back with it.
    */
   async locateEntity(
     type: Prisma.TraceabilityLinkWhereInput['sourceType'],
     id: string,
   ): Promise<{ projectId: string | null } | null> {
-    const where = this.scope({ id });
+    const where = this.active({ id });
     const select = { projectId: true };
 
     switch (type) {
@@ -85,12 +91,16 @@ export class TraceabilityRepository extends TenantAwareRepository {
       case 'test_run':
         return this.prisma.testRun.findFirst({ where, select });
       case 'test_result': {
-        // A result carries no project of its own; the run it belongs to does.
+        // A result carries no project of its own; the run it belongs to does,
+        // and a result whose run is gone is unreachable, so the run has to be
+        // alive as well.
         const result = await this.prisma.testResult.findFirst({
-          where,
-          select: { testRun: { select: { projectId: true } } },
+          where: this.scope({ id }),
+          select: { testRun: { select: { projectId: true, deletedAt: true } } },
         });
-        return result === null ? null : { projectId: result.testRun.projectId };
+        return result === null || result.testRun.deletedAt !== null
+          ? null
+          : { projectId: result.testRun.projectId };
       }
       case 'defect':
         return this.prisma.defect.findFirst({ where, select });

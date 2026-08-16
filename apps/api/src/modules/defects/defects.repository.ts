@@ -86,8 +86,8 @@ export class DefectsRepository extends TenantAwareRepository {
     return client.defect.findFirst({ where: this.active({ id }) });
   }
 
-  async softDelete(id: string): Promise<boolean> {
-    const { count } = await this.prisma.defect.updateMany({
+  async softDelete(id: string, tx?: PrismaTransaction): Promise<boolean> {
+    const { count } = await (tx ?? this.prisma).defect.updateMany({
       where: this.active({ id }),
       data: { deletedAt: new Date() },
     });

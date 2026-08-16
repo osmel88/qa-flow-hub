@@ -27,6 +27,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
+import { TraceabilityLinksRepository } from '../traceability/traceability-links.repository';
 import { TestDesignRepository } from './test-design.repository';
 
 /**
@@ -41,6 +42,7 @@ export class TestDesignService {
     private readonly repository: TestDesignRepository,
     private readonly projects: ProjectsRepository,
     private readonly access: ProjectAccessService,
+    private readonly links: TraceabilityLinksRepository,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
@@ -113,15 +115,25 @@ export class TestDesignService {
     const suite = await this.requireSuite(id);
 
     await this.prisma.runInTransaction(async (tx) => {
-      if (!(await this.repository.softDeleteSuite(id, tx))) {
+      const caseIds = await this.repository.softDeleteSuite(id, tx);
+      if (caseIds === null) {
         throw new NotFoundError('Test suite');
       }
+
+      // The cases went with the suite, so their links have to go too. A suite
+      // is not linkable itself, which is why only the cases are purged.
+      const purged = await this.links.purgeFor('test_case', caseIds, tx);
+
       await this.audit.record(
         {
           action: AuditAction.delete,
           entityType: 'TestSuite',
           entityId: id,
           summary: `Deleted suite ${suite.name} and its cases`,
+          changes: {
+            removedCases: caseIds.length,
+            ...(purged === 0 ? {} : { removedTraceabilityLinks: purged }),
+          },
         },
         tx,
       );
@@ -457,15 +469,26 @@ export class TestDesignService {
 
   async deleteCase(id: string): Promise<void> {
     const testCase = await this.requireCase(id);
-    if (!(await this.repository.softDeleteCase(id))) {
-      throw new NotFoundError('Test case');
-    }
 
-    await this.audit.record({
-      action: AuditAction.delete,
-      entityType: 'TestCase',
-      entityId: id,
-      summary: `Deleted ${testCase.key}`,
+    await this.prisma.runInTransaction(async (tx) => {
+      if (!(await this.repository.softDeleteCase(id, tx))) {
+        throw new NotFoundError('Test case');
+      }
+
+      // Deleting is not archiving: an archived case keeps its links because it
+      // can come back, a deleted one cannot.
+      const purged = await this.links.purgeFor('test_case', [id], tx);
+
+      await this.audit.record(
+        {
+          action: AuditAction.delete,
+          entityType: 'TestCase',
+          entityId: id,
+          summary: `Deleted ${testCase.key}`,
+          ...(purged === 0 ? {} : { changes: { removedTraceabilityLinks: purged } }),
+        },
+        tx,
+      );
     });
   }
 

@@ -75,8 +75,8 @@ export class TestRunsRepository extends TenantAwareRepository {
     return client.testRun.findFirst({ where: this.active({ id }) });
   }
 
-  async softDelete(id: string): Promise<boolean> {
-    const { count } = await this.prisma.testRun.updateMany({
+  async softDelete(id: string, tx?: PrismaTransaction): Promise<boolean> {
+    const { count } = await (tx ?? this.prisma).testRun.updateMany({
       where: this.active({ id }),
       data: { deletedAt: new Date() },
     });
@@ -210,5 +210,17 @@ export class TestRunsRepository extends TenantAwareRepository {
 
   findResultById(id: string): Promise<TestResult | null> {
     return this.prisma.testResult.findFirst({ where: this.scope({ id }) });
+  }
+
+  /**
+   * Results are never deleted, but they are only reachable through their run,
+   * so deleting the run is what makes them unreachable and their links dangling.
+   */
+  async resultIdsForRun(testRunId: string, tx?: PrismaTransaction): Promise<string[]> {
+    const rows = await (tx ?? this.prisma).testResult.findMany({
+      where: this.scope({ testRunId }),
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
   }
 }

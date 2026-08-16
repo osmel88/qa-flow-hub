@@ -135,16 +135,23 @@ the inviter can pass the link to the invitee today.
   [`integrations-roadmap.md`](integrations-roadmap.md). Removing `token` and
   `acceptUrl` from `CreatedInvitationView` is the definition of done.
 
-## 11. Audit immutability is enforced only in application code
+## 11. Audit immutability is enforced only in application code — resolved
 
-`AuditService` has no `update` or `delete` method, so nothing in the codebase can
-modify an entry. The database, however, would happily accept an `UPDATE` from
-anyone holding the application's credentials.
+`AuditService` still has no `update` or `delete` method, and PostgreSQL now
+enforces the same rule regardless of who is connected: three triggers on
+`audit_logs` reject `UPDATE`, `DELETE` and `TRUNCATE` with
+`audit_logs is append-only` (migration `20260816135824_audit_log_append_only`).
+`TRUNCATE` has its own statement-level trigger because row triggers do not see
+it, and it is the cheapest way to erase everything at once.
 
-- **Cost:** an attacker with database access could erase their tracks.
-- **Trigger to fix:** a dedicated database role for the API with
-  `GRANT INSERT, SELECT` and no `UPDATE`/`DELETE` on `audit_logs`, or shipping
-  entries to an append-only store. Needed before the first compliance audit.
+- **What remains:** the API connects as the **owner** of the table, so it can
+  `ALTER TABLE ... DISABLE TRIGGER` — the integration harness does exactly that
+  to clean up between tests. The strong version is a non-owning application role
+  with `GRANT INSERT, SELECT` only, which needs the same role separation as Row
+  Level Security (entry 5) and is best done with it. A trigger was chosen over
+  `REVOKE` because Prisma runs migrations as that same role today.
+- **Trigger to fix the remainder:** the first compliance audit that asks who can
+  disable the guard, or shipping entries to an external append-only store.
 
 ## 12. Invitation expiry is settled lazily
 

@@ -98,16 +98,59 @@ otro usuario— y además cada llamada tendría cinco argumentos de ceremonia. E
 El `organizationId` admite override explícito para el caso del login, donde no
 hay organización activa pero sí hay algo que registrar.
 
-## Append-only por ausencia
+## Append-only por ausencia... y por trigger
 
 No hay `update()` ni `delete()` en `AuditService`. No es una convención escrita
 en un README: es que los métodos no existen. Un registro que se puede editar no
 es evidencia, y la forma más barata de garantizarlo en la capa de aplicación es
 no ofrecer la operación.
 
-(La garantía real vendría de permisos de PostgreSQL: `GRANT INSERT, SELECT` y
-nada más sobre `audit_logs`. Está anotado como trabajo futuro en
-`docs/technical-debt.md`.)
+Pero eso es una promesa sobre **nuestro código**, no sobre la base de datos:
+cualquiera con las credenciales de la aplicación —una consola `psql`, un script,
+un futuro camino de código que se olvide— podía borrar sus huellas. Así que la
+regla vive también en PostgreSQL:
+
+```sql
+CREATE OR REPLACE FUNCTION audit_logs_append_only() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'audit_logs is append-only: % is not allowed', TG_OP
+    USING ERRCODE = 'restrict_violation';
+END;
+$$;
+
+CREATE TRIGGER audit_logs_no_update BEFORE UPDATE ON "audit_logs"
+  FOR EACH ROW EXECUTE FUNCTION audit_logs_append_only();
+CREATE TRIGGER audit_logs_no_delete BEFORE DELETE ON "audit_logs"
+  FOR EACH ROW EXECUTE FUNCTION audit_logs_append_only();
+CREATE TRIGGER audit_logs_no_truncate BEFORE TRUNCATE ON "audit_logs"
+  FOR EACH STATEMENT EXECUTE FUNCTION audit_logs_append_only();
+```
+
+Tres detalles que se defienden solos:
+
+1. **`TRUNCATE` necesita su propio trigger.** Los triggers de fila no lo ven, y
+   es precisamente la forma más barata de borrarlo todo de una vez. Un guard que
+   solo cubre `DELETE` invita a la única operación que no cubre.
+2. **Trigger en vez de `REVOKE UPDATE, DELETE`.** La revocación de privilegios es
+   más fuerte, pero exige un rol de aplicación que **no sea el propietario** de
+   la tabla; con Prisma, ese mismo rol es el que ejecuta las migraciones. El
+   trigger funciona hoy con el `DATABASE_URL` que ya existe; el rol dedicado va
+   junto al trabajo de Row Level Security.
+3. **Lo que el trigger NO impide:** el propietario de la tabla puede
+   deshabilitarlo (`ALTER TABLE ... DISABLE TRIGGER`). Está escrito en
+   `docs/technical-debt.md` en lugar de vendido como inmutabilidad absoluta — y
+   el arnés de test hace exactamente eso para poder limpiar entre tests, lo que
+   es la demostración honesta del límite.
+
+El test se escribe con SQL crudo a propósito. Uno que pasara por la API solo
+probaría que el método que decidimos no escribir no existe:
+
+```ts
+await expect(
+  prisma.$executeRawUnsafe(`UPDATE audit_logs SET summary = 'nothing happened'`),
+).rejects.toThrow(/append-only/);
+```
 
 ## Dentro o fuera de la transacción
 
@@ -200,8 +243,8 @@ lee.
    roles pueden verlo.
 3. Escribe un test que recorra todas las entradas creadas por la suite y falle si
    alguna contiene una subcadena que parezca un token.
-4. Aplica `REVOKE UPDATE, DELETE ON audit_logs` en una migración y comprueba qué
-   test se rompe si alguien intentara modificarlas.
+4. Crea un rol de aplicación que no sea propietario de `audit_logs`, dale solo
+   `INSERT, SELECT`, y comprueba qué falla al arrancar y al migrar.
 
 ## Qué diría en una entrevista
 
@@ -209,8 +252,9 @@ lee.
 > requestId por petición y viven días; la auditoría es una tabla append-only que
 > vive años y forma parte del producto, porque un cliente B2B preguntará quién
 > cambió qué. El servicio de auditoría no tiene métodos de update ni delete: la
-> inmutabilidad se garantiza por ausencia de la operación, y a nivel de base de
-> datos se cerraría con permisos. Lo más importante es que acepta el cliente
+> inmutabilidad se garantiza por ausencia de la operación, y en la base de datos
+> con triggers que rechazan `UPDATE`, `DELETE` y `TRUNCATE` —incluido `TRUNCATE`,
+> que los triggers de fila no ven—. Lo más importante es que acepta el cliente
 > transaccional: la entrada vive o muere con la operación que describe, porque un
 > registro que afirma algo que se revirtió es peor que no tener registro. Y quién,
 > desde dónde y en qué petición no los pasa el llamante, salen de un

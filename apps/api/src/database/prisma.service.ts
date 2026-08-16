@@ -73,6 +73,16 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
 
     const list = tables.map((t) => `"public"."${t.tablename}"`).join(', ');
-    await this.$executeRawUnsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`);
+    // `audit_logs` refuses UPDATE, DELETE and TRUNCATE in the database itself,
+    // so the harness has to lift that guard for the length of the wipe. It is
+    // the table owner and can, which is exactly the residual weakness the debt
+    // entry describes: the strong version of this needs a role that does not own
+    // the table.
+    await this.$executeRawUnsafe(`ALTER TABLE "public"."audit_logs" DISABLE TRIGGER USER`);
+    try {
+      await this.$executeRawUnsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`);
+    } finally {
+      await this.$executeRawUnsafe(`ALTER TABLE "public"."audit_logs" ENABLE TRIGGER USER`);
+    }
   }
 }

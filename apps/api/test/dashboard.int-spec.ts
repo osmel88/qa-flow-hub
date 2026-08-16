@@ -212,4 +212,54 @@ describe('dashboard and audit log', () => {
       expect(serialized).not.toMatch(/\$argon2/);
     });
   });
+
+  /**
+   * Written against raw SQL on purpose. There is no code path that edits an
+   * entry, so a test going through the API would only prove that the method we
+   * chose not to write does not exist. What has to be true is stronger: the
+   * database refuses the write even to whoever holds the application's
+   * credentials.
+   */
+  describe('append-only enforcement', () => {
+    const entryId = async (): Promise<string> =>
+      (await prisma.auditLog.findFirstOrThrow({ where: { action: 'create' } })).id;
+
+    it('refuses to update an entry', async () => {
+      const id = await entryId();
+
+      await expect(
+        prisma.$executeRawUnsafe(`UPDATE audit_logs SET summary = 'nothing happened' WHERE id = $1`, id),
+      ).rejects.toThrow(/append-only/);
+
+      const entry = await prisma.auditLog.findUniqueOrThrow({ where: { id } });
+      expect(entry.summary).not.toBe('nothing happened');
+    });
+
+    it('refuses to delete an entry, one row or the whole table', async () => {
+      const id = await entryId();
+      const before = await prisma.auditLog.count();
+
+      await expect(
+        prisma.$executeRawUnsafe(`DELETE FROM audit_logs WHERE id = $1`, id),
+      ).rejects.toThrow(/append-only/);
+      await expect(prisma.$executeRawUnsafe(`DELETE FROM audit_logs`)).rejects.toThrow(
+        /append-only/,
+      );
+      // TRUNCATE is the cheap way to erase every trace at once and row triggers
+      // do not see it, so it is checked separately.
+      await expect(prisma.$executeRawUnsafe(`TRUNCATE TABLE audit_logs`)).rejects.toThrow(
+        /append-only/,
+      );
+
+      expect(await prisma.auditLog.count()).toBe(before);
+    });
+
+    it('still accepts an insert', async () => {
+      const before = await prisma.auditLog.count();
+
+      await request('POST', '/api/v1/projects', asOwner({ name: 'Another one', key: 'ANO' }));
+
+      expect(await prisma.auditLog.count()).toBe(before + 1);
+    });
+  });
 });

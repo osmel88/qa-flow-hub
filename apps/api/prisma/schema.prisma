@@ -19,9 +19,15 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// The URL here is the *owner* connection: it is the one the Prisma CLI uses for
+// migrations, introspection and the seed, and those need to change the schema
+// and to write across organizations. The running API never uses it — it passes
+// `DATABASE_URL` (the `qaflow_app` role, subject to Row Level Security) to the
+// client explicitly. See docs/backend-course/13-authorization.md and
+// docs/technical-debt.md entry 5.
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_MIGRATION_URL")
 }
 
 // ---------------------------------------------------------------------------

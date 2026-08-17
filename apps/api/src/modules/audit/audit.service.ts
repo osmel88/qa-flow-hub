@@ -39,7 +39,11 @@ export class AuditService {
       entry.organizationId === undefined ? (request?.organizationId ?? null) : entry.organizationId;
 
     try {
-      await (tx ?? this.prisma).auditLog.create({
+      // `this.prisma.scoped` and not `this.prisma`: `audit_logs` is under Row
+      // Level Security, and the scoped client is the one that tells PostgreSQL
+      // which organization is writing. Login has none, and the policy allows a
+      // null organization precisely for it.
+      await (tx ?? this.prisma.scoped).auditLog.create({
         data: {
           organizationId,
           userId: request?.userId ?? null,

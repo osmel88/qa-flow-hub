@@ -17,6 +17,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:grant-app-role": "tsx prisma/grant-app-role.ts",
     "db:reset": "prisma migrate reset --force"
   },
   "prisma": {

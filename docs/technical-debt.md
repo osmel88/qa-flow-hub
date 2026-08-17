@@ -56,20 +56,39 @@ seam is documented where the invitation is created.
 - **Cost:** an invited user must receive the link out of band.
 - **Trigger to fix:** onboarding a team that is not sitting in the same room.
 
-## 5. PostgreSQL Row Level Security is not enabled
+## 5. PostgreSQL Row Level Security is not enabled — resolved
 
-Tenant isolation is enforced in the application (guards + repository base
-class), not by the database.
+Tenant isolation now has two layers. The first is unchanged: guards plus
+`TenantAwareRepository`, which adds `organizationId` to every where clause. The
+second is the database:
 
-- **Why acceptable now:** RLS interacts badly with connection pooling under
-  Prisma (the session variable must be set per connection, not per transaction)
-  and complicates migrations.
-- **Cost:** a raw query written outside the repository layer could bypass
-  isolation. Mitigated by the repository base class, a lint rule against direct
-  Prisma use in services, and a dedicated cross-tenant test suite.
-- **Trigger to fix:** a customer with a compliance requirement for
-  defence-in-depth at the database level. The schema already supports it: every
-  functional table carries `organizationId`.
+- the API connects at runtime as `qaflow_app`, a role that **owns nothing** and
+  holds only row-level privileges, because PostgreSQL exempts a table's owner
+  from its policies. Migrations, the seed and the test harness keep using the
+  owner through `DATABASE_MIGRATION_URL`;
+- every functional table has a `tenant_isolation` policy comparing
+  `organizationId` with `current_setting('app.current_organization', true)`,
+  which is NULL when unset — so a query that announces nothing reads nothing;
+- the setting is applied **inside the transaction that carries the query**
+  (`set_config(..., TRUE)`, batched by the `row-level-security` client
+  extension). Per-connection would have been the leak the layer exists to
+  prevent, because Prisma pools connections;
+- `qaflow_app` also lacks `UPDATE`/`DELETE` on `audit_logs`, which closes the
+  remainder of entry 11: it cannot disable the append-only triggers either.
+- **Verified by** `apps/api/test/rls.int-spec.ts`, which logs in as `qaflow_app`
+  and shows that an unfiltered query returns nothing, a cross-tenant read is
+  empty, and cross-tenant `UPDATE`/`DELETE` change zero rows.
+
+**What is deliberately not covered:** `users`, `sessions`, `organizations`,
+`organization_members` and `organization_invitations` have no policy. They are
+read before an organization exists in the request — logging in, listing your
+organizations, previewing an invitation — so a policy keyed on the active
+organization could only be satisfied by turning it off in those paths, which is
+worse than not having it. Their isolation stays in the repository layer, covered
+by `test/tenancy.int-spec.ts`.
+
+- **Trigger to revisit:** a policy for those five tables keyed on the
+  authenticated user rather than the organization, if an audit asks for it.
 
 ## 6. `exactOptionalPropertyTypes` is disabled
 
@@ -144,14 +163,17 @@ enforces the same rule regardless of who is connected: three triggers on
 `TRUNCATE` has its own statement-level trigger because row triggers do not see
 it, and it is the cheapest way to erase everything at once.
 
-- **What remains:** the API connects as the **owner** of the table, so it can
-  `ALTER TABLE ... DISABLE TRIGGER` — the integration harness does exactly that
-  to clean up between tests. The strong version is a non-owning application role
-  with `GRANT INSERT, SELECT` only, which needs the same role separation as Row
-  Level Security (entry 5) and is best done with it. A trigger was chosen over
-  `REVOKE` because Prisma runs migrations as that same role today.
-- **Trigger to fix the remainder:** the first compliance audit that asks who can
-  disable the guard, or shipping entries to an external append-only store.
+The remainder noted here — the API being the table owner, and therefore able to
+`ALTER TABLE ... DISABLE TRIGGER` — was closed by the role separation in entry 5.
+Runtime connects as `qaflow_app`, which holds `SELECT, INSERT` on `audit_logs`
+and nothing else, so the guarantee is now a privilege as well as a trigger. The
+integration harness still disables the triggers to clean up between tests, but it
+does so as the **owner** and only with `NODE_ENV=test`.
+
+- **What remains:** whoever holds the owner credential can still rewrite history,
+  which no in-database mechanism can prevent.
+- **Trigger to fix:** shipping entries to an external append-only store, which is
+  the only real answer to "who watches the owner".
 
 ## 12. Invitation expiry is settled lazily
 

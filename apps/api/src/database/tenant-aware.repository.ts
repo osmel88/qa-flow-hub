@@ -1,5 +1,5 @@
 import { PaginationQuery, toSkipTake } from '@qa-flow-hub/shared';
-import { PrismaService } from './prisma.service';
+import { PrismaService, RlsPrismaClient } from './prisma.service';
 import { TenantContextService } from './tenant-context.service';
 
 /**
@@ -18,12 +18,27 @@ import { TenantContextService } from './tenant-context.service';
  * through one of them. The rule "no service touches Prisma directly" plus
  * "every repository query goes through scope()" is what makes tenant isolation
  * auditable by reading, and it is covered by test/tenancy.int-spec.ts.
+ *
+ * This is the *first* layer. The second is Row Level Security in PostgreSQL,
+ * reached through `this.prisma`: subclasses get the client that announces the
+ * active organization to the database, so a query that forgot `scope()` returns
+ * nothing instead of another tenant's rows. Two layers, because a filter that
+ * only exists in application code is one forgotten line away from a leak.
  */
 export abstract class TenantAwareRepository {
   protected constructor(
-    protected readonly prisma: PrismaService,
+    private readonly prismaService: PrismaService,
     protected readonly tenant: TenantContextService,
   ) {}
+
+  /**
+   * The tenant-scoped client. Deliberately the same shape as `PrismaService`,
+   * so subclasses read the same as before and cannot accidentally choose the
+   * unguarded client.
+   */
+  protected get prisma(): RlsPrismaClient {
+    return this.prismaService.scoped;
+  }
 
   /** The active organization, or a 401 if there is none. */
   protected get organizationId(): string {

@@ -40,14 +40,15 @@ Ver [`../adr/0006-multi-tenancy-strategy.md`](../adr/0006-multi-tenancy-strategy
 2. **La regla se puede verificar mecánicamente.** "Toda consulta pasa por
    `scope()`" es comprobable leyendo; "toda consulta une correctamente hasta la
    organización" no lo es.
-3. **Deja la puerta abierta a Row Level Security** sin cambiar el modelo de
-   datos.
+3. **Hace posible Row Level Security** sin cambiar el modelo de datos: la
+   política de cada tabla es un `=` contra su propia columna. Ya está activada;
+   ver más abajo.
 
 El coste es la posibilidad de incoherencia (un paso cuyo `organizationId` no
 coincide con el de su caso). Se evita porque el `organizationId` nunca lo elige
 el cliente: lo pone el repositorio desde el contexto.
 
-## Las tres capas de defensa
+## Las cuatro capas de defensa
 
 ```
 1. Token         el JWT lleva el usuario; la organización activa se resuelve
@@ -56,16 +57,103 @@ el cliente: lo pone el repositorio desde el contexto.
                  escribe la organización en el contexto de la petición
 3. Repositorio   TenantAwareRepository inyecta organizationId en TODA cláusula
                  where; un servicio no puede consultar sin él
+4. Base datos    Row Level Security: la política de cada tabla compara
+                 organizationId con app.current_organization, y la API se
+                 conecta con un rol que NO es propietario de las tablas
 ```
 
-Y una cuarta que no es defensa sino prueba: **la suite de aislamiento**
+Y una quinta que no es defensa sino prueba: **la suite de aislamiento**
 ([`apps/api/test/tenancy.int-spec.ts`](../../apps/api/test/tenancy.int-spec.ts)),
 que intenta activamente el ataque realista —conozco el `id` exacto del recurso
 de otra organización— y exige que falle.
 
+## La cuarta capa: Row Level Security
+
+Las tres primeras capas viven en nuestro código, y por tanto comparten un modo
+de fallo: una línea olvidada. RLS responde a la única pregunta que el
+repositorio no puede responder: *¿qué pasa si una consulta olvida el filtro?*
+La respuesta tiene que ser "nada", no "los datos de otro cliente".
+
+Hay tres decisiones dentro, y las tres son el capítulo:
+
+**1. La API no es propietaria de las tablas.** PostgreSQL **exime al propietario
+de una tabla de sus propias políticas**. Si la API se conecta con el rol que
+ejecuta las migraciones, RLS no protege nada: es decoración con coste de
+mantenimiento. De ahí dos conexiones:
+
+| Variable | Rol | Quién la usa |
+| --- | --- | --- |
+| `DATABASE_MIGRATION_URL` | propietario | `prisma migrate`, seed, arnés de tests |
+| `DATABASE_URL` | `qaflow_app` | la API en ejecución, y nadie más |
+
+`qaflow_app` se crea en la migración sin contraseña —una contraseña en una
+migración es un secreto commiteado— y `npm run db:grant-app-role` se la pone
+desde el entorno. Rotarla es ese comando más un `DATABASE_URL` nuevo.
+
+**2. La política falla cerrada.** `current_setting('app.current_organization',
+true)` devuelve `NULL` cuando nadie la ha fijado, y `NULL` no es igual a nada:
+
+```sql
+CREATE POLICY tenant_isolation ON test_cases
+  USING      ("organizationId" = current_setting('app.current_organization', true))
+  WITH CHECK ("organizationId" = current_setting('app.current_organization', true));
+```
+
+`USING` filtra lo que se lee y lo que se puede modificar o borrar; `WITH CHECK`
+impide **escribir** una fila de otra organización. Sin las dos, se podría no ver
+a un cliente ajeno y a la vez plantarle datos.
+
+**3. La variable se fija dentro de la transacción, nunca por conexión.** Es el
+detalle que hace que RLS y un *pool* de conexiones puedan convivir:
+
+```ts
+// apps/api/src/database/prisma.service.ts
+const [, result] = await client.$transaction([
+  client.$executeRaw`SELECT set_config('app.current_organization', ${organizationId}, TRUE)`,
+  query(args) as Prisma.PrismaPromise<unknown>,
+]);
+```
+
+Ese `TRUE` significa "local a la transacción". Fijarla por conexión (`SET`, sin
+transacción) parece más eficiente y es **el bug peor que no tener RLS**: Prisma
+devuelve la conexión al pool con la organización de la petición anterior puesta,
+así que la siguiente petición leería datos ajenos sin error alguno. Un fallo
+silencioso y cruzado, en lugar de un fallo cerrado.
+
+La extensión de cliente envuelve así **todas** las operaciones de modelo, y
+`TenantAwareRepository` expone justamente ese cliente, para que ningún
+repositorio tenga que acordarse de pedirlo.
+
+### Qué queda deliberadamente fuera
+
+`users`, `sessions`, `organizations`, `organization_members` y
+`organization_invitations` no tienen política. Se leen **antes** de que exista una
+organización activa: iniciar sesión, listar a qué organizaciones perteneces, ver
+una invitación. Una política sobre la organización activa solo podría cumplirse
+desactivándola en esos caminos, y una defensa que se apaga cuando molesta enseña
+a apagarla. Su aislamiento sigue en el repositorio, con la suite que lo prueba.
+
+### Cómo se demuestra
+
+[`apps/api/test/rls.int-spec.ts`](../../apps/api/test/rls.int-spec.ts) es el único
+spec que **se conecta como `qaflow_app`** y hace lo que ningún código de
+producción debería hacer: consultar sin filtro. Sin organización anunciada,
+`findMany()` devuelve 0 filas; con Acme activa, un `findMany({ where: {
+organizationId: globex } })` devuelve 0; y `updateMany`/`deleteMany` sobre una
+fila de Globex afectan a 0 filas —comprobado releyendo la fila como propietario,
+porque "invisible" y "intacta" no son lo mismo—.
+
+Los otros 218 tests siguen conectándose como propietario, y es correcto: prueban
+la primera capa, y varios preparan dos organizaciones a la vez, algo que ninguna
+conexión de un solo tenant puede hacer. Lo que sí corre con el rol restringido es
+el **E2E completo**, que es la prueba de que ninguna política rompe un flujo
+legítimo.
+
 ## Archivos reales
 
 - [`apps/api/src/database/tenant-context.service.ts`](../../apps/api/src/database/tenant-context.service.ts)
+- [`apps/api/prisma/migrations/20260816160000_row_level_security/migration.sql`](../../apps/api/prisma/migrations/20260816160000_row_level_security/migration.sql)
+- [`apps/api/test/rls.int-spec.ts`](../../apps/api/test/rls.int-spec.ts)
 - [`apps/api/src/database/tenant-aware.repository.ts`](../../apps/api/src/database/tenant-aware.repository.ts)
 - [`apps/api/src/common/middleware/request-context.middleware.ts`](../../apps/api/src/common/middleware/request-context.middleware.ts)
 - [`apps/api/src/modules/projects/projects.repository.ts`](../../apps/api/src/modules/projects/projects.repository.ts)
@@ -197,8 +285,13 @@ docker compose exec postgres psql -U qaflow -d qa_flow_hub \
    diff: es el mejor recordatorio del capítulo.
 2. Escribe un test que verifique que un `include` de miembros no filtra usuarios
    de otra organización.
-3. Investiga cómo activarías Row Level Security en PostgreSQL para la tabla
-   `projects` y por qué el *pooling* de conexiones lo complica.
+3. Cambia el `TRUE` de `set_config` por `FALSE` (ámbito de sesión) y ejecuta el
+   E2E varias veces. Cuando veas datos de otra organización sin un solo error,
+   habrás entendido por qué RLS y *pooling* obligan a atar la variable a la
+   transacción. Deshaz el cambio.
+4. Haz a `qaflow_app` propietario de `requirements`
+   (`ALTER TABLE requirements OWNER TO qaflow_app`) y ejecuta `rls.int-spec.ts`.
+   Cuenta cuántos tests dejan de proteger algo y explica por qué.
 
 ## Qué diría en una entrevista
 
@@ -209,12 +302,20 @@ docker compose exec postgres psql -U qaflow -d qa_flow_hub \
 > método acepta `organizationId` como argumento. Las modificaciones se expresan
 > como `updateMany` con el filtro del tenant, porque un `update` por clave
 > primaria modificaría la fila de otro cliente. Y hay una suite que intenta el
-> ataque realista, conociendo el id exacto, y exige que falle."
+> ataque realista, conociendo el id exacto, y exige que falle.
+>
+> Debajo hay una segunda capa que no depende de nuestra disciplina: RLS en
+> PostgreSQL. Lo importante ahí no es el `CREATE POLICY`, es que la API se
+> conecta con un rol que no es propietario de las tablas —el propietario está
+> exento de las políticas— y que la organización activa se fija con
+> `set_config(..., TRUE)` dentro de la transacción de cada consulta, porque
+> hacerlo por conexión con un pool filtraría datos entre peticiones sin dar un
+> solo error."
 
 ## MVP vs futuro
 
 | Tema | MVP | Futuro |
 | --- | --- | --- |
-| Aislamiento | Aplicación + suite de pruebas | Añadir RLS como defensa en profundidad |
+| Aislamiento | Aplicación + RLS + suite de pruebas | Política también en las tablas globales, por usuario |
 | Clientes regulados | Esquema compartido | Despliegue dedicado por cliente |
 | Auditoría de fugas | Tests | Alerta si una consulta se ejecuta sin filtro |

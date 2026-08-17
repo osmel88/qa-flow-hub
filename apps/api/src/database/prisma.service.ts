@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { AppConfigService } from '../config/app-config.service';
+import { TenantContextService } from './tenant-context.service';
 
 /**
  * A transactional Prisma client. Every repository method accepts one of these
@@ -12,17 +13,71 @@ export type PrismaTransaction = Omit<
   '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
 >;
 
+/**
+ * Wraps a client so that every model operation announces the active
+ * organization to PostgreSQL before running.
+ *
+ * Row Level Security reads `app.current_organization`, and the value has to be
+ * set on the same connection as the query. Prisma pools connections, so setting
+ * it "per request" outside a transaction would hand the setting to whichever
+ * request borrowed the connection next — the one bug worse than no RLS, because
+ * it leaks *between* tenants instead of failing. Hence the batch: `set_config`
+ * with `TRUE` (transaction-local) and the query travel together, and the
+ * setting dies with the transaction.
+ *
+ * When the request has no active organization (login, registration, accepting
+ * an invitation) nothing is set, and the policies then match no row at all.
+ * That is the intended answer: those flows only touch tables without RLS.
+ */
+function withRowLevelSecurity(client: PrismaClient, tenant: TenantContextService) {
+  return client.$extends({
+    name: 'row-level-security',
+    query: {
+      $allModels: {
+        async $allOperations({ args, query }) {
+          const organizationId = tenant.organizationId;
+
+          if (organizationId === undefined) {
+            return query(args);
+          }
+
+          const [, result] = await client.$transaction([
+            client.$executeRaw`SELECT set_config('app.current_organization', ${organizationId}, TRUE)`,
+            query(args) as Prisma.PrismaPromise<unknown>,
+          ]);
+
+          return result;
+        },
+      },
+    },
+  });
+}
+
+export type RlsPrismaClient = ReturnType<typeof withRowLevelSecurity>;
+
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
 
-  constructor(config: AppConfigService) {
+  /**
+   * The client every tenant-aware repository uses. Same API as this service;
+   * the difference is invisible on purpose, so that no repository has to
+   * remember to opt into the database-level guard.
+   */
+  readonly scoped: RlsPrismaClient;
+
+  constructor(
+    config: AppConfigService,
+    private readonly tenant: TenantContextService,
+  ) {
     super({
       datasources: { db: { url: config.databaseUrl } },
       log: config.isProduction
         ? [{ emit: 'event', level: 'warn' }, { emit: 'event', level: 'error' }]
         : [{ emit: 'event', level: 'warn' }, { emit: 'event', level: 'error' }],
     });
+
+    this.scoped = withRowLevelSecurity(this, this.tenant);
   }
 
   async onModuleInit(): Promise<void> {
@@ -40,17 +95,32 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    * Business operations that touch more than one table go through here, not
    * because transactions are elegant but because half of "create a defect from
    * a failed result" is worse than none of it.
+   *
+   * It also sets `app.current_organization` once for the whole transaction, so
+   * the statements inside it are subject to the same policies as a standalone
+   * query.
    */
   runInTransaction<T>(
     work: (tx: PrismaTransaction) => Promise<T>,
     options?: { timeoutMs?: number; isolationLevel?: Prisma.TransactionIsolationLevel },
   ): Promise<T> {
-    return this.$transaction(work, {
-      timeout: options?.timeoutMs ?? 10_000,
-      ...(options?.isolationLevel === undefined
-        ? {}
-        : { isolationLevel: options.isolationLevel }),
-    });
+    const organizationId = this.tenant.organizationId;
+
+    return this.$transaction(
+      async (tx) => {
+        if (organizationId !== undefined) {
+          await tx.$executeRaw`SELECT set_config('app.current_organization', ${organizationId}, TRUE)`;
+        }
+
+        return work(tx);
+      },
+      {
+        timeout: options?.timeoutMs ?? 10_000,
+        ...(options?.isolationLevel === undefined
+          ? {}
+          : { isolationLevel: options.isolationLevel }),
+      },
+    );
   }
 
   /**
@@ -74,10 +144,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     const list = tables.map((t) => `"public"."${t.tablename}"`).join(', ');
     // `audit_logs` refuses UPDATE, DELETE and TRUNCATE in the database itself,
-    // so the harness has to lift that guard for the length of the wipe. It is
-    // the table owner and can, which is exactly the residual weakness the debt
-    // entry describes: the strong version of this needs a role that does not own
-    // the table.
+    // so the harness has to lift that guard for the length of the wipe. It runs
+    // as the owner and can; the application role cannot, which is the whole
+    // point of the split.
     await this.$executeRawUnsafe(`ALTER TABLE "public"."audit_logs" DISABLE TRIGGER USER`);
     try {
       await this.$executeRawUnsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`);

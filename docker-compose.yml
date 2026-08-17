@@ -58,7 +58,10 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOST: 0.0.0.0
-      DATABASE_URL: postgresql://${POSTGRES_USER:-qaflow}:${POSTGRES_PASSWORD:-qaflow}@postgres:5432/${POSTGRES_DB:-qa_flow_hub}?schema=public
+      # The non-owning role, so the Row Level Security policies apply. Run the
+      # migrations and `npm run db:grant-app-role -w @qa-flow-hub/api` against
+      # DATABASE_MIGRATION_URL first; the owner URL never reaches this service.
+      DATABASE_URL: postgresql://qaflow_app:${APP_DATABASE_PASSWORD:?set APP_DATABASE_PASSWORD in your .env}@postgres:5432/${POSTGRES_DB:-qa_flow_hub}?schema=public
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in your .env}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in your .env}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}

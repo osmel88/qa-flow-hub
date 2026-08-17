@@ -48,13 +48,20 @@ docs              Product documentation, ADRs and the backend course
 Requirements: Node.js 24 (`nvm use`), npm 11, Docker.
 
 ```bash
-cp .env.example .env          # then replace the JWT secrets
+cp .env.example .env          # then replace the JWT secrets and APP_DATABASE_PASSWORD
 npm install
 docker compose up -d postgres postgres-test
-npm run db:migrate
+npm run db:migrate            # as the owner, via DATABASE_MIGRATION_URL
+npm run db:grant-app-role -w @qa-flow-hub/api   # password for the runtime role
 npm run db:seed
 npm run dev                   # API on :3000, web on :5173
 ```
+
+There are **two** database connections, and the split is what makes Row Level
+Security real: `DATABASE_MIGRATION_URL` is the owner and is used by migrations,
+the seed and the test harness, while `DATABASE_URL` is the `qaflow_app` role the
+running API uses — it owns no table, so the tenant policies apply to it. Never
+give the API the owner URL. See `docs/technical-debt.md` entry 5.
 
 The whole stack can also run in containers:
 
@@ -73,7 +80,8 @@ docker compose up -d --build  # web on :8080, API on :3000, OpenAPI on :3000/doc
 | `npm run test` | Unit tests (API + web + shared) |
 | `npm run test:integration` | API integration tests against a real PostgreSQL |
 | `npm run test:e2e` | Playwright end-to-end test of the main flow |
-| `npm run db:migrate` | Applies migrations |
+| `npm run db:migrate` | Applies migrations (owner connection) |
+| `npm run db:grant-app-role -w @qa-flow-hub/api` | Sets the runtime role's password from `APP_DATABASE_PASSWORD` |
 | `npm run db:seed` | Loads fictional demo data |
 | `npm run db:reset` | Drops, recreates, migrates and seeds |
 

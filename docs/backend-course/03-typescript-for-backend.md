@@ -38,12 +38,55 @@ y la heredan todos los paquetes.
 | `noPropertyAccessFromIndexSignature` | `env.PORT` no compila si el tipo es un índice; hay que escribir `env['PORT']`. Hace visible que el acceso puede no existir. |
 | `useUnknownInCatchVariables` | En `catch (e)`, `e` es `unknown`. Te obliga a estrechar el tipo antes de leer `.message`. |
 
-**Decisión: `exactOptionalPropertyTypes` está desactivado.** Distingue entre
-"la propiedad no está" y "la propiedad vale `undefined`". Es correcto en teoría,
-pero los tipos generados por Prisma y las salidas de Zod modelan los opcionales
-como `T | undefined`, y activarlo genera ruido sin detectar defectos reales.
-Está anotado como decisión consciente en el propio fichero y en
-[`../technical-debt.md`](../technical-debt.md).
+**`exactOptionalPropertyTypes`, y por qué la predicción era falsa.** Distingue
+entre "la propiedad no está" y "la propiedad vale `undefined`". Se dejó
+desactivado con un argumento razonable —Prisma y Zod modelan los opcionales como
+`T | undefined`, activarlo generaría ruido sin detectar nada— y al activarlo
+salieron **6 errores en todo el monorepo**, cuatro de ellos reales:
+
+```ts
+// Antes: undefined significaba "usa la política por defecto de helmet"...
+await app.register(import('@fastify/helmet'), {
+  contentSecurityPolicy: config.isProduction ? undefined : false,
+});
+
+// ...pero un plugin que comprueba la presencia de la clave ve algo distinto.
+await app.register(import('@fastify/helmet'), {
+  ...(config.isProduction ? {} : { contentSecurityPolicy: false }),
+});
+```
+
+En Prisma la diferencia sale más caro: `where: { status: undefined }` **no filtra
+nada**, así que un opcional mal propagado no da error, devuelve más filas.
+
+La lección de ingeniería no es "actívalo siempre": es que **una decisión anotada
+con una predicción se puede comprobar**. El coste real fue de 6 errores porque el
+código ya usaba el patrón `...(x === undefined ? {} : { x })`; el flag convierte
+esa convención en una regla del compilador en lugar de una costumbre.
+
+## Lint con información de tipos
+
+`tsc` y ESLint no ven lo mismo. Estas tres son válidas para el compilador:
+
+```ts
+save(entity);                       // Promise flotante: nadie espera el fallo
+if (status === HttpStatus.CONFLICT) // number contra enum: nunca coincide
+String(requestBody)                 // "[object Object]", y el test pasa
+```
+
+Ninguna es un error de tipos, y las tres son defectos. Por eso
+[`packages/config/eslint.base.js`](../../packages/config/eslint.base.js) usa
+`recommendedTypeChecked` con `projectService: true`, que deja que cada fichero
+encuentre su propio `tsconfig` —lo que hace viable el monorepo sin enumerar
+proyectos a mano—.
+
+Al activarlo aparecieron 822 errores, y **780 eran el mismo hecho repetido**:
+`response.json()` devuelve `any` en la suite de integración. Ahí la familia
+`no-unsafe-*` está desactivada a propósito, porque el cuerpo de una respuesta HTTP
+**es** un dato sin tipo: poner 780 aserciones de tipo que nadie ha verificado se
+parece a seguridad sin serlo. La versión que sí valdría la pena es validar las
+respuestas con los contratos Zod compartidos, que las tipa *y* detecta deriva del
+contrato; queda anotado en [`../technical-debt.md`](../technical-debt.md).
 
 ## El caso especial de NestJS
 
@@ -166,4 +209,5 @@ npx tsc -p apps/api/tsconfig.json --noEmit --explainFiles | head  # qué fichero
 | Tema | MVP | Futuro |
 | --- | --- | --- |
 | Linting con tipos | Desactivado (el `tsc` estricto ya cubre) | `recommendedTypeChecked` para detectar promesas sin `await` |
-| `exactOptionalPropertyTypes` | Desactivado | Revisar cuando Prisma modele mejor los opcionales |
+| `exactOptionalPropertyTypes` | Activado | — |
+| Lint con tipos | `recommendedTypeChecked` | `no-unsafe-*` apagado en los tests hasta validar respuestas con Zod |

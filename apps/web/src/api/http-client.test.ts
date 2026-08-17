@@ -117,6 +117,11 @@ describe('apiFetch', () => {
 
     const init = initOfCall(fetchMock.mock.calls[0]);
     expect(init.credentials).toBe('include');
-    expect(String(init.body)).not.toContain('refreshToken');
+    // Narrowed rather than stringified: `String(object)` yields "[object
+    // Object]", so the assertion would have passed whatever the body contained.
+    if (typeof init.body !== 'string') {
+      throw new Error('the refresh request must send a serialized body');
+    }
+    expect(init.body).not.toContain('refreshToken');
   });
 });

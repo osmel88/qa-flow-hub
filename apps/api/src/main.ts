@@ -25,8 +25,11 @@ async function bootstrap(): Promise<void> {
 
   // Security headers first: they must be present even on responses produced by
   // plugins that run before the Nest router (rate limiting, for instance).
+  // Omitted in production so helmet applies its own default policy; passing
+  // `undefined` explicitly is not the same thing to a plugin that checks for
+  // the key's presence.
   await app.register(import('@fastify/helmet'), {
-    contentSecurityPolicy: config.isProduction ? undefined : false,
+    ...(config.isProduction ? {} : { contentSecurityPolicy: false }),
   });
 
   // Refresh tokens travel as an HttpOnly cookie; see RefreshCookieService.

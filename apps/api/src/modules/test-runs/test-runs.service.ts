@@ -339,7 +339,7 @@ export class TestRunsService {
             : { elapsedSeconds: input.elapsedSeconds }),
           ...(input.stepResults === undefined
             ? {}
-            : { stepResults: input.stepResults as unknown as Prisma.InputJsonValue }),
+            : { stepResults: input.stepResults }),
           executedById: userId,
         },
         tx,

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Defect, Prisma, TraceabilityLink } from '@prisma/client';
+import { Defect, LinkableEntity, Prisma, TraceabilityLink } from '@prisma/client';
 import { Paginated, PaginationQuery, buildPaginationMeta } from '@qa-flow-hub/shared';
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import { TenantAwareRepository } from '../../database/tenant-aware.repository';
@@ -156,10 +156,7 @@ export class DefectsRepository extends TenantAwareRepository {
   }
 
   /** Both directions: a link is a fact about two entities, not about one. */
-  linksFor(
-    entityType: Prisma.TraceabilityLinkWhereInput['sourceType'],
-    entityId: string,
-  ): Promise<TraceabilityLink[]> {
+  linksFor(entityType: LinkableEntity, entityId: string): Promise<TraceabilityLink[]> {
     return this.prisma.traceabilityLink.findMany({
       where: this.scope({
         OR: [
@@ -173,8 +170,8 @@ export class DefectsRepository extends TenantAwareRepository {
 
   /** Every link of one shape, optionally restricted to known sources. */
   linksBetweenTypes(
-    sourceType: Prisma.TraceabilityLinkWhereInput['sourceType'],
-    targetType: Prisma.TraceabilityLinkWhereInput['targetType'],
+    sourceType: LinkableEntity,
+    targetType: LinkableEntity,
     sourceIds?: string[],
   ): Promise<TraceabilityLink[]> {
     return this.prisma.traceabilityLink.findMany({

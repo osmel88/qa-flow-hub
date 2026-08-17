@@ -24,13 +24,17 @@ export class RequestContextMiddleware implements NestMiddleware {
 
     reply.setHeader('X-Request-Id', requestId);
 
+    // Absent rather than `undefined`: with exactOptionalPropertyTypes, "we do
+    // not know the caller's address" is the field not being there.
+    const ipAddress =
+      (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0]?.trim() : undefined) ??
+      request.socket.remoteAddress;
+
     this.tenant.run(
       {
         requestId,
-        ipAddress:
-          (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0]?.trim() : undefined) ??
-          request.socket.remoteAddress,
-        userAgent: typeof userAgent === 'string' ? userAgent : undefined,
+        ...(ipAddress === undefined ? {} : { ipAddress }),
+        ...(typeof userAgent === 'string' ? { userAgent } : {}),
       },
       next,
     );

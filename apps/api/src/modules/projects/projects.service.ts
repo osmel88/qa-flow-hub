@@ -54,7 +54,7 @@ export class ProjectsService {
   list(query: ListProjectsQuery): Promise<Paginated<ProjectView>> {
     return this.projects
       .list(query, {
-        ...(query.status === undefined ? {} : { status: query.status as ProjectStatus }),
+        ...(query.status === undefined ? {} : { status: query.status }),
         ...(query.search === undefined ? {} : { search: query.search }),
       })
       .then((page) => ({ data: page.data.map(toProjectView), meta: page.meta }));

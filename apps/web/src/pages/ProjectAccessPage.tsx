@@ -122,7 +122,7 @@ export function ProjectAccessPage(): React.JSX.Element {
             {members.data?.data.map((member) => {
               const reason = canManage
                 ? reasonBlocked(
-                    actorRole as OrganizationRoleName,
+                    actorRole,
                     member,
                     member.userId === user?.id,
                   )

@@ -5,10 +5,10 @@ import prettier from 'eslint-config-prettier';
 /**
  * Shared flat ESLint configuration.
  *
- * Type-aware linting is deliberately off: `npm run typecheck` runs `tsc` with a
- * strict configuration over every package, so duplicating that work inside
- * ESLint only slows CI down. ESLint here enforces style and correctness rules
- * that the compiler cannot express.
+ * Type-aware: the rules that matter here — a promise nobody awaited, a
+ * condition that is always true, an `any` flowing in from an untyped boundary —
+ * cannot be expressed without types, and `tsc --noEmit` does not report them.
+ * The cost is a slower lint run, paid once per CI job.
  */
 export const baseConfig = tseslint.config(
   {
@@ -22,7 +22,14 @@ export const baseConfig = tseslint.config(
     ],
   },
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
+  {
+    // `projectService` lets each file find its own tsconfig, which is what makes
+    // this work in a monorepo without listing every project by hand.
+    languageOptions: {
+      parserOptions: { projectService: true },
+    },
+  },
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',

@@ -224,7 +224,11 @@ export class TestDesignRepository extends TenantAwareRepository {
    */
   async replaceSteps(
     testCaseId: string,
-    steps: Array<{ action: string; expectedResult?: string | null; data?: string | null }>,
+    steps: Array<{
+      action: string;
+      expectedResult?: string | null | undefined;
+      data?: string | null | undefined;
+    }>,
     tx: PrismaTransaction,
   ): Promise<void> {
     await tx.testStep.deleteMany({ where: this.scope({ testCaseId }) });

@@ -21,11 +21,13 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": true,
-    "useUnknownInCatchVariables": true
+    "useUnknownInCatchVariables": true,
 
-    // exactOptionalPropertyTypes is intentionally NOT enabled: Prisma's generated
-    // types and Zod's output types model optional fields as `T | undefined`, and
-    // turning it on produces noise without catching real defects here.
-    // See docs/technical-debt.md.
+    // Makes `{ a?: string }` refuse `{ a: undefined }`. It is why the codebase
+    // spreads optional fields conditionally (`...(x === undefined ? {} : { x })`)
+    // instead of passing `undefined` through: with Prisma, `{ where: { a:
+    // undefined } }` means "no filter on a", so the difference between absent and
+    // undefined is the difference between a query and a wider query.
+    "exactOptionalPropertyTypes": true
   }
 }

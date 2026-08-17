@@ -90,26 +90,42 @@ by `test/tenancy.int-spec.ts`.
 - **Trigger to revisit:** a policy for those five tables keyed on the
   authenticated user rather than the organization, if an audit asks for it.
 
-## 6. `exactOptionalPropertyTypes` is disabled
+## 6. `exactOptionalPropertyTypes` is disabled — **resolved**
 
-See `packages/config/tsconfig.base.json`.
+Enabled in `packages/config/tsconfig.base.json`. The prediction recorded here —
+noise from Prisma and Zod, no real defects — was wrong: the whole monorepo
+produced **6** errors, and four of them were places where "absent" and
+"explicitly undefined" genuinely differ (a Fastify plugin that checks for the
+key's presence, a Prisma `where` where `undefined` silently means "no filter").
+The reason the number was small is that the codebase already spread optional
+fields conditionally; the flag now enforces the convention instead of trusting
+it.
 
-- **Why acceptable now:** Prisma's generated types and Zod outputs model
-  optional fields as `T | undefined`; enabling it produces noise without
-  catching real defects.
-- **Cost:** the distinction between "absent" and "explicitly undefined" is not
-  enforced by the compiler.
-- **Trigger to fix:** when Prisma models optionality more precisely.
+## 7. ESLint does not use type information — **resolved**
 
-## 7. ESLint does not use type information
+`packages/config/eslint.base.js` uses `recommendedTypeChecked` with
+`projectService`, so `no-floating-promises`, `no-misused-promises`,
+`no-unsafe-enum-comparison` and the `no-unsafe-*` family are on.
 
-Type-aware rules (`no-floating-promises`, `no-misused-promises`) are off.
+What it caught: a status-code `switch` comparing a plain `number` against
+`HttpStatus` members — reading as exhaustive while several cases could never
+match — four type assertions that asserted nothing, and an assertion on
+`String(requestBody)` that would have passed whatever the body contained.
 
-- **Why acceptable now:** `npm run typecheck` already runs strict `tsc` over
-  every package, and type-aware linting roughly triples lint time.
-- **Cost:** a forgotten `await` on a promise-returning call is not caught by the
-  linter.
-- **Trigger to fix:** the first production bug caused by a missing `await`.
+### Remaining: the integration suite asserts on `any`
+
+The `no-unsafe-*` rules are off for `apps/api/test/**` and `*.test.ts(x)`.
+`response.json()` returns `any`, and ~780 of the 822 initial errors were that
+single fact repeated. Casting each one would assert types nobody verified.
+
+- **Cost:** a renamed response field does not fail the linter in tests, only the
+  assertion that reads it.
+- **Trigger to fix:** parse responses through the shared Zod contracts in the
+  test helper. That types them *and* fails on contract drift, which is strictly
+  better than casts — it is a change to ~800 assertions, so it belongs in its
+  own piece of work.
+- Tooling files (`*.config.ts`, `eslint.config.js`, `playwright.config.ts`) have
+  type-checked rules disabled: they sit outside every tsconfig by design.
 
 ## 8. `react-router` advisory GHSA-qwww-vcr4-c8h2
 

@@ -61,8 +61,35 @@ PORT: z.coerce.number().int().min(1).max(65535).default(3000),
 Y algunas se transforman a su tipo útil:
 
 ```ts
-SWAGGER_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+SWAGGER_ENABLED: z.enum(['true', 'false']).optional(),
 ```
+
+Su valor por omisión no es una constante, sino el entorno: `/docs` publica la
+superficie completa de la API, así que se enciende en desarrollo y se apaga en
+producción, y un valor explícito gana en los dos sentidos.
+
+```ts
+.transform((env) => ({
+  ...env,
+  SWAGGER_ENABLED:
+    (env.SWAGGER_ENABLED ?? (env.NODE_ENV === 'production' ? 'false' : 'true')) === 'true',
+}))
+```
+
+El mismo esquema rechaza además una combinación que nadie escribe a propósito
+pero que aparece copiando configuración de desarrollo:
+
+```ts
+if (env.NODE_ENV === 'production' && env.CORS_ORIGINS.trim() === '*') {
+  // CORS se registra con `credentials: true`
+}
+```
+
+**Decisión:** una comprobación cruzada entre dos variables no cabe en el
+`z.object`, porque cada campo se valida por separado; vive en `superRefine`,
+que ve el objeto entero. Y el sitio correcto es el arranque: un origen
+comodín descubierto por una auditoría es mucho más caro que un despliegue que
+no arranca.
 
 La validación se engancha a `@nestjs/config`:
 
@@ -113,12 +140,18 @@ generar secretos:
 node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"
 ```
 
-Y documenta por qué hay dos bases de datos:
+Y documenta por qué hay tres conexiones:
 
 ```
-DATABASE_URL=postgresql://qaflow:qaflow@localhost:5432/qa_flow_hub?schema=public
+DATABASE_URL=postgresql://qaflow_app:...@localhost:5432/qa_flow_hub?schema=public
+DATABASE_MIGRATION_URL=postgresql://qaflow:qaflow@localhost:5432/qa_flow_hub?schema=public
 TEST_DATABASE_URL=postgresql://qaflow:qaflow@localhost:5433/qa_flow_hub_test?schema=public
 ```
+
+Las dos primeras apuntan a la **misma** base de datos con roles distintos:
+`qaflow_app` no es propietario de ninguna tabla, y por eso las políticas de Row
+Level Security se le aplican (el capítulo 10 lo explica). Las migraciones y el
+seed necesitan el propietario.
 
 El puerto 5433 es la base de datos de pruebas. Existe para que ejecutar la suite
 de integración —que trunca tablas— **no borre los datos con los que estás
@@ -139,7 +172,8 @@ trabajando**. Es una separación barata que evita una pérdida de tiempo real.
 | `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_MS` | Límite de peticiones | `300` / `60000` |
 | `AUTH_MAX_FAILED_ATTEMPTS` / `AUTH_LOCKOUT_MINUTES` | Fuerza bruta | `5` / `15` |
 | `INVITATION_TTL_DAYS` | Caducidad de invitaciones | `7` |
-| `SWAGGER_ENABLED` | Publicar `/docs` | `true` |
+| `WEB_BASE_URL` | Base de los enlaces de invitación | `http://localhost:5173` |
+| `SWAGGER_ENABLED` | Publicar `/docs` | `true`, salvo `production` → `false` |
 
 ## Comandos
 
@@ -164,7 +198,11 @@ JWT_ACCESS_SECRET=corto node apps/api/dist/main.js
   los contiene: `${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in your .env}` falla
   con un mensaje claro si no están en tu `.env`.
 - **Usar `*` en `CORS_ORIGINS` con credenciales.** El navegador lo rechaza y,
-  aunque no lo hiciera, sería un agujero. `*` solo para desarrollo local.
+  aunque no lo hiciera, sería un agujero. `*` solo para desarrollo local: en
+  producción el esquema no arranca, con el mensaje
+  `CORS_ORIGINS cannot be "*" in production`.
+- **Dejar `/docs` abierto en producción.** Ya no ocurre por omisión, pero
+  `SWAGGER_ENABLED=true` heredado de un `.env` de desarrollo sí lo reabre.
 
 ## Preguntas de repaso
 

@@ -115,7 +115,7 @@ ingeniero).
 ## Qué diría en una entrevista
 
 > "Uso este proyecto en las entrevistas porque puedo enseñar el razonamiento, no
-> solo el resultado: hay un fichero de deuda técnica con veintitrés entradas, cada
+> solo el resultado: hay un fichero de deuda técnica con veinticuatro entradas, cada
 > una con su coste y el disparador que la haría urgente. Cuando alguien me pregunta
 > qué haría distinto, no improviso: la lista existía antes de la pregunta."
 

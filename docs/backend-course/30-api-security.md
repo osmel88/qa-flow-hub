@@ -58,6 +58,12 @@ obliga a una lista explícita de orígenes: el navegador rechaza `Access-Control
 Allow-Origin: *` junto con credenciales. Eso convierte un descuido de
 configuración en un error visible en desarrollo, no en una API abierta.
 
+Y como el navegador es la única defensa en ese caso, el esquema de entorno no se
+apoya solo en él: con `NODE_ENV=production`, `CORS_ORIGINS=*` **impide arrancar**.
+Por el mismo motivo `/docs` está apagado por omisión en producción: es un
+endpoint anónimo que publica el mapa completo de la API —incluidas las rutas que
+solo un `organization_owner` puede llamar— y un atacante lo lee antes que tú.
+
 ## Autenticado por defecto
 
 ```ts

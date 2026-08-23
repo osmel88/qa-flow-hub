@@ -16,6 +16,21 @@ describe('validateEnv', () => {
     expect(env.SWAGGER_ENABLED).toBe(true);
   });
 
+  it('serves the documentation in development and hides it in production', () => {
+    expect(validateEnv({ ...validEnv, NODE_ENV: 'production' }).SWAGGER_ENABLED).toBe(false);
+    expect(
+      validateEnv({ ...validEnv, NODE_ENV: 'production', SWAGGER_ENABLED: 'true' })
+        .SWAGGER_ENABLED,
+    ).toBe(true);
+  });
+
+  it('refuses a wildcard CORS origin in production because CORS carries credentials', () => {
+    expect(() => validateEnv({ ...validEnv, NODE_ENV: 'production', CORS_ORIGINS: '*' })).toThrow(
+      /CORS_ORIGINS/,
+    );
+    expect(validateEnv({ ...validEnv, CORS_ORIGINS: '*' }).CORS_ORIGINS).toBe('*');
+  });
+
   it('rejects a short access secret', () => {
     expect(() => validateEnv({ ...validEnv, JWT_ACCESS_SECRET: 'too-short' })).toThrow(
       /JWT_ACCESS_SECRET/,

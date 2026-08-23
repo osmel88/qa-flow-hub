@@ -66,6 +66,9 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in your .env}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # `NODE_ENV=production` turns `/docs` off by default. This stack is a local
+      # demo behind nobody's firewall but your own, so it opts back in; a real
+      # deployment should leave the variable unset.
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
     ports:
       - '3000:3000'

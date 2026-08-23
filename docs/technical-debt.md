@@ -5,7 +5,42 @@ is missing, why it was acceptable for the MVP, what it costs, and what would
 trigger paying it off.
 
 The list is maintained as the project grows; entries are added in the phase that
-creates them.
+creates them. Resolved entries are **kept, not deleted**: the decision that was
+reversed is more instructive than the one that stood, and a deleted entry is how
+a project forgets that it once shipped without Row Level Security.
+
+## Status at the close of the MVP
+
+| # | Entry | Status | Blocked on |
+| --- | --- | --- | --- |
+| 1 | Rate limiting is per process | open | Redis |
+| 2 | Attachments store metadata only | open | object storage |
+| 3 | No background job runner | open | first slow operation |
+| 4 | No email delivery | open | email provider |
+| 5 | No Row Level Security | **resolved** | — |
+| 6 | `exactOptionalPropertyTypes` disabled | **resolved** | — |
+| 7 | ESLint without type information | **resolved**, with a remainder in tests | Zod-parsed test responses |
+| 8 | `react-router` advisory | **resolved** upstream | — |
+| 9 | `@scarf/scarf` install script denied | intentional, permanent | — |
+| 10 | Invitation tokens in the response | open | email provider |
+| 11 | Audit immutability only in code | **resolved** | external store, for the owner |
+| 12 | Lazy invitation expiry | open | job runner |
+| 13 | Single OpenAPI version | open | first external consumer |
+| 14 | Links have no foreign keys | open, by design | integrity job |
+| 15 | Deleted entities keep their links | **resolved** | — |
+| 16 | Dashboard aggregates per request | open | measured p95 |
+| 17 | Coverage counts links, not intent | open | customer reporting |
+| 18 | Noop integration adapters | open | first Jira customer |
+| 19 | No audit retention policy | open | table size or compliance export |
+| 20 | Refresh token body transport | open | scoped API keys |
+| 21 | Project roles not enforced | **resolved** | — |
+| 22 | Project roles do not restrict reading | open | a customer needing it |
+| 23 | Roles guard fails open on project routes | open | response interceptor |
+| 24 | Three dependency advisories | open, unreachable | upstream peer ranges |
+
+Seven of the twenty-four are closed, five of them during this delivery. The ones
+that are **not** blocked on a product decision or a third party — 14, 16, 17, 19,
+22, 23 and the remainder of 7 — are the honest backlog of this codebase.
 
 ---
 
@@ -127,21 +162,18 @@ single fact repeated. Casting each one would assert types nobody verified.
 - Tooling files (`*.config.ts`, `eslint.config.js`, `playwright.config.ts`) have
   type-checked rules disabled: they sit outside every tsconfig by design.
 
-## 8. `react-router` advisory GHSA-qwww-vcr4-c8h2
+## 8. `react-router` advisory GHSA-qwww-vcr4-c8h2 — resolved
 
-`npm audit` reports 2 high-severity findings, both from the same advisory in
-`react-router` (RSC mode CSRF bypass), reachable through `react-router-dom@7`.
+The RSC-mode advisory was never reachable here (this is a pure client-side SPA
+with no RSC handler), and the entry existed because the only fix at the time was
+a major published three days earlier. `react-router-dom@7.18.2` now carries the
+fix inside the 7.x line, so `npm audit` no longer reports it and no major upgrade
+was needed.
 
-- **Assessment:** this application is a pure client-side SPA. It does not use
-  React Server Components, does not run the RSC request handler, and has no
-  server-side action processing — the vulnerable code path is not reachable.
-- **Why not fixed now:** the fix is `react-router@8.3.0`, published three days
-  before this was written. Adopting a major version that fresh is a bigger risk
-  than the advisory itself; the project's rule is to prefer dependency versions
-  published at least a week ago. Downgrading is worse: versions below 7.12
-  carry eleven *other* advisories.
-- **Trigger to fix:** upgrade to `react-router` 8.x once it has settled, in a
-  dedicated pull request with the end-to-end suite as the safety net.
+The lesson worth keeping: the advisory was aged out rather than patched in a
+hurry, which was the right call *because* the reachability analysis said so. The
+same reasoning does not license ignoring an advisory whose path is reachable —
+see entry 24.
 
 ## 9. `@scarf/scarf` install script is denied
 
@@ -335,3 +367,44 @@ means the guard is no longer the last line of defence on those routes.
 - **Trigger to fix:** an interceptor that fails the response when a
   project-scoped handler completed without resolving a project — cheap to add
   once, and it turns the convention into a check.
+
+## 24. Three advisories with no upgrade path we can take
+
+`npm audit` reports 5 high-severity findings, in three groups. None is fixable by
+changing a version we control, so each is recorded with its reachability instead
+of being "fixed" by a forced resolution:
+
+**`@fastify/static` ≤ 10.1.1** (four advisories: path traversal in directory
+listing, route-guard bypass via encoded separators and via traversal,
+authorization bypass on non-canonical paths). The fixed line is 10.1.2+, and the
+workspace does depend on a fixed version — but the copy that actually serves
+requests is the one npm installs for the **optional peer** of
+`@nestjs/platform-fastify`, whose range is `^8.0.0 || ^9.0.0`. Forcing 10.x with
+an `overrides` entry leaves the tree in a state npm itself reports as invalid, so
+it was reverted.
+
+- **Reachability:** the only handler that serves static files is the Swagger UI
+  mounted at `/docs`. The app never calls `useStaticAssets()`, so no application
+  route is served from disk, and the assets exposed are Swagger's own.
+- **Mitigation shipped:** `/docs` is now off by default in production, so the
+  handler does not exist in a production deployment unless it is switched on
+  deliberately (`SWAGGER_ENABLED=true`).
+- **Trigger to fix:** `@nestjs/platform-fastify` widening its peer range to
+  `^10`. Then a single hoisted copy is enough and the override becomes
+  unnecessary.
+
+**`deepmerge-ts` < 8 through `@prisma/config`** (stack exhaustion on recursive
+object graphs). Reached only by the Prisma CLI while merging its own
+configuration, from a file in this repository, at migration time — not from a
+request, and not from customer input. The latest `@prisma/config` still pins
+`deepmerge-ts@7.1.5`, so there is no version to move to.
+
+**`nanoid` < 3.3.18 through `postcss` and Vite.** Build-time only, in the
+frontend toolchain; it never ships in a bundle and never sees a request.
+
+- **Cost of all three:** `npm audit` is not clean, so it cannot be a CI gate
+  without a suppression file, and a suppression file is where real findings go to
+  hide.
+- **Trigger to revisit:** each upstream release. The check to run is
+  `npm audit --omit=dev`, and the question to answer is always reachability, not
+  the severity badge.

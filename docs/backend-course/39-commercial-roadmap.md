@@ -54,7 +54,7 @@ proyecto destino, y un `POST` que triunfó cuya respuesta se perdió.
 
 ## La deuda técnica, leída como negocio
 
-`technical-debt.md` no es una lista de deseos. Sus 23 entradas caen en tres cubos, y
+`technical-debt.md` no es una lista de deseos. Sus 24 entradas caen en tres cubos, y
 esa clasificación es lo que hace útil el fichero:
 
 - **Bloquea una venta:** correo (4, 10), adjuntos (2), visibilidad por proyecto (22),

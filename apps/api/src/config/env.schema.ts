@@ -46,11 +46,28 @@ export const envSchema = z.object({
    */
   WEB_BASE_URL: z.string().url().default('http://localhost:5173'),
 
-  SWAGGER_ENABLED: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((value) => value === 'true'),
-});
+  /**
+   * Interactive documentation. Left unset it follows the environment: on in
+   * development, off in production, because `/docs` publishes the entire API
+   * surface to anonymous callers. Setting it explicitly wins either way, so a
+   * private deployment can still turn it on.
+   */
+  SWAGGER_ENABLED: z.enum(['true', 'false']).optional(),
+})
+  .transform((env) => ({
+    ...env,
+    SWAGGER_ENABLED:
+      (env.SWAGGER_ENABLED ?? (env.NODE_ENV === 'production' ? 'false' : 'true')) === 'true',
+  }))
+  .superRefine((env, ctx) => {
+    if (env.NODE_ENV === 'production' && env.CORS_ORIGINS.trim() === '*') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CORS_ORIGINS'],
+        message: 'CORS_ORIGINS cannot be "*" in production: CORS is configured with credentials',
+      });
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

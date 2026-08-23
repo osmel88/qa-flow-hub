@@ -77,7 +77,13 @@ and chapter 10 of the backend course. Summary:
 ## Transport and headers
 
 - Helmet: `X-Content-Type-Options`, `X-Frame-Options`, HSTS in production.
-- CORS: explicit allow-list from `CORS_ORIGINS`, credentials enabled.
+- CORS: explicit allow-list from `CORS_ORIGINS`, credentials enabled. A wildcard
+  is accepted in development and **rejected at boot** in production, because a
+  reflected origin plus credentials is the combination the allow-list exists to
+  prevent.
+- OpenAPI: `/docs` and `/docs/openapi.json` are unauthenticated, so they are
+  disabled by default when `NODE_ENV=production` — the document is a complete map
+  of the API, including every role-restricted route.
 - Rate limiting: `@fastify/rate-limit`, in-memory. **Per instance** — see
   limitations.
 - Request id: taken from `X-Request-Id` or generated, echoed back and attached

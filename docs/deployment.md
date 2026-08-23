@@ -73,10 +73,10 @@ in every environment that ever ran it.
 | --- | --- |
 | `DATABASE_URL` | `qaflow_app`, never the owner |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | ≥ 32 chars, **different** from each other; the app refuses to boot otherwise |
-| `CORS_ORIGINS` | explicit list; `*` with credentials is rejected by browsers |
+| `CORS_ORIGINS` | explicit list; a wildcard **fails validation** when `NODE_ENV=production`, because CORS is registered with credentials |
 | `WEB_BASE_URL` | invitation links are built from this, never from a request header |
 | `NODE_ENV=production` | switches helmet to its default CSP and the refresh cookie to `Secure` |
-| `SWAGGER_ENABLED=false` | recommended; the schema is a map of the API |
+| `SWAGGER_ENABLED` | off by default in production, because the schema is a map of the API. Set it to `true` only for a deployment that is not publicly reachable |
 
 Rotating a JWT secret invalidates every token signed with it: access tokens die
 within 15 minutes, refresh tokens immediately (their HMAC no longer matches), so a

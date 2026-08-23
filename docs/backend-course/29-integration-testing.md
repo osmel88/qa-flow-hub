@@ -7,7 +7,7 @@ globales, el filtro de excepciones, el prefijo, el versionado— contra **Postgr
 real**, y la conduce **por HTTP**. Nada está mockeado: ni Prisma, ni la
 autenticación, ni el contexto de tenant.
 
-Son 188 pruebas y son la columna vertebral de la calidad de este backend.
+Son 226 pruebas y son la columna vertebral de la calidad de este backend.
 
 ## Qué problema resuelve
 
@@ -33,15 +33,18 @@ apps/api/test/utils/create-test-app.ts  arranca el Nest real
 apps/api/test/utils/workspace.ts        organización + proyecto + miembros por rol
 apps/api/vitest.integration.config.ts   un solo hilo, timeouts largos
 
-apps/api/test/health.int-spec.ts         2
-apps/api/test/tenancy.int-spec.ts       13
-apps/api/test/auth.int-spec.ts          21
-apps/api/test/organizations.int-spec.ts 41
-apps/api/test/requirements.int-spec.ts  24
-apps/api/test/test-design.int-spec.ts   33
-apps/api/test/test-runs.int-spec.ts     26
-apps/api/test/defects.int-spec.ts       21
-apps/api/test/dashboard.int-spec.ts      7
+apps/api/test/health.int-spec.ts                  2
+apps/api/test/tenancy.int-spec.ts                13
+apps/api/test/auth.int-spec.ts                   25
+apps/api/test/organizations.int-spec.ts          42
+apps/api/test/project-access.int-spec.ts         12
+apps/api/test/requirements.int-spec.ts           24
+apps/api/test/test-design.int-spec.ts            33
+apps/api/test/test-runs.int-spec.ts              26
+apps/api/test/defects.int-spec.ts                21
+apps/api/test/traceability-integrity.int-spec.ts 10
+apps/api/test/dashboard.int-spec.ts              10
+apps/api/test/rls.int-spec.ts                     8   (el único que conecta como `qaflow_app`)
 ```
 
 ## La app de test es la app, no una parecida

@@ -52,8 +52,9 @@ property, not a feature.
 2. **History is immutable.** Results are append-only and a test case is
    snapshotted when it enters a run. Editing a case must never rewrite what a
    past release reported.
-3. **Isolation is not a feature, it is a precondition.** Enforced in the token,
-   in the guards and in every repository query.
+3. **Isolation is not a feature, it is a precondition.** Enforced in four
+   layers: the token, the guards, every repository query, and PostgreSQL Row
+   Level Security applied to a database role that owns nothing.
 4. **Integrate, do not replace.** Teams already use Jira and GitHub. The
    adapters (`IssueTrackerAdapter`, `TestManagementAdapter`,
    `AutomationProviderAdapter`) exist from day one so that integration is adding
@@ -69,7 +70,8 @@ results, defects, traceability matrix, dashboard, audit log, integration
 contracts, and a web client for all of it.
 
 **Out, deliberately:** real calls to Jira/TestRail, email delivery, payments,
-real file storage, granular permissions, production deployment. Each of these
+real file storage, project-scoped *visibility* (per-project roles exist and
+change what you can do, not what you can see), production deployment. Each of these
 has an extension point ready and an entry in
 [`technical-debt.md`](technical-debt.md) explaining what is missing and why.
 
@@ -96,7 +98,7 @@ The detailed sequencing is in [`commercial-roadmap.md`](commercial-roadmap.md).
 ## What could sink it
 
 - **A cross-tenant leak.** One incident ends the product's credibility. This is
-  why isolation is enforced in three layers and covered by its own test suite.
+  why isolation is enforced in four layers and covered by its own test suites.
 - **Being a worse Jira.** If the defect module drifts towards competing with
   issue trackers instead of linking to them, we lose on features and on focus.
 - **Enterprise isolation requirements.** Regulated customers may demand physical

@@ -33,4 +33,9 @@ Date: YYYY-MM-DD
 | [0005](0005-monorepo-npm-workspaces.md) | Monorepo with npm workspaces | accepted |
 | [0006](0006-multi-tenancy-strategy.md) | Row-level multi-tenancy with a shared schema | accepted |
 | [0007](0007-modular-monolith.md) | Modular monolith, not microservices | accepted |
-| [0008](0008-jwt-and-refresh-tokens.md) | JWT access tokens with rotating refresh tokens | accepted |
+| [0008](0008-jwt-and-refresh-tokens.md) | JWT access tokens with rotating refresh tokens | accepted, amended by 0012 |
+| [0009](0009-test-case-snapshots-in-runs.md) | A test case is snapshotted when it enters a run | accepted |
+| [0010](0010-polymorphic-traceability-links.md) | One polymorphic table for traceability links | accepted |
+| [0011](0011-shared-zod-contracts.md) | Zod contracts shared between API and web client | accepted |
+| [0012](0012-refresh-token-cookie-transport.md) | Refresh tokens travel as an `HttpOnly` cookie | accepted |
+| [0013](0013-row-level-security-with-non-owning-role.md) | Row Level Security through a non-owning role | accepted |

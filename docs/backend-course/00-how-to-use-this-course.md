@@ -87,9 +87,16 @@ cp .env.example .env           # y cambia los dos secretos JWT
 npm install
 docker compose up -d postgres postgres-test
 npm run db:migrate
+npm run db:grant-app-role -w @qa-flow-hub/api   # contraseña del rol de runtime
 npm run db:seed
 npm run dev
 ```
+
+El tercer comando de base de datos no es opcional: la migración crea el rol
+`qaflow_app` **sin contraseña** —una contraseña dentro de una migración es un
+secreto commiteado— y `DATABASE_URL` se conecta con ese rol. Si lo omites, la
+API arranca y falla al primer acceso a la base de datos. El capítulo 10 explica
+por qué el runtime no usa el propietario.
 
 Con eso tienes la API en `http://localhost:3000/api/v1`, la documentación
 OpenAPI en `http://localhost:3000/docs` y el cliente web en

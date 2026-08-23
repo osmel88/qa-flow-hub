@@ -8,7 +8,8 @@ than described in the future tense.
 
 | Threat | Control | Where |
 | --- | --- | --- |
-| Cross-tenant data access | Row-level filter injected by the repository base | `tenant-aware.repository.ts`, `tenancy.int-spec.ts` |
+| Cross-tenant data access | Row-level filter injected by the repository base, plus RLS policies enforced against a non-owning role | `tenant-aware.repository.ts`, `tenancy.int-spec.ts`, `rls.int-spec.ts` |
+| Rewriting the audit trail | Append-only triggers on `audit_logs`; the API role cannot disable them | `20260816135824_audit_log_append_only`, `dashboard.int-spec.ts`, `rls.int-spec.ts` |
 | Credential stuffing | Argon2id, per-account lockout, rate limiting | `password.service.ts`, `auth.service.ts` |
 | Account enumeration | Identical error and identical timing | `auth.service.ts` (`wasteTime()`) |
 | Stolen refresh token | Rotation with family revocation on reuse | `auth.service.ts`, `sessions.repository.ts` |
@@ -54,8 +55,9 @@ where the object is loaded — not in guards.
 ## Tenant isolation
 
 The single largest risk in a shared-schema SaaS. See
-[`adr/0006-multi-tenancy-strategy.md`](adr/0006-multi-tenancy-strategy.md) and
-chapter 10 of the backend course. Summary:
+[`adr/0006-multi-tenancy-strategy.md`](adr/0006-multi-tenancy-strategy.md),
+[`adr/0013-row-level-security-with-non-owning-role.md`](adr/0013-row-level-security-with-non-owning-role.md)
+and chapter 10 of the backend course. Summary:
 
 - every functional table carries `organizationId`;
 - the active organization travels in an `AsyncLocalStorage`, so it cannot be
@@ -65,7 +67,12 @@ chapter 10 of the backend course. Summary:
 - writes use `updateMany`/`deleteMany` with the filter, never `update`/`delete`
   by primary key;
 - the isolation suite performs the realistic attack — knowing the target's exact
-  id — and requires it to fail.
+  id — and requires it to fail;
+- Row Level Security is the layer underneath: the API connects as `qaflow_app`,
+  which owns nothing, so a query that forgets the tenant filter reads zero rows
+  instead of everything. PostgreSQL exempts a table's owner from its own
+  policies, which is why the role — not the policy — is what protects the data.
+  The owner credential is used only by migrations, the seed and the test harness.
 
 ## Transport and headers
 
@@ -103,9 +110,16 @@ These are real and deliberate, not oversights. Also tracked in
 3. **No second factor and no SSO.** Both are expected by enterprise buyers.
 4. **No password recovery**, because it requires real email delivery, which is
    out of scope for this version.
-5. **No Row Level Security.** Isolation is enforced by the application and
-   proved by tests. RLS is planned as defence in depth.
-6. **Attachments are metadata only.** No file is stored, so there is no upload
+5. **Global tables have no RLS policy.** `users`, `sessions`, `organizations`,
+   `organization_members` and `organization_invitations` are read before an
+   active organization exists — login, listing your organizations, viewing an
+   invitation — so a policy there could only be satisfied by disabling it on
+   those paths. They are protected by the application layer only.
+6. **Whoever holds the owner credential can rewrite history.** The append-only
+   triggers stop the application and a `psql` session using the runtime role,
+   not the table owner (`ALTER TABLE ... DISABLE TRIGGER`). The real answer is
+   shipping audit records to an external append-only store.
+7. **Attachments are metadata only.** No file is stored, so there is no upload
    surface to defend yet — and no antivirus scanning to design.
-7. **Audit log records actions, not denials.** A burst of 403s is a useful
+8. **Audit log records actions, not denials.** A burst of 403s is a useful
    signal we are not yet capturing.

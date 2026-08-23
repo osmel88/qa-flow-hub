@@ -89,7 +89,9 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     env:
-      NODE_ENV: production
+      # NODE_ENV stays unset for the job: `npm ci` reads it, and `production`
+      # would omit the devDependencies that build the client and run Playwright.
+      # The API process gets it in its own step.
       # Runtime connects as the non-owning role, exactly like production, so the
       # end-to-end run would fail if a policy blocked a legitimate flow.
       DATABASE_URL: postgresql://qaflow_app:qaflow_app_ci@localhost:5434/qa_flow_hub_e2e?schema=public
@@ -116,6 +118,8 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: apps/web
       - name: Start the API and wait until it is live
+        env:
+          NODE_ENV: production
         run: |
           nohup node apps/api/dist/main.js > api.log 2>&1 &
           for _ in $(seq 1 60); do

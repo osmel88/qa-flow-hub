@@ -26,7 +26,10 @@ export function TestCaseEditorPage(): React.JSX.Element {
   const [steps, setSteps] = useState<DraftStep[]>([]);
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  // The version comes from the save response, not from the detail query: the
+  // query may not have refetched yet, and a stale number here is exactly how a
+  // display bug hides a real one.
+  const [savedVersion, setSavedVersion] = useState<number | null>(null);
 
   const detail = useQuery({
     queryKey: ['case', caseId],
@@ -45,25 +48,25 @@ export function TestCaseEditorPage(): React.JSX.Element {
     }
   }, [detail.data]);
 
+  // Title and steps travel in the same request on purpose: two requests meant
+  // two version bumps for one save, and the version is what run snapshots cite.
   const save = useMutation({
-    mutationFn: async () => {
-      await testDesignApi.updateCase(caseId, { title });
-      return testDesignApi.replaceSteps(
-        caseId,
-        steps.map((step) => ({
+    mutationFn: () =>
+      testDesignApi.updateCase(caseId, {
+        title,
+        steps: steps.map((step) => ({
           action: step.action,
           expectedResult: step.expectedResult === '' ? null : step.expectedResult,
         })),
-      );
-    },
-    onSuccess: async () => {
+      }),
+    onSuccess: async (updated) => {
       setError(null);
-      setSaved(true);
+      setSavedVersion(updated.version);
       await queryClient.invalidateQueries({ queryKey: ['case', caseId] });
       await queryClient.invalidateQueries({ queryKey: ['cases'] });
     },
     onError: (cause) => {
-      setSaved(false);
+      setSavedVersion(null);
       setError(cause instanceof ApiError ? cause.message : 'Could not save the case.');
     },
   });
@@ -89,9 +92,9 @@ export function TestCaseEditorPage(): React.JSX.Element {
               {error}
             </p>
           )}
-          {saved && (
+          {savedVersion !== null && (
             <p className="ui-state" role="status">
-              Saved as version {detail.data?.version ?? ''}.
+              Saved as version {savedVersion}.
             </p>
           )}
 
@@ -100,7 +103,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
             value={title}
             onChange={(event) => {
               setTitle(event.target.value);
-              setSaved(false);
+              setSavedVersion(null);
             }}
           />
 
@@ -117,7 +120,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
                   value={step.action}
                   onChange={(event) => {
                     updateStep(index, { action: event.target.value });
-                    setSaved(false);
+                    setSavedVersion(null);
                   }}
                 />
                 <TextAreaField
@@ -125,7 +128,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
                   value={step.expectedResult}
                   onChange={(event) => {
                     updateStep(index, { expectedResult: event.target.value });
-                    setSaved(false);
+                    setSavedVersion(null);
                   }}
                 />
                 <Button
@@ -133,7 +136,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
                   variant="ghost"
                   onClick={() => {
                     setSteps((current) => current.filter((_, position) => position !== index));
-                    setSaved(false);
+                    setSavedVersion(null);
                   }}
                 >
                   Remove step {index + 1}
@@ -148,7 +151,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
               disabled={steps.length >= MAX_STEPS}
               onClick={() => {
                 setSteps((current) => [...current, { action: '', expectedResult: '' }]);
-                setSaved(false);
+                setSavedVersion(null);
               }}
             >
               Add step

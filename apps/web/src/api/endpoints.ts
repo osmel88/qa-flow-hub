@@ -150,7 +150,7 @@ export const testDesignApi = {
   createCase: (body: CreateTestCaseInput) =>
     apiFetch<TestCaseDetailView>('/test-cases', { method: 'POST', body }),
   updateCase: (id: string, body: UpdateTestCaseInput) =>
-    apiFetch<TestCaseView>(`/test-cases/${id}`, { method: 'PATCH', body }),
+    apiFetch<TestCaseDetailView>(`/test-cases/${id}`, { method: 'PATCH', body }),
   replaceSteps: (id: string, steps: Array<{ action: string; expectedResult?: string | null }>) =>
     apiFetch<TestCaseDetailView>(`/test-cases/${id}/steps`, { method: 'POST', body: { steps } }),
   duplicate: (id: string) =>

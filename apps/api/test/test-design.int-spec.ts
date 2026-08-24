@@ -88,6 +88,53 @@ describe('test design', () => {
     expect(response.json().version).toBe(2);
   });
 
+  /**
+   * Regression: the editor used to send a field update and a step replacement
+   * as two requests, so one save moved the version by two. Saving both in one
+   * request has to move it by exactly one, and the returned steps have to be
+   * the new ones — a single bump with the old steps would be worse.
+   */
+  it('counts one save as one version even when it carries fields and steps', async () => {
+    const suite = await createSuite();
+    const id = (await createCase(suite.json().id, { steps: [{ action: 'Only step' }] })).json().id;
+
+    const first = await request(
+      'PATCH',
+      `/api/v1/test-cases/${id}`,
+      asOwner({ title: 'Pay with an expired card', steps: [{ action: 'First' }] }),
+    );
+    expect(first.json().version).toBe(2);
+    expect(first.json().steps.map((step: { action: string }) => step.action)).toEqual(['First']);
+
+    const second = await request(
+      'PATCH',
+      `/api/v1/test-cases/${id}`,
+      asOwner({ title: 'Pay with a blocked card', steps: [{ action: 'First' }, { action: 'Second' }] }),
+    );
+    expect(second.json().version).toBe(3);
+    expect(second.json().steps).toHaveLength(2);
+
+    // One audit row per save, not two: the log is what a report cites.
+    const audits = await prisma.auditLog.findMany({ where: { entityId: id, action: 'update' } });
+    expect(audits).toHaveLength(2);
+  });
+
+  it('leaves the steps alone when a save carries only fields', async () => {
+    const suite = await createSuite();
+    const id = (await createCase(suite.json().id, { steps: [{ action: 'Only step' }] })).json().id;
+
+    const response = await request(
+      'PATCH',
+      `/api/v1/test-cases/${id}`,
+      asOwner({ priority: 'high' }),
+    );
+
+    expect(response.json().version).toBe(2);
+    expect(response.json().steps.map((step: { action: string }) => step.action)).toEqual([
+      'Only step',
+    ]);
+  });
+
   it('duplicates a case with its steps under a new key', async () => {
     const suite = await createSuite();
     const source = await createCase(suite.json().id, {

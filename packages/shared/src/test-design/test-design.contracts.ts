@@ -146,6 +146,11 @@ export const updateTestCaseSchema = z
     estimateMinutes: z.number().int().min(1).max(10_000).nullish(),
     tags: tagsSchema.optional(),
     sectionId: z.string().min(1).nullish(),
+    /**
+     * Sent together with the fields when an editor saves both at once, so one
+     * save is one version. Omitted, the steps are left alone.
+     */
+    steps: z.array(testStepSchema).max(100).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'Provide at least one field to update',

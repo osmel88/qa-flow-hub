@@ -321,31 +321,49 @@ export class TestDesignService {
         ? undefined
         : await this.resolveSectionId(testCase.suiteId, input.sectionId);
 
-    // `version` is bumped on every edit and copied into run snapshots, so a
-    // report can state which version of the case was executed.
-    const updated = await this.repository.updateCase(id, {
-      ...(input.title === undefined ? {} : { title: input.title }),
-      ...(input.description === undefined ? {} : { description: input.description }),
-      ...(input.preconditions === undefined ? {} : { preconditions: input.preconditions }),
-      ...(input.expectedResult === undefined ? {} : { expectedResult: input.expectedResult }),
-      ...(input.type === undefined ? {} : { type: input.type }),
-      ...(input.priority === undefined ? {} : { priority: input.priority }),
-      ...(input.status === undefined ? {} : { status: input.status }),
-      ...(input.automationStatus === undefined ? {} : { automationStatus: input.automationStatus }),
-      ...(input.estimateMinutes === undefined ? {} : { estimateMinutes: input.estimateMinutes }),
-      ...(input.tags === undefined ? {} : { tags: input.tags }),
-      ...(sectionId === undefined ? {} : { sectionId }),
-      version: { increment: 1 },
-    });
-    if (updated === null) {
-      throw new NotFoundError('Test case');
-    }
+    // One save is one version, fields and steps included: `version` lands in
+    // run snapshots, so two bumps per edit would make a report cite a version
+    // nobody ever saw.
+    await this.prisma.runInTransaction(async (tx) => {
+      const testCaseAfter = await this.repository.updateCase(
+        id,
+        {
+          ...(input.title === undefined ? {} : { title: input.title }),
+          ...(input.description === undefined ? {} : { description: input.description }),
+          ...(input.preconditions === undefined ? {} : { preconditions: input.preconditions }),
+          ...(input.expectedResult === undefined ? {} : { expectedResult: input.expectedResult }),
+          ...(input.type === undefined ? {} : { type: input.type }),
+          ...(input.priority === undefined ? {} : { priority: input.priority }),
+          ...(input.status === undefined ? {} : { status: input.status }),
+          ...(input.automationStatus === undefined
+            ? {}
+            : { automationStatus: input.automationStatus }),
+          ...(input.estimateMinutes === undefined ? {} : { estimateMinutes: input.estimateMinutes }),
+          ...(input.tags === undefined ? {} : { tags: input.tags }),
+          ...(sectionId === undefined ? {} : { sectionId }),
+          version: { increment: 1 },
+        },
+        tx,
+      );
+      if (testCaseAfter === null) {
+        throw new NotFoundError('Test case');
+      }
 
-    await this.audit.record({
-      action: AuditAction.update,
-      entityType: 'TestCase',
-      entityId: id,
-      summary: `Updated ${updated.key} to version ${updated.version}`,
+      if (input.steps !== undefined) {
+        await this.repository.replaceSteps(id, input.steps, tx);
+      }
+
+      await this.audit.record(
+        {
+          action: AuditAction.update,
+          entityType: 'TestCase',
+          entityId: id,
+          summary: `Updated ${testCaseAfter.key} to version ${testCaseAfter.version}`,
+          ...(input.steps === undefined ? {} : { changes: { steps: input.steps.length } }),
+        },
+        tx,
+      );
+
     });
 
     return this.detail(id);

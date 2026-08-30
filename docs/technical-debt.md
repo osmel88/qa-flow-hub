@@ -37,10 +37,12 @@ a project forgets that it once shipped without Row Level Security.
 | 22 | Project roles do not restrict reading | open | a customer needing it |
 | 23 | Roles guard fails open on project routes | open | response interceptor |
 | 24 | Three dependency advisories | open, unreachable | upstream peer ranges |
+| 25 | Intermittent logout on full page loads | open, not reproducible | instrumentation |
+| 26 | Destructive actions that only exist in the API | open, partly closed | product decision per entity |
 
-Seven of the twenty-four are closed, five of them during this delivery. The ones
+Seven of the twenty-six are closed, five of them during this delivery. The ones
 that are **not** blocked on a product decision or a third party — 14, 16, 17, 19,
-22, 23 and the remainder of 7 — are the honest backlog of this codebase.
+22, 23, 25 and the remainder of 7 — are the honest backlog of this codebase.
 
 ---
 
@@ -408,3 +410,68 @@ frontend toolchain; it never ships in a bundle and never sees a request.
 - **Trigger to revisit:** each upstream release. The check to run is
   `npm audit --omit=dev`, and the question to answer is always reachability, not
   the severity badge.
+
+## 25. Intermittent logout on full page loads
+
+During the manual end-to-end session the client logged itself out twice while
+navigating by typing a URL in the address bar with a valid session, and once on
+`Ctrl+Shift+R`. Plain `F5` reloads never did it, and no sequence reproduced it on
+demand. **No change was made to authentication**: a speculative fix to a login
+system, validated by a bug that does not reproduce, is how a security control
+becomes folklore.
+
+- **Symptoms:** the app returns to the login screen mid-session; the next login
+  succeeds normally, which rules out a corrupted account or a clock problem.
+- **Standing hypothesis — refresh rotation, not expiry.** Refresh tokens rotate
+  on every use, and presenting an already-rotated token is treated as theft:
+  `AuthService.refresh` revokes the **whole family**
+  (`revokeFamily(..., 'reuse_detected')`). Two concurrent `/refresh` calls with
+  the same cookie therefore end the session rather than one of them losing a
+  race. The client's guard against that (`ensureRefresh`, a module-level promise
+  in `apps/web/src/api/http-client.ts`) only serialises calls **within one
+  JavaScript context**, and a full page load creates a new one — which matches
+  the observation that address-bar navigation and a hard reload failed while
+  `F5` did not.
+- **Cost:** rare, self-correcting, but indistinguishable to a user from the
+  product forgetting who they are — and if the hypothesis is right, one stray
+  concurrent refresh logs the user out of **every** device on that family.
+- **How to instrument before touching auth:** log `familyId`, `sessionId` and
+  the request id on every `/refresh`, and count how often two arrive for the
+  same family within a second; the reuse-detection branch already logs, so the
+  question is only whether that log line appears at the moment of a logout. If
+  it does, the fix is a short reuse grace window for the immediately previous
+  token of a family (the standard remedy) — a deliberate, tested weakening of
+  rotation, not a guess.
+- **Trigger to fix:** the log line above appearing in a real logout, or one
+  reproducible sequence.
+
+## 26. Destructive and restorative actions that only exist in the API
+
+The API exposes more of the entity lifecycle than the client does. This was
+invisible until the manual pass, because every one of these routes is covered by
+integration tests and none of them had a button.
+
+| Action | API | UI |
+| --- | --- | --- |
+| Archive a test case | yes | yes |
+| Restore a test case | yes | **yes, added in this delivery** |
+| Delete a requirement | yes | no |
+| Delete a test case | yes | no |
+| Delete a test run | yes | no |
+| Delete a defect | yes | no |
+
+Restoring a case was added because it is the counterpart of a button that
+already exists, uses the same permission, and without it archiving is a one-way
+door in the interface. The deletions were **not** added on the same reasoning:
+they are soft deletes, but they purge traceability links in the same transaction
+(entry 15), so the undo is not symmetrical and the screen needs a confirmation
+step that says what else disappears. That is a product decision, and scope was
+not widened to make it unilaterally.
+
+- **Cost:** an organisation owner cannot correct a mistyped requirement or a
+  duplicated run without calling the API.
+- **Proposal when it is taken up:** one shared confirmation dialog that names
+  the entity and the number of links that will be purged, wired to the existing
+  `DELETE` routes; visible only to the roles the API already requires. It is a
+  small change once the wording of the warning is agreed.
+- **Trigger to fix:** the first pilot user who needs to undo something.

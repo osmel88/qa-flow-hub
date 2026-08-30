@@ -38,7 +38,11 @@ export class TestDesignRepository extends TenantAwareRepository {
     return this.prisma.testSuite.findMany({
       where: this.active({ projectId }),
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-      include: { _count: { select: { testCases: { where: { deletedAt: null } } } } },
+      // Archived cases are hidden from the default case list, so counting them
+      // here would leave the tree claiming cases the table does not show.
+      include: {
+        _count: { select: { testCases: { where: { deletedAt: null, archivedAt: null } } } },
+      },
     });
   }
 
@@ -137,19 +141,14 @@ export class TestDesignRepository extends TenantAwareRepository {
     return (tx ?? this.prisma).testCase.findFirst({ where: this.active({ id }) });
   }
 
-  findCaseWithSteps(
-    id: string,
-  ): Promise<(TestCase & { steps: TestStep[] }) | null> {
+  findCaseWithSteps(id: string): Promise<(TestCase & { steps: TestStep[] }) | null> {
     return this.prisma.testCase.findFirst({
       where: this.active({ id }),
       include: { steps: { orderBy: { position: 'asc' } } },
     });
   }
 
-  async listCases(
-    query: PaginationQuery,
-    filters: TestCaseFilters,
-  ): Promise<Paginated<TestCase>> {
+  async listCases(query: PaginationQuery, filters: TestCaseFilters): Promise<Paginated<TestCase>> {
     const where: Prisma.TestCaseWhereInput = this.active({
       projectId: filters.projectId,
       ...(filters.includeArchived ? {} : { archivedAt: null }),

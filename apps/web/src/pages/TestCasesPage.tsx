@@ -23,6 +23,7 @@ export function TestCasesPage(): React.JSX.Element {
   const [caseTitle, setCaseTitle] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const suites = useQuery({
     queryKey: ['suites', activeProjectId],
@@ -39,21 +40,38 @@ export function TestCasesPage(): React.JSX.Element {
   });
 
   const cases = useQuery({
-    queryKey: ['cases', activeProjectId, selectedSuite],
+    queryKey: ['cases', activeProjectId, selectedSuite, includeArchived],
     queryFn: () =>
       testDesignApi.cases({
         projectId: activeProjectId ?? '',
         ...(selectedSuite === null ? {} : { suiteId: selectedSuite }),
+        ...(includeArchived ? { includeArchived: 'true' as const } : {}),
       }),
     enabled: activeProjectId !== null,
   });
+
+  /**
+   * Archiving changes three answers at once, so all three queries go.
+   *
+   * The link survives but stops counting as coverage, which means the matrix on
+   * another screen is now wrong, and the suite tree's count is too; leaving
+   * either stale reads as a data bug rather than a stale cache.
+   */
+  const refreshAfterLifecycleChange = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['cases'] }),
+      queryClient.invalidateQueries({ queryKey: ['suites'] }),
+      queryClient.invalidateQueries({ queryKey: ['matrix'] }),
+    ]);
+  };
 
   const fail = (cause: unknown, fallback: string) => {
     setError(cause instanceof ApiError ? cause.message : fallback);
   };
 
   const createSuite = useMutation({
-    mutationFn: () => testDesignApi.createSuite({ projectId: activeProjectId ?? '', name: suiteName }),
+    mutationFn: () =>
+      testDesignApi.createSuite({ projectId: activeProjectId ?? '', name: suiteName }),
     onSuccess: async () => {
       setSuiteName('');
       await queryClient.invalidateQueries({ queryKey: ['suites'] });
@@ -112,8 +130,17 @@ export function TestCasesPage(): React.JSX.Element {
 
   const archive = useMutation({
     mutationFn: (id: string) => testDesignApi.archive(id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['cases'] });
+    onSuccess: refreshAfterLifecycleChange,
+    onError: (cause) => {
+      fail(cause, 'Could not archive the case.');
+    },
+  });
+
+  const restore = useMutation({
+    mutationFn: (id: string) => testDesignApi.restore(id),
+    onSuccess: refreshAfterLifecycleChange,
+    onError: (cause) => {
+      fail(cause, 'Could not restore the case.');
     },
   });
 
@@ -121,17 +148,22 @@ export function TestCasesPage(): React.JSX.Element {
     return <NoProject />;
   }
 
-  const flatSections = (sections.data ?? []).flatMap(function flatten(
-    section,
-    _index,
-    _all,
-  ): Array<{ value: string; label: string; depth: number }> {
-    const walk = (node: typeof section, depth: number): Array<{ value: string; label: string; depth: number }> => [
-      { value: node.id, label: `${'— '.repeat(depth)}${node.name}`, depth },
-      ...node.children.flatMap((child) => walk(child, depth + 1)),
-    ];
-    return walk(section, 0);
-  });
+  const flatSections = (sections.data ?? []).flatMap(
+    function flatten(
+      section,
+      _index,
+      _all,
+    ): Array<{ value: string; label: string; depth: number }> {
+      const walk = (
+        node: typeof section,
+        depth: number,
+      ): Array<{ value: string; label: string; depth: number }> => [
+        { value: node.id, label: `${'— '.repeat(depth)}${node.name}`, depth },
+        ...node.children.flatMap((child) => walk(child, depth + 1)),
+      ];
+      return walk(section, 0);
+    },
+  );
 
   return (
     <>
@@ -223,6 +255,19 @@ export function TestCasesPage(): React.JSX.Element {
         </aside>
 
         <div>
+          <section className="card">
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={includeArchived}
+                onChange={(event) => {
+                  setIncludeArchived(event.target.checked);
+                }}
+              />
+              Show archived cases
+            </label>
+          </section>
+
           <section className="card" aria-labelledby="new-case">
             <h2 id="new-case">New test case</h2>
             <TextField
@@ -273,6 +318,7 @@ export function TestCasesPage(): React.JSX.Element {
                     </td>
                     <td>v{testCase.version}</td>
                     <td className="row-actions">
+                      {testCase.archivedAt !== null && <Badge tone="neutral">Archived</Badge>}
                       <Button
                         size="sm"
                         variant="secondary"
@@ -282,15 +328,27 @@ export function TestCasesPage(): React.JSX.Element {
                       >
                         Duplicate
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          archive.mutate(testCase.id);
-                        }}
-                      >
-                        Archive
-                      </Button>
+                      {testCase.archivedAt === null ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            archive.mutate(testCase.id);
+                          }}
+                        >
+                          Archive
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            restore.mutate(testCase.id);
+                          }}
+                        >
+                          Restore
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

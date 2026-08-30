@@ -194,6 +194,22 @@ describe('test design', () => {
     expect(withArchived.json().data).toHaveLength(1);
   });
 
+  it('leaves an archived case out of the suite count, as the default listing does', async () => {
+    const suiteId = (await createSuite()).json().id;
+    const id = (await createCase(suiteId)).json().id;
+    await createCase(suiteId, { title: 'Pay with an expired card' });
+
+    const before = await request('GET', `/api/v1/test-suites?projectId=${workspace.projectId}`, asOwner());
+    await request('POST', `/api/v1/test-cases/${id}/archive`, asOwner({}));
+    const after = await request('GET', `/api/v1/test-suites?projectId=${workspace.projectId}`, asOwner());
+    await request('POST', `/api/v1/test-cases/${id}/restore`, asOwner({}));
+    const restored = await request('GET', `/api/v1/test-suites?projectId=${workspace.projectId}`, asOwner());
+
+    expect([before.json()[0].caseCount, after.json()[0].caseCount, restored.json()[0].caseCount]).toEqual([
+      2, 1, 2,
+    ]);
+  });
+
   it('builds the section tree and refuses a cycle', async () => {
     const suiteId = (await createSuite()).json().id;
     const parent = await request('POST', '/api/v1/test-sections', asOwner({ suiteId, name: 'Cart' }));

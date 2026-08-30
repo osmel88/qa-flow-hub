@@ -1,9 +1,10 @@
 import { REQUIREMENT_STATUSES, REQUIREMENT_TYPES, PRIORITIES } from '@qa-flow-hub/shared';
 import { Badge, Button, DataState, SelectField, TextAreaField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { requirementsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { CoverageLinks } from '../components/CoverageLinks';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import { useProject } from '../project/project-context';
@@ -22,6 +23,9 @@ export function RequirementsPage(): React.JSX.Element {
   const [type, setType] = useState<string>('functional');
   const [priority, setPriority] = useState<string>('medium');
   const [error, setError] = useState<string | null>(null);
+  // One requirement at a time: the panel is an editor, and two open at once
+  // invites linking a case to the requirement the user was not looking at.
+  const [coverageFor, setCoverageFor] = useState<string | null>(null);
 
   const list = useQuery({
     queryKey: ['requirements', activeProjectId, status, search],
@@ -158,39 +162,66 @@ export function RequirementsPage(): React.JSX.Element {
               <th scope="col">Priority</th>
               <th scope="col">Status</th>
               <th scope="col">Move to</th>
+              <th scope="col">Coverage</th>
             </tr>
           </thead>
           <tbody>
             {list.data?.data.map((requirement) => (
-              <tr key={requirement.id}>
-                <td>
-                  <code>{requirement.key}</code>
-                </td>
-                <td>{requirement.title}</td>
-                <td>{humanize(requirement.priority)}</td>
-                <td>
-                  <Badge tone={toneFor(requirement.status)}>{humanize(requirement.status)}</Badge>
-                </td>
-                <td>
-                  <select
-                    className="ui-input"
-                    aria-label={`Change status of ${requirement.key}`}
-                    value=""
-                    onChange={(event) => {
-                      changeStatus.mutate({ id: requirement.id, status: event.target.value });
-                    }}
-                  >
-                    <option value="">Choose…</option>
-                    {REQUIREMENT_STATUSES.filter((value) => value !== requirement.status).map(
-                      (value) => (
-                        <option key={value} value={value}>
-                          {humanize(value)}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </td>
-              </tr>
+              <Fragment key={requirement.id}>
+                <tr>
+                  <td>
+                    <code>{requirement.key}</code>
+                  </td>
+                  <td>{requirement.title}</td>
+                  <td>{humanize(requirement.priority)}</td>
+                  <td>
+                    <Badge tone={toneFor(requirement.status)}>{humanize(requirement.status)}</Badge>
+                  </td>
+                  <td>
+                    <select
+                      className="ui-input"
+                      aria-label={`Change status of ${requirement.key}`}
+                      value=""
+                      onChange={(event) => {
+                        changeStatus.mutate({ id: requirement.id, status: event.target.value });
+                      }}
+                    >
+                      <option value="">Choose…</option>
+                      {REQUIREMENT_STATUSES.filter((value) => value !== requirement.status).map(
+                        (value) => (
+                          <option key={value} value={value}>
+                            {humanize(value)}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setCoverageFor((current) =>
+                          current === requirement.id ? null : requirement.id,
+                        );
+                      }}
+                    >
+                      {coverageFor === requirement.id ? 'Hide test cases' : 'Test cases'}
+                    </Button>
+                  </td>
+                </tr>
+                {coverageFor === requirement.id && (
+                  <tr>
+                    <td colSpan={6}>
+                      <CoverageLinks
+                        side="requirement"
+                        entityId={requirement.id}
+                        projectId={activeProjectId}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

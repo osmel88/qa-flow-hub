@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { testDesignApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { CoverageLinks } from '../components/CoverageLinks';
 import { PageHeader } from '../components/PageHeader';
 
 interface DraftStep {
@@ -170,6 +171,10 @@ export function TestCaseEditorPage(): React.JSX.Element {
             <p className="muted">A case is capped at {MAX_STEPS} steps.</p>
           )}
         </section>
+
+        {detail.data !== undefined && (
+          <CoverageLinks side="test_case" entityId={caseId} projectId={detail.data.projectId} />
+        )}
       </DataState>
     </>
   );

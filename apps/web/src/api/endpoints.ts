@@ -31,6 +31,7 @@ import type {
   TestCaseView,
   TestResultView,
   TestRunView,
+  TraceLinkView,
   TraceabilityMatrix,
   UpdateDefectInput,
   UpdateTestCaseInput,
@@ -144,8 +145,12 @@ export const testDesignApi = {
   sections: (suiteId: string) => apiFetch<SectionView[]>(`/test-suites/${suiteId}/sections`),
   createSection: (body: CreateSectionInput) =>
     apiFetch<SectionView>('/test-sections', { method: 'POST', body }),
-  cases: (params: { projectId: string; suiteId?: string; search?: string }) =>
-    apiFetch<Paginated<TestCaseView>>(`/test-cases${query({ ...params, pageSize: 100 })}`),
+  cases: (params: {
+    projectId: string;
+    suiteId?: string;
+    search?: string;
+    includeArchived?: 'true' | 'false';
+  }) => apiFetch<Paginated<TestCaseView>>(`/test-cases${query({ ...params, pageSize: 100 })}`),
   case: (id: string) => apiFetch<TestCaseDetailView>(`/test-cases/${id}`),
   createCase: (body: CreateTestCaseInput) =>
     apiFetch<TestCaseDetailView>('/test-cases', { method: 'POST', body }),
@@ -156,6 +161,7 @@ export const testDesignApi = {
   duplicate: (id: string) =>
     apiFetch<TestCaseDetailView>(`/test-cases/${id}/duplicate`, { method: 'POST', body: {} }),
   archive: (id: string) => apiFetch<TestCaseView>(`/test-cases/${id}/archive`, { method: 'POST' }),
+  restore: (id: string) => apiFetch<TestCaseView>(`/test-cases/${id}/restore`, { method: 'POST' }),
 };
 
 export const testRunsApi = {
@@ -193,7 +199,10 @@ export const traceabilityApi = {
       `/traceability/matrix${query({ projectId, uncoveredOnly: String(uncoveredOnly) })}`,
     ),
   link: (body: CreateTraceLinkInput) =>
-    apiFetch<{ id: string }>('/traceability/links', { method: 'POST', body }),
+    apiFetch<TraceLinkView>('/traceability/links', { method: 'POST', body }),
+  links: (entityType: 'requirement' | 'test_case', entityId: string) =>
+    apiFetch<TraceLinkView[]>(`/traceability/links${query({ entityType, entityId })}`),
+  unlink: (id: string) => apiFetch<void>(`/traceability/links/${id}`, { method: 'DELETE' }),
 };
 
 export const dashboardApi = {

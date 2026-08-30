@@ -99,6 +99,29 @@ test('a QA lead can go from requirement to traced defect', async ({ page }) => {
     // uncovered rather than flattering the report.
     await expect(page.getByText('0 of 1 covered')).toBeVisible();
   });
+
+  await test.step('linking the case to the requirement covers it, unlinking uncovers it', async () => {
+    await page.getByRole('link', { name: 'Requirements' }).click();
+    await page.getByRole('button', { name: 'Test cases' }).click();
+    await page.getByLabel('Link a test case').selectOption({ index: 1 });
+    await page.getByRole('button', { name: 'Link', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Unlink' })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Traceability' }).click();
+    await expect(page.getByText('1 of 1 covered')).toBeVisible();
+
+    // The case failed and carries a defect, so coverage must not imply
+    // verification: a matrix that conflated them would read green here.
+    await expect(page.getByRole('row', { name: /WEB-R-1/ })).toContainText('No');
+
+    await page.getByRole('link', { name: 'Requirements' }).click();
+    await page.getByRole('button', { name: 'Test cases' }).click();
+    await page.getByRole('button', { name: 'Unlink' }).click();
+    await expect(page.getByRole('button', { name: 'Unlink' })).toBeHidden();
+
+    await page.getByRole('link', { name: 'Traceability' }).click();
+    await expect(page.getByText('0 of 1 covered')).toBeVisible();
+  });
 });
 
 /**

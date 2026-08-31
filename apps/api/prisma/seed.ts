@@ -36,11 +36,13 @@ const DEMO_PASSWORD = 'Password123!';
 async function main(): Promise<void> {
   const passwordHash = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
 
-  const [owner, qaLead, tester, viewer] = await Promise.all([
+  // Named after the role each one actually holds: a seed user called "viewer"
+  // who owns an organization sends every permission test down a false path.
+  const [owner, qaLead, tester, globexOwner] = await Promise.all([
     upsertUser('owner@acme.test', 'Olivia Owner', passwordHash),
     upsertUser('qa@acme.test', 'Quentin Lead', passwordHash),
     upsertUser('tester@acme.test', 'Tania Tester', passwordHash),
-    upsertUser('viewer@globex.test', 'Victor Viewer', passwordHash),
+    upsertUser('owner@globex.test', 'Gabriel Globex', passwordHash),
   ]);
 
   const acme = await upsertOrganization('Acme QA', 'acme', OrganizationPlan.team);
@@ -50,9 +52,10 @@ async function main(): Promise<void> {
     upsertMember(acme.id, owner.id, OrganizationRole.organization_owner),
     upsertMember(acme.id, qaLead.id, OrganizationRole.qa_lead),
     upsertMember(acme.id, tester.id, OrganizationRole.tester),
-    // The same person, a different role in the other organization.
+    // The same person, a different role in the other organization: this is the
+    // only viewer in the seed, and the account to use for a viewer test.
     upsertMember(globex.id, qaLead.id, OrganizationRole.viewer),
-    upsertMember(globex.id, viewer.id, OrganizationRole.organization_owner),
+    upsertMember(globex.id, globexOwner.id, OrganizationRole.organization_owner),
   ]);
 
   // A pending invitation, with its token hashed exactly as the application
@@ -76,10 +79,10 @@ async function main(): Promise<void> {
   await seedProject(acme.id, 'Web Portal', 'WEB', owner.id, tester.id);
   await seedProject(acme.id, 'Mobile App', 'MOB', owner.id, tester.id);
   // Globex data exists purely so that isolation failures have something to leak.
-  await seedProject(globex.id, 'Legacy ERP', 'ERP', viewer.id, viewer.id);
+  await seedProject(globex.id, 'Legacy ERP', 'ERP', globexOwner.id, globexOwner.id);
 
   console.log('Seed complete.');
-  console.log(`  users:      owner@acme.test / qa@acme.test / tester@acme.test / viewer@globex.test`);
+  console.log(`  users:      owner@acme.test (owner) / qa@acme.test (viewer in Globex) / tester@acme.test / owner@globex.test`);
   console.log(`  password:   ${DEMO_PASSWORD}`);
   console.log(`  invitation: newcomer@acme.test -> ${invitationToken}`);
 }

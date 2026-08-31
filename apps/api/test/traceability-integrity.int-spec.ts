@@ -168,6 +168,18 @@ describe('traceability integrity', () => {
 
       expect(attempts.map((attempt) => attempt.statusCode)).toEqual([400, 400, 400, 400, 400]);
     });
+
+    it('refuses the same link twice and leaves one row behind', async () => {
+      const requirement = await createRequirement();
+      const testCase = await createCase();
+
+      const first = await verifies(requirement.id, testCase.id);
+      const second = await verifies(requirement.id, testCase.id);
+
+      expect([first.statusCode, second.statusCode]).toEqual([201, 409]);
+      expect(second.json().error.code).toBe('CONFLICT');
+      expect(await prisma.traceabilityLink.count()).toBe(1);
+    });
   });
 
   describe('deleting an end', () => {

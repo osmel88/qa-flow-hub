@@ -1,0 +1,22 @@
+{
+  "extends": "../../packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+
+    // NestJS dependency injection reads constructor parameter types from the
+    // metadata emitted by these two flags. Without them, every provider would
+    // need an explicit @Inject() token.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    // Nest injects dependencies after construction and Prisma models are
+    // assigned by the ORM, so definite-assignment noise is not useful here.
+    "strictPropertyInitialization": false
+  },
+  "include": ["src/**/*.ts", "prisma/**/*.ts", "test/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
+}

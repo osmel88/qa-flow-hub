@@ -1,0 +1,33 @@
+{
+  "name": "@qa-flow-hub/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Contracts shared between the API and the web client: Zod schemas, enums and types.",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json && node ./scripts/write-module-markers.mjs",
+    "dev": "tsc -p tsconfig.esm.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.esm.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.4"
+  }
+}

@@ -1,0 +1,142 @@
+/*
+ * Component styles for @qa-flow-hub/ui. They consume the design tokens defined
+ * by the host application, so the same component adapts to any theme that
+ * provides the custom properties.
+ */
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 0.5rem);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 4px);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.ui-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ui-button--sm {
+  padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
+  font-size: 0.875rem;
+}
+
+.ui-button--md {
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+}
+
+.ui-button--primary {
+  background: var(--color-primary, #1f5fbf);
+  color: var(--color-primary-contrast, #fff);
+}
+
+.ui-button--secondary {
+  background: var(--color-surface, #fff);
+  border-color: var(--color-border, #d9dde3);
+  color: var(--color-text, #16191d);
+}
+
+.ui-button--danger {
+  background: var(--color-danger, #b3261e);
+  color: #fff;
+}
+
+.ui-button--ghost {
+  background: transparent;
+  color: var(--color-primary, #1f5fbf);
+}
+
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  margin-bottom: var(--space-4, 1rem);
+}
+
+.ui-field__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.ui-field__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #5b6472);
+}
+
+.ui-field__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-danger, #b3261e);
+}
+
+.ui-input {
+  width: 100%;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  font: inherit;
+  color: inherit;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #d9dde3);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.ui-input[aria-invalid='true'] {
+  border-color: var(--color-danger, #b3261e);
+}
+
+.ui-input--textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.ui-badge {
+  display: inline-block;
+  padding: 0 var(--space-2, 0.5rem);
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5rem;
+  white-space: nowrap;
+}
+
+.ui-badge--neutral {
+  color: var(--color-text-muted, #5b6472);
+}
+.ui-badge--info {
+  color: var(--color-primary, #1f5fbf);
+}
+.ui-badge--success {
+  color: var(--color-success, #1e7d3c);
+}
+.ui-badge--danger {
+  color: var(--color-danger, #b3261e);
+}
+.ui-badge--warning {
+  color: var(--color-warning, #9a6400);
+}
+
+.ui-state {
+  margin: 0;
+  padding: var(--space-6, 1.5rem);
+  text-align: center;
+  color: var(--color-text-muted, #5b6472);
+}
+
+.ui-state--error {
+  color: var(--color-danger, #b3261e);
+}
+
+.ui-state--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+}

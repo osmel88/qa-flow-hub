@@ -93,7 +93,8 @@ docker compose up -d --build  # web on :8080, API on :3000, OpenAPI on :3000/doc
   [security model](docs/security-model.md), [permissions matrix](docs/permissions-matrix.md),
   [API conventions](docs/api-conventions.md), [frontend architecture](docs/frontend-architecture.md),
   [deployment](docs/deployment.md), [commercial roadmap](docs/commercial-roadmap.md),
-  [integrations roadmap](docs/integrations-roadmap.md) and
+  [integrations roadmap](docs/integrations-roadmap.md),
+  [stage 2 roadmap](docs/stage-2-roadmap.md) and
   [technical debt](docs/technical-debt.md).
 - [`docs/backend-course/`](docs/backend-course/) — a 40-chapter guided tour of
   this backend, written against the real code in this repository. Start at

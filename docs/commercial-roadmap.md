@@ -34,6 +34,10 @@ attach a screenshot, and nothing can be imported.**
 
 Stage 0 is not features, it is the difference between a demo and a product.
 
+The agreed execution plan for the stage after the MVP lives in
+[`stage-2-roadmap.md`](stage-2-roadmap.md): the stages below say *why* an order
+sells, that document says *what* each phase delivers and where it stops.
+
 ## Stage 1 — First paying team
 
 | # | Item | Why now | Cost |
@@ -93,6 +97,7 @@ estimated.
 
 ## Related
 
+- [`stage-2-roadmap.md`](stage-2-roadmap.md) — the approved S2 phases, in execution order
 - [`product-vision.md`](product-vision.md) — the problem and the principles
 - [`integrations-roadmap.md`](integrations-roadmap.md) — the shape of each integration
 - [`technical-debt.md`](technical-debt.md) — every entry with its trigger

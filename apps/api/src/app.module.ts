@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DefectsModule } from './modules/defects/defects.module';
 import { HealthModule } from './modules/health/health.module';
+import { IntegrationSettingsModule } from './modules/integrations/integration-settings.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { RequirementsModule } from './modules/requirements/requirements.module';
@@ -43,6 +44,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     TraceabilityModule,
     DashboardModule,
     IntegrationsModule,
+    IntegrationSettingsModule,
   ],
 })
 export class AppModule implements NestModule {

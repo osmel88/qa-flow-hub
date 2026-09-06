@@ -183,8 +183,20 @@ enum IntegrationProvider {
 
 enum IntegrationStatus {
   disconnected
+  /// Configured and enabled, but no provider implementation answers yet. It is
+  /// its own state because painting a saved configuration red is a lie in the
+  /// other direction: nothing failed, nothing was reached either.
+  pending
   connected
   error
+}
+
+/// Which side of the provider a connection talks to. Part of the connection and
+/// not an environment flag, so one organization can stay on a mock while
+/// another uses the real provider.
+enum IntegrationMode {
+  mock
+  real
 }
 
 enum AuditAction {
@@ -848,13 +860,20 @@ model IntegrationConnection {
 
   provider    IntegrationProvider
   displayName String
+  mode        IntegrationMode     @default(mock)
+  enabled     Boolean             @default(false)
   baseUrl     String?
   /// Non-sensitive provider settings (project keys, field mappings).
   settings    Json                @default("{}")
-  secretRef   String?
-  status      IntegrationStatus   @default(disconnected)
-  lastSyncAt  DateTime?
-  lastError   String?
+  /// Non-sensitive account, workspace or repository identity reported by the
+  /// provider. Separate from `settings` because one is what the user asked for
+  /// and the other is what the provider answered.
+  accountMetadata      Json              @default("{}")
+  secretRef            String?
+  status               IntegrationStatus @default(disconnected)
+  lastSyncAt           DateTime?
+  lastConnectionTestAt DateTime?
+  lastError            String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -862,7 +881,11 @@ model IntegrationConnection {
 
   externalReferences ExternalReference[]
 
-  @@unique([organizationId, provider, displayName])
+  /// One connection per provider per organization. The settings screen edits a
+  /// provider, it does not accumulate rows, and there is no delete: a provider
+  /// is disconnected, which keeps the audit trail and the external references
+  /// that point at it.
+  @@unique([organizationId, provider])
   @@index([organizationId, status])
   @@map("integration_connections")
 }

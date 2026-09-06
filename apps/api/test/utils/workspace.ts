@@ -24,7 +24,7 @@ export interface RequestOptions {
 }
 
 export type Injector = (
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   url: string,
   options?: RequestOptions,
 ) => Promise<LightMyRequestResponse>;

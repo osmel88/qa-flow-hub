@@ -12,6 +12,7 @@ const NAV = [
   { to: '/traceability', label: 'Traceability' },
   { to: '/members', label: 'Members' },
   { to: '/project-access', label: 'Project access' },
+  { to: '/settings/integrations', label: 'Integrations' },
   { to: '/profile', label: 'Profile' },
 ];
 

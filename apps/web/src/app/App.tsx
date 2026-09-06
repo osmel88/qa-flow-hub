@@ -6,6 +6,7 @@ import { ProtectedRoute } from '../components/ProtectedRoute';
 import { ProjectProvider } from '../project/project-context';
 import { DashboardPage } from '../pages/DashboardPage';
 import { DefectsPage } from '../pages/DefectsPage';
+import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { MembersPage } from '../pages/MembersPage';
 import { ProjectAccessPage } from '../pages/ProjectAccessPage';
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
           { path: '/traceability', element: <TraceabilityPage /> },
           { path: '/members', element: <MembersPage /> },
           { path: '/project-access', element: <ProjectAccessPage /> },
+          { path: '/settings/integrations', element: <IntegrationsPage /> },
           { path: '/profile', element: <ProfilePage /> },
         ],
       },

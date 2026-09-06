@@ -67,7 +67,7 @@ function ensureRefresh(): Promise<boolean> {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** Endpoints outside a tenant (login, listing my organizations). */
   withoutOrganization?: boolean;

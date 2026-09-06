@@ -1,6 +1,7 @@
 import type {
   AuthSession,
   ChangePasswordInput,
+  ConfigurableIntegrationProvider,
   CreateDefectInput,
   CreateInvitationInput,
   CreateOrganizationInput,
@@ -14,6 +15,8 @@ import type {
   CreatedInvitationView,
   DashboardSummary,
   DefectView,
+  IntegrationConnectionView,
+  IntegrationTestResultView,
   InvitationView,
   LoginInput,
   MemberView,
@@ -35,6 +38,7 @@ import type {
   TraceabilityMatrix,
   UpdateDefectInput,
   UpdateTestCaseInput,
+  UpsertIntegrationInput,
 } from '@qa-flow-hub/shared';
 import { apiFetch, query } from './http-client';
 
@@ -203,6 +207,20 @@ export const traceabilityApi = {
   links: (entityType: 'requirement' | 'test_case', entityId: string) =>
     apiFetch<TraceLinkView[]>(`/traceability/links${query({ entityType, entityId })}`),
   unlink: (id: string) => apiFetch<void>(`/traceability/links/${id}`, { method: 'DELETE' }),
+};
+
+export const integrationsApi = {
+  list: () => apiFetch<IntegrationConnectionView[]>('/integrations'),
+  save: (provider: ConfigurableIntegrationProvider, body: UpsertIntegrationInput) =>
+    apiFetch<IntegrationConnectionView>(`/integrations/${provider}`, { method: 'PUT', body }),
+  connect: (provider: ConfigurableIntegrationProvider) =>
+    apiFetch<IntegrationConnectionView>(`/integrations/${provider}/connect`, { method: 'POST' }),
+  disconnect: (provider: ConfigurableIntegrationProvider) =>
+    apiFetch<IntegrationConnectionView>(`/integrations/${provider}/disconnect`, { method: 'POST' }),
+  testConnection: (provider: ConfigurableIntegrationProvider) =>
+    apiFetch<IntegrationTestResultView>(`/integrations/${provider}/test-connection`, {
+      method: 'POST',
+    }),
 };
 
 export const dashboardApi = {

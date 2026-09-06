@@ -114,10 +114,53 @@ necesita un endpoint público, verificación de firma y protección contra repla
 tres cosas que hay que hacer bien antes de exponer nada. El pull no necesita
 ninguna y ya permite la funcionalidad.
 
+## S2-F1: la pantalla de configuración encima de los puertos
+
+La primera fase de Stage 2 añade el módulo que **administra** las conexiones
+sin implementar todavía ningún proveedor. Es un buen ejemplo de módulo NestJS
+completo sobre un modelo que ya existía:
+
+```
+apps/api/src/modules/integrations/
+├─ provider-availability.ts              qué modos admite cada proveedor y qué fase lo entrega
+├─ integration-settings.repository.ts    TenantAwareRepository: una fila por (organización, proveedor)
+├─ integration-settings.service.ts       upsert, connect, disconnect, testConnection, toView()
+├─ integration-settings.controller.ts    GET|PUT /integrations/:provider y los tres POST
+└─ integration-settings.module.ts        importa IntegrationsModule para reutilizar los puertos
+packages/shared/src/integrations/integration.contracts.ts   Zod compartido con el cliente
+```
+
+Tres decisiones que conviene estudiar en el código:
+
+1. **La disponibilidad es una tabla estática, no una fila.** `PROVIDER_AVAILABILITY`
+   dice que Jira y TestRail solo aceptan `mock`, que GitHub solo acepta `real` y
+   que ninguno está implementado. Cambia con una release, así que vive en el
+   código; guardarlo en la base de datos sería configuración disfrazada de datos.
+2. **La vista pública no puede filtrar un secreto por construcción.**
+   `toView()` construye el objeto campo a campo y `secretRef` no aparece: solo
+   `hasCredential`. No hay un `omit` sobre la fila de Prisma que pueda quedarse
+   corto cuando alguien añada una columna.
+3. **Lo no sensible se valida como no sensible.** `nonSensitiveSettingsSchema`
+   rechaza claves que parezcan credenciales (`token`, `password`, `apiKey`…).
+   Un owner que intente guardar su token en `settings` recibe un 400 con el
+   motivo, en lugar de dejarlo en texto plano en una columna JSON.
+
+`Connect` sin proveedor implementado deja la conexión en `pending` y `Test
+connection` responde con la fase que entrega el proveedor. Es la misma
+filosofía que los noop: **decir la verdad** antes que fingir un `connected`.
+
+La migración `20260831110000_integration_settings` añade `mode`, `enabled`,
+`accountMetadata`, `lastConnectionTestAt` y el estado `pending`, y cambia la
+unicidad a `(organizationId, provider)`. Se escribió a mano en lugar de con
+`prisma migrate dev`: en una base con migraciones ya aplicadas, `migrate dev`
+propone un `reset`, y un reset nunca es la respuesta a un checksum.
+
 ## Comandos
 
 ```bash
 cd apps/api && npx vitest run src/integrations/noop.providers.test.ts
+cd apps/api && npx vitest run --config vitest.integration.config.ts test/integration-settings.int-spec.ts
+cd packages/shared && npx vitest run src/integrations
 ```
 
 ## Errores comunes

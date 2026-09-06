@@ -1,8 +1,8 @@
 # Stage 2 (S2) — Integrations and commercial readiness
 
-This is the plan for the stage **after** the MVP. Nothing here is implemented:
-the document exists so that each phase starts from a written contract instead of
-a conversation.
+This is the plan for the stage **after** the MVP. The document exists so that
+each phase starts from a written contract instead of a conversation; each phase
+records its delivery status at the top of its section once it is closed.
 
 Execution rule, identical to the MVP and not negotiable per phase:
 
@@ -25,7 +25,7 @@ Hard constraints for the whole stage:
 
 | Phase | Name | Theme |
 | --- | --- | --- |
-| S2-F1 | Integration Settings | Integrations |
+| S2-F1 | Integration Settings — **delivered** | Integrations |
 | S2-F2 | Jira Mock | Integrations |
 | S2-F3 | TestRail Mock | Integrations |
 | S2-F4 | GitHub Real | Integrations |
@@ -84,6 +84,43 @@ Rules:
 Model changes: add `mode`, `enabled`, `lastConnectionTestAt` and
 `accountMetadata` to `IntegrationConnection`; add the credential store described
 in S2-F4.
+
+### Delivery (S2-F1)
+
+Approved decision before implementation: **no credential storage in this phase**
+("option A"). The credential store, encryption and any token intake belong to
+S2-F4; F1 does not anticipate them.
+
+What shipped:
+
+- Migration `20260831110000_integration_settings`: `IntegrationMode` enum,
+  `pending` status, `mode`, `enabled`, `accountMetadata`,
+  `lastConnectionTestAt`; uniqueness becomes `(organizationId, provider)` — one
+  connection per provider and organization. `secretRef` is kept and stays
+  unresolved.
+- Shared contracts in `packages/shared/src/integrations/`: provider and mode
+  enums, `upsertIntegrationSchema` (non-sensitive `settings`/`accountMetadata`
+  that **reject secret-like keys** such as `token`, `password`, `apiKey`), and
+  the public `IntegrationConnectionView`, which exposes `hasCredential` only —
+  never `secretRef`, a prefix or a masked hint. This is stricter than the
+  "masked hint" the phase text allowed, and deliberate: there is nothing to
+  mask yet, and a hint format decided now would bind S2-F4.
+- API module `apps/api/src/modules/integrations/` (organization-scoped):
+  `GET /integrations`, `GET|PUT /integrations/:provider`,
+  `POST /integrations/:provider/{connect,disconnect,test-connection}`. Reading
+  is open to every member; writing to `organization_owner` and
+  `organization_admin`. Every write is audited without credentials.
+- Provider availability table: Jira and TestRail accept `mock` only, GitHub
+  `real` only; none is implemented yet, so **Connect** stores the configuration
+  and leaves the connection `pending` + `enabled`, and **Test connection**
+  records `lastConnectionTestAt` and answers with the phase that delivers the
+  provider (S2-F2, S2-F3, S2-F4) instead of calling a fake adapter. No provider
+  can reach `connected` in this build.
+- `Settings → Integrations` screen with role-aware controls, unit tests, 21
+  integration tests (isolation, roles, no secrets, availability) and one E2E
+  spec (`apps/web/e2e/integrations.e2e.spec.ts`).
+
+Debt recorded: entry 27 in `technical-debt.md`.
 
 ## S2-F2 — Jira Mock
 

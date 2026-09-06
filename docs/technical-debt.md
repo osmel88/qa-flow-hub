@@ -39,8 +39,9 @@ a project forgets that it once shipped without Row Level Security.
 | 24 | Three dependency advisories | open, unreachable | upstream peer ranges |
 | 25 | Intermittent logout on full page loads | open, not reproducible | instrumentation |
 | 26 | Destructive actions that only exist in the API | open, partly closed | product decision per entity |
+| 27 | Integration settings without a credential store (S2-F1) | open, by design | S2-F4 |
 
-Seven of the twenty-six are closed, five of them during this delivery. The ones
+Seven of the twenty-seven are closed, five of them during this delivery. The ones
 that are **not** blocked on a product decision or a third party — 14, 16, 17, 19,
 22, 23, 25 and the remainder of 7 — are the honest backlog of this codebase.
 
@@ -475,3 +476,37 @@ not widened to make it unilaterally.
   `DELETE` routes; visible only to the roles the API already requires. It is a
   small change once the wording of the warning is agreed.
 - **Trigger to fix:** the first pilot user who needs to undo something.
+
+## 27. Integration settings without a credential store (S2-F1)
+
+S2-F1 shipped `Settings → Integrations` on the approved premise that **no
+credential is stored in this phase**. `IntegrationConnection.secretRef` exists
+and is never written: the API accepts no token, rejects secret-like keys in
+`settings`/`accountMetadata`, and returns only `hasCredential` (always `false`
+today). The encrypted store, its key management and the token intake are
+S2-F4's deliverable, and building a provisional version here would have fixed
+the credential format before the only real consumer exists.
+
+Consequences that follow from the same decision and are deliberate:
+
+- **Connect** cannot connect anything. It persists the configuration, flips
+  `enabled` and leaves the status `pending`; **Test connection** records
+  `lastConnectionTestAt` and answers with the phase that delivers the provider
+  instead of calling an adapter. No connection can reach `connected` until S2-F2,
+  S2-F3 or S2-F4 land, and the UI says so on every card.
+- The screen edits `settings` and `accountMetadata` as free `key=value` lines
+  because the keys each provider needs are decided by the phase that implements
+  it. A schema-driven form per provider replaces it once those phases exist.
+- Uniqueness moved from `(organizationId, provider, displayName)` to
+  `(organizationId, provider)`: one connection per provider and organization.
+  Several Jira sites for one tenant is not a use case the roadmap has, and
+  relaxing a unique index later is cheaper than de-duplicating rows.
+- Availability per provider (which modes exist, which phase implements it)
+  lives in a static table in the API, not in the database. It changes with a
+  release, never with a customer action, so a table would be configuration
+  disguised as data.
+
+- **Cost:** the settings screen is complete but inert until the next phases;
+  an owner can prepare the configuration and nothing else.
+- **Trigger to fix:** S2-F2 (Jira mock flips `connectable` for `mock`), S2-F4
+  (credential store, `hasCredential` becomes meaningful).

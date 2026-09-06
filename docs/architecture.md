@@ -70,6 +70,7 @@ apps/api/src/
 ├─ events/                 in-process event bus and event contracts
 ├─ audit/                  AuditService and the interceptor that feeds it
 ├─ integrations/           adapter ports + no-op implementations
+├─ modules/integrations/   Settings → Integrations (S2-F1), organization-scoped
 └─ modules/<area>/         controller, service, repository, dto, domain, policies
 ```
 

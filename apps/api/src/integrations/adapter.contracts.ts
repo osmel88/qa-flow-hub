@@ -14,12 +14,7 @@
  */
 
 export type IntegrationProviderName =
-  | 'jira'
-  | 'testrail'
-  | 'github'
-  | 'github_actions'
-  | 'playwright'
-  | 'custom';
+  'jira' | 'testrail' | 'github' | 'github_actions' | 'playwright' | 'custom';
 
 /** What the caller gets back after pushing something to a provider. */
 export interface ExternalRef {
@@ -124,7 +119,11 @@ export interface IssueTrackerAdapter {
    * and reconciles, and a diff protocol would need both sides to agree on a
    * last-seen version this host does not keep.
    */
-  updateIssue(context: AdapterContext, externalId: string, payload: IssuePayload): Promise<ExternalRef>;
+  updateIssue(
+    context: AdapterContext,
+    externalId: string,
+    payload: IssuePayload,
+  ): Promise<ExternalRef>;
   /** Pull, not push: the provider is the source of truth for its own status. */
   fetchIssueState(context: AdapterContext, externalId: string): Promise<IssueState | null>;
   getIssue(context: AdapterContext, externalId: string): Promise<IssueSummary | null>;
@@ -140,12 +139,155 @@ export interface ImportedCase {
   steps: Array<{ action: string; expectedResult: string | null }>;
 }
 
-/** TestRail, Xray, Zephyr. */
+/** Our `TestSuite`, as a provider needs to see it. */
+export interface SuitePayload {
+  projectKey: string | null;
+  name: string;
+  description: string | null;
+}
+
+export interface CaseStepPayload {
+  action: string;
+  expectedResult: string | null;
+}
+
+/**
+ * Our `TestCase`. `suiteExternalId` is the provider's id for the suite the
+ * case belongs to — the host resolves it through `ExternalReference` before
+ * calling, so the adapter never sees an internal id.
+ */
+export interface CasePayload {
+  suiteExternalId: string;
+  /** Provider sections are created on demand from this name; `null` is the suite root. */
+  sectionName: string | null;
+  title: string;
+  /** Our own values (`regression`, `critical`…); mapping them is the adapter's job. */
+  type: string;
+  priority: string;
+  preconditions: string | null;
+  expectedResult: string | null;
+  steps: CaseStepPayload[];
+  originKey: string | null;
+  labels: string[];
+}
+
+export interface RunPayload {
+  suiteExternalId: string;
+  name: string;
+  description: string | null;
+  /** Provider ids of the cases in the run; the host resolved each through its reference. */
+  caseExternalIds: string[];
+  state: string;
+}
+
+export interface ResultPayload {
+  runExternalId: string;
+  caseExternalId: string;
+  /** One of our `TestResultStatus` values. */
+  status: string;
+  comment: string | null;
+  elapsedSeconds: number | null;
+}
+
+export interface ExternalSuite {
+  externalId: string;
+  projectKey: string | null;
+  name: string;
+  description: string | null;
+  url: string | null;
+  caseCount: number;
+  updatedAt: Date;
+}
+
+export interface ExternalCase {
+  externalId: string;
+  key: string | null;
+  url: string | null;
+  suiteExternalId: string;
+  sectionName: string | null;
+  title: string;
+  type: string;
+  priority: string;
+  stepCount: number;
+  updatedAt: Date;
+}
+
+export interface ExternalRun {
+  externalId: string;
+  url: string | null;
+  suiteExternalId: string;
+  name: string;
+  status: string;
+  caseCount: number;
+  /** Provider status name → how many tests in the run carry it. */
+  statusCounts: Record<string, number>;
+  updatedAt: Date;
+}
+
+export interface ExternalResult {
+  externalId: string;
+  runExternalId: string;
+  caseExternalId: string;
+  status: string;
+  comment: string | null;
+  elapsedSeconds: number | null;
+  recordedAt: Date;
+}
+
+/** The values a test management provider accepts. */
+export interface TestManagementCatalog {
+  statuses: string[];
+  priorities: string[];
+  caseTypes: string[];
+}
+
+/**
+ * TestRail, Xray, Zephyr.
+ *
+ * Suites, cases, runs and results are four operations each rather than one
+ * generic `push(entity)` because the providers really are that shaped: a case
+ * cannot exist outside a suite, a result cannot exist outside a run, and a
+ * generic method would only move those rules into a `switch`. Every `fetch*`
+ * returns `null` for an id the provider no longer knows, so the host can decide
+ * to recreate.
+ */
 export interface TestManagementAdapter {
   readonly provider: IntegrationProviderName;
   check(context: AdapterContext): Promise<HealthCheck>;
-  importCases(context: AdapterContext, externalSuiteId: string): Promise<ImportedCase[]>;
-  exportRun(context: AdapterContext, testRunId: string): Promise<ExternalRef>;
+  describe(context: AdapterContext): Promise<TestManagementCatalog>;
+  listProjects(context: AdapterContext): Promise<ExternalProject[]>;
+  listSuites(context: AdapterContext, projectKey?: string): Promise<ExternalSuite[]>;
+  listCases(context: AdapterContext, suiteExternalId: string): Promise<ExternalCase[]>;
+  listRuns(context: AdapterContext, projectKey?: string): Promise<ExternalRun[]>;
+  importCases(context: AdapterContext, suiteExternalId: string): Promise<ImportedCase[]>;
+
+  createSuite(context: AdapterContext, payload: SuitePayload): Promise<ExternalRef>;
+  updateSuite(
+    context: AdapterContext,
+    externalId: string,
+    payload: SuitePayload,
+  ): Promise<ExternalRef>;
+  fetchSuite(context: AdapterContext, externalId: string): Promise<ExternalSuite | null>;
+
+  createCase(context: AdapterContext, payload: CasePayload): Promise<ExternalRef>;
+  updateCase(
+    context: AdapterContext,
+    externalId: string,
+    payload: CasePayload,
+  ): Promise<ExternalRef>;
+  fetchCase(context: AdapterContext, externalId: string): Promise<ExternalCase | null>;
+
+  createRun(context: AdapterContext, payload: RunPayload): Promise<ExternalRef>;
+  updateRun(context: AdapterContext, externalId: string, payload: RunPayload): Promise<ExternalRef>;
+  fetchRun(context: AdapterContext, externalId: string): Promise<ExternalRun | null>;
+
+  /**
+   * Results are append-only in every provider this port targets, so there is
+   * no `updateResult`: re-syncing a result the provider already has is a no-op
+   * that returns the existing reference.
+   */
+  addResult(context: AdapterContext, payload: ResultPayload): Promise<ExternalRef>;
+  fetchResult(context: AdapterContext, externalId: string): Promise<ExternalResult | null>;
 }
 
 export interface AutomatedResult {

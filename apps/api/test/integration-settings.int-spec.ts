@@ -174,6 +174,15 @@ describe('integration settings', () => {
     });
 
     it('leaves an enabled connection pending while no provider answers', async () => {
+      await request('PUT', '/api/v1/integrations/github', asOwner({ mode: 'real' }));
+
+      const connected = await request('POST', '/api/v1/integrations/github/connect', asOwner());
+
+      expect(connected.statusCode).toBe(200);
+      expect(connected.json()).toMatchObject({ enabled: true, status: 'pending', lastError: null });
+    });
+
+    it('connects the TestRail mock and reaches it on test-connection', async () => {
       await request(
         'PUT',
         '/api/v1/integrations/testrail',
@@ -181,9 +190,15 @@ describe('integration settings', () => {
       );
 
       const connected = await request('POST', '/api/v1/integrations/testrail/connect', asOwner());
+      expect(connected.json()).toMatchObject({ enabled: true, status: 'connected' });
 
-      expect(connected.statusCode).toBe(200);
-      expect(connected.json()).toMatchObject({ enabled: true, status: 'pending', lastError: null });
+      const tested = await request(
+        'POST',
+        '/api/v1/integrations/testrail/test-connection',
+        asOwner(),
+      );
+      expect(tested.json()).toMatchObject({ provider: 'testrail', reachable: true });
+      expect(tested.json().message).toContain('Quality Assurance');
     });
 
     it('refuses to connect a provider that was never configured', async () => {
@@ -218,7 +233,11 @@ describe('integration settings', () => {
       await request(
         'PUT',
         '/api/v1/integrations/testrail',
-        asOwner({ mode: 'mock', baseUrl: 'https://acme.testrail.io' }),
+        asOwner({
+          mode: 'mock',
+          baseUrl: 'https://acme.testrail.io',
+          settings: { simulateFailure: 'unreachable' },
+        }),
       );
 
       const tested = await request(
@@ -229,7 +248,7 @@ describe('integration settings', () => {
 
       expect(tested.statusCode).toBe(200);
       expect(tested.json()).toMatchObject({ provider: 'testrail', reachable: false });
-      expect(tested.json().message).toContain('S2-F3');
+      expect(tested.json().message).toContain('simulated outage');
       expect(tested.json().connection.lastConnectionTestAt).not.toBeNull();
     });
 

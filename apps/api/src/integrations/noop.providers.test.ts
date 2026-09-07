@@ -42,9 +42,15 @@ describe('noop integration providers', () => {
       }),
     ).rejects.toBeInstanceOf(IntegrationNotConfiguredError);
 
-    await expect(new NoopTestManagementAdapter().exportRun(context, 'run_1')).rejects.toBeInstanceOf(
-      IntegrationNotConfiguredError,
-    );
+    await expect(
+      new NoopTestManagementAdapter().createRun(context, {
+        suiteExternalId: 's1',
+        name: 'Run',
+        description: null,
+        caseExternalIds: [],
+        state: 'planned',
+      }),
+    ).rejects.toBeInstanceOf(IntegrationNotConfiguredError);
   });
 
   it('return nothing on reads, which callers must already handle', async () => {

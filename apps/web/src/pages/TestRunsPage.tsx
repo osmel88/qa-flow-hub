@@ -6,6 +6,7 @@ import { testDesignApi, testRunsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
+import { TestRailSyncCell, useTestRailReferences } from '../components/TestRailSyncCell';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 
@@ -21,6 +22,11 @@ export function TestRunsPage(): React.JSX.Element {
     queryFn: () => testRunsApi.list({ projectId: activeProjectId ?? '' }),
     enabled: activeProjectId !== null,
   });
+
+  const runReferences = useTestRailReferences(
+    { entityType: 'test_run', projectId: activeProjectId ?? '' },
+    activeProjectId !== null,
+  );
 
   const suites = useQuery({
     queryKey: ['suites', activeProjectId],
@@ -113,6 +119,7 @@ export function TestRunsPage(): React.JSX.Element {
               <th scope="col">Status</th>
               <th scope="col">Cases</th>
               <th scope="col">Progress</th>
+              <th scope="col">TestRail</th>
             </tr>
           </thead>
           <tbody>
@@ -127,6 +134,13 @@ export function TestRunsPage(): React.JSX.Element {
                 <td>{run.progress.total}</td>
                 <td>
                   <progress max={100} value={run.progress.completion} /> {run.progress.completion}%
+                </td>
+                <td>
+                  <TestRailSyncCell
+                    entityType="test_run"
+                    entityId={run.id}
+                    reference={runReferences.data?.get(run.id)}
+                  />
                 </td>
               </tr>
             ))}

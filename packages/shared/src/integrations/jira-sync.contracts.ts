@@ -16,10 +16,23 @@ export const jiraSyncableEntitySchema = z.enum(JIRA_SYNCABLE_ENTITIES);
 export const ISSUE_KINDS = ['story', 'task', 'bug'] as const;
 export type IssueKind = (typeof ISSUE_KINDS)[number];
 
+/** Every entity a mock provider can hold a reference for; Jira and TestRail each take a subset. */
+export const SYNCABLE_ENTITIES = [
+  'requirement',
+  'defect',
+  'test_suite',
+  'test_case',
+  'test_run',
+  'test_result',
+] as const;
+export type SyncableEntity = (typeof SYNCABLE_ENTITIES)[number];
+
+export type SyncProvider = 'jira' | 'testrail';
+
 export interface ExternalReferenceView {
   id: string;
-  provider: 'jira';
-  entityType: JiraSyncableEntity;
+  provider: SyncProvider;
+  entityType: SyncableEntity;
   entityId: string;
   externalId: string;
   externalKey: string | null;

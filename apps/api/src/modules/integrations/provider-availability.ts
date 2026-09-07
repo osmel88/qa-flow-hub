@@ -35,11 +35,11 @@ export const PROVIDER_AVAILABILITY: Record<ConfigurableIntegrationProvider, Prov
       defaultDisplayName: 'Jira',
       usesBaseUrl: true,
     },
+    /** Mock only, and implemented since S2-F3 by `integrations/testrail-mock`. */
     testrail: {
       modes: ['mock'],
-      implemented: false,
-      unavailableReason:
-        'The TestRail mock provider is implemented in S2-F3. TestRail stays on a mock until dedicated accounts exist.',
+      implemented: true,
+      unavailableReason: null,
       defaultDisplayName: 'TestRail',
       usesBaseUrl: true,
     },

@@ -7,30 +7,31 @@ import {
 } from './adapter.tokens';
 import { JiraMockIssueTrackerAdapter } from './jira-mock/jira-mock.adapter';
 import { JiraMockStore } from './jira-mock/jira-mock.store';
-import {
-  NoopAutomationProviderAdapter,
-  NoopEmailAdapter,
-  NoopTestManagementAdapter,
-} from './noop.providers';
+import { NoopAutomationProviderAdapter, NoopEmailAdapter } from './noop.providers';
+import { TestRailMockTestManagementAdapter } from './testrail-mock/testrail-mock.adapter';
+import { TestRailMockStore } from './testrail-mock/testrail-mock.store';
 
 /**
  * Adapters are injected by token, not by class, so adding a provider is a swap
  * in this module and nothing else changes — which is exactly what S2-F2 did:
  * the issue tracker token now resolves to the Jira mock instead of the noop.
  *
- * `JiraMockStore` is exported for tests only: it is the one way to reset the
- * simulated Jira between cases, and production code has no reason to reach it.
+ * `JiraMockStore` and `TestRailMockStore` are exported for tests only: they are
+ * the one way to reset a simulated provider between cases, and production code
+ * has no reason to reach them.
  */
 @Module({
   providers: [
     JiraMockStore,
+    TestRailMockStore,
     { provide: ISSUE_TRACKER_ADAPTER, useClass: JiraMockIssueTrackerAdapter },
-    { provide: TEST_MANAGEMENT_ADAPTER, useClass: NoopTestManagementAdapter },
+    { provide: TEST_MANAGEMENT_ADAPTER, useClass: TestRailMockTestManagementAdapter },
     { provide: AUTOMATION_PROVIDER_ADAPTER, useClass: NoopAutomationProviderAdapter },
     { provide: EMAIL_ADAPTER, useClass: NoopEmailAdapter },
   ],
   exports: [
     JiraMockStore,
+    TestRailMockStore,
     ISSUE_TRACKER_ADAPTER,
     TEST_MANAGEMENT_ADAPTER,
     AUTOMATION_PROVIDER_ADAPTER,

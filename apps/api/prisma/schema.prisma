@@ -155,6 +155,7 @@ enum DefectStatus {
 /// create an orphan link.
 enum LinkableEntity {
   requirement
+  test_suite
   test_case
   test_run
   test_result

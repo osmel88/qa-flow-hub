@@ -1,5 +1,9 @@
 import { RECORDABLE_RESULT_STATUSES } from '@qa-flow-hub/shared';
-import type { RecordableResultStatus, RunCaseView } from '@qa-flow-hub/shared';
+import type {
+  ExternalReferenceView,
+  RecordableResultStatus,
+  RunCaseView,
+} from '@qa-flow-hub/shared';
 import { Badge, Button, DataState, TextAreaField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -8,6 +12,7 @@ import { defectsApi, testRunsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
+import { TestRailSyncCell, useTestRailReferences } from '../components/TestRailSyncCell';
 
 /**
  * The execution screen.
@@ -33,6 +38,7 @@ export function RunExecutionPage(): React.JSX.Element {
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['run', runId] });
     await queryClient.invalidateQueries({ queryKey: ['run-cases', runId] });
+    await queryClient.invalidateQueries({ queryKey: ['run-case-results', runId] });
     await queryClient.invalidateQueries({ queryKey: ['runs'] });
   };
 
@@ -58,6 +64,12 @@ export function RunExecutionPage(): React.JSX.Element {
       setError(cause instanceof ApiError ? cause.message : 'Could not record the result.');
     },
   });
+
+  const runReferences = useTestRailReferences(
+    { entityType: 'test_run', projectId: run.data?.projectId ?? '' },
+    run.data !== undefined,
+  );
+  const resultReferences = useTestRailReferences({ entityType: 'test_result', testRunId: runId });
 
   const start = useMutation({ mutationFn: () => testRunsApi.start(runId), onSuccess: refresh });
   const complete = useMutation({
@@ -129,6 +141,11 @@ export function RunExecutionPage(): React.JSX.Element {
               >
                 Complete run
               </Button>
+              <TestRailSyncCell
+                entityType="test_run"
+                entityId={runId}
+                reference={runReferences.data?.get(runId)}
+              />
             </div>
           </section>
         )}
@@ -198,6 +215,12 @@ export function RunExecutionPage(): React.JSX.Element {
                     </ol>
                   )}
 
+                  <LatestResult
+                    runId={runId}
+                    runCase={runCase}
+                    references={resultReferences.data}
+                  />
+
                   <TextAreaField
                     label="Comment"
                     value={comment}
@@ -227,5 +250,40 @@ export function RunExecutionPage(): React.JSX.Element {
         </ul>
       </DataState>
     </>
+  );
+}
+
+interface LatestResultProps {
+  runId: string;
+  runCase: RunCaseView;
+  references: Map<string, ExternalReferenceView> | undefined;
+}
+
+/**
+ * Only the newest attempt is offered for TestRail: results are append-only on
+ * both sides, so syncing an older one would push history out of order.
+ */
+function LatestResult({ runId, runCase, references }: LatestResultProps): React.JSX.Element | null {
+  const results = useQuery({
+    queryKey: ['run-case-results', runId, runCase.id],
+    queryFn: () => testRunsApi.results(runId, runCase.id),
+  });
+  const latest = results.data?.[0];
+
+  if (latest === undefined) {
+    return null;
+  }
+
+  return (
+    <div className="external-sync">
+      <span className="muted">
+        Latest result: {humanize(latest.status)} ({new Date(latest.executedAt).toLocaleString()})
+      </span>
+      <TestRailSyncCell
+        entityType="test_result"
+        entityId={latest.id}
+        reference={references?.get(latest.id)}
+      />
+    </div>
   );
 }

@@ -11,35 +11,35 @@ a project forgets that it once shipped without Row Level Security.
 
 ## Status at the close of the MVP
 
-| # | Entry | Status | Blocked on |
-| --- | --- | --- | --- |
-| 1 | Rate limiting is per process | open | Redis |
-| 2 | Attachments store metadata only | open | object storage |
-| 3 | No background job runner | open | first slow operation |
-| 4 | No email delivery | open | email provider |
-| 5 | No Row Level Security | **resolved** | — |
-| 6 | `exactOptionalPropertyTypes` disabled | **resolved** | — |
-| 7 | ESLint without type information | **resolved**, with a remainder in tests | Zod-parsed test responses |
-| 8 | `react-router` advisory | **resolved** upstream | — |
-| 9 | `@scarf/scarf` install script denied | intentional, permanent | — |
-| 10 | Invitation tokens in the response | open | email provider |
-| 11 | Audit immutability only in code | **resolved** | external store, for the owner |
-| 12 | Lazy invitation expiry | open | job runner |
-| 13 | Single OpenAPI version | open | first external consumer |
-| 14 | Links have no foreign keys | open, by design | integrity job |
-| 15 | Deleted entities keep their links | **resolved** | — |
-| 16 | Dashboard aggregates per request | open | measured p95 |
-| 17 | Coverage counts links, not intent | open | customer reporting |
-| 18 | Noop integration adapters | open | first Jira customer |
-| 19 | No audit retention policy | open | table size or compliance export |
-| 20 | Refresh token body transport | open | scoped API keys |
-| 21 | Project roles not enforced | **resolved** | — |
-| 22 | Project roles do not restrict reading | open | a customer needing it |
-| 23 | Roles guard fails open on project routes | open | response interceptor |
-| 24 | Three dependency advisories | open, unreachable | upstream peer ranges |
-| 25 | Intermittent logout on full page loads | open, not reproducible | instrumentation |
-| 26 | Destructive actions that only exist in the API | open, partly closed | product decision per entity |
-| 27 | Integration settings without a credential store (S2-F1) | open, by design | S2-F4 |
+| #   | Entry                                                   | Status                                  | Blocked on                      |
+| --- | ------------------------------------------------------- | --------------------------------------- | ------------------------------- |
+| 1   | Rate limiting is per process                            | open                                    | Redis                           |
+| 2   | Attachments store metadata only                         | open                                    | object storage                  |
+| 3   | No background job runner                                | open                                    | first slow operation            |
+| 4   | No email delivery                                       | open                                    | email provider                  |
+| 5   | No Row Level Security                                   | **resolved**                            | —                               |
+| 6   | `exactOptionalPropertyTypes` disabled                   | **resolved**                            | —                               |
+| 7   | ESLint without type information                         | **resolved**, with a remainder in tests | Zod-parsed test responses       |
+| 8   | `react-router` advisory                                 | **resolved** upstream                   | —                               |
+| 9   | `@scarf/scarf` install script denied                    | intentional, permanent                  | —                               |
+| 10  | Invitation tokens in the response                       | open                                    | email provider                  |
+| 11  | Audit immutability only in code                         | **resolved**                            | external store, for the owner   |
+| 12  | Lazy invitation expiry                                  | open                                    | job runner                      |
+| 13  | Single OpenAPI version                                  | open                                    | first external consumer         |
+| 14  | Links have no foreign keys                              | open, by design                         | integrity job                   |
+| 15  | Deleted entities keep their links                       | **resolved**                            | —                               |
+| 16  | Dashboard aggregates per request                        | open                                    | measured p95                    |
+| 17  | Coverage counts links, not intent                       | open                                    | customer reporting              |
+| 18  | Noop integration adapters                               | open                                    | first Jira customer             |
+| 19  | No audit retention policy                               | open                                    | table size or compliance export |
+| 20  | Refresh token body transport                            | open                                    | scoped API keys                 |
+| 21  | Project roles not enforced                              | **resolved**                            | —                               |
+| 22  | Project roles do not restrict reading                   | open                                    | a customer needing it           |
+| 23  | Roles guard fails open on project routes                | open                                    | response interceptor            |
+| 24  | Three dependency advisories                             | open, unreachable                       | upstream peer ranges            |
+| 25  | Intermittent logout on full page loads                  | open, not reproducible                  | instrumentation                 |
+| 26  | Destructive actions that only exist in the API          | open, partly closed                     | product decision per entity     |
+| 27  | Integration settings without a credential store (S2-F1) | open, by design                         | S2-F4                           |
 
 Seven of the twenty-seven are closed, five of them during this delivery. The ones
 that are **not** blocked on a product decision or a third party — 14, 16, 17, 19,
@@ -54,7 +54,7 @@ that are **not** blocked on a product decision or a third party — 14, 16, 17, 
 
 - **Why acceptable now:** a single instance, and the limiter's job in the MVP is
   to stop naive abuse and brute force, not to enforce a commercial quota. Login
-  brute-force protection does *not* rely on it: failed attempts are counted per
+  brute-force protection does _not_ rely on it: failed attempts are counted per
   user in the database.
 - **Cost:** the published limit is not exact under horizontal scaling.
 - **Trigger to fix:** the second API replica. Requires a shared store — the
@@ -159,7 +159,7 @@ single fact repeated. Casting each one would assert types nobody verified.
 - **Cost:** a renamed response field does not fail the linter in tests, only the
   assertion that reads it.
 - **Trigger to fix:** parse responses through the shared Zod contracts in the
-  test helper. That types them *and* fails on contract drift, which is strictly
+  test helper. That types them _and_ fails on contract drift, which is strictly
   better than casts — it is a change to ~800 assertions, so it belongs in its
   own piece of work.
 - Tooling files (`*.config.ts`, `eslint.config.js`, `playwright.config.ts`) have
@@ -174,7 +174,7 @@ fix inside the 7.x line, so `npm audit` no longer reports it and no major upgrad
 was needed.
 
 The lesson worth keeping: the advisory was aged out rather than patched in a
-hurry, which was the right call *because* the reachability analysis said so. The
+hurry, which was the right call _because_ the reachability analysis said so. The
 same reasoning does not license ignoring an advisory whose path is reachable —
 see entry 24.
 
@@ -358,7 +358,7 @@ customer assumes when they set somebody to `viewer` on one project only.
 ## 23. The roles guard fails open on project-scoped routes
 
 On a route marked `@ProjectScoped`, a caller whose organization role is
-insufficient still passes the guard when *any* grant they hold would allow the
+insufficient still passes the guard when _any_ grant they hold would allow the
 action; the service then decides against the actual project. The alternative was
 worse — with a strict guard a grant could only ever take power away — but it
 means the guard is no longer the last line of defence on those routes.
@@ -452,14 +452,14 @@ The API exposes more of the entity lifecycle than the client does. This was
 invisible until the manual pass, because every one of these routes is covered by
 integration tests and none of them had a button.
 
-| Action | API | UI |
-| --- | --- | --- |
-| Archive a test case | yes | yes |
-| Restore a test case | yes | **yes, added in this delivery** |
-| Delete a requirement | yes | no |
-| Delete a test case | yes | no |
-| Delete a test run | yes | no |
-| Delete a defect | yes | no |
+| Action               | API | UI                              |
+| -------------------- | --- | ------------------------------- |
+| Archive a test case  | yes | yes                             |
+| Restore a test case  | yes | **yes, added in this delivery** |
+| Delete a requirement | yes | no                              |
+| Delete a test case   | yes | no                              |
+| Delete a test run    | yes | no                              |
+| Delete a defect      | yes | no                              |
 
 Restoring a case was added because it is the counterpart of a button that
 already exists, uses the same permission, and without it archiving is a one-way
@@ -541,3 +541,43 @@ Also deliberate and cheaper to change later than to design now:
   change made in Jira is not pulled back. S2-F5 owns bidirectional traceability.
 - The web hides no Jira action by role; the API refuses and the cell shows the
   message. The same convention the rest of the client follows until S2-F8.
+
+## 29. The TestRail mock shares the Jira mock's shape — and its limits (S2-F3)
+
+`TestRailMockStore` is the same idea as entry 28 with TestRail vocabulary: in
+memory, one tenant map per organization, re-seeded on start, deterministic ids
+(`2`/`3`/`2`/`2` for the first suite/case/run/result a test creates). Everything
+in entry 28 about references outliving the mock across restarts applies here
+verbatim, with one aggravation: TestRail results are append-only, so a result
+reference whose id the mock has re-issued to another test cannot be detected as
+stale — `fetchResult` finds _a_ result and the sync reports `unchanged`.
+
+Decisions taken in this phase that are cheaper to revisit later than to design
+now:
+
+- **Runs spanning several suites.** TestRail ties a run to one suite. A
+  qa-flow-hub run that mixes cases from two suites is pushed against the suite
+  with the most cases; the others are dropped from the external run and listed
+  in `metadata.skippedCases`. The honest alternative (a TestRail _plan_ with one
+  run per suite) is a second object type and a second reference; nobody has
+  asked for it yet.
+- **Sections carry no reference.** They are matched by name inside the suite on
+  every sync. Renaming a section internally therefore creates a new one in
+  TestRail rather than renaming the old; the case moves, the empty section
+  stays. A `test_section` `LinkableEntity` fixes it when it matters.
+- **Only the latest result is offered for sync in the UI.** Older attempts can
+  still be pushed through the API, out of order on the TestRail side. The screen
+  keeps the tester on the happy path; the API keeps the door open.
+- **No import (TestRail → qa-flow-hub).** `importCases` exists on the port and
+  the mock answers it, but no service consumes it: the phase was approved as
+  push-only. Import needs a dry run and a per-row report, and its result — a
+  case owned elsewhere — is a traceability question S2-F5 has to answer first.
+- **`TestManagementAdapter` grew to twenty methods.** It is one interface
+  because the provider is one product; if a second test-management provider
+  ever arrives, split it by entity (`SuiteSync`, `CaseSync`, …) before
+  implementing it twice.
+
+- **Cost:** development-only drift after restarts, as in 28; a multi-suite run
+  looks complete in TestRail while it is not (the metadata says so, the UI does
+  not yet).
+- **Trigger to fix:** a real TestRail, or S2-F5 needing the import direction.

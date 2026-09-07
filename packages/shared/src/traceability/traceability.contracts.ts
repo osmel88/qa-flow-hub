@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const LINKABLE_ENTITIES = [
   'requirement',
+  'test_suite',
   'test_case',
   'test_run',
   'test_result',
@@ -29,9 +30,12 @@ export const createTraceLinkSchema = z
     targetId: z.string().min(1),
     linkType: z.enum(TRACE_LINK_TYPES).default('relates_to'),
   })
-  .refine((value) => !(value.sourceType === value.targetType && value.sourceId === value.targetId), {
-    message: 'An entity cannot be linked to itself',
-  });
+  .refine(
+    (value) => !(value.sourceType === value.targetType && value.sourceId === value.targetId),
+    {
+      message: 'An entity cannot be linked to itself',
+    },
+  );
 export type CreateTraceLinkInput = z.infer<typeof createTraceLinkSchema>;
 
 export const listTraceLinksQuerySchema = z.object({

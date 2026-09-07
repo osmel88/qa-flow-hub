@@ -8,7 +8,16 @@ import {
   ExternalProject,
   ExternalRef,
   HealthCheck,
+  CasePayload,
+  ExternalCase,
+  ExternalResult,
+  ExternalRun,
+  ExternalSuite,
   ImportedCase,
+  ResultPayload,
+  RunPayload,
+  SuitePayload,
+  TestManagementCatalog,
   IntegrationProviderName,
   IssuePayload,
   IssueState,
@@ -95,12 +104,72 @@ export class NoopTestManagementAdapter implements TestManagementAdapter {
     return Promise.resolve(unconfigured('test management'));
   }
 
+  describe(_context: AdapterContext): Promise<TestManagementCatalog> {
+    return Promise.resolve({ statuses: [], priorities: [], caseTypes: [] });
+  }
+
+  listProjects(_context: AdapterContext): Promise<ExternalProject[]> {
+    return Promise.resolve([]);
+  }
+
+  listSuites(_context: AdapterContext, _projectKey?: string): Promise<ExternalSuite[]> {
+    return Promise.resolve([]);
+  }
+
+  listCases(_context: AdapterContext, _suiteExternalId: string): Promise<ExternalCase[]> {
+    return Promise.resolve([]);
+  }
+
+  listRuns(_context: AdapterContext, _projectKey?: string): Promise<ExternalRun[]> {
+    return Promise.resolve([]);
+  }
+
   importCases(_context: AdapterContext, _externalSuiteId: string): Promise<ImportedCase[]> {
     return Promise.resolve([]);
   }
 
-  exportRun(_context: AdapterContext, _testRunId: string): Promise<ExternalRef> {
+  createSuite(_context: AdapterContext, _payload: SuitePayload): Promise<ExternalRef> {
+    return Promise.reject(notConfigured('test management', 'create a suite'));
+  }
+
+  updateSuite(_context: AdapterContext, _id: string, _payload: SuitePayload): Promise<ExternalRef> {
+    return Promise.reject(notConfigured('test management', 'update a suite'));
+  }
+
+  fetchSuite(_context: AdapterContext, _id: string): Promise<ExternalSuite | null> {
+    return Promise.resolve(null);
+  }
+
+  createCase(_context: AdapterContext, _payload: CasePayload): Promise<ExternalRef> {
+    return Promise.reject(notConfigured('test management', 'create a case'));
+  }
+
+  updateCase(_context: AdapterContext, _id: string, _payload: CasePayload): Promise<ExternalRef> {
+    return Promise.reject(notConfigured('test management', 'update a case'));
+  }
+
+  fetchCase(_context: AdapterContext, _id: string): Promise<ExternalCase | null> {
+    return Promise.resolve(null);
+  }
+
+  createRun(_context: AdapterContext, _payload: RunPayload): Promise<ExternalRef> {
     return Promise.reject(notConfigured('test management', 'export a run'));
+  }
+
+  updateRun(_context: AdapterContext, _id: string, _payload: RunPayload): Promise<ExternalRef> {
+    return Promise.reject(notConfigured('test management', 'update a run'));
+  }
+
+  fetchRun(_context: AdapterContext, _id: string): Promise<ExternalRun | null> {
+    return Promise.resolve(null);
+  }
+
+  addResult(_context: AdapterContext, _payload: ResultPayload): Promise<ExternalRef> {
+    return Promise.reject(notConfigured('test management', 'add a result'));
+  }
+
+  fetchResult(_context: AdapterContext, _id: string): Promise<ExternalResult | null> {
+    return Promise.resolve(null);
   }
 }
 

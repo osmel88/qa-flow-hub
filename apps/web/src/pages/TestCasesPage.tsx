@@ -6,6 +6,7 @@ import { testDesignApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
+import { TestRailSyncCell, useTestRailReferences } from '../components/TestRailSyncCell';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 
@@ -32,6 +33,14 @@ export function TestCasesPage(): React.JSX.Element {
   });
 
   const selectedSuite = suiteId ?? suites.data?.[0]?.id ?? null;
+  const suiteReferences = useTestRailReferences(
+    { entityType: 'test_suite', projectId: activeProjectId ?? '' },
+    activeProjectId !== null,
+  );
+  const caseReferences = useTestRailReferences(
+    { entityType: 'test_case', projectId: activeProjectId ?? '' },
+    activeProjectId !== null,
+  );
 
   const sections = useQuery({
     queryKey: ['sections', selectedSuite],
@@ -223,6 +232,13 @@ export function TestCasesPage(): React.JSX.Element {
 
           {selectedSuite !== null && (
             <>
+              <h2>TestRail</h2>
+              <TestRailSyncCell
+                entityType="test_suite"
+                entityId={selectedSuite}
+                reference={suiteReferences.data?.get(selectedSuite)}
+              />
+
               <h2>Sections</h2>
               <SelectField
                 label="Parent section"
@@ -301,6 +317,7 @@ export function TestCasesPage(): React.JSX.Element {
                   <th scope="col">Title</th>
                   <th scope="col">Status</th>
                   <th scope="col">Version</th>
+                  <th scope="col">TestRail</th>
                   <th scope="col">Actions</th>
                 </tr>
               </thead>
@@ -317,6 +334,13 @@ export function TestCasesPage(): React.JSX.Element {
                       <Badge tone={toneFor(testCase.status)}>{humanize(testCase.status)}</Badge>
                     </td>
                     <td>v{testCase.version}</td>
+                    <td>
+                      <TestRailSyncCell
+                        entityType="test_case"
+                        entityId={testCase.id}
+                        reference={caseReferences.data?.get(testCase.id)}
+                      />
+                    </td>
                     <td className="row-actions">
                       {testCase.archivedAt !== null && <Badge tone="neutral">Archived</Badge>}
                       <Button

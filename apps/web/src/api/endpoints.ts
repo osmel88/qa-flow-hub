@@ -38,6 +38,9 @@ import type {
   TestCaseDetailView,
   TestCaseView,
   TestResultView,
+  ListTestRailReferencesQuery,
+  TestRailSyncableEntity,
+  TestRailSyncResultView,
   TestRunView,
   TraceLinkView,
   TraceabilityMatrix,
@@ -243,6 +246,23 @@ export const jiraApi = {
   sync: (entityType: JiraSyncableEntity, id: string) =>
     apiFetch<JiraSyncResultView>(
       `/integrations/jira/sync/${entityType === 'requirement' ? 'requirements' : 'defects'}/${id}`,
+      { method: 'POST' },
+    ),
+};
+
+const TESTRAIL_SYNC_PATH: Record<TestRailSyncableEntity, string> = {
+  test_suite: 'test-suites',
+  test_case: 'test-cases',
+  test_run: 'test-runs',
+  test_result: 'test-results',
+};
+
+export const testRailApi = {
+  references: (params: ListTestRailReferencesQuery) =>
+    apiFetch<ExternalReferenceView[]>(`/integrations/testrail/references${query(params)}`),
+  sync: (entityType: TestRailSyncableEntity, id: string) =>
+    apiFetch<TestRailSyncResultView>(
+      `/integrations/testrail/sync/${TESTRAIL_SYNC_PATH[entityType]}/${id}`,
       { method: 'POST' },
     ),
 };

@@ -126,3 +126,99 @@ test('an owner configures Jira and is told what is not available yet', async ({ 
     await expect(page.getByRole('link', { name: 'WEB-3' })).toBeVisible();
   });
 });
+
+/**
+ * TestRail mock (S2-F3): the owner connects TestRail and, without leaving the
+ * test-design and execution screens, pushes a case (which brings its suite),
+ * a run and a result. Every sync leaves one reference behind and a re-sync
+ * reuses it. The external ids are the deterministic ones of the mock seed:
+ * suite 1, cases 1–2 and run 1 already exist, so ours are suite 2, case 3 and
+ * run 2.
+ */
+test('an owner synchronizes suites, cases, runs and results with the TestRail mock', async ({
+  page,
+}) => {
+  const suffix = `${unique}-tr`;
+
+  await test.step('register, create the organization and connect TestRail', async () => {
+    await page.goto('/register');
+    await page.getByLabel('Full name').fill('TestRail Owner');
+    await page.getByLabel('Email').fill(`e2e-testrail-${unique}@example.com`);
+    await page.getByLabel('Password').fill(account.password);
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
+    await page.getByLabel('Name').fill(`TestRail ${suffix}`);
+    await page.getByLabel('Slug').fill(`testrail-${suffix}`);
+    await page.getByRole('button', { name: 'Create' }).click();
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Integrations' }).click();
+    const testrail = page.getByRole('region', { name: 'TestRail' });
+    await testrail.getByLabel('Base URL').fill('https://acme.testrail.test');
+    await testrail.getByRole('button', { name: 'Save' }).click();
+    await expect(testrail.getByRole('status')).toContainText('Configuration saved.');
+    await testrail.getByRole('button', { name: 'Test connection' }).click();
+    await expect(testrail.getByRole('status')).toContainText('TestRail mock');
+    await testrail.getByRole('button', { name: 'Connect', exact: true }).click();
+    await expect(testrail.locator('.ui-badge', { hasText: /^connected$/i })).toBeVisible();
+  });
+
+  await test.step('create a project, a suite and a case', async () => {
+    await page.getByRole('link', { name: 'Projects' }).click();
+    await page.getByLabel('Name').fill('Web checkout');
+    await page.getByLabel('Key').fill('WEB');
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.getByRole('cell', { name: 'WEB', exact: true })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Test cases' }).click();
+    await page.getByLabel('New suite').fill('Checkout');
+    await page.getByRole('button', { name: 'Add suite' }).click();
+    await expect(page.getByRole('button', { name: /Checkout/ })).toBeVisible();
+    await page.getByLabel('Title').fill('Pay with a valid card');
+    await page.getByRole('button', { name: 'Create case' }).click();
+    await expect(page.getByRole('cell', { name: 'WEB-C-1' })).toBeVisible();
+  });
+
+  await test.step('syncing the case brings its suite along', async () => {
+    const row = page.getByRole('row', { name: /WEB-C-1/ });
+    await row.getByRole('button', { name: 'Sync to TestRail' }).click();
+    const caseLink = row.getByRole('link', { name: 'C3' });
+    await expect(caseLink).toBeVisible();
+    await expect(caseLink).toHaveAttribute(
+      'href',
+      'https://acme.testrail.test/index.php?/cases/view/3',
+    );
+    await expect(page.getByRole('link', { name: 'S2' })).toBeVisible();
+
+    await row.getByRole('button', { name: 'Re-sync' }).click();
+    await expect(page.getByRole('link', { name: 'C3' })).toHaveCount(1);
+  });
+
+  await test.step('the run becomes a TestRail run', async () => {
+    await page.getByRole('link', { name: 'Test runs' }).click();
+    await page.getByLabel('Name').fill('Release 1.0');
+    await page.getByRole('button', { name: 'Create run' }).click();
+    const row = page.getByRole('row', { name: /Release 1\.0/ });
+    await row.getByRole('button', { name: 'Sync to TestRail' }).click();
+    await expect(row.getByRole('link', { name: 'R2' })).toBeVisible();
+  });
+
+  await test.step('a recorded result is pushed and kept on re-sync', async () => {
+    await page.getByRole('link', { name: 'Release 1.0' }).click();
+    await page.getByRole('button', { name: 'Start run' }).click();
+    await page.getByRole('button', { name: /WEB-C-1/ }).click();
+    await page.getByRole('button', { name: 'passed', exact: true }).click();
+    await expect(page.getByText(/Latest result: passed/)).toBeVisible();
+
+    // Results have no key in TestRail: the reference shows the result id (the
+    // seed holds one, so ours is 2) and links to the run test it belongs to.
+    await page.getByRole('button', { name: 'Sync to TestRail' }).click();
+    const resultLink = page.getByRole('link', { name: '2', exact: true });
+    await expect(resultLink).toHaveAttribute(
+      'href',
+      'https://acme.testrail.test/index.php?/tests/view/3',
+    );
+    await page.getByRole('button', { name: 'Re-sync' }).last().click();
+    await expect(resultLink).toHaveCount(1);
+  });
+});

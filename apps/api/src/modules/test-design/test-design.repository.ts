@@ -86,6 +86,22 @@ export class TestDesignRepository extends TenantAwareRepository {
     return cases.map((testCase) => testCase.id);
   }
 
+  async listSuiteIds(projectId: string): Promise<string[]> {
+    const rows = await this.prisma.testSuite.findMany({
+      where: this.active({ projectId }),
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
+  async listCaseIds(projectId: string): Promise<string[]> {
+    const rows = await this.prisma.testCase.findMany({
+      where: this.active({ projectId, archivedAt: null }),
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
   countCasesInSuite(suiteId: string): Promise<number> {
     return this.prisma.testCase.count({ where: this.active({ suiteId }) });
   }

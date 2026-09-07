@@ -69,8 +69,8 @@ apps/api/src/
 ├─ errors/                 domain error hierarchy + the one exception filter
 ├─ events/                 in-process event bus and event contracts
 ├─ audit/                  AuditService and the interceptor that feeds it
-├─ integrations/           adapter ports, no-op implementations, jira-mock/ (S2-F2)
-├─ modules/integrations/   Settings → Integrations (S2-F1) + Jira sync (S2-F2)
+├─ integrations/           adapter ports, no-op implementations, jira-mock/ (S2-F2), testrail-mock/ (S2-F3)
+├─ modules/integrations/   Settings → Integrations (S2-F1) + Jira sync (S2-F2) + TestRail sync (S2-F3)
 └─ modules/<area>/         controller, service, repository, dto, domain, policies
 ```
 
@@ -121,14 +121,14 @@ makes it possible to enable later without a data model change.
 
 ## Extension points
 
-| Point | Contract | MVP implementation |
-| --- | --- | --- |
-| Issue trackers | `IssueTrackerAdapter` | No-op; raises `INTEGRATION_NOT_CONFIGURED` |
-| Test management import/export | `TestManagementAdapter` | No-op |
-| Automation providers | `AutomationProviderAdapter` | No-op |
-| External identity | `IntegrationConnection` + `ExternalReference` | Tables and contracts only |
-| Email | Invitation records exist without delivery | Documented seam, no provider |
-| File storage | `AttachmentMetadata` with `storageKey` | Metadata only |
+| Point                         | Contract                                      | MVP implementation                         |
+| ----------------------------- | --------------------------------------------- | ------------------------------------------ |
+| Issue trackers                | `IssueTrackerAdapter`                         | No-op; raises `INTEGRATION_NOT_CONFIGURED` |
+| Test management import/export | `TestManagementAdapter`                       | No-op                                      |
+| Automation providers          | `AutomationProviderAdapter`                   | No-op                                      |
+| External identity             | `IntegrationConnection` + `ExternalReference` | Tables and contracts only                  |
+| Email                         | Invitation records exist without delivery     | Documented seam, no provider               |
+| File storage                  | `AttachmentMetadata` with `storageKey`        | Metadata only                              |
 
 ## Operations
 

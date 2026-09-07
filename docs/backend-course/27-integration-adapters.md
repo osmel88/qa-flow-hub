@@ -197,6 +197,52 @@ Lo que merece estudio:
    primer issue que crea un test es siempre `10103` / `QA-3`. Los tests lo
    afirman literalmente; si algún día te sorprende ese número, ya sabes por qué.
 
+## S2-F3: el segundo mock demuestra que el puerto era el correcto
+
+TestRail entra por `TEST_MANAGEMENT_ADAPTER` con la misma receta, y ningún
+módulo de negocio (`test-design`, `test-runs`) supo que ocurrió.
+
+```
+apps/api/src/integrations/testrail-mock/
+├─ testrail-mock.store.ts    un TestRail en memoria por organización: suites, secciones, casos, runs, tests, results
+└─ testrail-mock.adapter.ts  traduce SuitePayload/CasePayload/RunPayload/ResultPayload al vocabulario TestRail
+apps/api/src/modules/integrations/
+├─ testrail-sync.service.ts     TestSuite/TestCase/TestRun/TestResult → objeto TestRail + su ExternalReference
+└─ testrail-sync.controller.ts  /integrations/testrail/{projects,catalog,suites,cases,runs,references,sync/*}
+```
+
+Lo que merece estudio:
+
+1. **El puerto se ensanchó antes de escribir el mock.** El
+   `TestManagementAdapter` del MVP solo sabía importar casos y exportar un run;
+   no daba para crear una suite ni añadir un resultado. Se rediseñó como CRUD
+   neutro (`createSuite`, `updateCase`, `fetchRun`, `addResult`…) y el noop se
+   actualizó a la vez. Regla: cuando un mock te obliga a tocar la interfaz, es
+   la interfaz la que estaba incompleta, no el mock el que se pasa de listo.
+2. **Un grafo, no cuatro sincronizaciones sueltas.** Un caso no existe en
+   TestRail sin su suite; un run no existe sin sus casos; un resultado no
+   existe sin el test de un run. `TestRailSyncService` resuelve las
+   dependencias él mismo (`ensureSuite` → `ensureCase` → `ensureRun`) y
+   devuelve en `dependencies` las referencias que creó de paso, para que el
+   cliente refresque todas las columnas de una vez. La alternativa —obligar al
+   usuario a sincronizar en orden— es trasladar al humano una restricción del
+   proveedor.
+3. **Append-only en los dos lados.** Un `TestResult` nunca se edita aquí, y un
+   result de TestRail tampoco. Así que `syncResult` no tiene rama de
+   "actualizar": si la referencia existe y el proveedor aún tiene el result,
+   responde `unchanged`; si no, añade uno nuevo y mueve la referencia. Es el
+   único sync sin `update*` en el puerto, y no por olvido.
+4. **Una enumeración, una migración.** `LinkableEntity` no tenía `test_suite`
+   porque el MVP no enlazaba suites con nada. Añadir el valor es un
+   `ALTER TYPE … ADD VALUE`, no una tabla: la relación sigue viviendo en
+   `ExternalReference`. `TestSuite`, `TestCase`, `TestRun` y `TestResult` no
+   ganaron ninguna columna, igual que `Requirement` y `Defect` en F2.
+5. **Decidir lo incómodo y anotarlo.** TestRail ata un run a una suite;
+   qa-flow-hub no. El servicio elige la suite dominante y deja constancia en
+   `metadata.skippedCases` de lo que no cupo. Es una decisión discutible, y
+   por eso está escrita en `technical-debt.md` (29) con la alternativa (un
+   _plan_ con un run por suite) y el disparador para cambiarla.
+
 ## Comandos
 
 ```bash
@@ -260,11 +306,11 @@ protection.
 
 ## MVP frente a futuro
 
-| Decisión | Ahora | Después |
-| --- | --- | --- |
-| Proveedores | Jira mock (S2-F2); TestRail y GitHub noop | Jira real, TestRail, GitHub Actions |
-| Secretos | Campo `secretRef` sin resolver | Gestor de secretos real |
-| Ingesta de CI | Pull | Webhooks firmados |
-| Sincronización | Unidireccional y bajo demanda (botón) | Bidireccional con resolución de conflictos |
-| Reintentos | No hay | Cola con backoff y cola de fallos |
-| Email | Noop que registra y no envía | Proveedor transaccional real |
+| Decisión       | Ahora                                     | Después                                    |
+| -------------- | ----------------------------------------- | ------------------------------------------ |
+| Proveedores    | Jira mock (S2-F2); TestRail y GitHub noop | Jira real, TestRail, GitHub Actions        |
+| Secretos       | Campo `secretRef` sin resolver            | Gestor de secretos real                    |
+| Ingesta de CI  | Pull                                      | Webhooks firmados                          |
+| Sincronización | Unidireccional y bajo demanda (botón)     | Bidireccional con resolución de conflictos |
+| Reintentos     | No hay                                    | Cola con backoff y cola de fallos          |
+| Email          | Noop que registra y no envía              | Proveedor transaccional real               |

@@ -23,19 +23,19 @@ Hard constraints for the whole stage:
 
 ## Phase order
 
-| Phase | Name | Theme |
-| --- | --- | --- |
-| S2-F1 | Integration Settings — **delivered** | Integrations |
-| S2-F2 | Jira Mock — **delivered** | Integrations |
-| S2-F3 | TestRail Mock | Integrations |
-| S2-F4 | GitHub Real | Integrations |
-| S2-F5 | External Traceability | Traceability |
-| S2-F6 | Email Notifications | Notifications |
-| S2-F7 | File & Evidence Uploads | Evidence |
-| S2-F8 | Granular Permissions | Authorization |
-| S2-F9 | Project KPI & Analytics Dashboard | Analytics |
-| S2-F10 | Production Readiness | Operations |
-| S2-F11 | Billing & Subscriptions | Commercial |
+| Phase  | Name                                 | Theme         |
+| ------ | ------------------------------------ | ------------- |
+| S2-F1  | Integration Settings — **delivered** | Integrations  |
+| S2-F2  | Jira Mock — **delivered**            | Integrations  |
+| S2-F3  | TestRail Mock — **delivered**        | Integrations  |
+| S2-F4  | GitHub Real                          | Integrations  |
+| S2-F5  | External Traceability                | Traceability  |
+| S2-F6  | Email Notifications                  | Notifications |
+| S2-F7  | File & Evidence Uploads              | Evidence      |
+| S2-F8  | Granular Permissions                 | Authorization |
+| S2-F9  | Project KPI & Analytics Dashboard    | Analytics     |
+| S2-F10 | Production Readiness                 | Operations    |
+| S2-F11 | Billing & Subscriptions              | Commercial    |
 
 KPI & Analytics was added after the stage was approved and is inserted **before**
 Production Readiness and Billing, which shifts those two phases to F10 and F11.
@@ -186,6 +186,59 @@ entities. No corporate account, no real credential.
 Import is where the mapping decisions live: partial failure must be reported per
 row, and a dry run must exist before anything is written.
 
+### Delivery (S2-F3)
+
+What shipped, all behind the existing `TEST_MANAGEMENT_ADAPTER` port:
+
+- `apps/api/src/integrations/testrail-mock/`: `TestRailMockStore`, an
+  in-memory, per-organization TestRail with two projects (`1` Quality
+  Assurance, `2` Web Platform), TestRail's default statuses (plus `Skipped` as
+  the custom one), priorities and case types, and a seed of suite `1`, root
+  section `1`, cases `1`–`2`, run `1` with its tests and one passed result. Ids
+  are allocated deterministically: the first suite a test creates is `2`, the
+  first case `3`, the first run `2`, the first result `2`.
+  `TestRailMockTestManagementAdapter` maps the port's neutral vocabulary
+  (`SuitePayload`, `CasePayload`, `RunPayload`, `ResultPayload`) onto it and
+  honours `settings.projectId` (target project) and `settings.simulateFailure`
+  (`unreachable` | `write_failure`). Sections are matched or created by name
+  inside the suite; they get no `ExternalReference` of their own.
+- `TestManagementAdapter` was widened from import/export to neutral CRUD:
+  `describe`, `listProjects/Suites/Cases/Runs`, `create/update/fetch` for
+  suite, case and run, `addResult/fetchResult`. The noop adapter implements the
+  same surface and still fails honestly.
+- TestRail is now `implemented` in the availability table for `mock`:
+  **Connect** reaches `connected`, **Test connection** runs `check()`. GitHub
+  stays pending until S2-F4.
+- `TestRailSyncService` + `TestRailSyncController`:
+  `GET /integrations/testrail/{projects,catalog,suites,cases,runs}`,
+  `GET /integrations/testrail/references?entityType&projectId|testRunId`,
+  `POST /integrations/testrail/sync/{test-suites,test-cases,test-runs,test-results}/:id`.
+  A sync brings its dependencies with it — a case syncs its suite first, a run
+  its suite and cases, a result its run — so nobody has to push the graph in
+  order by hand. One `ExternalReference` per entity, moved (with
+  `previousExternalId`) when the provider has lost the object; results are
+  append-only on both sides, so a result reference is reused, never re-added.
+  A run that spans several internal suites is pushed against the dominant one
+  and the rest are listed in `metadata.skippedCases`; an empty run is refused.
+- Model: `LinkableEntity` gained `test_suite` (migration
+  `20260901090000_linkable_test_suite`, one `ALTER TYPE … ADD VALUE`). No
+  column on `TestSuite`, `TestCase`, `TestRun` or `TestResult`.
+- Web: `TestRailSyncCell` on the selected suite and on every case (Test cases),
+  on every run (Test runs), and on the run header and the latest result of each
+  case (execution screen). One references query per table, refreshed as a whole
+  after any sync because a sync can create several references at once.
+- Tests: 10 adapter unit tests, 21 integration tests
+  (`test/testrail-sync.int-spec.ts`: browsing, create/update/recreate for each
+  entity, dominant suite, result reuse, tenant isolation, roles and
+  project-level narrowing, simulated failures and recovery), the settings suite
+  updated, and a second E2E in `integrations.e2e.spec.ts` that connects TestRail
+  and syncs case → run → result from the product screens.
+
+Not delivered, on purpose: the import direction (TestRail → qa-flow-hub, with
+per-row report and dry run). The adapter exposes `importCases`, but the phase
+was approved as push-only sync; import belongs with S2-F5, which decides how an
+externally-owned case shows up in the matrix. Debt recorded: entry 29.
+
 ## S2-F4 — GitHub Real
 
 The first real integration, with a personal account only.
@@ -269,7 +322,7 @@ plans.
 
 **This is the riskiest phase of S2, and not because of the matrix.** Today the
 project-scoped guard fails open and the decision lives in the services (debt
-23), and `ProjectMember` restricts what you can *do*, not what you can *see*
+23), and `ProjectMember` restricts what you can _do_, not what you can _see_
 (debt 22). A permission matrix must be built **on top of** that guard, replacing
 the scattered decisions, or the product ends up with two authorization systems
 disagreeing. Both debt entries are paid here or the phase does not close.

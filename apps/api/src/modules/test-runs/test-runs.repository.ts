@@ -97,6 +97,14 @@ export class TestRunsRepository extends TenantAwareRepository {
     return rows.map((row) => ({ status: row.latestStatus, count: row._count._all }));
   }
 
+  async listIds(projectId: string): Promise<string[]> {
+    const rows = await this.prisma.testRun.findMany({
+      where: this.active({ projectId }),
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
   // --- Cases in a run ------------------------------------------------------
 
   findRunCaseById(id: string, tx?: PrismaTransaction): Promise<TestRunCase | null> {
@@ -126,8 +134,11 @@ export class TestRunsRepository extends TenantAwareRepository {
     return { data, meta: buildPaginationMeta(query, total) };
   }
 
-  listCaseIdsInRun(testRunId: string, tx: PrismaTransaction): Promise<Array<{ testCaseId: string }>> {
-    return tx.testRunCase.findMany({
+  listCaseIdsInRun(
+    testRunId: string,
+    tx?: PrismaTransaction,
+  ): Promise<Array<{ testCaseId: string }>> {
+    return (tx ?? this.prisma).testRunCase.findMany({
       where: this.scope({ testRunId }),
       select: { testCaseId: true },
     });

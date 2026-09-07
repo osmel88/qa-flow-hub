@@ -11,3 +11,4 @@ export * from './traceability/traceability.contracts.js';
 export * from './dashboard/dashboard.contracts.js';
 export * from './integrations/integration.contracts.js';
 export * from './integrations/jira-sync.contracts.js';
+export * from './integrations/testrail-sync.contracts.js';

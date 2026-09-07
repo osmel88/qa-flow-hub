@@ -26,7 +26,7 @@ Hard constraints for the whole stage:
 | Phase | Name | Theme |
 | --- | --- | --- |
 | S2-F1 | Integration Settings — **delivered** | Integrations |
-| S2-F2 | Jira Mock | Integrations |
+| S2-F2 | Jira Mock — **delivered** | Integrations |
 | S2-F3 | TestRail Mock | Integrations |
 | S2-F4 | GitHub Real | Integrations |
 | S2-F5 | External Traceability | Traceability |
@@ -132,6 +132,50 @@ and `Defect` through `ExternalReference`.
 Rules: no real network call; the mock is deterministic and seedable so tests can
 assert against it; latency and failure injection so the UI is built against a
 provider that fails, which is the state a real one spends part of its time in.
+
+### Delivery (S2-F2)
+
+What shipped, all behind the existing `ISSUE_TRACKER_ADAPTER` port:
+
+- `apps/api/src/integrations/jira-mock/`: `JiraMockStore`, an in-memory,
+  per-organization Jira with two projects (`QA`, `WEB`), three users, five
+  priorities, four statuses and three seed issues (`QA-1` story, `QA-2` bug,
+  `WEB-1` task); ids and keys are allocated deterministically (`10103`/`QA-3`
+  is always the first issue a test creates). `JiraMockIssueTrackerAdapter` maps
+  the port's neutral vocabulary (`IssuePayload`, `IssueSummary`) onto it and
+  honours two settings: `projectKey` (target project) and `simulateFailure`
+  (`unreachable` fails everything, `write_failure` fails writes only).
+- `IssueTrackerAdapter` grew `updateIssue`, `getIssue`, `listProjects`,
+  `listIssues` and `describe`; `AdapterContext` carries `baseUrl`, so the mock
+  can build `https://<site>/browse/KEY` links without a network call. The noop
+  adapter implements the same surface and still fails honestly.
+- Jira is now `implemented` in the availability table for `mock`: **Connect**
+  reaches `connected`, **Test connection** runs the adapter's `check()`.
+  TestRail and GitHub are untouched.
+- `JiraSyncService` + `JiraSyncController` (`apps/api/src/modules/integrations/`):
+  `GET /integrations/jira/{projects,catalog,issues}`,
+  `GET /integrations/jira/references?projectId&entityType`,
+  `POST /integrations/jira/sync/requirements/:id`,
+  `POST /integrations/jira/sync/defects/:id`. Sync loads the entity through its
+  tenant-aware repository, checks project access, creates the issue on the
+  first call and updates it afterwards (or recreates it when the provider has
+  lost it), and persists **one** `ExternalReference` per entity — moving the
+  row to the new id and recording `previousExternalId` rather than leaving a
+  stale second row. Requirement types map to story/task/bug; defects are
+  always bugs and carry severity as a label. Provider failures mark the
+  connection `error` with `lastError`; the next successful sync clears it.
+- No column was added to `Requirement`, `Defect` or any business table; no
+  migration.
+- Web: a "Jira" column on Requirements and Defects (`JiraSyncCell`) that shows
+  the linked key as a browse link and offers **Sync to Jira** / **Re-sync**;
+  one references query per table, not per row.
+- Tests: 9 adapter unit tests, 16 integration tests (`test/jira-sync.int-spec.ts`:
+  browsing, create/update/recreate, defect lifecycle, tenant isolation, roles
+  and project-level narrowing, simulated failures, recovery) plus the updated
+  settings suite; the integrations E2E now connects Jira and syncs a
+  requirement and a defect end to end.
+
+Debt recorded: entry 28 in `technical-debt.md`.
 
 ## S2-F3 — TestRail Mock
 

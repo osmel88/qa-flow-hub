@@ -15,9 +15,14 @@ import type {
   CreatedInvitationView,
   DashboardSummary,
   DefectView,
+  ExternalIssueView,
+  ExternalProjectView,
+  ExternalReferenceView,
   IntegrationConnectionView,
   IntegrationTestResultView,
   InvitationView,
+  JiraSyncResultView,
+  JiraSyncableEntity,
   LoginInput,
   MemberView,
   OrganizationSummary,
@@ -225,4 +230,19 @@ export const integrationsApi = {
 
 export const dashboardApi = {
   summary: (projectId?: string) => apiFetch<DashboardSummary>(`/dashboard${query({ projectId })}`),
+};
+
+export const jiraApi = {
+  projects: () => apiFetch<ExternalProjectView[]>('/integrations/jira/projects'),
+  issues: (params: { projectKey?: string; kind?: string } = {}) =>
+    apiFetch<ExternalIssueView[]>(`/integrations/jira/issues${query(params)}`),
+  references: (projectId: string, entityType: JiraSyncableEntity) =>
+    apiFetch<ExternalReferenceView[]>(
+      `/integrations/jira/references${query({ projectId, entityType })}`,
+    ),
+  sync: (entityType: JiraSyncableEntity, id: string) =>
+    apiFetch<JiraSyncResultView>(
+      `/integrations/jira/sync/${entityType === 'requirement' ? 'requirements' : 'defects'}/${id}`,
+      { method: 'POST' },
+    ),
 };

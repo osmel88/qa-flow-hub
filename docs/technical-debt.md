@@ -510,3 +510,34 @@ Consequences that follow from the same decision and are deliberate:
   an owner can prepare the configuration and nothing else.
 - **Trigger to fix:** S2-F2 (Jira mock flips `connectable` for `mock`), S2-F4
   (credential store, `hasCredential` becomes meaningful).
+
+## 28. The Jira mock lives in memory (S2-F2)
+
+`JiraMockStore` keeps its projects, users and issues in process memory, one
+tenant at a time, and re-seeds itself on every start. That was the point: a
+deterministic provider that tests can reason about (`10103`/`QA-3` is always the
+first created issue) without a provider-specific table, migration or RLS policy
+that S2-F3 would have to repeat for TestRail.
+
+The `ExternalReference` rows it produces are real and persistent, so the two
+sides drift on restart: a reference can point at an id the mock no longer has,
+or — worse — at an id the mock has handed to somebody else's issue since. The
+sync handles the first case (it recreates the issue and moves the reference,
+recording `previousExternalId`); the second is indistinguishable from a
+legitimate update and is not detected. A second API instance would have its own
+mock as well.
+
+- **Cost:** in development, "Re-sync" after an API restart silently updates the
+  wrong mock issue when ids were reused; never a data-loss risk for internal
+  entities, only for the mock's own state.
+- **Trigger to fix:** a real Jira (ids are never reused there), or a request to
+  keep mock state across restarts — then persist the store in a `jira_mock_*`
+  schema behind the same `JiraMockStore` interface, with tenant isolation as a
+  column, and drop the reset-on-start behaviour.
+
+Also deliberate and cheaper to change later than to design now:
+
+- Sync is one-directional and on demand (a button, no polling, no webhook): a
+  change made in Jira is not pulled back. S2-F5 owns bidirectional traceability.
+- The web hides no Jira action by role; the API refuses and the cell shows the
+  message. The same convention the rest of the client follows until S2-F8.

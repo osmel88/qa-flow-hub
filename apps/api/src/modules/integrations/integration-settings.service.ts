@@ -261,9 +261,8 @@ export class IntegrationSettingsService {
 
   /**
    * The adapter receives `secretRef`, never a credential: reading the secret is
-   * the credential store's job, and it does not exist yet. This path is
-   * unreachable while no provider is implemented, and it is wired anyway so the
-   * phase that implements one changes a flag, not this service.
+   * the credential store's job, and it does not exist yet. The Jira mock needs
+   * none, which is what lets this path run today without one.
    */
   private runAdapterCheck(
     provider: ConfigurableIntegrationProvider,
@@ -272,6 +271,7 @@ export class IntegrationSettingsService {
     const context: AdapterContext = {
       organizationId: connection.organizationId,
       connectionId: connection.id,
+      baseUrl: connection.baseUrl,
       secretRef: connection.secretRef,
       settings: toStringRecord(connection.settings),
     };

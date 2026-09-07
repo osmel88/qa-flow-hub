@@ -1,16 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { IntegrationNotConfiguredError } from '../errors/domain-error';
 import {
   AdapterContext,
   AutomatedResult,
   AutomationProviderAdapter,
   EmailAdapter,
+  ExternalProject,
   ExternalRef,
   HealthCheck,
   ImportedCase,
   IntegrationProviderName,
   IssuePayload,
   IssueState,
+  IssueSummary,
   IssueTrackerAdapter,
+  IssueTrackerCatalog,
   TestManagementAdapter,
 } from './adapter.contracts';
 
@@ -30,11 +34,14 @@ function unconfigured(provider: string): HealthCheck {
   return { reachable: false, message: `${provider}: ${NOT_CONFIGURED}`, checkedAt: new Date() };
 }
 
-export class IntegrationNotConfiguredError extends Error {
-  constructor(provider: string, operation: string) {
-    super(`Cannot ${operation}: no ${provider} adapter is configured`);
-    this.name = 'IntegrationNotConfiguredError';
-  }
+/** Kept as a re-export: the error moved to the domain when it gained an HTTP status. */
+export { IntegrationNotConfiguredError };
+
+function notConfigured(provider: string, operation: string): IntegrationNotConfiguredError {
+  return new IntegrationNotConfiguredError(
+    provider,
+    `cannot ${operation}, no adapter is configured`,
+  );
 }
 
 @Injectable()
@@ -48,11 +55,35 @@ export class NoopIssueTrackerAdapter implements IssueTrackerAdapter {
 
   createIssue(_context: AdapterContext, payload: IssuePayload): Promise<ExternalRef> {
     this.logger.debug(`Would push issue "${payload.title}" to an issue tracker`);
-    return Promise.reject(new IntegrationNotConfiguredError('issue tracker', 'create an issue'));
+    return Promise.reject(notConfigured('issue tracker', 'create an issue'));
+  }
+
+  updateIssue(
+    _context: AdapterContext,
+    _externalId: string,
+    _payload: IssuePayload,
+  ): Promise<ExternalRef> {
+    return Promise.reject(notConfigured('issue tracker', 'update an issue'));
   }
 
   fetchIssueState(_context: AdapterContext, _externalId: string): Promise<IssueState | null> {
     return Promise.resolve(null);
+  }
+
+  getIssue(_context: AdapterContext, _externalId: string): Promise<IssueSummary | null> {
+    return Promise.resolve(null);
+  }
+
+  listProjects(_context: AdapterContext): Promise<ExternalProject[]> {
+    return Promise.resolve([]);
+  }
+
+  listIssues(_context: AdapterContext): Promise<IssueSummary[]> {
+    return Promise.resolve([]);
+  }
+
+  describe(_context: AdapterContext): Promise<IssueTrackerCatalog> {
+    return Promise.resolve({ priorities: [], statuses: [], assignees: [] });
   }
 }
 
@@ -69,7 +100,7 @@ export class NoopTestManagementAdapter implements TestManagementAdapter {
   }
 
   exportRun(_context: AdapterContext, _testRunId: string): Promise<ExternalRef> {
-    return Promise.reject(new IntegrationNotConfiguredError('test management', 'export a run'));
+    return Promise.reject(notConfigured('test management', 'export a run'));
   }
 }
 

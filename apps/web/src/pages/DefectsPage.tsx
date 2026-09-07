@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { defectsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { JiraSyncCell, useJiraReferences } from '../components/JiraSyncCell';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import { useProject } from '../project/project-context';
@@ -27,6 +28,7 @@ export function DefectsPage(): React.JSX.Element {
       }),
     enabled: activeProjectId !== null,
   });
+  const jiraReferences = useJiraReferences(activeProjectId ?? '', 'defect');
 
   const create = useMutation({
     mutationFn: () =>
@@ -144,6 +146,7 @@ export function DefectsPage(): React.JSX.Element {
               <th scope="col">Status</th>
               <th scope="col">Origin</th>
               <th scope="col">Move to</th>
+              <th scope="col">Jira</th>
             </tr>
           </thead>
           <tbody>
@@ -178,6 +181,13 @@ export function DefectsPage(): React.JSX.Element {
                       </option>
                     ))}
                   </select>
+                </td>
+                <td>
+                  <JiraSyncCell
+                    entityType="defect"
+                    entityId={defect.id}
+                    reference={jiraReferences.data?.get(defect.id)}
+                  />
                 </td>
               </tr>
             ))}

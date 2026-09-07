@@ -155,6 +155,48 @@ unicidad a `(organizationId, provider)`. Se escribió a mano en lugar de con
 `prisma migrate dev`: en una base con migraciones ya aplicadas, `migrate dev`
 propone un `reset`, y un reset nunca es la respuesta a un checksum.
 
+## S2-F2: el primer adaptador de verdad es un mock
+
+La segunda fase sustituye el noop del issue tracker por `JiraMockIssueTrackerAdapter`
+sin que ningún servicio de negocio se entere: siguen inyectando
+`ISSUE_TRACKER_ADAPTER`.
+
+```
+apps/api/src/integrations/jira-mock/
+├─ jira-mock.store.ts      un Jira en memoria por organización: proyectos, usuarios, issues
+└─ jira-mock.adapter.ts    traduce el puerto neutro (IssuePayload) al vocabulario Jira
+apps/api/src/modules/integrations/
+├─ external-references.repository.ts   TenantAwareRepository sobre ExternalReference
+├─ jira-sync.service.ts                Requirement/Defect → issue, y la referencia que lo recuerda
+└─ jira-sync.controller.ts             /integrations/jira/{projects,catalog,issues,references,sync/*}
+```
+
+Lo que merece estudio:
+
+1. **El puerto creció, no el modelo.** `IssueTrackerAdapter` ganó `updateIssue`,
+   `getIssue`, `listProjects`, `listIssues` y `describe`. `Requirement` y
+   `Defect` no ganaron ninguna columna: la relación con el issue vive en
+   `ExternalReference`, que es genérica y ya existía. Cuando llegue TestRail
+   usará la misma tabla.
+2. **Todo `async`, incluso lo que no espera nada.** El mock podría responder de
+   forma síncrona, pero entonces un fallo sería un `throw` y no una promesa
+   rechazada, y el servicio se comportaría distinto con el mock que con un
+   cliente HTTP. Un mock sirve para ensayar el error de red, no solo el camino
+   feliz: por eso existe `settings.simulateFailure`.
+3. **Exactamente una referencia por entidad.** Si el proveedor ha perdido el
+   issue, el servicio lo recrea y **mueve** la fila al nuevo `externalId`,
+   anotando `previousExternalId` en `metadata`. No se crea una segunda fila:
+   una entidad con dos referencias "vigentes" al mismo proveedor es una
+   pregunta sin respuesta para quien lea la trazabilidad después.
+4. **Un fallo del proveedor pinta la conexión; un bug nuestro no.** Solo
+   `IntegrationProviderError` actualiza `status = error` y `lastError`. Un
+   `NotFoundError` o un fallo de permisos es problema de la petición, no del
+   proveedor, y no debe dejar la integración en rojo en Settings.
+5. **Determinismo como requisito, no como casualidad.** Los ids empiezan en
+   `10100`, las tres issues de semilla consumen `10100`–`10102`, así que el
+   primer issue que crea un test es siempre `10103` / `QA-3`. Los tests lo
+   afirman literalmente; si algún día te sorprende ese número, ya sabes por qué.
+
 ## Comandos
 
 ```bash
@@ -220,9 +262,9 @@ protection.
 
 | Decisión | Ahora | Después |
 | --- | --- | --- |
-| Proveedores | Solo noop | Jira, TestRail, GitHub Actions |
+| Proveedores | Jira mock (S2-F2); TestRail y GitHub noop | Jira real, TestRail, GitHub Actions |
 | Secretos | Campo `secretRef` sin resolver | Gestor de secretos real |
 | Ingesta de CI | Pull | Webhooks firmados |
-| Sincronización | Unidireccional al diseñar | Bidireccional con resolución de conflictos |
+| Sincronización | Unidireccional y bajo demanda (botón) | Bidireccional con resolución de conflictos |
 | Reintentos | No hay | Cola con backoff y cola de fallos |
 | Email | Noop que registra y no envía | Proveedor transaccional real |

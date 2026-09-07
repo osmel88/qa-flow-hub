@@ -30,6 +30,14 @@ export class RequirementsRepository extends TenantAwareRepository {
     return this.prisma.requirement.findFirst({ where: this.active({ id }) });
   }
 
+  async listIds(projectId: string): Promise<string[]> {
+    const rows = await this.prisma.requirement.findMany({
+      where: this.active({ projectId }),
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
   async list(
     query: PaginationQuery,
     filters: RequirementFilters,

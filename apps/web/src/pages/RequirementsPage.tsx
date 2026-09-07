@@ -5,6 +5,7 @@ import { Fragment, useState } from 'react';
 import { requirementsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { CoverageLinks } from '../components/CoverageLinks';
+import { JiraSyncCell, useJiraReferences } from '../components/JiraSyncCell';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import { useProject } from '../project/project-context';
@@ -37,6 +38,7 @@ export function RequirementsPage(): React.JSX.Element {
       }),
     enabled: activeProjectId !== null,
   });
+  const jiraReferences = useJiraReferences(activeProjectId ?? '', 'requirement');
 
   const create = useMutation({
     mutationFn: () =>
@@ -163,6 +165,7 @@ export function RequirementsPage(): React.JSX.Element {
               <th scope="col">Status</th>
               <th scope="col">Move to</th>
               <th scope="col">Coverage</th>
+              <th scope="col">Jira</th>
             </tr>
           </thead>
           <tbody>
@@ -209,10 +212,17 @@ export function RequirementsPage(): React.JSX.Element {
                       {coverageFor === requirement.id ? 'Hide test cases' : 'Test cases'}
                     </Button>
                   </td>
+                  <td>
+                    <JiraSyncCell
+                      entityType="requirement"
+                      entityId={requirement.id}
+                      reference={jiraReferences.data?.get(requirement.id)}
+                    />
+                  </td>
                 </tr>
                 {coverageFor === requirement.id && (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <CoverageLinks
                         side="requirement"
                         entityId={requirement.id}

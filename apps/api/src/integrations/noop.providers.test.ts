@@ -11,6 +11,7 @@ import {
 const context: AdapterContext = {
   organizationId: 'org_1',
   connectionId: 'conn_1',
+  baseUrl: null,
   secretRef: null,
   settings: {},
 };
@@ -30,6 +31,9 @@ describe('noop integration providers', () => {
   it('refuse to write instead of returning a fabricated external id', async () => {
     await expect(
       new NoopIssueTrackerAdapter().createIssue(context, {
+        kind: 'bug',
+        state: 'open',
+        labels: [],
         title: 'Card payment fails',
         description: null,
         severity: 'critical',

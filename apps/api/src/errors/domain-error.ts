@@ -143,3 +143,32 @@ export class NotImplementedError extends DomainError {
   readonly code = 'NOT_IMPLEMENTED' as const;
   readonly httpStatus = 501;
 }
+
+/**
+ * The organization has not configured, or has disconnected, the provider a
+ * request needs. A 409 rather than a 400: the request is well formed, the
+ * organization's state is what refuses it.
+ */
+export class IntegrationNotConfiguredError extends DomainError {
+  readonly code = 'INTEGRATION_NOT_CONFIGURED' as const;
+  readonly httpStatus = 409;
+
+  constructor(provider: string, reason: string) {
+    super(`${provider} is not available: ${reason}`, { provider });
+  }
+}
+
+/**
+ * The provider answered, and the answer was a failure. 502 is the honest
+ * status: the fault lies upstream of this API, and retrying may well succeed.
+ * `context.provider` is safe to expose; a provider's raw response is not, so
+ * adapters pass a message and never the body they received.
+ */
+export class IntegrationProviderError extends DomainError {
+  readonly code = 'INTEGRATION_ERROR' as const;
+  readonly httpStatus = 502;
+
+  constructor(provider: string, message: string) {
+    super(`${provider}: ${message}`, { provider });
+  }
+}

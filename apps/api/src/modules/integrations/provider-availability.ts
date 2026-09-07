@@ -5,8 +5,8 @@ import { ConfigurableIntegrationProvider, IntegrationMode } from '@qa-flow-hub/s
  *
  * This exists because the alternative is the same knowledge spread across a
  * service, a controller and a React component, drifting apart phase by phase.
- * When S2-F2 lands the Jira mock, `implemented` becomes true here and nothing
- * else in this module changes.
+ * When S2-F2 landed the Jira mock, `implemented` became true here and nothing
+ * else in this module changed.
  *
  * `unavailableReason` is sent to the client verbatim: a disabled button whose
  * tooltip says nothing produces a support ticket, and the honest answer ("this
@@ -24,11 +24,14 @@ export interface ProviderAvailability {
 
 export const PROVIDER_AVAILABILITY: Record<ConfigurableIntegrationProvider, ProviderAvailability> =
   {
+    /**
+     * Mock only, and implemented: the simulated Jira in `integrations/jira-mock`
+     * answers every call. `real` stays out until dedicated accounts exist.
+     */
     jira: {
       modes: ['mock'],
-      implemented: false,
-      unavailableReason:
-        'The Jira mock provider is implemented in S2-F2. Jira stays on a mock until dedicated accounts exist.',
+      implemented: true,
+      unavailableReason: null,
       defaultDisplayName: 'Jira',
       usesBaseUrl: true,
     },

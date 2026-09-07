@@ -132,7 +132,7 @@ describe('integration settings', () => {
       const response = await request('PUT', '/api/v1/integrations/jira', asOwner({ mode: 'real' }));
 
       expect(response.statusCode).toBe(400);
-      expect(response.json().error.details[0].message).toContain('S2-F2');
+      expect(response.json().error.details[0].message).toContain('mock');
     });
 
     it('refuses to store a credential in the non-sensitive configuration', async () => {
@@ -160,10 +160,27 @@ describe('integration settings', () => {
   });
 
   describe('connect, disconnect and test connection', () => {
-    it('leaves an enabled connection pending while no provider answers', async () => {
+    it('connects a provider that has an implementation', async () => {
       await configureJira();
 
       const connected = await request('POST', '/api/v1/integrations/jira/connect', asOwner());
+
+      expect(connected.statusCode).toBe(200);
+      expect(connected.json()).toMatchObject({
+        enabled: true,
+        status: 'connected',
+        lastError: null,
+      });
+    });
+
+    it('leaves an enabled connection pending while no provider answers', async () => {
+      await request(
+        'PUT',
+        '/api/v1/integrations/testrail',
+        asOwner({ mode: 'mock', baseUrl: 'https://acme.testrail.io' }),
+      );
+
+      const connected = await request('POST', '/api/v1/integrations/testrail/connect', asOwner());
 
       expect(connected.statusCode).toBe(200);
       expect(connected.json()).toMatchObject({ enabled: true, status: 'pending', lastError: null });
@@ -198,13 +215,21 @@ describe('integration settings', () => {
     });
 
     it('reports unreachable and records when it was asked', async () => {
-      await configureJira();
+      await request(
+        'PUT',
+        '/api/v1/integrations/testrail',
+        asOwner({ mode: 'mock', baseUrl: 'https://acme.testrail.io' }),
+      );
 
-      const tested = await request('POST', '/api/v1/integrations/jira/test-connection', asOwner());
+      const tested = await request(
+        'POST',
+        '/api/v1/integrations/testrail/test-connection',
+        asOwner(),
+      );
 
       expect(tested.statusCode).toBe(200);
-      expect(tested.json()).toMatchObject({ provider: 'jira', reachable: false });
-      expect(tested.json().message).toContain('S2-F2');
+      expect(tested.json()).toMatchObject({ provider: 'testrail', reachable: false });
+      expect(tested.json().message).toContain('S2-F3');
       expect(tested.json().connection.lastConnectionTestAt).not.toBeNull();
     });
 

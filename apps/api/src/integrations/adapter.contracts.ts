@@ -33,6 +33,7 @@ export interface ExternalRef {
 export interface AdapterContext {
   organizationId: string;
   connectionId: string;
+  baseUrl: string | null;
   /**
    * A reference to a secret, never the secret. Resolving it is the host's job,
    * so an adapter can be unit tested without credentials and a log line can
@@ -48,13 +49,24 @@ export interface HealthCheck {
   checkedAt: Date;
 }
 
+/**
+ * Which of our entities an issue stands for. The adapter turns this into the
+ * provider's own vocabulary (Story, Bug, …); the host never learns that
+ * vocabulary exists.
+ */
+export type IssueKind = 'story' | 'task' | 'bug';
+
 export interface IssuePayload {
+  kind: IssueKind;
   title: string;
   description: string | null;
-  severity: string;
+  /** Our own values (`critical`, `in_review`…); mapping them is the adapter's job. */
+  severity: string | null;
   priority: string;
+  state: string;
   /** Read-only context the provider may render: keys, not internal ids. */
   originKey: string | null;
+  labels: string[];
 }
 
 export interface IssueState {
@@ -64,13 +76,61 @@ export interface IssueState {
   url: string | null;
 }
 
+export interface IssueAssignee {
+  externalId: string;
+  displayName: string;
+}
+
+/** One row of a provider's issue list, in provider vocabulary. */
+export interface IssueSummary {
+  externalId: string;
+  key: string | null;
+  url: string | null;
+  projectKey: string | null;
+  kind: IssueKind;
+  title: string;
+  status: string;
+  priority: string;
+  assignee: IssueAssignee | null;
+  labels: string[];
+  updatedAt: Date;
+}
+
+export interface ExternalProject {
+  externalId: string;
+  key: string;
+  name: string;
+}
+
+/** The values a provider accepts, so a client can offer them without guessing. */
+export interface IssueTrackerCatalog {
+  priorities: string[];
+  statuses: string[];
+  assignees: IssueAssignee[];
+}
+
+export interface IssueFilter {
+  projectKey?: string;
+  kind?: IssueKind;
+}
+
 /** Jira, Linear, GitHub Issues. */
 export interface IssueTrackerAdapter {
   readonly provider: IntegrationProviderName;
   check(context: AdapterContext): Promise<HealthCheck>;
   createIssue(context: AdapterContext, payload: IssuePayload): Promise<ExternalRef>;
+  /**
+   * Re-sends the whole payload rather than a diff: the provider owns the issue
+   * and reconciles, and a diff protocol would need both sides to agree on a
+   * last-seen version this host does not keep.
+   */
+  updateIssue(context: AdapterContext, externalId: string, payload: IssuePayload): Promise<ExternalRef>;
   /** Pull, not push: the provider is the source of truth for its own status. */
   fetchIssueState(context: AdapterContext, externalId: string): Promise<IssueState | null>;
+  getIssue(context: AdapterContext, externalId: string): Promise<IssueSummary | null>;
+  listProjects(context: AdapterContext): Promise<ExternalProject[]>;
+  listIssues(context: AdapterContext, filter: IssueFilter): Promise<IssueSummary[]>;
+  describe(context: AdapterContext): Promise<IssueTrackerCatalog>;
 }
 
 export interface ImportedCase {

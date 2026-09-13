@@ -69,7 +69,7 @@ apps/api/src/
 ├─ errors/                 domain error hierarchy + the one exception filter
 ├─ events/                 in-process event bus and event contracts
 ├─ audit/                  AuditService and the interceptor that feeds it
-├─ integrations/           adapter ports, no-op implementations, jira-mock/ (S2-F2), testrail-mock/ (S2-F3)
+├─ integrations/           adapter ports, no-op implementations, jira-mock/ (S2-F2), testrail-mock/ (S2-F3), github-mock/ (S2-F4)
 ├─ modules/integrations/   Settings → Integrations (S2-F1) + Jira sync (S2-F2) + TestRail sync (S2-F3)
 └─ modules/<area>/         controller, service, repository, dto, domain, policies
 ```

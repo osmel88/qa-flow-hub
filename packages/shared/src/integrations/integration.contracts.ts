@@ -92,8 +92,8 @@ export interface IntegrationConnectionView {
   /**
    * Which modes this provider accepts today, and why the others are refused.
    * Sent by the API so the UI does not carry a second copy of the roadmap:
-   * Jira and TestRail stay on mocks until dedicated accounts exist, and GitHub
-   * cannot connect for real until the credential store exists (S2-F4).
+   * Jira, TestRail and GitHub stay on mocks until dedicated accounts and a
+   * credential store exist (GitHub real is a post-S2 phase).
    */
   availableModes: IntegrationMode[];
   /**

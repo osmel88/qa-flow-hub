@@ -290,27 +290,146 @@ export interface TestManagementAdapter {
   fetchResult(context: AdapterContext, externalId: string): Promise<ExternalResult | null>;
 }
 
+// --- Automation / CI --------------------------------------------------------
+
+export interface ExternalRepository {
+  externalId: string;
+  /** `owner/name`, the form every git host displays. */
+  fullName: string;
+  defaultBranch: string;
+  url: string | null;
+  isPrivate: boolean;
+  updatedAt: Date;
+}
+
+export interface ExternalBranch {
+  name: string;
+  headSha: string;
+  isProtected: boolean;
+}
+
+export interface ExternalWorkflow {
+  externalId: string;
+  repositoryExternalId: string;
+  name: string;
+  /** Where the definition lives in the repository (`.github/workflows/e2e.yml`). */
+  path: string;
+  state: 'active' | 'disabled';
+}
+
+export type WorkflowRunStatus = 'queued' | 'in_progress' | 'completed';
+export type WorkflowRunConclusion = 'success' | 'failure' | 'cancelled' | 'skipped' | 'timed_out';
+
+export interface ExternalWorkflowRun {
+  externalId: string;
+  repositoryExternalId: string;
+  workflowExternalId: string;
+  workflowName: string;
+  runNumber: number;
+  url: string | null;
+  status: WorkflowRunStatus;
+  /** `null` until the run completes. */
+  conclusion: WorkflowRunConclusion | null;
+  /** What triggered it, in the provider's words (`push`, `pull_request`, `schedule`). */
+  event: string;
+  headBranch: string;
+  headSha: string;
+  commitMessage: string;
+  actor: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ExternalJobStep {
+  name: string;
+  status: WorkflowRunStatus;
+  conclusion: WorkflowRunConclusion | null;
+}
+
+export interface ExternalJob {
+  externalId: string;
+  runExternalId: string;
+  name: string;
+  status: WorkflowRunStatus;
+  conclusion: WorkflowRunConclusion | null;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  steps: ExternalJobStep[];
+}
+
+export interface ExternalArtifact {
+  externalId: string;
+  runExternalId: string;
+  name: string;
+  /** What we can do with it; `other` is listed and never opened. */
+  kind: 'playwright_report' | 'junit' | 'other';
+  sizeInBytes: number;
+  expired: boolean;
+  url: string | null;
+}
+
 export interface AutomatedResult {
   externalId: string;
+  runExternalId: string;
   /** The automated test's own name; mapping it to a case is the host's job. */
   testIdentifier: string;
+  /** Tags the test carries (`C-12` from a `@C-12` in its title); the host resolves them to cases. */
+  caseTags: string[];
+  framework: 'playwright' | 'other';
+  file: string | null;
+  /** The runner's own partition of the test (a Playwright project such as `chromium`). */
+  project: string | null;
   status: 'passed' | 'failed' | 'blocked' | 'skipped';
   durationMs: number | null;
   message: string | null;
   executedAt: Date;
 }
 
-/** GitHub Actions, Playwright reporters, any CI. */
+/**
+ * GitHub Actions, Playwright reporters, any CI.
+ *
+ * Read-only by design: qa-flow-hub never creates a workflow run, it observes
+ * one and imports what it produced. Everything is scoped by repository because
+ * that is the unit of access in every git host; a real adapter checks the
+ * token against the repository, a mock checks the repository exists.
+ */
 export interface AutomationProviderAdapter {
   readonly provider: IntegrationProviderName;
   check(context: AdapterContext): Promise<HealthCheck>;
+  listRepositories(context: AdapterContext): Promise<ExternalRepository[]>;
+  listBranches(context: AdapterContext, repositoryExternalId: string): Promise<ExternalBranch[]>;
+  listWorkflows(context: AdapterContext, repositoryExternalId: string): Promise<ExternalWorkflow[]>;
+  listWorkflowRuns(
+    context: AdapterContext,
+    repositoryExternalId: string,
+    workflowExternalId?: string,
+  ): Promise<ExternalWorkflowRun[]>;
+  fetchWorkflowRun(
+    context: AdapterContext,
+    repositoryExternalId: string,
+    runExternalId: string,
+  ): Promise<ExternalWorkflowRun | null>;
+  listJobs(
+    context: AdapterContext,
+    repositoryExternalId: string,
+    runExternalId: string,
+  ): Promise<ExternalJob[]>;
+  listArtifacts(
+    context: AdapterContext,
+    repositoryExternalId: string,
+    runExternalId: string,
+  ): Promise<ExternalArtifact[]>;
   /**
    * Pulls results for one CI execution. Ingestion is a pull rather than a
-   * webhook push in the MVP because a pull needs no public endpoint, no
-   * signature verification and no replay protection — three things that must
-   * be right before any of them can be exposed.
+   * webhook push because a pull needs no public endpoint, no signature
+   * verification and no replay protection — three things that must be right
+   * before any of them can be exposed.
    */
-  fetchResults(context: AdapterContext, externalRunId: string): Promise<AutomatedResult[]>;
+  fetchResults(
+    context: AdapterContext,
+    repositoryExternalId: string,
+    runExternalId: string,
+  ): Promise<AutomatedResult[]>;
 }
 
 /**

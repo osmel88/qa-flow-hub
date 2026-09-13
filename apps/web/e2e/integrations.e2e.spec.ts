@@ -76,13 +76,12 @@ test('an owner configures Jira and is told what is not available yet', async ({ 
     await expect(jira.locator('.ui-badge', { hasText: /^connected$/i })).toBeVisible();
   });
 
-  await test.step('GitHub is configurable but explains it needs S2-F4', async () => {
-    await expect(github.getByText(/S2-F4/)).toBeVisible();
+  await test.step('GitHub has no base URL and its mock answers Test connection', async () => {
     await expect(github.getByLabel('Base URL')).toHaveCount(0);
     await github.getByRole('button', { name: 'Save' }).click();
     await expect(github.getByRole('status')).toContainText('Configuration saved.');
     await github.getByRole('button', { name: 'Test connection' }).click();
-    await expect(github.getByRole('status')).toContainText('S2-F4');
+    await expect(github.getByRole('status')).toContainText('acme/web-checkout');
     await expect(github.locator('.ui-badge', { hasText: /^Connected$/ })).toHaveCount(0);
   });
 
@@ -220,5 +219,111 @@ test('an owner synchronizes suites, cases, runs and results with the TestRail mo
     );
     await page.getByRole('button', { name: 'Re-sync' }).last().click();
     await expect(resultLink).toHaveCount(1);
+  });
+});
+
+/**
+ * GitHub mock (S2-F4): the owner connects GitHub, links a test run to a
+ * workflow run picked from the mock repository without leaving the execution
+ * screen, and imports its Playwright results. Results whose `@C-n` tag matches
+ * a case of the run become `TestResult` rows; the rest are reported, not
+ * dropped. A second import brings nothing new.
+ */
+test('an owner links a run to a GitHub mock workflow run and imports its results', async ({
+  page,
+}) => {
+  const suffix = `${unique}-gh`;
+
+  await test.step('register, create the organization and connect GitHub', async () => {
+    await page.goto('/register');
+    await page.getByLabel('Full name').fill('GitHub Owner');
+    await page.getByLabel('Email').fill(`e2e-github-${unique}@example.com`);
+    await page.getByLabel('Password').fill(account.password);
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
+    await page.getByLabel('Name').fill(`GitHub ${suffix}`);
+    await page.getByLabel('Slug').fill(`github-${suffix}`);
+    await page.getByRole('button', { name: 'Create' }).click();
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Integrations' }).click();
+    const github = page.getByRole('region', { name: 'GitHub' });
+    await github.getByRole('button', { name: 'Save' }).click();
+    await expect(github.getByRole('status')).toContainText('Configuration saved.');
+    await github.getByRole('button', { name: 'Connect', exact: true }).click();
+    await expect(github.locator('.ui-badge', { hasText: /^connected$/i })).toBeVisible();
+  });
+
+  await test.step('create a project with two cases and a run', async () => {
+    await page.getByRole('link', { name: 'Projects' }).click();
+    await page.getByLabel('Name').fill('Web checkout');
+    await page.getByLabel('Key').fill('WEB');
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.getByRole('cell', { name: 'WEB', exact: true })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Test cases' }).click();
+    await page.getByLabel('New suite').fill('Checkout');
+    await page.getByRole('button', { name: 'Add suite' }).click();
+    await expect(page.getByRole('button', { name: /Checkout/ })).toBeVisible();
+    await page.getByLabel('Title').fill('Pay with a valid card');
+    await page.getByRole('button', { name: 'Create case' }).click();
+    await expect(page.getByRole('cell', { name: 'WEB-C-1' })).toBeVisible();
+    await page.getByLabel('Title').fill('Reject an expired card');
+    await page.getByRole('button', { name: 'Create case' }).click();
+    await expect(page.getByRole('cell', { name: 'WEB-C-2' })).toBeVisible();
+
+    await page.getByRole('link', { name: 'Test runs' }).click();
+    await page.getByLabel('Name').fill('Nightly');
+    await page.getByRole('button', { name: 'Create run' }).click();
+    const row = page.getByRole('row', { name: /Nightly/ });
+    await expect(row.getByText('—')).toBeVisible();
+    await page.getByRole('link', { name: 'Nightly' }).click();
+    await page.getByRole('button', { name: 'Start run' }).click();
+  });
+
+  const panel = page.getByRole('region', { name: 'GitHub workflow run' });
+
+  await test.step('pick a workflow run of the mock repository and link it', async () => {
+    await expect(panel.getByText('No workflow run linked.')).toBeVisible();
+    await panel.getByRole('button', { name: 'Link workflow run' }).click();
+    await panel.getByLabel('Repository').selectOption({ label: 'acme/web-checkout' });
+    await panel.getByLabel('Workflow run').selectOption('1001');
+    await panel.getByRole('button', { name: 'Link', exact: true }).click();
+
+    const link = panel.getByRole('link', { name: 'acme/web-checkout#41' });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute(
+      'href',
+      'https://github.example.com/acme/web-checkout/actions/runs/1001',
+    );
+    await expect(panel.locator('.ui-badge', { hasText: 'success' })).toBeVisible();
+    await expect(panel.getByText(/Playwright E2E · main @/)).toBeVisible();
+  });
+
+  await test.step('import brings the tagged results and reports the rest', async () => {
+    await panel.getByRole('button', { name: 'Import results' }).click();
+    const report = panel.getByRole('status');
+    await expect(report).toContainText('Imported 2 results, skipped 2.');
+    await expect(report).toContainText('case is not part of this run');
+    await expect(report).toContainText('no @C-n tag in the title');
+
+    await page.getByRole('button', { name: /WEB-C-1/ }).click();
+    await expect(page.getByText(/Latest result: passed/)).toBeVisible();
+    await expect(page.getByText(/From GitHub:/)).toBeVisible();
+    await expect(
+      page.getByRole('link', {
+        name: /playwright · e2e\/checkout\.spec\.ts › checkout › pays with a valid card @C-1/,
+      }),
+    ).toBeVisible();
+  });
+
+  await test.step('a second import is a no-op and the runs table shows the link', async () => {
+    await panel.getByRole('button', { name: 'Import results' }).click();
+    await expect(panel.getByRole('status')).toContainText('Imported 0 results, skipped 4.');
+    await expect(panel.getByRole('status')).toContainText('already imported');
+
+    await page.getByRole('link', { name: 'Back to runs' }).click();
+    const row = page.getByRole('row', { name: /Nightly/ });
+    await expect(row.getByRole('link', { name: 'acme/web-checkout#41' })).toBeVisible();
   });
 });

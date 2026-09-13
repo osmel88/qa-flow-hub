@@ -12,6 +12,11 @@ import { defectsApi, testRunsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
+import {
+  GitHubResultOrigin,
+  GitHubRunPanel,
+  useGitHubReferences,
+} from '../components/GitHubRunPanel';
 import { TestRailSyncCell, useTestRailReferences } from '../components/TestRailSyncCell';
 
 /**
@@ -70,6 +75,14 @@ export function RunExecutionPage(): React.JSX.Element {
     run.data !== undefined,
   );
   const resultReferences = useTestRailReferences({ entityType: 'test_result', testRunId: runId });
+  const gitHubRunReferences = useGitHubReferences(
+    { entityType: 'test_run', projectId: run.data?.projectId ?? '' },
+    run.data !== undefined,
+  );
+  const gitHubResultReferences = useGitHubReferences({
+    entityType: 'test_result',
+    testRunId: runId,
+  });
 
   const start = useMutation({ mutationFn: () => testRunsApi.start(runId), onSuccess: refresh });
   const complete = useMutation({
@@ -151,6 +164,15 @@ export function RunExecutionPage(): React.JSX.Element {
         )}
       </DataState>
 
+      {run.data !== undefined && (
+        <GitHubRunPanel
+          testRunId={runId}
+          runStatus={run.data.status}
+          reference={gitHubRunReferences.data?.get(runId)}
+          onImported={refresh}
+        />
+      )}
+
       {defectFor !== null && (
         <section className="card" role="status">
           <p>The result was not a pass. Raise a defect linked to it?</p>
@@ -219,6 +241,7 @@ export function RunExecutionPage(): React.JSX.Element {
                     runId={runId}
                     runCase={runCase}
                     references={resultReferences.data}
+                    gitHubReferences={gitHubResultReferences.data}
                   />
 
                   <TextAreaField
@@ -257,13 +280,19 @@ interface LatestResultProps {
   runId: string;
   runCase: RunCaseView;
   references: Map<string, ExternalReferenceView> | undefined;
+  gitHubReferences: Map<string, ExternalReferenceView> | undefined;
 }
 
 /**
  * Only the newest attempt is offered for TestRail: results are append-only on
  * both sides, so syncing an older one would push history out of order.
  */
-function LatestResult({ runId, runCase, references }: LatestResultProps): React.JSX.Element | null {
+function LatestResult({
+  runId,
+  runCase,
+  references,
+  gitHubReferences,
+}: LatestResultProps): React.JSX.Element | null {
   const results = useQuery({
     queryKey: ['run-case-results', runId, runCase.id],
     queryFn: () => testRunsApi.results(runId, runCase.id),
@@ -279,6 +308,7 @@ function LatestResult({ runId, runCase, references }: LatestResultProps): React.
       <span className="muted">
         Latest result: {humanize(latest.status)} ({new Date(latest.executedAt).toLocaleString()})
       </span>
+      <GitHubResultOrigin reference={gitHubReferences?.get(latest.id)} />
       <TestRailSyncCell
         entityType="test_result"
         entityId={latest.id}

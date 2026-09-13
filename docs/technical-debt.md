@@ -581,3 +581,53 @@ now:
   looks complete in TestRail while it is not (the metadata says so, the UI does
   not yet).
 - **Trigger to fix:** a real TestRail, or S2-F5 needing the import direction.
+
+## 30. The GitHub mock imports results by tag, in memory (S2-F4)
+
+`GitHubMockStore` is the third in-memory, per-organization, re-seeded-on-start
+mock (entries 28 and 29 apply). Its ids are fixed rather than allocated (the
+store is read-only for the product: nothing is created in GitHub), so the drift
+described there is narrower — a reference can only go stale if the seed
+changes — but the shape is the same and a real adapter will have to cope with
+runs GitHub has purged (90 days of retention) exactly as `linkRun` does today
+when `fetchWorkflowRun` returns `null`.
+
+Decisions taken in this phase that are cheaper to revisit later than to design
+now:
+
+- **Matching is by `@C-n` tag against `<PROJECT>-C-n`.** The automated test
+  says which case it covers by carrying the case number in its title, the
+  Playwright convention for tags. It is fragile on purpose: a renumbered case, a
+  case copied between projects or a tag typo silently becomes `case_not_in_run`
+  or `no_case_tag`. The report makes it visible; nothing makes it impossible.
+  The honest alternative — a `TestCase ↔ Automated Test` reference the tester
+  confirms once — is the S2-F5 traceability line and must not be improvised in
+  a mock phase.
+- **A run links to one workflow run.** Linking a second one moves the reference
+  (`previousExternalId`) instead of adding a row, so a nightly run that gathers
+  several CI runs (retries, shards, matrix jobs) can only point at the last.
+  Results already imported from the previous run stay: they are append-only and
+  keyed by result id, so they are neither duplicated nor removed.
+- **An imported `TestResult` looks like a manual one.** `executedById` is the
+  member who pressed Import, not a bot; the comment carries the origin
+  (`Automated (playwright / chromium) — acme/web-checkout#41 · …`) and the
+  `ExternalReference` carries the metadata. Telling automated from manual
+  results therefore means joining references. A provider-neutral `source`
+  column on `TestResult` would be cleaner, but it is a migration on a business
+  table decided for one provider; it waits for S2-F5 or S2-F9, whichever needs
+  to filter automated results first.
+- **No push in the other direction.** GitHub is read-only from the product's
+  point of view: the mock exposes no create/update and the port has none. A
+  real provider that annotates a check run or comments on a PR is a different
+  port (`AutomationReporter`), not an extension of this one.
+- **Jobs, artifacts and branches are browse-only.** They are listed through
+  the API and covered by tests, but no screen shows them and no reference is
+  created for them. They exist so the port is complete for the real adapter.
+- **`settings.simulateFailure` is a real setting.** As with Jira and TestRail,
+  an operator could set it on a mock connection in production. No real adapter
+  will read it, and it disappears with the mocks.
+
+- **Cost:** development-only drift after restarts, as in 28; a mistagged
+  automated test is reported, never imported, and someone must read the report.
+- **Trigger to fix:** GitHub Real (post-S2), or S2-F5 deciding how an
+  automated test is bound to a case.

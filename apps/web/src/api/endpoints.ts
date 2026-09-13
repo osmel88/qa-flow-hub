@@ -18,6 +18,13 @@ import type {
   ExternalIssueView,
   ExternalProjectView,
   ExternalReferenceView,
+  ExternalRepositoryView,
+  ExternalWorkflowRunView,
+  GitHubSyncResultView,
+  ImportAutomatedResultsView,
+  LinkWorkflowRunInput,
+  ListGitHubReferencesQuery,
+  ListWorkflowRunsQuery,
   IntegrationConnectionView,
   IntegrationTestResultView,
   InvitationView,
@@ -263,6 +270,25 @@ export const testRailApi = {
   sync: (entityType: TestRailSyncableEntity, id: string) =>
     apiFetch<TestRailSyncResultView>(
       `/integrations/testrail/sync/${TESTRAIL_SYNC_PATH[entityType]}/${id}`,
+      { method: 'POST' },
+    ),
+};
+
+export const gitHubApi = {
+  repositories: () => apiFetch<ExternalRepositoryView[]>('/integrations/github/repositories'),
+  workflowRuns: (params: ListWorkflowRunsQuery) =>
+    apiFetch<ExternalWorkflowRunView[]>(`/integrations/github/runs${query(params)}`),
+  references: (params: ListGitHubReferencesQuery) =>
+    apiFetch<ExternalReferenceView[]>(`/integrations/github/references${query(params)}`),
+  /** With a target: link (or re-link). Without: refresh what is linked. */
+  linkRun: (testRunId: string, target: LinkWorkflowRunInput | null) =>
+    apiFetch<GitHubSyncResultView>(`/integrations/github/sync/test-runs/${testRunId}`, {
+      method: 'POST',
+      ...(target === null ? {} : { body: target }),
+    }),
+  importResults: (testRunId: string) =>
+    apiFetch<ImportAutomatedResultsView>(
+      `/integrations/github/sync/test-runs/${testRunId}/results`,
       { method: 'POST' },
     ),
 };

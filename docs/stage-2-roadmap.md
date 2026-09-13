@@ -28,7 +28,7 @@ Hard constraints for the whole stage:
 | S2-F1  | Integration Settings — **delivered** | Integrations  |
 | S2-F2  | Jira Mock — **delivered**            | Integrations  |
 | S2-F3  | TestRail Mock — **delivered**        | Integrations  |
-| S2-F4  | GitHub Real                          | Integrations  |
+| S2-F4  | GitHub Mock — **delivered**          | Integrations  |
 | S2-F5  | External Traceability                | Traceability  |
 | S2-F6  | Email Notifications                  | Notifications |
 | S2-F7  | File & Evidence Uploads              | Evidence      |
@@ -40,6 +40,12 @@ Hard constraints for the whole stage:
 KPI & Analytics was added after the stage was approved and is inserted **before**
 Production Readiness and Billing, which shifts those two phases to F10 and F11.
 No phase was removed or replaced.
+
+S2-F4 was re-scoped before it started, from **GitHub Real** to **GitHub Mock**:
+the real provider needs the credential store and the production hardening of
+S2-F10, so it moves to a phase **after Stage 2** (see "Post-S2 — GitHub Real"
+below). The mock keeps the phase count and the port contract; only the
+implementation behind the port changes later.
 
 ## What the MVP already left in place
 
@@ -208,7 +214,7 @@ What shipped, all behind the existing `TEST_MANAGEMENT_ADAPTER` port:
   same surface and still fails honestly.
 - TestRail is now `implemented` in the availability table for `mock`:
   **Connect** reaches `connected`, **Test connection** runs `check()`. GitHub
-  stays pending until S2-F4.
+  stayed pending until S2-F4.
 - `TestRailSyncService` + `TestRailSyncController`:
   `GET /integrations/testrail/{projects,catalog,suites,cases,runs}`,
   `GET /integrations/testrail/references?entityType&projectId|testRunId`,
@@ -239,20 +245,87 @@ per-row report and dry run). The adapter exposes `importCases`, but the phase
 was approved as push-only sync; import belongs with S2-F5, which decides how an
 externally-owned case shows up in the matrix. Debt recorded: entry 29.
 
-## S2-F4 — GitHub Real
+## S2-F4 — GitHub Mock
 
-The first real integration, with a personal account only.
+A simulated GitHub, realistic enough to build and test the CI side of the
+product with no account, no token and no network: repositories, branches,
+workflows, workflow runs (status + conclusion, commit SHA, actor, event), jobs
+with steps, artifact metadata and Playwright-shaped automated results whose
+titles carry `@C-n` tags. The flow under test:
 
-Scope: connect an account, choose authorized repositories, read workflows and
-workflow runs, associate automated results with `TestCase`/`TestRun`/
-`TestResult`, and leave the seam for Playwright report ingestion.
+```text
+GitHub Mock Repository → Workflow → Workflow Run → automated result
+→ qa-flow-hub TestRun / TestResult → ExternalReference
+```
 
-This is the only phase that touches security at the root: **the MVP has no
+The port is written so a `GitHubRealAdapter` can replace the mock without
+touching the synchronization service.
+
+### Delivery (S2-F4)
+
+What shipped, all behind the `AUTOMATION_PROVIDER_ADAPTER` port:
+
+- `apps/api/src/integrations/github-mock/`: `GitHubMockStore`, in-memory and
+  per-organization, seeded with two repositories (`1` `acme/web-checkout`, `2`
+  `acme/api-gateway`), branches with fixed SHAs, three workflows and five runs
+  (`1001` success, `1002` failure, `1003` in progress, `1004` success on the
+  other repository, `1005` cancelled), their jobs and steps, artifacts (one
+  expired) and Playwright results: `@C-1`, `@C-2`, `@C-3` and one untagged
+  smoke test per completed Playwright run. `GitHubMockAutomationProviderAdapter`
+  honours `settings.repository` (default `acme/web-checkout`) and
+  `settings.simulateFailure` (`unreachable` | `fetch_failure`: browsing works,
+  results do not). URLs are built from `baseUrl` or `https://github.example.com`.
+- `AutomationProviderAdapter` was widened from `fetchResults` to the neutral
+  surface `check`, `listRepositories/Branches/Workflows/WorkflowRuns`,
+  `fetchWorkflowRun`, `listJobs/Artifacts`, `fetchResults`, with neutral
+  `External*` and `AutomatedResult` types (`caseTags`, `framework`, `file`,
+  `project`). The noop adapter implements the same surface.
+- GitHub is now `implemented` for `mock` in the availability table, with no
+  base URL: **Connect** reaches `connected`, **Test connection** runs `check()`
+  against the configured repository. `real` is refused with the reason.
+- `GitHubSyncService` + `GitHubSyncController`:
+  `GET /integrations/github/{repositories,branches,workflows,runs,jobs,artifacts,results}`,
+  `GET /integrations/github/references?entityType&projectId|testRunId`,
+  `POST /integrations/github/sync/test-runs/:id` (body → link or re-link a
+  workflow run; no body → refresh what is linked) and
+  `POST /integrations/github/sync/test-runs/:id/results` (import). A run keeps
+  **one** `ExternalReference` to its workflow run (`externalKey`
+  `owner/repo#runNumber`, metadata: workflow, branch, SHA, status, conclusion,
+  event, actor), moved with `previousExternalId` when re-linked. Import
+  resolves `@C-n` against the run's own cases (`<PROJECT>-C-n`), writes one
+  append-only `TestResult` per match plus its reference in the same
+  transaction, and returns every non-imported result with a reason
+  (`no_case_tag`, `case_not_in_run`, `run_not_completed`, `already_imported`)
+  instead of dropping it. Closed runs refuse imports. Provider errors set the
+  connection to `error` with `lastError`; the next success clears it.
+- Model: no migration. No column on `TestRun` or `TestResult`.
+- Web: `GitHubRunPanel` on the execution screen (link picker repository →
+  run, Refresh status, Import results with the skip report), origin line under
+  an imported result, GitHub column on the Test runs table.
+- Tests: adapter unit tests, 18 integration tests
+  (`test/github-sync.int-spec.ts`: browsing, isolation, link / re-link /
+  refresh, import and re-import, unmatched results, in-progress run, roles,
+  both failure modes and recovery), the settings suite updated, and a third E2E
+  in `integrations.e2e.spec.ts` that connects GitHub, links a run and imports
+  its Playwright results from the product screens.
+
+Not delivered, on purpose: anything real. Debt recorded: entry 30.
+
+## Post-S2 — GitHub Real
+
+Moved out of Stage 2 when S2-F4 became the mock. It starts only when two
+things exist: a credential store (S2-F10 decides between an encrypted table
+and an external secret manager) and production hardening.
+
+Scope, unchanged: connect a personal account, choose authorized repositories,
+read workflows and workflow runs, ingest Playwright reports — through the same
+`AutomationProviderAdapter` the mock implements today.
+
+This is the phase that touches security at the root: **the MVP has no
 credential store.** `secretRef` points at a secret manager that does not exist
-yet. This phase must deliver encryption with a key from the environment, token
-refresh, revocation on disconnect, and a token that is never logged, never
-audited and never returned. Least privilege: read-only scopes for the read-only
-features.
+yet. It must deliver encryption with a key from the environment, token refresh,
+revocation on disconnect, and a token that is never logged, never audited and
+never returned. Least privilege: read-only scopes for the read-only features.
 
 Model changes: an encrypted credential table (or a resolved external secret
 manager), plus authorized-repository rows.

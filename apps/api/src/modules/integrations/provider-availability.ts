@@ -44,17 +44,15 @@ export const PROVIDER_AVAILABILITY: Record<ConfigurableIntegrationProvider, Prov
       usesBaseUrl: true,
     },
     /**
-     * GitHub has no mock in the plan: it is the one provider meant to be real,
-     * which is also why it cannot connect yet. A real connection needs a token,
-     * a token needs encryption at rest, and the credential store is S2-F4's
-     * deliverable — so the configuration is editable and the connection is
-     * refused, instead of accepting a token this build cannot protect.
+     * Mock only, and implemented since S2-F4 by `integrations/github-mock`.
+     * `real` stays out of the list on purpose: a real connection needs a token,
+     * a token needs encryption at rest, and that credential store belongs to
+     * the post-S2 production stage. Until then this build accepts no token.
      */
     github: {
-      modes: ['real'],
-      implemented: false,
-      unavailableReason:
-        'GitHub connects for real in S2-F4, which delivers the encrypted credential store. This build accepts no token.',
+      modes: ['mock'],
+      implemented: true,
+      unavailableReason: null,
       defaultDisplayName: 'GitHub',
       usesBaseUrl: false,
     },

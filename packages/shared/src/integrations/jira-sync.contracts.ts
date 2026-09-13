@@ -27,7 +27,7 @@ export const SYNCABLE_ENTITIES = [
 ] as const;
 export type SyncableEntity = (typeof SYNCABLE_ENTITIES)[number];
 
-export type SyncProvider = 'jira' | 'testrail';
+export type SyncProvider = 'jira' | 'testrail' | 'github';
 
 export interface ExternalReferenceView {
   id: string;

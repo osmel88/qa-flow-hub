@@ -56,7 +56,7 @@ describe('noop integration providers', () => {
   it('return nothing on reads, which callers must already handle', async () => {
     expect(await new NoopIssueTrackerAdapter().fetchIssueState(context, 'ABC-1')).toBeNull();
     expect(await new NoopTestManagementAdapter().importCases(context, 'suite_1')).toEqual([]);
-    expect(await new NoopAutomationProviderAdapter().fetchResults(context, 'ci_1')).toEqual([]);
+    expect(await new NoopAutomationProviderAdapter().fetchResults(context, 'repo_1', 'ci_1')).toEqual([]);
   });
 
   it('does not accept an email as sent', async () => {

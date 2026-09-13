@@ -75,10 +75,10 @@ describe('integration settings', () => {
 
       expect(byProvider.get('jira')?.availableModes).toEqual(['mock']);
       expect(byProvider.get('testrail')?.availableModes).toEqual(['mock']);
-      // GitHub is the one provider meant to be real, and the one that cannot
-      // connect yet: the credential store arrives with S2-F4.
-      expect(byProvider.get('github')?.availableModes).toEqual(['real']);
-      expect(byProvider.get('github')?.unavailableReason).toContain('S2-F4');
+      // GitHub real waits for a credential store, after Stage 2: only the mock
+      // is offered, and nothing is flagged as unavailable.
+      expect(byProvider.get('github')?.availableModes).toEqual(['mock']);
+      expect(byProvider.get('github')?.unavailableReason).toBeNull();
     });
 
     it('rejects a provider that is not configurable', async () => {
@@ -121,7 +121,7 @@ describe('integration settings', () => {
       const response = await request(
         'PUT',
         '/api/v1/integrations/github',
-        asOwner({ mode: 'real', baseUrl: 'https://github.example.test' }),
+        asOwner({ mode: 'mock', baseUrl: 'https://github.example.test' }),
       );
 
       expect(response.statusCode).toBe(200);
@@ -173,13 +173,30 @@ describe('integration settings', () => {
       });
     });
 
-    it('leaves an enabled connection pending while no provider answers', async () => {
-      await request('PUT', '/api/v1/integrations/github', asOwner({ mode: 'real' }));
+    it('refuses GitHub real until a credential store exists', async () => {
+      const response = await request(
+        'PUT',
+        '/api/v1/integrations/github',
+        asOwner({ mode: 'real' }),
+      );
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error.details[0].message).toContain('mock');
+    });
+
+    it('connects the GitHub mock and reaches it on test-connection', async () => {
+      await request('PUT', '/api/v1/integrations/github', asOwner({ mode: 'mock' }));
 
       const connected = await request('POST', '/api/v1/integrations/github/connect', asOwner());
+      expect(connected.json()).toMatchObject({ enabled: true, status: 'connected' });
 
-      expect(connected.statusCode).toBe(200);
-      expect(connected.json()).toMatchObject({ enabled: true, status: 'pending', lastError: null });
+      const tested = await request(
+        'POST',
+        '/api/v1/integrations/github/test-connection',
+        asOwner(),
+      );
+      expect(tested.json()).toMatchObject({ provider: 'github', reachable: true });
+      expect(tested.json().message).toContain('acme/web-checkout');
     });
 
     it('connects the TestRail mock and reaches it on test-connection', async () => {
@@ -252,8 +269,12 @@ describe('integration settings', () => {
       expect(tested.json().connection.lastConnectionTestAt).not.toBeNull();
     });
 
-    it('says GitHub needs S2-F4 instead of pretending to reach it', async () => {
-      await request('PUT', '/api/v1/integrations/github', asOwner({ mode: 'real' }));
+    it('reports an unknown GitHub repository as unreachable without connecting', async () => {
+      await request(
+        'PUT',
+        '/api/v1/integrations/github',
+        asOwner({ mode: 'mock', settings: { repository: 'acme/does-not-exist' } }),
+      );
 
       const tested = await request(
         'POST',
@@ -262,7 +283,7 @@ describe('integration settings', () => {
       );
 
       expect(tested.json().reachable).toBe(false);
-      expect(tested.json().message).toContain('S2-F4');
+      expect(tested.json().message).toContain('acme/does-not-exist');
       expect(tested.json().connection.status).toBe('disconnected');
     });
 

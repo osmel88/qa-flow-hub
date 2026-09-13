@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ExternalReference, IntegrationProvider, LinkableEntity, Prisma } from '@prisma/client';
-import { PrismaService } from '../../database/prisma.service';
+import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import { TenantAwareRepository } from '../../database/tenant-aware.repository';
 import { TenantContextService } from '../../database/tenant-context.service';
 
@@ -54,8 +54,8 @@ export class ExternalReferencesRepository extends TenantAwareRepository {
     });
   }
 
-  create(data: ExternalReferenceWrite): Promise<ExternalReference> {
-    return this.prisma.externalReference.create({
+  create(data: ExternalReferenceWrite, tx?: PrismaTransaction): Promise<ExternalReference> {
+    return (tx ?? this.prisma).externalReference.create({
       data: { ...data, organizationId: this.organizationId },
     });
   }

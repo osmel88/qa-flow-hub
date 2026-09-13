@@ -7,6 +7,8 @@ import { RequirementsModule } from '../requirements/requirements.module';
 import { TestDesignModule } from '../test-design/test-design.module';
 import { TestRunsModule } from '../test-runs/test-runs.module';
 import { ExternalReferencesRepository } from './external-references.repository';
+import { GitHubSyncController } from './github-sync.controller';
+import { GitHubSyncService } from './github-sync.service';
 import { IntegrationSettingsController } from './integration-settings.controller';
 import { IntegrationSettingsRepository } from './integration-settings.repository';
 import { IntegrationSettingsService } from './integration-settings.service';
@@ -23,7 +25,7 @@ import { TestRailSyncService } from './testrail-sync.service';
  *
  * Synchronisation lives here too, and depends on the business modules rather
  * than the other way round: requirements and defects know nothing about Jira,
- * suites and runs know nothing about TestRail; each provider side reads them
+ * suites and runs know nothing about TestRail or GitHub; each provider side reads them
  * through their exported repositories.
  */
 @Module({
@@ -36,14 +38,20 @@ import { TestRailSyncService } from './testrail-sync.service';
     TestDesignModule,
     TestRunsModule,
   ],
-  controllers: [IntegrationSettingsController, JiraSyncController, TestRailSyncController],
+  controllers: [
+    IntegrationSettingsController,
+    JiraSyncController,
+    TestRailSyncController,
+    GitHubSyncController,
+  ],
   providers: [
     IntegrationSettingsService,
     IntegrationSettingsRepository,
     ExternalReferencesRepository,
     JiraSyncService,
     TestRailSyncService,
+    GitHubSyncService,
   ],
-  exports: [IntegrationSettingsService, JiraSyncService, TestRailSyncService],
+  exports: [IntegrationSettingsService, JiraSyncService, TestRailSyncService, GitHubSyncService],
 })
 export class IntegrationSettingsModule {}

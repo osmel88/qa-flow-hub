@@ -5,6 +5,12 @@ import {
   AutomatedResult,
   AutomationProviderAdapter,
   EmailAdapter,
+  ExternalArtifact,
+  ExternalBranch,
+  ExternalJob,
+  ExternalRepository,
+  ExternalWorkflow,
+  ExternalWorkflowRun,
   ExternalProject,
   ExternalRef,
   HealthCheck,
@@ -181,7 +187,51 @@ export class NoopAutomationProviderAdapter implements AutomationProviderAdapter 
     return Promise.resolve(unconfigured('automation provider'));
   }
 
-  fetchResults(_context: AdapterContext, _externalRunId: string): Promise<AutomatedResult[]> {
+  listRepositories(_context: AdapterContext): Promise<ExternalRepository[]> {
+    return Promise.resolve([]);
+  }
+
+  listBranches(_context: AdapterContext, _repositoryId: string): Promise<ExternalBranch[]> {
+    return Promise.resolve([]);
+  }
+
+  listWorkflows(_context: AdapterContext, _repositoryId: string): Promise<ExternalWorkflow[]> {
+    return Promise.resolve([]);
+  }
+
+  listWorkflowRuns(
+    _context: AdapterContext,
+    _repositoryId: string,
+    _workflowId?: string,
+  ): Promise<ExternalWorkflowRun[]> {
+    return Promise.resolve([]);
+  }
+
+  fetchWorkflowRun(
+    _context: AdapterContext,
+    _repositoryId: string,
+    _runId: string,
+  ): Promise<ExternalWorkflowRun | null> {
+    return Promise.resolve(null);
+  }
+
+  listJobs(_context: AdapterContext, _repositoryId: string, _runId: string): Promise<ExternalJob[]> {
+    return Promise.resolve([]);
+  }
+
+  listArtifacts(
+    _context: AdapterContext,
+    _repositoryId: string,
+    _runId: string,
+  ): Promise<ExternalArtifact[]> {
+    return Promise.resolve([]);
+  }
+
+  fetchResults(
+    _context: AdapterContext,
+    _repositoryId: string,
+    _runId: string,
+  ): Promise<AutomatedResult[]> {
     return Promise.resolve([]);
   }
 }

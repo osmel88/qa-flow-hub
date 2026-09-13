@@ -6,6 +6,7 @@ import { testDesignApi, testRunsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
+import { GitHubRunCell, useGitHubReferences } from '../components/GitHubRunPanel';
 import { TestRailSyncCell, useTestRailReferences } from '../components/TestRailSyncCell';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
@@ -24,6 +25,10 @@ export function TestRunsPage(): React.JSX.Element {
   });
 
   const runReferences = useTestRailReferences(
+    { entityType: 'test_run', projectId: activeProjectId ?? '' },
+    activeProjectId !== null,
+  );
+  const gitHubReferences = useGitHubReferences(
     { entityType: 'test_run', projectId: activeProjectId ?? '' },
     activeProjectId !== null,
   );
@@ -120,6 +125,7 @@ export function TestRunsPage(): React.JSX.Element {
               <th scope="col">Cases</th>
               <th scope="col">Progress</th>
               <th scope="col">TestRail</th>
+              <th scope="col">GitHub</th>
             </tr>
           </thead>
           <tbody>
@@ -141,6 +147,9 @@ export function TestRunsPage(): React.JSX.Element {
                     entityId={run.id}
                     reference={runReferences.data?.get(run.id)}
                   />
+                </td>
+                <td>
+                  <GitHubRunCell reference={gitHubReferences.data?.get(run.id)} />
                 </td>
               </tr>
             ))}

@@ -6,3 +6,5 @@ export * from './jira-mock/jira-mock.store';
 export * from './jira-mock/jira-mock.adapter';
 export * from './testrail-mock/testrail-mock.store';
 export * from './testrail-mock/testrail-mock.adapter';
+export * from './github-mock/github-mock.store';
+export * from './github-mock/github-mock.adapter';

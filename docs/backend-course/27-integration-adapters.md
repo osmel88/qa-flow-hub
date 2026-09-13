@@ -243,6 +243,61 @@ Lo que merece estudio:
    por eso está escrita en `technical-debt.md` (29) con la alternativa (un
    _plan_ con un run por suite) y el disparador para cambiarla.
 
+## S2-F4: un mock de solo lectura, y la dirección contraria del dato
+
+GitHub entra por `AUTOMATION_PROVIDER_ADAPTER`, y es distinto a los dos
+anteriores en algo esencial: **qa-flow-hub no escribe nada en GitHub**. Jira y
+TestRail reciben lo nuestro; GitHub nos da lo suyo (workflow runs y resultados
+de Playwright) y nosotros lo convertimos en `TestResult`.
+
+```
+apps/api/src/integrations/github-mock/
+├─ github-mock.store.ts    un GitHub en memoria por organización: repos, ramas, workflows, runs, jobs, artifacts, results
+└─ github-mock.adapter.ts  traduce el grafo al vocabulario neutro del puerto (ExternalWorkflowRun, AutomatedResult…)
+apps/api/src/modules/integrations/
+├─ github-sync.service.ts     TestRun ↔ workflow run; automated result → TestResult + ExternalReference
+└─ github-sync.controller.ts  /integrations/github/{repositories,…,results,references,sync/test-runs/:id[/results]}
+```
+
+Lo que merece estudio:
+
+1. **El puerto se diseñó para el adaptador real que aún no existe.**
+   `AutomationProviderAdapter` tenía un solo método (`fetchResults`); ahora
+   tiene la superficie que un `GitHubRealAdapter` necesitará
+   (`listRepositories`, `listWorkflowRuns`, `fetchWorkflowRun`, `listJobs`,
+   `listArtifacts`, `fetchResults`), con tipos neutros (`ExternalWorkflowRun`,
+   `AutomatedResult` con `caseTags`, `framework`, `file`, `project`). Cuando
+   llegue el real, cambia el `useClass` del token y nada más: el servicio de
+   sync no importa nada de `github-mock/`.
+2. **El mock no reserva ids porque no crea nada.** Sus ids son fijos (`1001`…
+   `1005`) y sus estados también (`success`, `failure`, `in_progress`,
+   `cancelled`). Un mock de solo lectura es más simple que uno CRUD, pero
+   obliga a sembrar los casos incómodos —un run en curso sin resultados, un
+   artifact caducado, un result sin tag— porque ninguna prueba podrá crearlos.
+3. **El enlace es una observación, no una copia.** `linkRun` guarda en la
+   `ExternalReference` del run lo que vio (workflow, rama, SHA, status,
+   conclusion, actor) y `sameObservation` compara antes de escribir: si nada
+   cambió, ni fila ni auditoría. Sin cuerpo en el `POST` significa "refresca lo
+   enlazado"; con cuerpo, "enlaza esto otro" (la referencia se mueve con
+   `previousExternalId`, como en F2 y F3).
+4. **Importar es traducir identidades, y la traducción puede fallar.** Un
+   resultado de Playwright dice `@C-1`; el run interno tiene `WEB-C-1`. El
+   servicio enumera los casos del run (`listAllRunCases`, sin paginar: los runs
+   son finitos por diseño) y resuelve el tag contra ellos. Lo que no casa **no
+   se descarta**: vuelve en `skipped` con su razón (`no_case_tag`,
+   `case_not_in_run`, `run_not_completed`, `already_imported`). Un import que
+   dice "importados 2" y calla los otros 2 es un import en el que no se puede
+   confiar.
+5. **Una transacción por resultado.** El `TestResult`, la proyección
+   `latestStatus` del run-case y su `ExternalReference` se escriben en la misma
+   transacción Prisma; para eso `ExternalReferencesRepository.create` acepta un
+   `tx` opcional en vez de que el servicio hable con Prisma a mano. Si se cae
+   a mitad, no queda un resultado sin referencia que el siguiente import
+   volvería a crear.
+6. **El caso cerrado no admite importaciones.** Un run `completed`/`aborted`
+   rechaza `importResults` igual que rechaza un resultado manual: la
+   automatización no tiene un carril privilegiado sobre la regla de negocio.
+
 ## Comandos
 
 ```bash

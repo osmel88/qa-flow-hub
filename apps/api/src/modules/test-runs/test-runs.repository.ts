@@ -134,6 +134,14 @@ export class TestRunsRepository extends TenantAwareRepository {
     return { data, meta: buildPaginationMeta(query, total) };
   }
 
+  /** Every case of one run, unpaginated: runs are bounded by design, results are not. */
+  listAllRunCases(testRunId: string): Promise<TestRunCase[]> {
+    return this.prisma.testRunCase.findMany({
+      where: this.scope({ testRunId }),
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
   listCaseIdsInRun(
     testRunId: string,
     tx?: PrismaTransaction,

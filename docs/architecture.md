@@ -70,7 +70,7 @@ apps/api/src/
 ├─ events/                 in-process event bus and event contracts
 ├─ audit/                  AuditService and the interceptor that feeds it
 ├─ integrations/           adapter ports, no-op implementations, jira-mock/ (S2-F2), testrail-mock/ (S2-F3), github-mock/ (S2-F4)
-├─ modules/integrations/   Settings → Integrations (S2-F1) + Jira sync (S2-F2) + TestRail sync (S2-F3)
+├─ modules/integrations/   Settings → Integrations (S2-F1) + Jira sync (S2-F2) + TestRail sync (S2-F3) + GitHub sync (S2-F4) + external traceability (S2-F5)
 └─ modules/<area>/         controller, service, repository, dto, domain, policies
 ```
 

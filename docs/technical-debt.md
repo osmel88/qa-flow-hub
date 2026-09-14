@@ -631,3 +631,57 @@ now:
   automated test is reported, never imported, and someone must read the report.
 - **Trigger to fix:** GitHub Real (post-S2), or S2-F5 deciding how an
   automated test is bound to a case.
+
+## 31. External traceability is derived, not verified (S2-F5)
+
+The consolidated view computes each row's status from what the database
+already knows — the reference, the entity's `updatedAt` and `archivedAt` /
+`deletedAt`, the connection state — and only talks to the provider when
+someone presses **Verify**. That is deliberate: a `GET` that calls three
+providers per row would be slow, would fail with the provider and would need a
+cache (entry 3) to be usable. But it means the table can be confidently wrong
+until verified.
+
+Decisions to revisit later rather than design now:
+
+- **`stale` is "the internal side changed after the last sync".** The provider
+  side changing is invisible until Verify runs, and even then the mock only
+  says _present_ or _lost_: it does not compare fields. A real adapter would
+  need a change marker (`updated` on Jira, `updated_on` on TestRail, the run's
+  `updated_at`) and the row would need to store the one it last saw.
+- **`projectId` on `ExternalReference` is denormalised.** It is copied from the
+  entity at write time so a project can list its references — including the
+  ones whose entity has been deleted — without six joins. Nothing moves
+  entities between projects today, so nothing can desynchronise it; the day
+  that exists, the move must update the references in the same transaction.
+- **Missing rows are generated, not stored.** An entity a configured provider
+  is expected to track and has not seen yet appears as `missing` with
+  `referenceId: null`. The expectation table (Jira → requirements and defects,
+  TestRail → suites, cases, runs; GitHub → runs) lives in the service, not in
+  configuration: an organization that uses Jira for defects only will see
+  every requirement as `missing` with no way to say "not expected".
+- **Verify writes into `metadata`.** `verifiedAt` and `providerState` are
+  stored on the reference so the audit trail stays on the row, next to
+  `previousExternalId`. It is the third thing metadata carries (provider
+  fields, re-link history, verification); when a fourth arrives, a
+  `verifiedAt` column and a `history` table are the honest shape.
+- **Duplicates are reported, never repaired.** Two references for the same
+  entity and provider, or one external id shared by two entities, are `error`
+  rows with `duplicate_reference` / `shared_external_id`. The current sync
+  services cannot produce them (one row per entity is enforced there), so they
+  can only come from a real importer or a manual fix; the view makes them
+  visible and leaves the decision to a person.
+- **`TestCase ↔ Automated Test` is still the tag.** The approved line exists
+  in the view as the imported result's row (`externalKind: automated_test`),
+  but the binding is still `@C-n` matching (entry 30). A confirmed, stored
+  binding was left out to keep this phase from redesigning the GitHub import.
+- **Re-sync in the web reuses the provider endpoints.** There is no
+  `POST /traceability/resync`; the page calls Jira/TestRail sync or GitHub
+  re-link with the row's entity. A generic endpoint would add a fourth place
+  that knows which provider handles which entity.
+
+- **Cost:** a row can read `synced` while the provider has silently changed or
+  deleted the object; someone must press Verify, and on a large project Verify
+  is O(references) provider calls with no batching.
+- **Trigger to fix:** the first real adapter (change markers and batching), or
+  S2-F9 wanting to count stale references without a manual Verify.

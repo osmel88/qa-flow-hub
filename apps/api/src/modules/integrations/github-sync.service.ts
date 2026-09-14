@@ -364,6 +364,7 @@ export class GitHubSyncService {
         provider: PROVIDER,
         entityType: 'test_run',
         entityId: run.id,
+        projectId: run.projectId,
         ...write,
         metadata,
       });
@@ -446,6 +447,7 @@ export class GitHubSyncService {
           provider: PROVIDER,
           entityType: 'test_result',
           entityId: created.id,
+          projectId: run.projectId,
           externalId: result.externalId,
           externalKey: result.testIdentifier,
           externalUrl: linked.run.url,
@@ -573,6 +575,7 @@ function resultMetadata(result: AutomatedResult, linked: RunLink): Record<string
   return {
     workflowRunExternalId: linked.run.externalId,
     workflowName: linked.run.workflowName,
+    repositoryExternalId: linked.repository.externalId,
     repositoryFullName: linked.repository.fullName,
     headSha: linked.run.headSha,
     framework: result.framework,

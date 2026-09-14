@@ -134,7 +134,7 @@ export class JiraSyncService {
     }
     await this.access.assertRouteAccess(requirement.projectId);
 
-    return this.sync('requirement', requirement.id, requirement.key, {
+    return this.sync('requirement', requirement.id, requirement.projectId, requirement.key, {
       kind: KIND_BY_REQUIREMENT_TYPE[requirement.type],
       title: requirement.title,
       description: describeRequirement(requirement),
@@ -153,7 +153,7 @@ export class JiraSyncService {
     }
     await this.access.assertRouteAccess(defect.projectId);
 
-    return this.sync('defect', defect.id, defect.key, {
+    return this.sync('defect', defect.id, defect.projectId, defect.key, {
       kind: 'bug',
       title: defect.title,
       description: describeDefect(defect),
@@ -168,6 +168,7 @@ export class JiraSyncService {
   private async sync(
     entityType: JiraSyncableEntity,
     entityId: string,
+    projectId: string,
     entityKey: string,
     payload: IssuePayload,
   ): Promise<JiraSyncResultView> {
@@ -196,6 +197,7 @@ export class JiraSyncService {
             provider: PROVIDER,
             entityType,
             entityId,
+            projectId,
             externalId: ref.externalId,
             externalKey: ref.externalKey ?? null,
             externalUrl: ref.externalUrl ?? null,

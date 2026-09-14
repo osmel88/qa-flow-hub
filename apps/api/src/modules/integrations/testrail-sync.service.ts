@@ -236,7 +236,14 @@ export class TestRailSyncService {
       };
     });
 
-    const synced = await this.persist(connection, 'test_result', result.id, existing, outcome);
+    const synced = await this.persist(
+      connection,
+      'test_result',
+      result.id,
+      run.projectId,
+      existing,
+      outcome,
+    );
     await this.recordSuccess(
       connection,
       'test_result',
@@ -277,7 +284,14 @@ export class TestRailSyncService {
       };
     });
 
-    const synced = await this.persist(connection, 'test_suite', suite.id, existing, outcome);
+    const synced = await this.persist(
+      connection,
+      'test_suite',
+      suite.id,
+      suite.projectId,
+      existing,
+      outcome,
+    );
     await this.recordSuccess(connection, 'test_suite', suite.id, suite.name, synced);
     return synced;
   }
@@ -335,7 +349,14 @@ export class TestRailSyncService {
       };
     });
 
-    const synced = await this.persist(connection, 'test_case', testCase.id, existing, outcome);
+    const synced = await this.persist(
+      connection,
+      'test_case',
+      testCase.id,
+      testCase.projectId,
+      existing,
+      outcome,
+    );
     await this.recordSuccess(connection, 'test_case', testCase.id, testCase.key, synced);
     return synced;
   }
@@ -411,7 +432,14 @@ export class TestRailSyncService {
       };
     }
 
-    const synced = await this.persist(connection, 'test_run', run.id, existing, outcome);
+    const synced = await this.persist(
+      connection,
+      'test_run',
+      run.id,
+      run.projectId,
+      existing,
+      outcome,
+    );
     await this.recordSuccess(connection, 'test_run', run.id, run.name, synced);
     return synced;
   }
@@ -438,6 +466,7 @@ export class TestRailSyncService {
     connection: IntegrationConnection,
     entityType: TestRailSyncableEntity,
     entityId: string,
+    projectId: string,
     existing: ExternalReference | null,
     outcome: SyncOutcome,
   ): Promise<Synced> {
@@ -447,6 +476,7 @@ export class TestRailSyncService {
         provider: PROVIDER,
         entityType,
         entityId,
+        projectId,
         externalId: outcome.ref.externalId,
         externalKey: outcome.ref.externalKey ?? null,
         externalUrl: outcome.ref.externalUrl ?? null,

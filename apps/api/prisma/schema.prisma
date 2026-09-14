@@ -900,6 +900,10 @@ model ExternalReference {
 
   entityType LinkableEntity
   entityId   String
+  /// Denormalised from the entity so a project can list its references — and
+  /// still find the ones whose entity is gone — without joining six tables.
+  /// Null only for organization-level entities.
+  projectId  String?
 
   provider    IntegrationProvider
   externalId  String
@@ -916,5 +920,6 @@ model ExternalReference {
   @@unique([organizationId, provider, entityType, entityId, externalId])
   @@index([organizationId, entityType, entityId])
   @@index([organizationId, provider, externalId])
+  @@index([organizationId, projectId, provider])
   @@map("external_references")
 }

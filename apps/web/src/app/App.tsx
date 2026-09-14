@@ -19,6 +19,7 @@ import { RunExecutionPage } from '../pages/RunExecutionPage';
 import { TestCaseEditorPage } from '../pages/TestCaseEditorPage';
 import { TestCasesPage } from '../pages/TestCasesPage';
 import { TestRunsPage } from '../pages/TestRunsPage';
+import { ExternalTraceabilityPage } from '../pages/ExternalTraceabilityPage';
 import { TraceabilityPage } from '../pages/TraceabilityPage';
 
 /**
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
           { path: '/test-runs/:runId', element: <RunExecutionPage /> },
           { path: '/defects', element: <DefectsPage /> },
           { path: '/traceability', element: <TraceabilityPage /> },
+          { path: '/external-traceability', element: <ExternalTraceabilityPage /> },
           { path: '/members', element: <MembersPage /> },
           { path: '/project-access', element: <ProjectAccessPage /> },
           { path: '/settings/integrations', element: <IntegrationsPage /> },

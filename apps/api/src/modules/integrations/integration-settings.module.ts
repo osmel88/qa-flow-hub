@@ -7,6 +7,9 @@ import { RequirementsModule } from '../requirements/requirements.module';
 import { TestDesignModule } from '../test-design/test-design.module';
 import { TestRunsModule } from '../test-runs/test-runs.module';
 import { ExternalReferencesRepository } from './external-references.repository';
+import { ExternalTraceabilityController } from './external-traceability.controller';
+import { ExternalTraceabilityRepository } from './external-traceability.repository';
+import { ExternalTraceabilityService } from './external-traceability.service';
 import { GitHubSyncController } from './github-sync.controller';
 import { GitHubSyncService } from './github-sync.service';
 import { IntegrationSettingsController } from './integration-settings.controller';
@@ -43,6 +46,7 @@ import { TestRailSyncService } from './testrail-sync.service';
     JiraSyncController,
     TestRailSyncController,
     GitHubSyncController,
+    ExternalTraceabilityController,
   ],
   providers: [
     IntegrationSettingsService,
@@ -51,6 +55,8 @@ import { TestRailSyncService } from './testrail-sync.service';
     JiraSyncService,
     TestRailSyncService,
     GitHubSyncService,
+    ExternalTraceabilityRepository,
+    ExternalTraceabilityService,
   ],
   exports: [IntegrationSettingsService, JiraSyncService, TestRailSyncService, GitHubSyncService],
 })

@@ -298,11 +298,73 @@ Lo que merece estudio:
    rechaza `importResults` igual que rechaza un resultado manual: la
    automatización no tiene un carril privilegiado sobre la regla de negocio.
 
+## S2-F5: una vista que deriva estado en vez de guardarlo
+
+Tras tres proveedores, cada uno con su columna "Jira"/"TestRail"/"GitHub" en
+la pantalla que le tocaba, faltaba la pregunta que hace un QA lead: _¿qué de
+este proyecto está enlazado fuera, con qué, y sigue siendo verdad?_ S2-F5 la
+responde sin proveedor nuevo, sin sync nuevo y sin columna nueva en tablas de
+negocio.
+
+```
+apps/api/src/modules/integrations/
+├─ external-traceability.repository.ts  snapshots tenant-aware de las seis entidades, archivadas y borradas incluidas
+├─ external-traceability.service.ts     list(): estado derivado por fila · verify(): sondea los adaptadores
+└─ external-traceability.controller.ts  GET /integrations/traceability · POST /integrations/traceability/verify
+packages/shared/src/integrations/
+└─ external-traceability.contracts.ts   5 estados, 12 issues, la fila neutra (externalKind, previousExternalId…)
+```
+
+Lo que merece estudio:
+
+1. **Un `projectId` desnormalizado, y por qué está bien.** `ExternalReference`
+   apunta a seis tablas distintas por `entityType`/`entityId`. Listar "las
+   referencias del proyecto" era un `UNION` de seis joins, y aun así perdía
+   las referencias cuya entidad ya no existe: justo las huérfanas que la
+   pantalla debe mostrar. Copiar `projectId` al escribir la referencia (con
+   backfill en la migración) resuelve las dos cosas con un índice. Es una
+   copia, y una copia se puede desincronizar; hoy nada mueve entidades entre
+   proyectos, y la deuda 31 anota qué debe pasar el día que algo lo haga.
+2. **El estado no se guarda, se calcula.** `synced`, `linked`, `stale`,
+   `missing`, `error` salen de tres lecturas paralelas —referencias, snapshot
+   de entidades (`updatedAt`, `archivedAt`, `deletedAt`), conexiones— y una
+   función pura por fila. Guardar el estado obligaría a recalcularlo en cada
+   edición de cada entidad de seis módulos; derivarlo cuesta una consulta y
+   nunca miente sobre lo que la base sabe. Lo que la base **no** sabe (si el
+   proveedor borró el objeto) es lo único que requiere `verify`.
+3. **Cinco estados y una lista de motivos.** El producto pidió exactamente
+   cinco estados. "Huérfana", "duplicada", "archivada" no son estados: son
+   razones por las que una fila está en `error` o `stale`. Separar `status`
+   (para filtrar y contar) de `issues[]` (para explicar) evita que el enum
+   crezca con cada caso nuevo y que la UI tenga que conocer veinte colores.
+4. **Los duplicados se cuentan, no se colapsan.** Dos referencias para la misma
+   entidad y proveedor, o un mismo id externo en dos entidades, aparecen como
+   `error` con su motivo. Los servicios de sync actuales no pueden producirlos
+   (una fila por entidad), así que si aparecen vienen de fuera y alguien debe
+   decidir; una vista que "elige la más reciente" habría escondido justo el
+   dato que importa para auditar.
+5. **Las filas `missing` no existen en la base.** Se generan al vuelo para
+   las entidades que un proveedor configurado _debería_ rastrear. Si la
+   conexión no existe, no hay `missing`: no se puede echar en falta lo que no
+   se ha pedido. Los results importados de GitHub nunca son `missing`: solo
+   existen una vez importados, y un "falta importar" sería una mentira.
+6. **`verify` reutiliza los adaptadores, no los repite.** Sondea con
+   `getIssue`, `fetchSuite/Case/Run/Result`, `fetchWorkflowRun` —los mismos
+   métodos del sync— y escribe `verifiedAt` y `providerState` en el
+   `metadata` de la fila sin tocar `previousExternalId`. El re-sync desde la
+   pantalla tampoco es un endpoint nuevo: el web llama al sync del proveedor
+   correspondiente, que ya sabe mover la referencia con historial.
+7. **Dos trazabilidades, dos pantallas.** `/traceability` sigue siendo la
+   matriz interna Requirement ↔ TestCase; `/external-traceability` es esta.
+   Mezclarlas habría convertido "cubierto por un caso" y "enlazado a un case
+   de TestRail" en la misma afirmación, y no lo son.
+
 ## Comandos
 
 ```bash
 cd apps/api && npx vitest run src/integrations/noop.providers.test.ts
 cd apps/api && npx vitest run --config vitest.integration.config.ts test/integration-settings.int-spec.ts
+cd apps/api && npx vitest run --config vitest.integration.config.ts test/external-traceability.int-spec.ts
 cd packages/shared && npx vitest run src/integrations
 ```
 

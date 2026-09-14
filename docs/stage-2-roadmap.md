@@ -23,19 +23,19 @@ Hard constraints for the whole stage:
 
 ## Phase order
 
-| Phase  | Name                                 | Theme         |
-| ------ | ------------------------------------ | ------------- |
-| S2-F1  | Integration Settings — **delivered** | Integrations  |
-| S2-F2  | Jira Mock — **delivered**            | Integrations  |
-| S2-F3  | TestRail Mock — **delivered**        | Integrations  |
-| S2-F4  | GitHub Mock — **delivered**          | Integrations  |
-| S2-F5  | External Traceability                | Traceability  |
-| S2-F6  | Email Notifications                  | Notifications |
-| S2-F7  | File & Evidence Uploads              | Evidence      |
-| S2-F8  | Granular Permissions                 | Authorization |
-| S2-F9  | Project KPI & Analytics Dashboard    | Analytics     |
-| S2-F10 | Production Readiness                 | Operations    |
-| S2-F11 | Billing & Subscriptions              | Commercial    |
+| Phase  | Name                                  | Theme         |
+| ------ | ------------------------------------- | ------------- |
+| S2-F1  | Integration Settings — **delivered**  | Integrations  |
+| S2-F2  | Jira Mock — **delivered**             | Integrations  |
+| S2-F3  | TestRail Mock — **delivered**         | Integrations  |
+| S2-F4  | GitHub Mock — **delivered**           | Integrations  |
+| S2-F5  | External Traceability — **delivered** | Traceability  |
+| S2-F6  | Email Notifications                   | Notifications |
+| S2-F7  | File & Evidence Uploads               | Evidence      |
+| S2-F8  | Granular Permissions                  | Authorization |
+| S2-F9  | Project KPI & Analytics Dashboard     | Analytics     |
+| S2-F10 | Production Readiness                  | Operations    |
+| S2-F11 | Billing & Subscriptions               | Commercial    |
 
 KPI & Analytics was added after the stage was approved and is inserted **before**
 Production Readiness and Billing, which shifts those two phases to F10 and F11.
@@ -347,6 +347,68 @@ TestCase     ↔ Automated Test
 The matrix must state where each fact came from: a requirement covered only by
 an external case is a different claim from one covered internally, and merging
 them silently makes the report unauditable.
+
+### Delivery (S2-F5)
+
+One consolidated, project-scoped view over the references the three mock
+providers already write — no new provider, no new sync, no new column on a
+business table:
+
+- Model: `ExternalReference.projectId` (nullable, denormalised from the entity,
+  migration `20260913120000_external_reference_project` with a backfill for
+  the six entity types and for project-level rows) plus the index
+  `(organizationId, projectId, provider)`. It exists so a project can list its
+  references — including the ones whose entity is gone — with one query
+  instead of six joins. Jira, TestRail and GitHub sync now stamp it on every
+  write. The relation key stays `provider + entityType + entityId + externalId`.
+- Contracts (`packages/shared/src/integrations/external-traceability.contracts.ts`):
+  five statuses exactly as approved — `synced`, `linked`, `stale`, `missing`,
+  `error` — and an `issues[]` list that says _why_ (`orphaned_entity`,
+  `deleted_entity`, `archived_entity`, `entity_changed`, `provider_lost`,
+  `duplicate_reference`, `shared_external_id`, `connection_missing`,
+  `connection_disabled`, `connection_error`, `never_synced`, `not_linked`).
+  Orphans and inconsistencies are therefore not a sixth status: an orphan is
+  `error` + `orphaned_entity`, a duplicate is `error` + `duplicate_reference`.
+  The row is provider-neutral (`externalKind` names the remote object: issue,
+  bug, suite, case, run, result, workflow_run, automated_test).
+- `ExternalTraceabilityService` derives the status from three parallel reads
+  (references, entity snapshots that keep archived/deleted rows, connections):
+  `error` when the connection is missing/disabled/in error, the entity is
+  gone or the reference is duplicated or shares its external id with another
+  entity; `stale` when the entity changed after `syncedAt` or the provider
+  reported the object lost; `linked` when a link exists but was never synced
+  (GitHub run links); `synced` otherwise; `missing` rows are generated for
+  entities the configured providers are expected to track (Jira: requirement,
+  defect; TestRail: suite, case, run; GitHub: run) and can be switched off
+  with `includeMissing=false`. GitHub automated results are never `missing`:
+  they only exist once imported.
+- `POST /integrations/traceability/verify` probes every reference of a project
+  through the existing adapters (`getIssue`, `fetchSuite/Case/Run/Result`,
+  `fetchWorkflowRun`), records `verifiedAt` and `providerState` in the
+  reference metadata (audit trail, never overwrites `previousExternalId`),
+  updates the connection state and returns `present / lost / failed` counts.
+  Read is open to project members; verify to planning roles. No cross-tenant
+  or cross-project row can be reached: the repositories are tenant-aware and
+  the project is checked with `assertRouteAccess`.
+- Re-sync reuses what exists: the view says `canResync` and the web calls the
+  provider's own sync endpoint (Jira/TestRail sync, GitHub re-link), which
+  keeps the one-row-per-entity rule and `previousExternalId` from S2-F2..F4.
+- Web: `/external-traceability` ("External references" in the navigation),
+  separate from the internal `/traceability` matrix on purpose: Internal
+  entity → Provider → External entity → External ID → Status (+ issues) →
+  Last sync → Verified → Error → action. Filters: provider, entity type,
+  status, "show entities not linked yet". "Verify with providers" button.
+- Tests: 16 integration tests (`test/external-traceability.int-spec.ts`:
+  three providers consolidated, imported GitHub results, filters, missing
+  rows, stale after edit, archived and deleted entities, orphan, duplicate,
+  shared external id, provider error, disconnected provider, running vs
+  finished workflow, verify + lost objects, re-sync after provider loss,
+  isolation between organizations, project permissions) and one E2E
+  (`external-traceability.e2e.spec.ts`).
+
+Not delivered, on purpose: KPI counts beyond the status totals the table
+needs, a `TestCase ↔ Automated Test` confirmed binding (the mock still matches
+by `@C-n` tag, entry 30), TestRail import. Debt recorded: entry 31.
 
 ## S2-F6 — Email Notifications
 

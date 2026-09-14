@@ -18,6 +18,9 @@ import type {
   ExternalIssueView,
   ExternalProjectView,
   ExternalReferenceView,
+  ExternalTraceabilityQuery,
+  ExternalTraceabilityVerificationView,
+  ExternalTraceabilityView,
   ExternalRepositoryView,
   ExternalWorkflowRunView,
   GitHubSyncResultView,
@@ -272,6 +275,16 @@ export const testRailApi = {
       `/integrations/testrail/sync/${TESTRAIL_SYNC_PATH[entityType]}/${id}`,
       { method: 'POST' },
     ),
+};
+
+export const externalTraceabilityApi = {
+  list: (params: ExternalTraceabilityQuery) =>
+    apiFetch<ExternalTraceabilityView>(`/integrations/traceability${query(params)}`),
+  verify: (projectId: string) =>
+    apiFetch<ExternalTraceabilityVerificationView>('/integrations/traceability/verify', {
+      method: 'POST',
+      body: { projectId },
+    }),
 };
 
 export const gitHubApi = {

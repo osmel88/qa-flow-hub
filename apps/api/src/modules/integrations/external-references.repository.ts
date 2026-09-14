@@ -8,6 +8,7 @@ export interface ExternalReferenceWrite {
   provider: IntegrationProvider;
   entityType: LinkableEntity;
   entityId: string;
+  projectId: string | null;
   externalId: string;
   externalKey: string | null;
   externalUrl: string | null;
@@ -15,13 +16,19 @@ export interface ExternalReferenceWrite {
   connectionId: string | null;
 }
 
+export interface ProjectReferencesFilter {
+  projectId: string;
+  provider?: IntegrationProvider;
+  entityType?: LinkableEntity;
+}
+
 /**
  * The generic bridge between our entities and a provider's.
  *
- * Nothing here knows about Jira: the same rows will carry TestRail cases and
- * GitHub runs in later phases, keyed by `provider` and `entityType`. That is the
- * whole reason `Requirement` and `Defect` carry no `jiraIssueKey` column — the
- * relationship is data in this table, not schema in theirs.
+ * Nothing here knows about Jira: the same rows carry TestRail cases and GitHub
+ * runs, keyed by `provider` and `entityType`. That is the whole reason
+ * `Requirement` and `Defect` carry no `jiraIssueKey` column — the relationship
+ * is data in this table, not schema in theirs.
  */
 @Injectable()
 export class ExternalReferencesRepository extends TenantAwareRepository {
@@ -54,6 +61,30 @@ export class ExternalReferencesRepository extends TenantAwareRepository {
     });
   }
 
+  /** Every reference of a project, whether or not its entity still exists. */
+  listForProject(filter: ProjectReferencesFilter): Promise<ExternalReference[]> {
+    return this.prisma.externalReference.findMany({
+      where: this.scope({
+        projectId: filter.projectId,
+        ...(filter.provider === undefined ? {} : { provider: filter.provider }),
+        ...(filter.entityType === undefined ? {} : { entityType: filter.entityType }),
+      }),
+      orderBy: [{ entityType: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
+  /** Stamps verification data without touching what the reference points at. */
+  async updateMetadata(id: string, metadata: Prisma.InputJsonValue): Promise<void> {
+    await this.prisma.externalReference.updateMany({
+      where: this.scope({ id }),
+      data: { metadata },
+    });
+  }
+
+  findById(id: string): Promise<ExternalReference | null> {
+    return this.prisma.externalReference.findFirst({ where: this.scope({ id }) });
+  }
+
   create(data: ExternalReferenceWrite, tx?: PrismaTransaction): Promise<ExternalReference> {
     return (tx ?? this.prisma).externalReference.create({
       data: { ...data, organizationId: this.organizationId },
@@ -66,8 +97,9 @@ export class ExternalReferencesRepository extends TenantAwareRepository {
       ExternalReferenceWrite,
       'externalId' | 'externalKey' | 'externalUrl' | 'metadata' | 'connectionId'
     >,
+    tx?: PrismaTransaction,
   ): Promise<ExternalReference | null> {
-    const { count } = await this.prisma.externalReference.updateMany({
+    const { count } = await (tx ?? this.prisma).externalReference.updateMany({
       where: this.scope({ id }),
       data,
     });

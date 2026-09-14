@@ -10,6 +10,7 @@ const NAV = [
   { to: '/test-runs', label: 'Test runs' },
   { to: '/defects', label: 'Defects' },
   { to: '/traceability', label: 'Traceability' },
+  { to: '/external-traceability', label: 'External references' },
   { to: '/members', label: 'Members' },
   { to: '/project-access', label: 'Project access' },
   { to: '/settings/integrations', label: 'Integrations' },
@@ -73,7 +74,10 @@ export function AppLayout(): React.JSX.Element {
 
         <div className="shell__user">
           <span className="muted">{user?.email}</span>
-          <button className="ui-button ui-button--ghost ui-button--sm" onClick={() => void logout()}>
+          <button
+            className="ui-button ui-button--ghost ui-button--sm"
+            onClick={() => void logout()}
+          >
             Sign out
           </button>
         </div>
@@ -86,7 +90,9 @@ export function AppLayout(): React.JSX.Element {
               <li key={item.to}>
                 <NavLink
                   to={item.to}
-                  className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}
+                  className={({ isActive }) =>
+                    isActive ? 'nav-link nav-link--active' : 'nav-link'
+                  }
                 >
                   {item.label}
                 </NavLink>

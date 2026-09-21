@@ -93,6 +93,10 @@ export class AppConfigService {
     return this.get('WEB_BASE_URL').replace(/\/+$/, '');
   }
 
+  get email(): { provider: Env['EMAIL_PROVIDER']; from: string } {
+    return { provider: this.get('EMAIL_PROVIDER'), from: this.get('EMAIL_FROM') };
+  }
+
   get swaggerEnabled(): boolean {
     return this.get('SWAGGER_ENABLED');
   }

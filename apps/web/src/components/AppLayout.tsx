@@ -14,6 +14,7 @@ const NAV = [
   { to: '/members', label: 'Members' },
   { to: '/project-access', label: 'Project access' },
   { to: '/settings/integrations', label: 'Integrations' },
+  { to: '/notifications', label: 'Notifications' },
   { to: '/profile', label: 'Profile' },
 ];
 

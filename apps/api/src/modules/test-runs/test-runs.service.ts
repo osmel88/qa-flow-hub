@@ -28,6 +28,7 @@ import {
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../../errors';
+import { DomainEventsPublisher } from '../../events/domain-events';
 import { AuditService } from '../audit/audit.service';
 import { OrganizationMembersRepository } from '../organizations/organization-members.repository';
 import { ProjectAccessService } from '../projects/project-access.service';
@@ -53,6 +54,7 @@ export class TestRunsService {
     private readonly tenant: TenantContextService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly events: DomainEventsPublisher,
   ) {}
 
   // --- Runs ----------------------------------------------------------------
@@ -284,6 +286,19 @@ export class TestRunsService {
           ? `Unassigned ${assigned} case(s) in run ${run.name}`
           : `Assigned ${assigned} case(s) in run ${run.name}`,
     });
+
+    // One event per operation, not per case: the assignee gets one mail that
+    // says "N cases", whatever N is.
+    if (input.assignedToId !== null && assigned > 0) {
+      await this.events.publish('test_run.cases.assigned', {
+        organizationId: run.organizationId,
+        projectId: run.projectId,
+        testRunId: runId,
+        assigneeUserId: input.assignedToId,
+        actorUserId: this.tenant.requireUserId(),
+        runCaseIds: input.runCaseIds,
+      });
+    }
 
     return { assigned };
   }

@@ -5,6 +5,8 @@ import {
   AutomatedResult,
   AutomationProviderAdapter,
   EmailAdapter,
+  EmailDeliveryOutcome,
+  EmailMessage,
   ExternalArtifact,
   ExternalBranch,
   ExternalJob,
@@ -245,11 +247,8 @@ export class NoopEmailAdapter implements EmailAdapter {
   readonly provider = 'noop';
   private readonly logger = new Logger(NoopEmailAdapter.name);
 
-  send(message: { to: string; subject: string; text: string; html?: string }): Promise<{
-    accepted: boolean;
-    messageId: string | null;
-  }> {
-    this.logger.log(`Email suppressed (no provider): "${message.subject}" to ${message.to}`);
-    return Promise.resolve({ accepted: false, messageId: null });
+  send(message: EmailMessage): Promise<EmailDeliveryOutcome> {
+    this.logger.log(`Email suppressed (no provider): ${message.reference}`);
+    return Promise.resolve({ accepted: false, messageId: null, reason: 'no_provider' });
   }
 }

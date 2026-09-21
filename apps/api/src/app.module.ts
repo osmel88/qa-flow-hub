@@ -3,6 +3,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
+import { DomainEventsModule } from './events/domain-events.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -10,6 +11,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DefectsModule } from './modules/defects/defects.module';
 import { HealthModule } from './modules/health/health.module';
 import { IntegrationSettingsModule } from './modules/integrations/integration-settings.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { RequirementsModule } from './modules/requirements/requirements.module';
@@ -32,6 +34,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     // In-process event bus. Audit and future integration side effects subscribe
     // to domain events instead of being called inline from services.
     EventEmitterModule.forRoot({ global: true, wildcard: true, verboseMemoryLeak: true }),
+    DomainEventsModule,
     AuditModule,
     HealthModule,
     AuthModule,
@@ -45,6 +48,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     DashboardModule,
     IntegrationsModule,
     IntegrationSettingsModule,
+    NotificationsModule,
   ],
 })
 export class AppModule implements NestModule {

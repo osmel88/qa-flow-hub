@@ -359,6 +359,72 @@ Lo que merece estudio:
    Mezclarlas habría convertido "cubierto por un caso" y "enlazado a un case
    de TestRail" en la misma afirmación, y no lo son.
 
+## S2-F6: correo sin correo — eventos, libro mayor y un puerto
+
+Las notificaciones son la primera integración que **sale** del producto hacia
+una persona, y la primera que puede fallar sin que el negocio deba enterarse.
+S2-F6 construye todo el camino y deja al final un proveedor que no envía nada.
+
+```
+apps/api/src/
+├─ events/domain-events.ts                 5 eventos tipados + DomainEventsPublisher (emitAsync, errores tragados y logueados)
+├─ integrations/adapter.contracts.ts       EmailAdapter · EmailMessage · EmailDeliveryOutcome
+├─ integrations/email-mock/                MockEmailAdapter: captura en memoria, ids mock-000001, +bounce/+defer
+└─ modules/notifications/
+   ├─ templates/email-templates.ts         variables tipadas → { subject, text, html }, claves versionadas .v1
+   ├─ notifications.repository.ts          ledger tenant-aware, dedupe, transiciones, preferencias
+   ├─ notifications.service.ts             listeners: evento → destinatarios → preferencia → plantilla → fila → adapter → estado
+   └─ notifications.controller.ts          preferences · provider · list · outbox
+```
+
+Lo que merece estudio:
+
+1. **Los módulos de negocio publican hechos, no correos.** `InvitationsService`
+   emite `organization.invitation.issued`; no sabe que existe un email. Si
+   mañana la invitación también genera un mensaje de Slack, el emisor no
+   cambia. El precio es indirección: para saber "quién envía el correo de
+   invitación" hay que buscar el listener, no seguir una llamada.
+2. **`emitAsync` y un `try/catch` en el publisher.** El listener corre dentro
+   de la petición (no hay cola), así que un fallo al renderizar o al enviar
+   podría convertir un `PATCH /defects/:id` correcto en un 500. El publisher
+   captura, loguea y devuelve: el negocio ya está confirmado, el correo es
+   secundario. Es la decisión inversa a la de una transacción, y hay que
+   tomarla explícitamente.
+3. **El contexto del evento, no el de la petición.** El listener ejecuta con
+   `TenantContextService.runForOrganization(event.organizationId)`. Hoy
+   coinciden siempre con la petición; el día que un job programado emita
+   eventos de varias organizaciones, el filtro tenant y el RLS seguirán
+   viendo la organización correcta. El correo de contraseña corre **sin**
+   organización, y por eso `notifications.organizationId` es nullable y la
+   política RLS tiene dos ramas.
+4. **Un libro mayor, no una cola.** Cada intento es una fila con
+   `pending → sent | failed | skipped`, motivo, proveedor e id del proveedor.
+   La fila se inserta **antes** de llamar al adapter: si el proceso muere en
+   medio queda un `pending` que alguien podrá reintentar. Ese "alguien" es el
+   worker de la deuda 32; el modelo ya tiene lo que necesita.
+5. **`skipped` también se guarda.** Una preferencia desactivada no es "no pasó
+   nada": es una decisión auditable ("no te avisé porque lo pediste"). Cuesta
+   una fila; ahorra la conversación "¿por qué no me llegó?".
+6. **Dedupe por clave, no por memoria.** `dedupeKey` es única en la tabla y se
+   construye con el fingerprint del evento (`test_run_assignment:run:user:
+hash(casos)`). Un `create` que choca se lee como "ya existe" y no se
+   intenta otra vez. Funciona con varias instancias del API sin coordinación;
+   una `Set` en memoria no.
+7. **La plantilla es una función tipada.** `renderEmail('test_run_assignment', vars)`
+   no acepta un `Record<string, unknown>`: si el evento deja de traer
+   `projectName`, falla el `tsc`, no el correo en producción. El HTML escapa
+   siempre; el texto plano no, porque un nombre con `&` debe leerse como `&`.
+8. **Lo que no se guarda.** Ni el cuerpo, ni el `acceptUrl` con token, ni el
+   destinatario completo en los logs (solo el dominio). El outbox mock
+   redacta las query strings antes de salir por la API. La regla general:
+   el ledger responde "qué, a quién, cuándo, resultado"; nunca "qué decía".
+9. **Cambiar de proveedor es cambiar un `useClass`.** `EMAIL_ADAPTER` es un
+   token de Nest; `MockEmailAdapter` es la única implementación. Un adapter
+   SES o SMTP implementa `send(message)`, devuelve `{ accepted, messageId,
+reason }` y el servicio no cambia una línea. Lo que **sí** falta —el
+   almacén de credenciales, la URL pública, el worker de reintentos— está en
+   la deuda 32, en orden.
+
 ## Comandos
 
 ```bash

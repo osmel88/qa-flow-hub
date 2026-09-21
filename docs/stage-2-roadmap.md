@@ -423,6 +423,63 @@ API response today) and 12 (lazy invitation expiry). Sending must not happen in
 the request path once it can fail, which is where the job runner (debt 3) gets
 decided.
 
+### Delivery (S2-F6)
+
+Infrastructure only: every piece a real provider needs is in place, **no real
+email is sent** and the only accepted `EMAIL_PROVIDER` is `mock`.
+
+- Model (migration `20260920100000_notifications`): `Notification` — a
+  persistent per-attempt ledger with nullable `organizationId` (account-level
+  mail such as password changed), `recipientUserId`/`recipientEmail`, `type`,
+  `templateKey`, `subject`, `status` (`pending | sent | failed | skipped`),
+  unique `dedupeKey`, `provider`, `providerMessageId`, `attempts`,
+  `attemptedAt`, `deliveredAt`, `failureReason`, `skipReason`, non-sensitive
+  `metadata`. Bodies, tokens and links are never persisted.
+  `NotificationPreference` — per user, global (not per organization):
+  `emailEnabled`, `testRunAssignments`, `defectAssignments`, `statusChanges`,
+  default on. RLS on `notifications` shows organization rows only to that
+  organization and account-level rows only without an organization in context.
+- Events (`apps/api/src/events/domain-events.ts`): typed
+  `organization.invitation.issued`, `user.password.changed`,
+  `test_run.cases.assigned`, `defect.assigned`, `defect.status.changed`,
+  published by invitations, auth, test runs and defects through
+  `DomainEventsPublisher` (in-process `emitAsync`; a listener failure is
+  logged, never returned to the business call). No other mutation emails.
+- Provider (`apps/api/src/integrations/email-mock/`): `EmailAdapter` port
+  (`send(EmailMessage) → { accepted, messageId, reason }`) and
+  `MockEmailAdapter`: no network, deterministic `mock-000001…` ids, in-memory
+  capture (last 500), `+bounce@` → `mailbox_unavailable`, `+defer@` →
+  `provider_unavailable`; logs carry reference, recipient domain and id only.
+- Templates (`modules/notifications/templates/`): typed variables, subject +
+  text + escaped HTML, versioned keys (`organization_invitation.v1`,
+  `password_changed.v1`, `test_run_assignment.v1`, `defect_assignment.v1`,
+  `defect_status_changed.v1`). Password **reset** was not added: the product
+  has no reset flow, so the security mail is "your password was changed".
+- Pipeline (`NotificationsService`): event → recipients (assignee, or
+  reporter+assignee minus the actor for defect status, only for `resolved`,
+  `closed`, `rejected`, `reopened`) → category + preference decision →
+  template → `pending` row (dedupe by `dedupeKey`, so a re-assignment of the
+  same cases or a repeated event produces no second attempt) → adapter →
+  `sent`/`failed`/`skipped` with reason. Runs inside the event's organization
+  context, not the request's. Security mail bypasses optional preferences;
+  self-assignment and unassignment send nothing.
+- Endpoints: `GET/PATCH /notifications/preferences` (audited),
+  `GET /notifications/provider`, `GET /notifications?scope=mine|organization`
+  (organization scope: owner/admin), `GET /notifications/outbox` (owner/admin,
+  mock only, token-bearing query strings redacted to `?[redacted]`).
+- Web: preferences on `/profile`; `/notifications` with the ledger (mine /
+  organization), filters, provider banner and a clearly labelled mock outbox.
+- Config: `EMAIL_PROVIDER=mock`, `EMAIL_FROM`.
+- Tests: 14 integration (`test/notifications.int-spec.ts`), 11 unit
+  (templates, mock adapter), 1 E2E (`notifications.e2e.spec.ts`), plus a
+  regression for the MVP bug found on the way (`PATCH /defects/:id` with
+  `assigneeId` returned 500 because a relation write was passed to
+  `updateMany`; fixed in `defects.service.ts`).
+
+Debt closed: none of 4, 10, 12 fully. 4 becomes "mock only" (entry 32); 10
+stays because with a mock provider the token in the response is still the only
+way to hand over the invitation; 12 needs the job runner. Debt recorded: 32.
+
 ## S2-F7 — File & Evidence Uploads
 
 Real evidence upload: images, logs, txt, json, pdf and comparable files.

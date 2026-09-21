@@ -9,7 +9,7 @@ import { GitHubMockAutomationProviderAdapter } from './github-mock/github-mock.a
 import { GitHubMockStore } from './github-mock/github-mock.store';
 import { JiraMockIssueTrackerAdapter } from './jira-mock/jira-mock.adapter';
 import { JiraMockStore } from './jira-mock/jira-mock.store';
-import { NoopEmailAdapter } from './noop.providers';
+import { MockEmailAdapter } from './email-mock/email-mock.adapter';
 import { TestRailMockTestManagementAdapter } from './testrail-mock/testrail-mock.adapter';
 import { TestRailMockStore } from './testrail-mock/testrail-mock.store';
 
@@ -30,12 +30,14 @@ import { TestRailMockStore } from './testrail-mock/testrail-mock.store';
     { provide: ISSUE_TRACKER_ADAPTER, useClass: JiraMockIssueTrackerAdapter },
     { provide: TEST_MANAGEMENT_ADAPTER, useClass: TestRailMockTestManagementAdapter },
     { provide: AUTOMATION_PROVIDER_ADAPTER, useClass: GitHubMockAutomationProviderAdapter },
-    { provide: EMAIL_ADAPTER, useClass: NoopEmailAdapter },
+    MockEmailAdapter,
+    { provide: EMAIL_ADAPTER, useExisting: MockEmailAdapter },
   ],
   exports: [
     JiraMockStore,
     TestRailMockStore,
     GitHubMockStore,
+    MockEmailAdapter,
     ISSUE_TRACKER_ADAPTER,
     TEST_MANAGEMENT_ADAPTER,
     AUTOMATION_PROVIDER_ADAPTER,

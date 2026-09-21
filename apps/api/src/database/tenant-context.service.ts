@@ -53,6 +53,31 @@ export class TenantContextService {
   }
 
   /**
+   * Runs `work` as the current request but for a different tenant — or for
+   * none, when `organizationId` is null. Used by listeners whose data does not
+   * belong to the request's organization (an account-level notification
+   * written while an organization header was present). The request's own
+   * context is untouched: the child store is a copy.
+   */
+  runForOrganization<T>(organizationId: string | null, work: () => T): T {
+    const current = this.storage.getStore();
+    const child: RequestContext = {
+      requestId: current?.requestId ?? 'system',
+      ...(current?.userId === undefined ? {} : { userId: current.userId }),
+      ...(current?.email === undefined ? {} : { email: current.email }),
+      ...(organizationId === null
+        ? {}
+        : {
+            organizationId,
+            ...(current?.organizationId === organizationId && current.role !== undefined
+              ? { role: current.role }
+              : {}),
+          }),
+    };
+    return this.storage.run(child, work);
+  }
+
+  /**
    * Called by the authentication guard once the access token is verified.
    * Mutating the store rather than re-running it keeps the whole request in a
    * single asynchronous context.

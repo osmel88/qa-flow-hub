@@ -433,17 +433,39 @@ export interface AutomationProviderAdapter {
 }
 
 /**
- * The seam for transactional email. Invitations currently return their token in
- * the HTTP response (see docs/technical-debt.md) precisely because nothing
- * implements this yet; when a provider is added, the invitation service changes
- * one call and stops returning the token.
+ * A rendered message, ready for a provider. Everything a real vendor needs is
+ * here and nothing vendor-shaped is: no API key, no template id of theirs.
+ */
+export interface EmailMessage {
+  to: string;
+  from: string;
+  subject: string;
+  text: string;
+  html?: string;
+  /**
+   * Our notification id. Providers that call back (bounces, complaints) echo
+   * it, which is how a future webhook finds the ledger row without a lookup
+   * table per vendor.
+   */
+  reference: string;
+  /** Non-sensitive labels for the provider's own dashboard, e.g. the type. */
+  tags?: Record<string, string>;
+}
+
+export interface EmailDeliveryOutcome {
+  accepted: boolean;
+  messageId: string | null;
+  /** Short, machine-readable, and safe to persist when `accepted` is false. */
+  reason?: string;
+}
+
+/**
+ * The seam for transactional email. Business modules never see this: they
+ * emit domain events, `NotificationsService` renders and records, and only
+ * that service calls `send`. Swapping the mock for a vendor is one class and
+ * one `provide` line (S2-F6 → post-S2).
  */
 export interface EmailAdapter {
   readonly provider: string;
-  send(message: {
-    to: string;
-    subject: string;
-    text: string;
-    html?: string;
-  }): Promise<{ accepted: boolean; messageId: string | null }>;
+  send(message: EmailMessage): Promise<EmailDeliveryOutcome>;
 }

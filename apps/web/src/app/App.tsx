@@ -9,6 +9,7 @@ import { DefectsPage } from '../pages/DefectsPage';
 import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { MembersPage } from '../pages/MembersPage';
+import { NotificationsPage } from '../pages/NotificationsPage';
 import { ProjectAccessPage } from '../pages/ProjectAccessPage';
 import { OrganizationsPage } from '../pages/OrganizationsPage';
 import { ProfilePage } from '../pages/ProfilePage';
@@ -58,6 +59,7 @@ const router = createBrowserRouter([
           { path: '/members', element: <MembersPage /> },
           { path: '/project-access', element: <ProjectAccessPage /> },
           { path: '/settings/integrations', element: <IntegrationsPage /> },
+          { path: '/notifications', element: <NotificationsPage /> },
           { path: '/profile', element: <ProfilePage /> },
         ],
       },

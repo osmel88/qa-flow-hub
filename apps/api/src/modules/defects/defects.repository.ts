@@ -83,7 +83,7 @@ export class DefectsRepository extends TenantAwareRepository {
 
   async update(
     id: string,
-    data: Prisma.DefectUpdateInput,
+    data: Prisma.DefectUpdateManyMutationInput,
     tx?: PrismaTransaction,
   ): Promise<Defect | null> {
     const client = tx ?? this.prisma;

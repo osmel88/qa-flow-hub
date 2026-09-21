@@ -685,3 +685,53 @@ Decisions to revisit later rather than design now:
   is O(references) provider calls with no batching.
 - **Trigger to fix:** the first real adapter (change markers and batching), or
   S2-F9 wanting to count stale references without a manual Verify.
+
+## 32. Email is mock-only, delivered in the request, with no retry (S2-F6)
+
+S2-F6 built the whole notification path — typed domain events, recipients,
+preferences, templates, a persistent `Notification` ledger and the
+`EmailAdapter` port — but the only provider is `MockEmailAdapter` and
+`EMAIL_PROVIDER` accepts nothing else. Nobody receives mail.
+
+- **Synchronous, in-process delivery.** The listener renders, inserts the
+  `pending` row and calls the adapter inside the request that raised the
+  event. A listener failure is logged and swallowed, so the business write
+  never fails because of mail — but a `failed` row stays `failed`: there is no
+  retry, no backoff and nothing that drains `pending` rows left behind by a
+  crash between insert and send. The ledger already has the columns an outbox
+  worker needs (`status`, `attempts`, `attemptedAt`, `dedupeKey`); the worker
+  and its scheduler are debt 3 and were deliberately not started here.
+- **Debt 4 is downgraded, not closed.** Invitations still hand the token back
+  in the API response (entry 10) because with a mock provider that is the only
+  way the invitee gets the link. Entry 12 (lazy expiry) is untouched.
+- **No password reset.** The product has no reset flow, so the security mail
+  is "password changed"; a reset mail needs the reset endpoint first.
+- **Preferences are global per user**, not per organization. A tester in two
+  organizations cannot silence one of them.
+- **Mock capture is in memory** (last 500 messages, lost on restart), like the
+  Jira/TestRail/GitHub mocks (entries 28–30). The ledger persists; the bodies
+  do not, by design.
+- **Deduplication is a unique `dedupeKey` per event fingerprint**, so the same
+  assignment is not mailed twice, but a rapid assign → unassign → assign of the
+  same cases is one email, and two different partial assignments are two.
+
+What activating real email requires, in order:
+
+1. a credential source (the same store S2-F10 needs for GitHub real): the
+   provider key must never be in `IntegrationConnection.settings` or in Git;
+2. one class implementing `EmailAdapter` for the chosen vendor (SMTP, SES,
+   Resend, SendGrid, Mailgun — the port is the same for all; no decision has
+   been taken), registered under `EMAIL_ADAPTER` in `IntegrationsModule` and
+   the `EMAIL_PROVIDER` enum widened;
+3. a public base URL for the links the templates render (`acceptUrl`,
+   `runUrl`, `defectUrl`) and a verified sender for `EMAIL_FROM`;
+4. the outbox worker: drain `pending`/`failed` rows with bounded retries and
+   move sending out of the request path;
+5. then remove `token`/`acceptUrl` from `CreatedInvitationView` (closes 10),
+   and consider bounce/complaint webhooks to flip `sent` → `failed` after the
+   fact.
+
+- **Cost:** mail is a developer-facing feature only; a transient provider
+  error will be visible in the ledger but never recovered automatically.
+- **Trigger to fix:** the first external user who must be invited by mail, or
+  S2-F10.

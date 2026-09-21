@@ -47,6 +47,14 @@ export const envSchema = z.object({
   WEB_BASE_URL: z.string().url().default('http://localhost:5173'),
 
   /**
+   * Email delivery. `mock` is the only provider today: it captures messages
+   * in memory and never opens a socket. A real provider arrives as a new value
+   * here plus one adapter class; no business module reads this.
+   */
+  EMAIL_PROVIDER: z.enum(['mock']).default('mock'),
+  EMAIL_FROM: z.string().email().default('no-reply@qa-flow-hub.local'),
+
+  /**
    * Interactive documentation. Left unset it follows the environment: on in
    * development, off in production, because `/docs` publishes the entire API
    * surface to anonymous callers. Setting it explicitly wins either way, so a

@@ -173,7 +173,7 @@ export class OrganizationsController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Issue a fresh token for a pending invitation' })
   resend(@CurrentUser() user: CurrentUserContext, @Param('id') id: string) {
-    return this.invitations.resend(user.organizationId, id);
+    return this.invitations.resend(user.organizationId, id, { userId: user.userId });
   }
 
   @ApiHeader({ name: 'X-Organization-Id', required: true })

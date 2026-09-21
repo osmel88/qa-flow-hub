@@ -20,6 +20,7 @@ import {
   ForbiddenError,
   NotFoundError,
 } from '../../errors';
+import { DomainEventsPublisher } from '../../events/domain-events';
 import { AuditService } from '../audit/audit.service';
 import { OrganizationInvitationsRepository } from './organization-invitations.repository';
 import {
@@ -60,6 +61,7 @@ export class InvitationsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
+    private readonly events: DomainEventsPublisher,
   ) {}
 
   /**
@@ -111,7 +113,18 @@ export class InvitationsService {
       changes: { email: input.email, role: input.role },
     });
 
-    return this.toCreatedView(invitation, issued.token);
+    const view = this.toCreatedView(invitation, issued.token);
+    await this.events.publish('organization.invitation.issued', {
+      organizationId,
+      invitationId: invitation.id,
+      email: invitation.email,
+      role: invitation.role,
+      invitedByUserId: invitedBy.userId,
+      acceptUrl: view.acceptUrl,
+      expiresAt: invitation.expiresAt,
+      resendCount: 0,
+    });
+    return view;
   }
 
   async list(organizationId: string): Promise<InvitationView[]> {
@@ -121,12 +134,15 @@ export class InvitationsService {
   }
 
   /**
-   * Conceptual resend: no email is sent yet, but the operation that matters
-   * already exists — a fresh token, a fresh expiry, and the previous token dead.
-   * When an email provider is wired in, it subscribes here and nothing else
-   * changes. See docs/integrations-roadmap.md.
+   * A fresh token, a fresh expiry, the previous token dead — and the same
+   * event as the first issue, with the resend count telling the two apart so
+   * each one is mailed exactly once.
    */
-  async resend(organizationId: string, id: string): Promise<CreatedInvitationView> {
+  async resend(
+    organizationId: string,
+    id: string,
+    resentBy: { userId: string },
+  ): Promise<CreatedInvitationView> {
     const invitation = await this.invitations.findById(organizationId, id);
     if (invitation === null) {
       throw new NotFoundError('Invitation');
@@ -148,7 +164,18 @@ export class InvitationsService {
       summary: `Resent the invitation for ${invitation.email} (attempt ${updated.resendCount + 1})`,
     });
 
-    return this.toCreatedView(updated, issued.token);
+    const view = this.toCreatedView(updated, issued.token);
+    await this.events.publish('organization.invitation.issued', {
+      organizationId,
+      invitationId: id,
+      email: updated.email,
+      role: updated.role,
+      invitedByUserId: resentBy.userId,
+      acceptUrl: view.acceptUrl,
+      expiresAt: updated.expiresAt,
+      resendCount: updated.resendCount,
+    });
+    return view;
   }
 
   async revoke(organizationId: string, id: string): Promise<void> {

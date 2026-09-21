@@ -62,10 +62,12 @@ describe('noop integration providers', () => {
   it('does not accept an email as sent', async () => {
     const outcome = await new NoopEmailAdapter().send({
       to: 'invitee@example.com',
+      from: 'no-reply@example.com',
       subject: 'You have been invited',
       text: 'token',
+      reference: 'ntf_1',
     });
 
-    expect(outcome).toEqual({ accepted: false, messageId: null });
+    expect(outcome).toEqual({ accepted: false, messageId: null, reason: 'no_provider' });
   });
 });

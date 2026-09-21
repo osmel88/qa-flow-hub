@@ -11,6 +11,7 @@ import {
 import { PrismaService } from '../../database/prisma.service';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { ConflictError, NotFoundError, ValidationError } from '../../errors';
+import { DomainEventsPublisher } from '../../events/domain-events';
 import { AuditService } from '../audit/audit.service';
 import { OrganizationMembersRepository } from '../organizations/organization-members.repository';
 import { ProjectAccessService } from '../projects/project-access.service';
@@ -44,6 +45,7 @@ export class DefectsService {
     private readonly tenant: TenantContextService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly events: DomainEventsPublisher,
   ) {}
 
   async create(input: CreateDefectInput, userId: string): Promise<DefectView> {
@@ -139,6 +141,10 @@ export class DefectsService {
       return created;
     });
 
+    if (defect.assigneeId !== null) {
+      await this.publishAssigned(defect.id, defect.projectId, defect.assigneeId, userId);
+    }
+
     return toDefectView(defect);
   }
 
@@ -172,14 +178,7 @@ export class DefectsService {
       ...(input.severity === undefined ? {} : { severity: input.severity }),
       ...(input.priority === undefined ? {} : { priority: input.priority }),
       ...(input.environment === undefined ? {} : { environment: input.environment }),
-      ...(input.assigneeId === undefined
-        ? {}
-        : {
-            assignee:
-              input.assigneeId === null
-                ? { disconnect: true }
-                : { connect: { id: input.assigneeId } },
-          }),
+      ...(input.assigneeId === undefined ? {} : { assigneeId: input.assigneeId }),
     });
     if (updated === null) {
       throw new NotFoundError('Defect');
@@ -192,7 +191,34 @@ export class DefectsService {
       summary: `Updated defect ${defect.key}`,
     });
 
+    // Only a change of hands is news; editing the title of a defect somebody
+    // already owns is not.
+    if (updated.assigneeId !== null && updated.assigneeId !== defect.assigneeId) {
+      await this.publishAssigned(
+        id,
+        updated.projectId,
+        updated.assigneeId,
+        this.tenant.requireUserId(),
+      );
+    }
+
     return toDefectView(updated);
+  }
+
+  private publishAssigned(
+    defectId: string,
+    projectId: string,
+    assigneeUserId: string,
+    actorUserId: string,
+  ): Promise<void> {
+    return this.events.publish('defect.assigned', {
+      organizationId: this.tenant.requireOrganizationId(),
+      projectId,
+      defectId,
+      assigneeUserId,
+      actorUserId,
+      changedAt: new Date(),
+    });
   }
 
   async changeStatus(id: string, input: ChangeDefectStatusInput): Promise<DefectView> {
@@ -230,6 +256,16 @@ export class DefectsService {
           ? {}
           : { comment: input.comment }),
       },
+    });
+
+    await this.events.publish('defect.status.changed', {
+      organizationId: updated.organizationId,
+      projectId: updated.projectId,
+      defectId: id,
+      fromStatus: defect.status,
+      toStatus: updated.status,
+      actorUserId: this.tenant.requireUserId(),
+      changedAt: new Date(),
     });
 
     return toDefectView(updated);

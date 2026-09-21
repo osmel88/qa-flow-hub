@@ -140,6 +140,23 @@ describe('defects and traceability', () => {
       expect(response.statusCode).toBe(400);
     });
 
+    it('reassigns and unassigns through PATCH', async () => {
+      const tester = await workspace.addMember('tester');
+      const id = (await createDefect()).json().id;
+
+      const assigned = await request(
+        'PATCH',
+        `/api/v1/defects/${id}`,
+        asOwner({ assigneeId: tester.userId }),
+      );
+      expect(assigned.statusCode).toBe(200);
+      expect(assigned.json().assigneeId).toBe(tester.userId);
+
+      const cleared = await request('PATCH', `/api/v1/defects/${id}`, asOwner({ assigneeId: null }));
+      expect(cleared.statusCode).toBe(200);
+      expect(cleared.json().assigneeId).toBeNull();
+    });
+
     it('lets a tester report but not a viewer', async () => {
       const tester = await workspace.addMember('tester');
       const viewer = await workspace.addMember('viewer');

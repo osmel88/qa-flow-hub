@@ -216,6 +216,25 @@ enum AuditAction {
   export
 }
 
+enum NotificationType {
+  organization_invitation
+  password_changed
+  test_run_assignment
+  defect_assignment
+  defect_status_changed
+}
+
+enum NotificationChannel {
+  email
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+  skipped
+}
+
 // ---------------------------------------------------------------------------
 // Identity
 // ---------------------------------------------------------------------------
@@ -241,16 +260,18 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  memberships      OrganizationMember[]
-  projectMembers   ProjectMember[]
-  sessions         Session[]
-  invitationsSent  OrganizationInvitation[] @relation("InvitationCreatedBy")
-  auditLogs        AuditLog[]
-  assignedRunCases TestRunCase[]            @relation("TestRunCaseAssignee")
-  executedResults  TestResult[]             @relation("TestResultExecutedBy")
-  reportedDefects  Defect[]                 @relation("DefectReportedBy")
-  assignedDefects  Defect[]                 @relation("DefectAssignee")
-  uploadedFiles    AttachmentMetadata[]
+  memberships            OrganizationMember[]
+  projectMembers         ProjectMember[]
+  sessions               Session[]
+  invitationsSent        OrganizationInvitation[] @relation("InvitationCreatedBy")
+  auditLogs              AuditLog[]
+  assignedRunCases       TestRunCase[]            @relation("TestRunCaseAssignee")
+  executedResults        TestResult[]             @relation("TestResultExecutedBy")
+  reportedDefects        Defect[]                 @relation("DefectReportedBy")
+  assignedDefects        Defect[]                 @relation("DefectAssignee")
+  uploadedFiles          AttachmentMetadata[]
+  notifications          Notification[]           @relation("NotificationRecipient")
+  notificationPreference NotificationPreference?
 
   @@index([deletedAt])
   @@map("users")
@@ -322,6 +343,7 @@ model Organization {
   integrations       IntegrationConnection[]
   externalReferences ExternalReference[]
   projectMemberships ProjectMember[]
+  notifications      Notification[]
 
   @@index([deletedAt])
   @@map("organizations")
@@ -848,6 +870,78 @@ model AuditLog {
 }
 
 // ---------------------------------------------------------------------------
+// Notifications (S2-F6)
+// ---------------------------------------------------------------------------
+
+/// One row per message the product decided to send (or decided not to). The
+/// rendered body is NOT stored: it may carry a one-time link, and the row
+/// exists to answer "was X told about Y, and did it get through", not to
+/// re-read the mail. `dedupeKey` names the fact being announced; its
+/// uniqueness is what makes the same fact unable to produce two emails.
+model Notification {
+  id             String        @id @default(cuid())
+  /// Null for account-level messages (password changed) that belong to no
+  /// tenant. The RLS policy allows the insert and hides the row from every
+  /// organization, as it does for audit entries without one.
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// Null when the recipient has no account yet (an invitation).
+  recipientUserId String?
+  recipientUser   User?   @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  /// Normalised address the message was addressed to.
+  recipientEmail  String
+
+  type        NotificationType
+  channel     NotificationChannel @default(email)
+  templateKey String
+  subject     String
+
+  status    NotificationStatus @default(pending)
+  dedupeKey String             @unique
+
+  provider          String?
+  providerMessageId String?
+  attempts          Int       @default(0)
+  attemptedAt       DateTime?
+  deliveredAt       DateTime?
+  failureReason     String?
+  /// Why a `skipped` row was not sent: a preference, a disabled address, the
+  /// actor being the recipient. Never a secret.
+  skipReason        String?
+  /// Non-sensitive context: entity type and id, keys, actor id. Never a token,
+  /// never a rendered body.
+  metadata          Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, recipientUserId, createdAt])
+  @@index([organizationId, type, status])
+  @@map("notifications")
+}
+
+/// Per user, not per organization: a person who does not want assignment
+/// emails does not want them from any of their organizations. Absent row means
+/// every category on. Security messages ignore this table on purpose.
+model NotificationPreference {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  emailEnabled       Boolean @default(true)
+  testRunAssignments Boolean @default(true)
+  defectAssignments  Boolean @default(true)
+  statusChanges      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
+
+// ---------------------------------------------------------------------------
 // Integrations (contracts only in the MVP)
 // ---------------------------------------------------------------------------
 
@@ -859,19 +953,19 @@ model IntegrationConnection {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  provider    IntegrationProvider
-  displayName String
-  mode        IntegrationMode     @default(mock)
-  enabled     Boolean             @default(false)
-  baseUrl     String?
+  provider             IntegrationProvider
+  displayName          String
+  mode                 IntegrationMode     @default(mock)
+  enabled              Boolean             @default(false)
+  baseUrl              String?
   /// Non-sensitive provider settings (project keys, field mappings).
-  settings    Json                @default("{}")
+  settings             Json                @default("{}")
   /// Non-sensitive account, workspace or repository identity reported by the
   /// provider. Separate from `settings` because one is what the user asked for
   /// and the other is what the provider answered.
-  accountMetadata      Json              @default("{}")
+  accountMetadata      Json                @default("{}")
   secretRef            String?
-  status               IntegrationStatus @default(disconnected)
+  status               IntegrationStatus   @default(disconnected)
   lastSyncAt           DateTime?
   lastConnectionTestAt DateTime?
   lastError            String?

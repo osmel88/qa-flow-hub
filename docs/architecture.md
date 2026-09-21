@@ -67,10 +67,11 @@ apps/api/src/
 ├─ database/               PrismaService, transactions, tenant-aware base repository
 ├─ common/                 guards, interceptors, pipes, decorators
 ├─ errors/                 domain error hierarchy + the one exception filter
-├─ events/                 in-process event bus and event contracts
+├─ events/                 in-process event bus, typed domain events and DomainEventsPublisher (S2-F6)
 ├─ audit/                  AuditService and the interceptor that feeds it
-├─ integrations/           adapter ports, no-op implementations, jira-mock/ (S2-F2), testrail-mock/ (S2-F3), github-mock/ (S2-F4)
+├─ integrations/           adapter ports, no-op implementations, jira-mock/ (S2-F2), testrail-mock/ (S2-F3), github-mock/ (S2-F4), email-mock/ (S2-F6)
 ├─ modules/integrations/   Settings → Integrations (S2-F1) + Jira sync (S2-F2) + TestRail sync (S2-F3) + GitHub sync (S2-F4) + external traceability (S2-F5)
+├─ modules/notifications/  domain event → recipients → preferences → template → ledger → EmailAdapter (S2-F6)
 └─ modules/<area>/         controller, service, repository, dto, domain, policies
 ```
 
@@ -121,14 +122,48 @@ makes it possible to enable later without a data model change.
 
 ## Extension points
 
-| Point                         | Contract                                      | MVP implementation                         |
-| ----------------------------- | --------------------------------------------- | ------------------------------------------ |
-| Issue trackers                | `IssueTrackerAdapter`                         | No-op; raises `INTEGRATION_NOT_CONFIGURED` |
-| Test management import/export | `TestManagementAdapter`                       | No-op                                      |
-| Automation providers          | `AutomationProviderAdapter`                   | No-op                                      |
-| External identity             | `IntegrationConnection` + `ExternalReference` | Tables and contracts only                  |
-| Email                         | Invitation records exist without delivery     | Documented seam, no provider               |
-| File storage                  | `AttachmentMetadata` with `storageKey`        | Metadata only                              |
+| Point                         | Contract                                      | MVP implementation                                                                                          |
+| ----------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Issue trackers                | `IssueTrackerAdapter`                         | No-op; raises `INTEGRATION_NOT_CONFIGURED`                                                                  |
+| Test management import/export | `TestManagementAdapter`                       | No-op                                                                                                       |
+| Automation providers          | `AutomationProviderAdapter`                   | No-op                                                                                                       |
+| External identity             | `IntegrationConnection` + `ExternalReference` | Tables and contracts only                                                                                   |
+| Email                         | `EmailAdapter` (`send(EmailMessage)`)         | `MockEmailAdapter` (S2-F6): in-memory capture, deterministic ids, `+bounce`/`+defer` failures; no real mail |
+| File storage                  | `AttachmentMetadata` with `storageKey`        | Metadata only                                                                                               |
+
+## Notifications (S2-F6)
+
+Business modules publish facts, never mail. `DomainEventsPublisher` (over
+`@nestjs/event-emitter`, in-process, `emitAsync`, listener errors logged and
+swallowed so a notification failure cannot fail the business write) carries
+five typed events: `organization.invitation.issued`, `user.password.changed`,
+`test_run.cases.assigned`, `defect.assigned`, `defect.status.changed`.
+
+`NotificationsService` listens and runs each pipeline **inside the event's
+organization context** (`TenantContextService.runForOrganization`), not the
+request's:
+
+```text
+event → recipients → type/category + preference decision → typed template
+      → Notification row (pending, unique dedupeKey) → EmailAdapter
+      → sent | failed | skipped
+```
+
+- `Notification` is a persistent ledger, not a queue: one row per attempt
+  with `status`, `attemptedAt`, `deliveredAt`, `failureReason`,
+  `skipReason`, `provider`, `providerMessageId` and non-sensitive `metadata`.
+  Bodies and links are not stored. `organizationId` is nullable for account
+  level mail (password changed); RLS lets an organization see only its rows
+  and account-level rows only with no organization in context.
+- `NotificationPreference` is per user, global (not per organization):
+  `emailEnabled`, `testRunAssignments`, `defectAssignments`, `statusChanges`,
+  all default on. Security mail (invitation, password changed) ignores them.
+- Delivery is synchronous and in-process. There is no retry, no durable
+  queue and no worker (see technical debt 32); the ledger is what a future
+  outbox worker would drain.
+- `EMAIL_PROVIDER` accepts only `mock`. A real provider is one class
+  implementing `EmailAdapter`, registered in `IntegrationsModule`, plus a
+  credential source that does not exist yet (post-S2, with S2-F10).
 
 ## Operations
 

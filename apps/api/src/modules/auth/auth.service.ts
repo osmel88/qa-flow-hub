@@ -18,6 +18,7 @@ import {
   TokenReuseDetectedError,
   UnauthenticatedError,
 } from '../../errors';
+import { DomainEventsPublisher } from '../../events/domain-events';
 import { InvitationsService } from '../organizations/invitations.service';
 import { PasswordService } from './password.service';
 import { SessionsRepository } from './sessions.repository';
@@ -36,6 +37,7 @@ export class AuthService {
     private readonly config: AppConfigService,
     private readonly context: TenantContextService,
     private readonly invitations: InvitationsService,
+    private readonly events: DomainEventsPublisher,
   ) {}
 
   async register(input: RegisterInput): Promise<AuthSession> {
@@ -201,6 +203,7 @@ export class AuthService {
     // sessions alive would make the change cosmetic.
     const revoked = await this.sessions.revokeAllForUser(userId, 'password_changed');
     this.logger.log(`Password changed: user=${userId} sessionsRevoked=${revoked}`);
+    await this.events.publish('user.password.changed', { userId, changedAt: new Date() });
   }
 
   async updateProfile(userId: string, input: UpdateProfileInput): Promise<AuthenticatedUser> {

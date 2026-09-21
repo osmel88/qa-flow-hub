@@ -15,6 +15,12 @@ import type {
   CreatedInvitationView,
   DashboardSummary,
   DefectView,
+  EmailProviderView,
+  ListNotificationsQuery,
+  MockEmailPreview,
+  NotificationPreferencesView,
+  NotificationView,
+  UpdateNotificationPreferencesInput,
   ExternalIssueView,
   ExternalProjectView,
   ExternalReferenceView,
@@ -239,6 +245,17 @@ export const integrationsApi = {
     apiFetch<IntegrationTestResultView>(`/integrations/${provider}/test-connection`, {
       method: 'POST',
     }),
+};
+
+export const notificationsApi = {
+  preferences: () => apiFetch<NotificationPreferencesView>('/notifications/preferences'),
+  updatePreferences: (body: UpdateNotificationPreferencesInput) =>
+    apiFetch<NotificationPreferencesView>('/notifications/preferences', { method: 'PATCH', body }),
+  provider: () => apiFetch<EmailProviderView>('/notifications/provider'),
+  list: (params: Partial<ListNotificationsQuery>) =>
+    apiFetch<Paginated<NotificationView>>(`/notifications${query(params)}`),
+  outbox: (params: Partial<ListNotificationsQuery>) =>
+    apiFetch<Paginated<MockEmailPreview>>(`/notifications/outbox${query(params)}`),
 };
 
 export const dashboardApi = {

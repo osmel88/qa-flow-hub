@@ -101,6 +101,9 @@ jobs:
       JWT_REFRESH_SECRET: e2e-refresh-secret-value-with-enough-length
       CORS_ORIGINS: http://localhost:4173
       SWAGGER_ENABLED: 'false'
+      # The whole Playwright suite runs from one address in under a minute and
+      # exceeds the default 300 requests/minute; see docs/technical-debt.md §1.
+      RATE_LIMIT_MAX: '2000'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

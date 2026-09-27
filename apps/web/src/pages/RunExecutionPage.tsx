@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { defectsApi, testRunsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { AttachmentsPanel } from '../components/AttachmentsPanel';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import {
@@ -160,6 +161,7 @@ export function RunExecutionPage(): React.JSX.Element {
                 reference={runReferences.data?.get(runId)}
               />
             </div>
+            <AttachmentsPanel entityType="test_run" entityId={runId} title="Run evidence" />
           </section>
         )}
       </DataState>
@@ -304,16 +306,23 @@ function LatestResult({
   }
 
   return (
-    <div className="external-sync">
-      <span className="muted">
-        Latest result: {humanize(latest.status)} ({new Date(latest.executedAt).toLocaleString()})
-      </span>
-      <GitHubResultOrigin reference={gitHubReferences?.get(latest.id)} />
-      <TestRailSyncCell
+    <>
+      <div className="external-sync">
+        <span className="muted">
+          Latest result: {humanize(latest.status)} ({new Date(latest.executedAt).toLocaleString()})
+        </span>
+        <GitHubResultOrigin reference={gitHubReferences?.get(latest.id)} />
+        <TestRailSyncCell
+          entityType="test_result"
+          entityId={latest.id}
+          reference={references?.get(latest.id)}
+        />
+      </div>
+      <AttachmentsPanel
         entityType="test_result"
         entityId={latest.id}
-        reference={references?.get(latest.id)}
+        title={`Evidence for latest result (${humanize(latest.status)})`}
       />
-    </div>
+    </>
   );
 }

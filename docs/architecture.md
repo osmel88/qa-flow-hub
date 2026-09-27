@@ -72,6 +72,8 @@ apps/api/src/
 ├─ integrations/           adapter ports, no-op implementations, jira-mock/ (S2-F2), testrail-mock/ (S2-F3), github-mock/ (S2-F4), email-mock/ (S2-F6)
 ├─ modules/integrations/   Settings → Integrations (S2-F1) + Jira sync (S2-F2) + TestRail sync (S2-F3) + GitHub sync (S2-F4) + external traceability (S2-F5)
 ├─ modules/notifications/  domain event → recipients → preferences → template → ledger → EmailAdapter (S2-F6)
+├─ storage/                StorageProvider port, LocalStorageProvider, MemoryStorageProvider, StorageModule (S2-F7)
+├─ modules/attachments/    multipart upload → inspection → provider → AttachmentMetadata; authenticated download (S2-F7)
 └─ modules/<area>/         controller, service, repository, dto, domain, policies
 ```
 
@@ -129,7 +131,7 @@ makes it possible to enable later without a data model change.
 | Automation providers          | `AutomationProviderAdapter`                   | No-op                                                                                                       |
 | External identity             | `IntegrationConnection` + `ExternalReference` | Tables and contracts only                                                                                   |
 | Email                         | `EmailAdapter` (`send(EmailMessage)`)         | `MockEmailAdapter` (S2-F6): in-memory capture, deterministic ids, `+bounce`/`+defer` failures; no real mail |
-| File storage                  | `AttachmentMetadata` with `storageKey`        | Metadata only                                                                                               |
+| File storage                  | `StorageProvider` (`put/get/head/delete`)     | `LocalStorageProvider` (S2-F7): disk under `STORAGE_LOCAL_ROOT`; `MemoryStorageProvider` for tests          |
 
 ## Notifications (S2-F6)
 
@@ -164,6 +166,28 @@ event → recipients → type/category + preference decision → typed template
 - `EMAIL_PROVIDER` accepts only `mock`. A real provider is one class
   implementing `EmailAdapter`, registered in `IntegrationsModule`, plus a
   credential source that does not exist yet (post-S2, with S2-F10).
+
+## Evidence storage (S2-F7)
+
+```text
+web (FormData) → POST /attachments → AttachmentsService → STORAGE_PROVIDER → disk | memory
+                                            └─ AttachmentMetadata (PostgreSQL: metadata, never bytes)
+```
+
+The service resolves the target (`test_result | defect | test_run | test_case`)
+through the tenant-aware repository, asserts project access, then streams the
+multipart part through an inspector (SHA-256, byte count, magic bytes, NUL
+scan) straight into `StorageProvider.put` under a generated key
+(`org/<org>/project/<project>/<entity>/<uuid>.<ext>`). Anything that fails
+inspection is deleted from storage before the error leaves. Download is
+`GET /attachments/:id/content`: authorization first, then `storage.get`
+streamed back with `nosniff`, `private, no-store` and a safe
+`Content-Disposition` — the browser never sees a path or a bucket. Delete is
+physical first, then `deletedAt`.
+
+The port has no notion of paths, URLs or buckets, so an S3-compatible provider
+is one more class in `storage/` plus a `STORAGE_PROVIDER` value; the module,
+the controller and the web client stay as they are (debt 33 lists the rest).
 
 ## Operations
 

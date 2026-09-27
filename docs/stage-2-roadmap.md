@@ -498,6 +498,80 @@ from the file name, safe generated names, authorization per
 organization/project, time-limited URLs or an equally safe download path,
 controlled deletion, and audit. Closes debt entry 2.
 
+### Delivery (S2-F7)
+
+Evidence is real: bytes live on disk under a generated key, metadata lives in
+PostgreSQL, and the business logic only knows a `StorageProvider` port.
+
+```text
+web (FormData) → POST /attachments → AttachmentsService → STORAGE_PROVIDER
+                                                          ├─ LocalStorageProvider   (STORAGE_PROVIDER=local)
+                                                          └─ MemoryStorageProvider  (STORAGE_PROVIDER=memory, tests)
+                                     └─ AttachmentMetadata (PostgreSQL, metadata only)
+```
+
+- Model (migration `20260927100000_attachments_storage`): `AttachmentMetadata`
+  gains `projectId`, required `checksum` (SHA-256), `storageProvider` and a
+  unique `storageKey`; `deletedAt` is the soft delete. The MVP scaffold table
+  was never written to, so the migration empties it before tightening the
+  columns. Attachable targets: `test_result`, `defect`, `test_run`,
+  `test_case` (`LinkableEntity`, no new enum).
+- Storage (`apps/api/src/storage/`): `StorageProvider` port — `put`, `get`,
+  `head`, `delete` over a key and a `Readable`; no paths, buckets, ACLs or
+  URLs. `LocalStorageProvider` writes under `STORAGE_LOCAL_ROOT` (default
+  `./var/storage`, git-ignored) with `wx` (keys are single-use), checks the
+  resolved path stays inside the root, removes partial files on failure and
+  deletes idempotently. `MemoryStorageProvider` keeps a `Map` and can fail the
+  next operation on demand (`failNext`) for tests. `StorageModule` picks one
+  from `STORAGE_PROVIDER`; `AttachmentsService` injects the token only.
+- Keys: `org/<orgId>/project/<projectId>/<entityType>/<uuid>.<ext>`. The
+  user's file name is sanitized for display and never used in the path.
+- Validation (`file-inspection.ts`): extension **and** MIME must both be in the
+  shared allow-list (`png jpg jpeg gif webp txt log json pdf`); the stream is
+  hashed and counted while it is written; binary types must start with their
+  magic bytes (PNG, JPEG, GIF, RIFF+WEBP, `%PDF`), text types must not contain
+  NUL in the first 8 KiB. `@fastify/multipart` truncates at
+  `UPLOAD_MAX_SIZE_BYTES` and the service answers `FILE_TOO_LARGE` (413);
+  a rejected object is deleted from storage before the error is returned.
+- Endpoints (`modules/attachments/`, project-scoped): `GET /attachments/limits`,
+  `POST /attachments?entityType&entityId` (multipart, one `file` part),
+  `GET /attachments?entityType&entityId`, `GET /attachments/:id`,
+  `GET /attachments/:id/content?disposition=inline|attachment`,
+  `DELETE /attachments/:id`. Download streams through the API with the session
+  token — no public or pre-signed URL exists yet — and sets `nosniff`,
+  `private, no-store` and a safe `Content-Disposition`; `inline` is honoured
+  only for images and PDF, text is always `attachment`.
+- Authorization: target resolved through the tenant-aware repository, then
+  `ProjectAccessService.assertRouteAccess(projectId)` before any storage call.
+  Any project member with a contributor role uploads; members read; the
+  uploader deletes their own evidence; owner/admin/project manager/QA lead
+  delete anyone's; viewers neither upload nor delete. Cross-tenant ids are 404
+  or 403, never a file.
+- Deletion: physical delete first, then `deletedAt`; a storage failure leaves
+  the row active and retryable. Upload and delete are audited with name, size,
+  type and checksum — never the content or the storage path.
+- Errors: `UNSUPPORTED_FILE_TYPE` (415), `FILE_TOO_LARGE` (413),
+  `STORAGE_ERROR` (503).
+- Config: `STORAGE_PROVIDER=local|memory`, `STORAGE_LOCAL_ROOT=./var/storage`,
+  `UPLOAD_MAX_SIZE_BYTES=10485760` (10 MiB; a development limit, not a
+  commercial quota). Integration tests run with 64 KiB so the limit is
+  exercised with a small file.
+- Web: `AttachmentsPanel` (choose → upload with client-side pre-check of
+  extension and size → list with name/type/size/uploader → Preview (images,
+  blob URL) / Open (PDF, sandboxed iframe) / Download / Delete, loading and
+  error states with the API's code turned into a sentence). Mounted on the run
+  header (`test_run`), under the latest result of each case (`test_result`)
+  and per row on Defects (`defect`). `apiFetch` accepts `FormData` and
+  `apiFetchBlob` downloads bytes with the same auth/refresh path.
+- Tests: 25 integration (`test/attachments.int-spec.ts`), 21 unit
+  (`file-inspection.test.ts`, `storage-provider.test.ts` — the same contract
+  suite runs against both providers), 1 E2E (`attachments.e2e.spec.ts`:
+  fail → attach png + log → refuse `.exe` and 11 MiB → preview → download
+  and compare bytes → delete → survives reload).
+
+Debt closed: 2. Debt recorded: 33 (local disk, no S3 yet, no signed URLs, no
+quotas, no virus scan, no orphan sweeper).
+
 ## S2-F8 — Granular Permissions
 
 Evaluate permissions by organization, project, module and action:

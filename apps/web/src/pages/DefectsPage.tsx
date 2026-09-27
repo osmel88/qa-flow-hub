@@ -1,9 +1,11 @@
 import { DEFECT_SEVERITIES, DEFECT_STATUSES } from '@qa-flow-hub/shared';
+import type { DefectView, ExternalReferenceView } from '@qa-flow-hub/shared';
 import { Badge, Button, DataState, SelectField, TextAreaField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { defectsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { AttachmentsPanel } from '../components/AttachmentsPanel';
 import { JiraSyncCell, useJiraReferences } from '../components/JiraSyncCell';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
@@ -18,6 +20,7 @@ export function DefectsPage(): React.JSX.Element {
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState('major');
   const [error, setError] = useState<string | null>(null);
+  const [evidenceFor, setEvidenceFor] = useState<string | null>(null);
 
   const list = useQuery({
     queryKey: ['defects', activeProjectId, status],
@@ -147,53 +150,99 @@ export function DefectsPage(): React.JSX.Element {
               <th scope="col">Origin</th>
               <th scope="col">Move to</th>
               <th scope="col">Jira</th>
+              <th scope="col">Evidence</th>
             </tr>
           </thead>
           <tbody>
             {list.data?.data.map((defect) => (
-              <tr key={defect.id}>
-                <td>
-                  <code>{defect.key}</code>
-                </td>
-                <td>{defect.title}</td>
-                <td>
-                  <Badge tone={toneFor(defect.severity)}>{humanize(defect.severity)}</Badge>
-                </td>
-                <td>
-                  <Badge tone={toneFor(defect.status)}>{humanize(defect.status)}</Badge>
-                </td>
-                <td className="muted">
-                  {defect.testResultId === null ? 'Reported manually' : 'From a test result'}
-                </td>
-                <td>
-                  <select
-                    className="ui-input"
-                    aria-label={`Change status of ${defect.key}`}
-                    value=""
-                    onChange={(event) => {
-                      changeStatus.mutate({ id: defect.id, status: event.target.value });
-                    }}
-                  >
-                    <option value="">Choose…</option>
-                    {DEFECT_STATUSES.filter((value) => value !== defect.status).map((value) => (
-                      <option key={value} value={value}>
-                        {humanize(value)}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <JiraSyncCell
-                    entityType="defect"
-                    entityId={defect.id}
-                    reference={jiraReferences.data?.get(defect.id)}
-                  />
-                </td>
-              </tr>
+              <DefectRow
+                key={defect.id}
+                defect={defect}
+                evidenceOpen={evidenceFor === defect.id}
+                onToggleEvidence={() => {
+                  setEvidenceFor(evidenceFor === defect.id ? null : defect.id);
+                }}
+                onChangeStatus={(value) => {
+                  changeStatus.mutate({ id: defect.id, status: value });
+                }}
+                jiraReference={jiraReferences.data?.get(defect.id)}
+              />
             ))}
           </tbody>
         </table>
       </DataState>
+    </>
+  );
+}
+
+interface DefectRowProps {
+  defect: DefectView;
+  evidenceOpen: boolean;
+  onToggleEvidence: () => void;
+  onChangeStatus: (status: string) => void;
+  jiraReference: ExternalReferenceView | undefined;
+}
+
+function DefectRow({
+  defect,
+  evidenceOpen,
+  onToggleEvidence,
+  onChangeStatus,
+  jiraReference,
+}: DefectRowProps): React.JSX.Element {
+  return (
+    <>
+      <tr>
+        <td>
+          <code>{defect.key}</code>
+        </td>
+        <td>{defect.title}</td>
+        <td>
+          <Badge tone={toneFor(defect.severity)}>{humanize(defect.severity)}</Badge>
+        </td>
+        <td>
+          <Badge tone={toneFor(defect.status)}>{humanize(defect.status)}</Badge>
+        </td>
+        <td className="muted">
+          {defect.testResultId === null ? 'Reported manually' : 'From a test result'}
+        </td>
+        <td>
+          <select
+            className="ui-input"
+            aria-label={`Change status of ${defect.key}`}
+            value=""
+            onChange={(event) => {
+              onChangeStatus(event.target.value);
+            }}
+          >
+            <option value="">Choose…</option>
+            {DEFECT_STATUSES.filter((value) => value !== defect.status).map((value) => (
+              <option key={value} value={value}>
+                {humanize(value)}
+              </option>
+            ))}
+          </select>
+        </td>
+        <td>
+          <JiraSyncCell entityType="defect" entityId={defect.id} reference={jiraReference} />
+        </td>
+        <td>
+          <Button size="sm" variant="ghost" aria-expanded={evidenceOpen} onClick={onToggleEvidence}>
+            {evidenceOpen ? 'Hide evidence' : 'Evidence'}
+          </Button>
+        </td>
+      </tr>
+      {evidenceOpen && (
+        <tr>
+          <td colSpan={8}>
+            <AttachmentsPanel
+              entityType="defect"
+              entityId={defect.id}
+              title={`Evidence for ${defect.key}`}
+            />
+          </td>
+        </tr>
+      )}
     </>
   );
 }

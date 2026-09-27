@@ -172,3 +172,40 @@ export class IntegrationProviderError extends DomainError {
     super(`${provider}: ${message}`, { provider });
   }
 }
+
+/** The declared type, the extension or the bytes are not on the allow-list. */
+export class UnsupportedFileTypeError extends DomainError {
+  readonly code = 'UNSUPPORTED_FILE_TYPE' as const;
+  readonly httpStatus = 415;
+
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export class FileTooLargeError extends DomainError {
+  readonly code = 'FILE_TOO_LARGE' as const;
+  readonly httpStatus = 413;
+
+  constructor(maxSizeBytes: number) {
+    super(`File exceeds the maximum size of ${maxSizeBytes} bytes`, { maxSizeBytes });
+  }
+}
+
+/**
+ * The storage provider failed to read, write or delete an object. 503 and not
+ * 500: the request was valid and the metadata is consistent, the backing
+ * store is what is unavailable. The provider's own message is logged, never
+ * returned — a local path or a bucket name is nobody's business.
+ */
+export class StorageError extends DomainError {
+  readonly code = 'STORAGE_ERROR' as const;
+  readonly httpStatus = 503;
+
+  constructor(
+    operation: 'put' | 'get' | 'head' | 'delete',
+    readonly underlying: unknown,
+  ) {
+    super(`Storage ${operation} failed`, { operation });
+  }
+}

@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, apiFetch, refreshSession } from './http-client';
-import { clearSession, setAccessToken, setActiveOrganizationId, storeSession } from './session-store';
+import {
+  clearSession,
+  setAccessToken,
+  setActiveOrganizationId,
+  storeSession,
+} from './session-store';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });

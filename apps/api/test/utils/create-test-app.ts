@@ -2,6 +2,7 @@ import { VersioningType } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from '../../src/app.module';
+import { AppConfigService } from '../../src/config/app-config.service';
 import { AllExceptionsFilter } from '../../src/errors/all-exceptions.filter';
 
 /**
@@ -21,6 +22,13 @@ export async function createTestApp(): Promise<NestFastifyApplication> {
   // Registered in main.ts too: without it, `request.cookies` is undefined and
   // the refresh cookie tests would fail for the wrong reason.
   await app.register(import('@fastify/cookie'));
+
+  // Same options as main.ts: the 413 path depends on truncation, not throwing.
+  const config = app.get(AppConfigService);
+  await app.register(import('@fastify/multipart'), {
+    throwFileSizeLimit: false,
+    limits: { files: 1, fields: 4, fileSize: config.storage.maxSizeBytes },
+  });
 
   app.setGlobalPrefix('api', { exclude: ['health'] });
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });

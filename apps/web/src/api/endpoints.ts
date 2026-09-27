@@ -1,4 +1,7 @@
 import type {
+  AttachableEntity,
+  AttachmentLimitsView,
+  AttachmentView,
   AuthSession,
   ChangePasswordInput,
   ConfigurableIntegrationProvider,
@@ -64,7 +67,7 @@ import type {
   UpdateTestCaseInput,
   UpsertIntegrationInput,
 } from '@qa-flow-hub/shared';
-import { apiFetch, query } from './http-client';
+import { apiFetch, apiFetchBlob, query } from './http-client';
 
 /**
  * Every call the client can make, in one place.
@@ -256,6 +259,24 @@ export const notificationsApi = {
     apiFetch<Paginated<NotificationView>>(`/notifications${query(params)}`),
   outbox: (params: Partial<ListNotificationsQuery>) =>
     apiFetch<Paginated<MockEmailPreview>>(`/notifications/outbox${query(params)}`),
+};
+
+export const attachmentsApi = {
+  limits: () => apiFetch<AttachmentLimitsView>('/attachments/limits'),
+  list: (entityType: AttachableEntity, entityId: string) =>
+    apiFetch<{ data: AttachmentView[] }>(`/attachments${query({ entityType, entityId })}`),
+  upload: (entityType: AttachableEntity, entityId: string, file: File) => {
+    const body = new FormData();
+    body.append('file', file, file.name);
+    return apiFetch<AttachmentView>(`/attachments${query({ entityType, entityId })}`, {
+      method: 'POST',
+      body,
+    });
+  },
+  /** Bytes through the API, never a storage path: the token travels with them. */
+  download: (id: string, disposition: 'inline' | 'attachment' = 'attachment') =>
+    apiFetchBlob(`/attachments/${id}/content${query({ disposition })}`),
+  remove: (id: string) => apiFetch<void>(`/attachments/${id}`, { method: 'DELETE' }),
 };
 
 export const dashboardApi = {

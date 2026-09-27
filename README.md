@@ -10,8 +10,8 @@ traceability between all of them.
 
 ## Why this exists
 
-Teams that manage QA in spreadsheets lose the link between *what was asked for*
-(requirements), *what was verified* (test cases and runs) and *what broke*
+Teams that manage QA in spreadsheets lose the link between _what was asked for_
+(requirements), _what was verified_ (test cases and runs) and _what broke_
 (defects). qa-flow-hub keeps that chain intact and queryable, which is what makes
 a release decision defensible.
 
@@ -20,15 +20,15 @@ and [`docs/architecture.md`](docs/architecture.md) for the technical one.
 
 ## Stack
 
-| Layer | Choice |
-| --- | --- |
-| Runtime | Node.js 24 |
-| API | NestJS 11 on the Fastify adapter, TypeScript in strict mode |
-| Database | PostgreSQL 16 through Prisma |
-| Contracts | Zod schemas shared between API and web (`packages/shared`) |
-| Web | React 19, Vite, React Router, TanStack Query, React Hook Form |
-| Tests | Vitest (unit + integration), Playwright (end to end) |
-| Ops | Docker Compose, GitHub Actions |
+| Layer     | Choice                                                        |
+| --------- | ------------------------------------------------------------- |
+| Runtime   | Node.js 24                                                    |
+| API       | NestJS 11 on the Fastify adapter, TypeScript in strict mode   |
+| Database  | PostgreSQL 16 through Prisma                                  |
+| Contracts | Zod schemas shared between API and web (`packages/shared`)    |
+| Web       | React 19, Vite, React Router, TanStack Query, React Hook Form |
+| Tests     | Vitest (unit + integration), Playwright (end to end)          |
+| Ops       | Docker Compose, GitHub Actions                                |
 
 Every choice is recorded with its trade-offs in [`docs/adr/`](docs/adr/).
 
@@ -71,19 +71,19 @@ docker compose up -d --build  # web on :8080, API on :3000, OpenAPI on :3000/doc
 
 ## Commands
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | API and web client in watch mode |
-| `npm run build` | Builds every workspace in dependency order |
-| `npm run lint` | ESLint across the monorepo |
-| `npm run typecheck` | `tsc --noEmit` per workspace |
-| `npm run test` | Unit tests (API + web + shared) |
-| `npm run test:integration` | API integration tests against a real PostgreSQL |
-| `npm run test:e2e` | Playwright end-to-end test of the main flow |
-| `npm run db:migrate` | Applies migrations (owner connection) |
-| `npm run db:grant-app-role -w @qa-flow-hub/api` | Sets the runtime role's password from `APP_DATABASE_PASSWORD` |
-| `npm run db:seed` | Loads fictional demo data |
-| `npm run db:reset` | Drops, recreates, migrates and seeds |
+| Command                                         | What it does                                                                                                          |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                                   | API and web client in watch mode                                                                                      |
+| `npm run build`                                 | Builds every workspace in dependency order                                                                            |
+| `npm run lint`                                  | ESLint across the monorepo                                                                                            |
+| `npm run typecheck`                             | `tsc --noEmit` per workspace                                                                                          |
+| `npm run test`                                  | Unit tests (API + web + shared)                                                                                       |
+| `npm run test:integration`                      | API integration tests against a real PostgreSQL                                                                       |
+| `npm run test:e2e`                              | Playwright end-to-end suite; start the API with `RATE_LIMIT_MAX=2000` so the whole suite fits in the limiter's window |
+| `npm run db:migrate`                            | Applies migrations (owner connection)                                                                                 |
+| `npm run db:grant-app-role -w @qa-flow-hub/api` | Sets the runtime role's password from `APP_DATABASE_PASSWORD`                                                         |
+| `npm run db:seed`                               | Loads fictional demo data                                                                                             |
+| `npm run db:reset`                              | Drops, recreates, migrates and seeds                                                                                  |
 
 ## Documentation
 

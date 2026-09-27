@@ -35,6 +35,14 @@ async function bootstrap(): Promise<void> {
   // Refresh tokens travel as an HttpOnly cookie; see RefreshCookieService.
   await app.register(import('@fastify/cookie'));
 
+  // Evidence uploads. The parser truncates at the size limit instead of
+  // throwing, so the attachments service sees the whole request, removes the
+  // partial object and answers 413 itself. One file per request, on purpose.
+  await app.register(import('@fastify/multipart'), {
+    throwFileSizeLimit: false,
+    limits: { files: 1, fields: 4, fileSize: config.storage.maxSizeBytes },
+  });
+
   await app.register(import('@fastify/cors'), {
     origin: config.corsOrigins,
     credentials: true,

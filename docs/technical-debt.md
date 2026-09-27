@@ -60,19 +60,22 @@ that are **not** blocked on a product decision or a third party — 14, 16, 17, 
 - **Trigger to fix:** the second API replica. Requires a shared store — the
   first genuinely good reason to introduce Redis, which the product owner asked
   to be consulted about before adding.
+- **Found in S2-F7:** the plugin's rejection is not a `DomainError`, so
+  `AllExceptionsFilter` reports it as `500 INTERNAL_ERROR` instead of `429`,
+  and the web shows "An unexpected error occurred". The full Playwright suite
+  (9 specs, one browser, ~50 s) now exceeds the default 300 requests/min, so
+  CI and local E2E runs set `RATE_LIMIT_MAX=2000`. Mapping the plugin error to
+  `RateLimitedError` (429 + `Retry-After`) is a small fix for the hardening
+  phase (S2-F10).
 
-## 2. Attachments store metadata only
+## 2. Attachments store metadata only — closed in S2-F7
 
-`AttachmentMetadata` records file name, size, MIME type, checksum and a
-`storageKey`, but nothing is uploaded anywhere.
+`AttachmentMetadata` recorded file name, size, MIME type, checksum and a
+`storageKey`, but nothing was uploaded anywhere.
 
-- **Why acceptable now:** object storage adds credentials, a bucket lifecycle,
-  virus scanning and signed URLs — a phase of its own.
-- **Cost:** the most visible functional gap against TestRail and Xray. A tester
-  cannot attach the screenshot of a failure, which is the single most common
-  thing a tester wants to attach.
-- **Trigger to fix:** first real pilot with users. Design is already implied by
-  `storageKey`: S3-compatible storage with pre-signed upload URLs.
+- **Resolution (S2-F7):** uploads, downloads and deletes exist behind a
+  `StorageProvider` port with a local-disk implementation. What remains — no
+  object storage, no signed URLs, no quotas — is entry 33.
 
 ## 3. No background job runner
 
@@ -735,3 +738,54 @@ What activating real email requires, in order:
   error will be visible in the ledger but never recovered automatically.
 - **Trigger to fix:** the first external user who must be invited by mail, or
   S2-F10.
+
+## 33. Evidence lives on local disk behind the API (S2-F7)
+
+S2-F7 made evidence real, but the only production-shaped provider is
+`LocalStorageProvider`: bytes sit under `STORAGE_LOCAL_ROOT` on the API host.
+
+- **Single host, no durability story.** The directory is not replicated and is
+  not part of any backup; two API instances would see two different stores.
+  A container restart keeps the files only if `./var/storage` is a mounted
+  volume — `docker-compose.yml` does not mount one yet.
+- **Downloads stream through the API.** There are no pre-signed or
+  time-limited URLs: every byte of every screenshot passes through Node and
+  through the session token. Safe, but it makes the API the bandwidth
+  bottleneck and means a preview can never be a plain `<img src>`.
+- **No quotas or retention.** `UPLOAD_MAX_SIZE_BYTES` limits one file; nothing
+  limits an organization, a project or total disk. Soft-deleted rows point at
+  already-deleted objects, and nothing sweeps objects whose row was never
+  written (a crash between `put` and `create`) or rows whose object vanished.
+- **Content validation is a magic-byte check**, not a scan. A PNG with a valid
+  header and a malicious payload is accepted; PDFs can carry JavaScript. The
+  `nosniff` + `attachment`-for-text headers stop the browser executing what we
+  serve, not the tester's machine from opening what they download.
+- **The migration emptied `attachment_metadata`.** Correct for this codebase
+  (the MVP never wrote a row) but a deployment that had used the scaffold
+  table would have lost its metadata; there is no backfill path.
+- **`MemoryStorageProvider` is selectable at runtime** (`STORAGE_PROVIDER=memory`).
+  Intended for tests; nothing prevents a misconfigured deployment from storing
+  evidence in RAM.
+
+What moving to S3-compatible storage requires — and what it does **not**:
+
+1. one class implementing `StorageProvider` (`put`/`get`/`head`/`delete`)
+   over the S3 API (AWS, R2, MinIO — same wire protocol, no vendor decision
+   taken), registered in `StorageModule` under a new `STORAGE_PROVIDER` value;
+   `AttachmentsService`, the controller, the repository and the web client do
+   not change: they see keys and streams only;
+2. credentials from the credential store S2-F10 introduces — never in
+   `.env` committed to Git, never in `IntegrationConnection.settings`;
+3. optionally a `presignGet(key, ttl)` method on the port for time-limited
+   download URLs, with `LocalStorageProvider` returning `null` so the API
+   keeps streaming where the provider cannot sign;
+4. a migration script that copies existing local objects to the bucket and
+   flips `storageProvider` on each row (the column exists for this);
+5. a sweeper job (debt 3's runner) that reconciles rows and objects and
+   applies retention;
+6. per-organization quotas if evidence becomes a billable dimension (S2-F11).
+
+- **Cost:** fine for development and a single-host pilot; not acceptable for a
+  multi-instance deployment or for evidence that must survive the host.
+- **Trigger to fix:** the first deployment with more than one API replica, or
+  the first customer whose evidence must be retained under an SLA.

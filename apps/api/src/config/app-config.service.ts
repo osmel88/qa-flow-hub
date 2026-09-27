@@ -97,6 +97,14 @@ export class AppConfigService {
     return { provider: this.get('EMAIL_PROVIDER'), from: this.get('EMAIL_FROM') };
   }
 
+  get storage(): { provider: Env['STORAGE_PROVIDER']; localRoot: string; maxSizeBytes: number } {
+    return {
+      provider: this.get('STORAGE_PROVIDER'),
+      localRoot: this.get('STORAGE_LOCAL_ROOT'),
+      maxSizeBytes: this.get('UPLOAD_MAX_SIZE_BYTES'),
+    };
+  }
+
   get swaggerEnabled(): boolean {
     return this.get('SWAGGER_ENABLED');
   }

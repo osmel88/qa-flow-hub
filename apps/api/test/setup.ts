@@ -14,3 +14,7 @@ process.env['DATABASE_URL'] ??=
 process.env['SWAGGER_ENABLED'] ??= 'false';
 // Rate limiting is exercised by its own test; elsewhere it would make suites flaky.
 process.env['RATE_LIMIT_MAX'] ??= '100000';
+// Evidence goes to a throwaway root with a small limit, so the "too large"
+// test does not need to push megabytes through the parser.
+process.env['STORAGE_LOCAL_ROOT'] ??= './var/storage-test';
+process.env['UPLOAD_MAX_SIZE_BYTES'] ??= '65536';

@@ -55,6 +55,21 @@ export const envSchema = z.object({
   EMAIL_FROM: z.string().email().default('no-reply@qa-flow-hub.local'),
 
   /**
+   * Evidence storage. `local` writes under STORAGE_LOCAL_ROOT (relative paths
+   * resolve from the process cwd); an S3-compatible provider arrives as a new
+   * value here plus one class, and no business module reads this. The size
+   * limit is a development default, not a commercial quota.
+   */
+  STORAGE_PROVIDER: z.enum(['local', 'memory']).default('local'),
+  STORAGE_LOCAL_ROOT: z.string().min(1).default('./var/storage'),
+  UPLOAD_MAX_SIZE_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1024)
+    .max(1024 * 1024 * 1024)
+    .default(10 * 1024 * 1024),
+
+  /**
    * Interactive documentation. Left unset it follows the environment: on in
    * development, off in production, because `/docs` publishes the entire API
    * surface to anonymous callers. Setting it explicitly wins either way, so a

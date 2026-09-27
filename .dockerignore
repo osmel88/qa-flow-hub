@@ -12,3 +12,5 @@ docs
 !.env.example
 playwright-report
 test-results
+var
+**/var

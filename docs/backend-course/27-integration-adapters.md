@@ -425,6 +425,84 @@ reason }` y el servicio no cambia una línea. Lo que **sí** falta —el
    almacén de credenciales, la URL pública, el worker de reintentos— está en
    la deuda 32, en orden.
 
+## S2-F7: bytes que no pasan por la base de datos
+
+La evidencia es la primera integración que mueve **datos grandes** y la
+primera cuyo "proveedor" es el disco del servidor. La tentación es escribir
+`fs.writeFile` en el servicio; S2-F7 lo evita con el mismo truco de siempre:
+un puerto pequeño y dos implementaciones.
+
+```
+apps/api/src/
+├─ storage/storage-provider.ts            StorageProvider { put, get, head, delete } · isSafeStorageKey · STORAGE_PROVIDER
+├─ storage/local-storage.provider.ts      disco bajo STORAGE_LOCAL_ROOT, flags 'wx', path confinado al root
+├─ storage/memory-storage.provider.ts     Map<string, Buffer>, failNext() para simular fallos
+├─ storage/storage.module.ts              elige la implementación por STORAGE_PROVIDER
+└─ modules/attachments/
+   ├─ file-inspection.ts                  sanitizar nombre · allow-list · InspectingStream (sha256, bytes, magic, NUL)
+   ├─ attachments.repository.ts           resuelve el target (result/defect/run/case) y su projectId, tenant-aware
+   ├─ attachments.service.ts              autoriza → key → stream → provider → inspección → metadata → auditoría
+   └─ attachments.controller.ts           multipart in, stream out, cabeceras de descarga seguras
+```
+
+Lo que merece estudio:
+
+1. **El puerto no sabe qué es un path.** `put(key, Readable)`, `get(key)`,
+   `head(key)`, `delete(key)`. Ni URL, ni bucket, ni ACL, ni `fs`. Por eso un
+   `S3StorageProvider` cabe sin tocar el servicio; y por eso el servicio no
+   puede hacer nada "listo" con el disco aunque quiera.
+2. **La key la genera el servidor, siempre.**
+   `org/<org>/project/<proj>/<entity>/<uuid>.<ext>`. El nombre del usuario se
+   guarda **para mostrar** (sanitizado) y jamás entra en la ruta. Aun así,
+   `LocalStorageProvider` vuelve a comprobar que la ruta resuelta sigue bajo
+   el root: la defensa en profundidad es barata y el `../` es el error más
+   viejo del mundo.
+3. **Inspeccionar mientras se escribe, no antes.** Un fichero de 10 MiB no se
+   carga en memoria para hashearlo. `InspectingStream` es un `Transform`
+   que calcula SHA-256, cuenta bytes, guarda los primeros 16 para las firmas
+   y busca NUL en los primeros 8 KiB **mientras** los bytes pasan al
+   proveedor. Si al final algo falla, se borra el objeto que ya se escribió.
+   Orden importante: escribir primero y validar después es correcto porque el
+   objeto rechazado nunca llega a tener fila en la base de datos.
+4. **Dos validaciones que parecen una.** Extensión en la allow-list **y** MIME
+   compatible con esa extensión **y** firma binaria coherente. `evil.exe`
+   renombrado a `foto.png` pasa la primera, quizá la segunda (el navegador
+   dice `image/png` porque confía en la extensión) y muere en la tercera.
+   La allow-list vive en `packages/shared` porque el cliente la usa para
+   rechazar antes de subir; pero el que decide es el servidor.
+5. **El límite lo aplica el parser, el error lo pone el servicio.**
+   `@fastify/multipart` con `throwFileSizeLimit: false` corta el stream en
+   `UPLOAD_MAX_SIZE_BYTES` y marca `truncated`. El servicio lo lee y responde
+   `FILE_TOO_LARGE` con el límite en el mensaje. Alternativa descartada:
+   dejar que el plugin lance su propio error, que llegaría al filtro con una
+   forma distinta a la del resto del dominio.
+6. **`wx` y no `w`.** Las keys son de un solo uso; si `put` encuentra el
+   fichero, algo va mal arriba y sobrescribir evidencia en silencio sería
+   peor que un 503. El detalle que costó un test: al fallar con `EEXIST`, la
+   limpieza del "fichero parcial" **no** debe borrar el fichero que ya estaba.
+7. **Descarga = autorización + stream, sin URL pública.** No hay pre-signed
+   URLs todavía; el navegador pide `GET /attachments/:id/content` con el
+   token y la organización, y la API responde con `X-Content-Type-Options:
+nosniff`, `Cache-Control: private, no-store` y un `Content-Disposition`
+   que solo permite `inline` a imágenes y PDF. Un `.txt` servido inline con
+   un MIME adivinado es el principio de un XSS almacenado.
+8. **Borrar físico primero, lógico después.** Si el proveedor falla, la fila
+   sigue activa y se puede reintentar. Al revés, una fila marcada `deletedAt`
+   con el fichero aún en disco es un objeto huérfano que nadie volverá a
+   ver. El `delete` del proveedor es idempotente precisamente para que el
+   reintento sea seguro.
+9. **El mock de memoria es un proveedor de pleno derecho.** Cumple el mismo
+   contrato (el mismo fichero de tests corre contra ambos) y añade
+   `failNext('put')` para que el test de "el proveedor falla" no dependa de
+   permisos de disco ni de `vi.spyOn` sobre internals. Lo que no debe pasar:
+   que un despliegue lo elija por error — `STORAGE_PROVIDER=memory` es una
+   opción válida del enum y esa comodidad es la deuda 33.
+10. **En el cliente, `FormData` sin `Content-Type`.** El `boundary` lo pone
+    el navegador; si `apiFetch` lo fija a mano, la subida se rompe de forma
+    difícil de diagnosticar. Y la descarga usa `apiFetchBlob`: mismo token,
+    mismo refresh en 401, cuerpo como `Blob` → `URL.createObjectURL` para la
+    preview, revocado al cerrar.
+
 ## Comandos
 
 ```bash

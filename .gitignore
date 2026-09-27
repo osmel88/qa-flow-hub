@@ -24,3 +24,6 @@ npm-debug.log*
 playwright-report/
 test-results/
 apps/web/playwright/.cache/
+
+# Local evidence storage (STORAGE_LOCAL_ROOT); bytes never belong in git
+var/

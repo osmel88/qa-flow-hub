@@ -87,14 +87,70 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
     ...(options.signal === undefined ? {} : { signal: options.signal }),
     headers: {
       Accept: 'application/json',
-      ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      // A FormData body sets its own multipart Content-Type, boundary included;
+      // naming it here would break the upload.
+      ...(options.body === undefined || options.body instanceof FormData
+        ? {}
+        : { 'Content-Type': 'application/json' }),
       ...(accessToken === null ? {} : { Authorization: `Bearer ${accessToken}` }),
       ...(organizationId === null || options.withoutOrganization === true
         ? {}
         : { 'X-Organization-Id': organizationId }),
     },
-    ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+    ...(options.body === undefined
+      ? {}
+      : { body: options.body instanceof FormData ? options.body : JSON.stringify(options.body) }),
   });
+}
+
+/**
+ * The authenticated fetch for bytes (evidence downloads). Same token, same
+ * organization header and same refresh-on-401 as `apiFetch`, but the body
+ * comes back as a `Blob` for the caller to save or display.
+ */
+export async function apiFetchBlob(
+  path: string,
+  options: Pick<RequestOptions, 'signal'> = {},
+): Promise<{ blob: Blob; fileName: string | null }> {
+  let response = await send(path, options);
+  if (response.status === 401) {
+    if (await ensureRefresh()) {
+      response = await send(path, options);
+    } else {
+      onSessionLost();
+    }
+  }
+
+  if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => undefined);
+    const error = (payload as ApiErrorResponse | undefined)?.error;
+    throw new ApiError(
+      response.status,
+      error?.code ?? 'INTERNAL_ERROR',
+      error?.message ?? `Request failed with status ${response.status}`,
+      error?.details,
+    );
+  }
+
+  return {
+    blob: await response.blob(),
+    fileName: fileNameFrom(response.headers.get('Content-Disposition')),
+  };
+}
+
+function fileNameFrom(disposition: string | null): string | null {
+  if (disposition === null) {
+    return null;
+  }
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+  if (encoded !== undefined) {
+    try {
+      return decodeURIComponent(encoded);
+    } catch {
+      // fall through to the plain name
+    }
+  }
+  return /filename="([^"]*)"/i.exec(disposition)?.[1] ?? null;
 }
 
 /**

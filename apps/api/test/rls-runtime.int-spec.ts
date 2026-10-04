@@ -145,4 +145,99 @@ describe('the API connected as the runtime role', () => {
 
     expect(stolen.json().data).toEqual([]);
   });
+  it('computes analytics under the policies and never across tenants', async () => {
+    const asAcme = (payload?: object) => ({
+      ...(payload === undefined ? {} : { payload }),
+      token: acme.owner.accessToken,
+      organizationId: acme.organizationId,
+    });
+    const globex = await createWorkspace(app, {
+      emailPrefix: 'globex-owner',
+      slug: 'globex',
+      projectKey: 'GLO',
+    });
+
+    const suiteId = (
+      await request(
+        'POST',
+        '/api/v1/test-suites',
+        asAcme({ projectId: acme.projectId, name: 'Checkout' }),
+      )
+    ).json().id;
+    const caseId = (
+      await request('POST', '/api/v1/test-cases', asAcme({ suiteId, title: 'Pay by card' }))
+    ).json().id;
+    const requirementId = (
+      await request(
+        'POST',
+        '/api/v1/requirements',
+        asAcme({ projectId: acme.projectId, title: 'Pay', type: 'functional' }),
+      )
+    ).json().id;
+    await request(
+      'POST',
+      '/api/v1/traceability/links',
+      asAcme({
+        sourceType: 'requirement',
+        sourceId: requirementId,
+        targetType: 'test_case',
+        targetId: caseId,
+        linkType: 'verifies',
+      }),
+    );
+    const run = await request(
+      'POST',
+      '/api/v1/test-runs',
+      asAcme({
+        projectId: acme.projectId,
+        name: 'Release run',
+        selection: { testCaseIds: [caseId] },
+      }),
+    );
+    expect(run.statusCode, run.body).toBe(201);
+    const runId: string = run.json().id;
+    const runCaseId = (await request('GET', `/api/v1/test-runs/${runId}/cases`, asAcme())).json()
+      .data[0].id;
+    await request(
+      'POST',
+      `/api/v1/test-runs/${runId}/cases/${runCaseId}/results`,
+      asAcme({ status: 'passed' }),
+    );
+    await request(
+      'POST',
+      '/api/v1/defects',
+      asAcme({ projectId: acme.projectId, title: 'Found one', severity: 'critical' }),
+    );
+
+    const summary = await request(
+      'GET',
+      `/api/v1/projects/${acme.projectId}/dashboard/summary`,
+      asAcme(),
+    );
+    const trends = await request(
+      'GET',
+      `/api/v1/projects/${acme.projectId}/dashboard/trends`,
+      asAcme(),
+    );
+    const organization = await request('GET', '/api/v1/dashboard/organization', asAcme());
+    const theirs = await request('GET', '/api/v1/dashboard/organization', {
+      token: globex.owner.accessToken,
+      organizationId: globex.organizationId,
+    });
+
+    expect(summary.statusCode, summary.body).toBe(200);
+    expect(summary.json()).toMatchObject({
+      execution: { planned: 1, passRate: 100 },
+      coverage: { requirements: 1, covered: 1 },
+      defects: { open: 1, openCritical: 1 },
+    });
+    expect(
+      trends
+        .json()
+        .points.reduce((sum: number, point: { results: number }) => sum + point.results, 0),
+    ).toBe(1);
+    expect(organization.json().recentActivity.length).toBeGreaterThan(0);
+    expect(theirs.json().health).toMatchObject({ openDefects: 0, execution: { planned: 0 } });
+    expect(theirs.json().recentActivity).toEqual([]);
+  });
 });

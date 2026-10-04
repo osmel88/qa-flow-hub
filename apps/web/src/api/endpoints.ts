@@ -17,6 +17,12 @@ import type {
   CreateTraceLinkInput,
   CreatedInvitationView,
   DashboardSummary,
+  OrganizationDashboard,
+  ProjectCoverageView,
+  ProjectDashboardSummary,
+  ProjectDefectsView,
+  ProjectTestResultsView,
+  ProjectTrendsView,
   DefectView,
   EmailProviderView,
   ListNotificationsQuery,
@@ -308,6 +314,30 @@ export const attachmentsApi = {
 
 export const dashboardApi = {
   summary: (projectId?: string) => apiFetch<DashboardSummary>(`/dashboard${query({ projectId })}`),
+};
+
+/** An explicit `[from, to)` window, ISO-8601; the API picks the bucket. */
+export interface AnalyticsWindow {
+  from: string;
+  to: string;
+}
+
+const projectDashboard = <T>(projectId: string, part: string, window: AnalyticsWindow) =>
+  apiFetch<T>(`/projects/${projectId}/dashboard/${part}${query({ ...window })}`);
+
+export const analyticsApi = {
+  summary: (projectId: string, window: AnalyticsWindow) =>
+    projectDashboard<ProjectDashboardSummary>(projectId, 'summary', window),
+  testResults: (projectId: string, window: AnalyticsWindow) =>
+    projectDashboard<ProjectTestResultsView>(projectId, 'test-results', window),
+  coverage: (projectId: string, window: AnalyticsWindow) =>
+    projectDashboard<ProjectCoverageView>(projectId, 'coverage', window),
+  defects: (projectId: string, window: AnalyticsWindow) =>
+    projectDashboard<ProjectDefectsView>(projectId, 'defects', window),
+  trends: (projectId: string, window: AnalyticsWindow) =>
+    projectDashboard<ProjectTrendsView>(projectId, 'trends', window),
+  organization: (window: AnalyticsWindow) =>
+    apiFetch<OrganizationDashboard>(`/dashboard/organization${query({ ...window })}`),
 };
 
 export const jiraApi = {

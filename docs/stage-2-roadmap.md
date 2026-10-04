@@ -23,19 +23,19 @@ Hard constraints for the whole stage:
 
 ## Phase order
 
-| Phase  | Name                                  | Theme         |
-| ------ | ------------------------------------- | ------------- |
-| S2-F1  | Integration Settings — **delivered**  | Integrations  |
-| S2-F2  | Jira Mock — **delivered**             | Integrations  |
-| S2-F3  | TestRail Mock — **delivered**         | Integrations  |
-| S2-F4  | GitHub Mock — **delivered**           | Integrations  |
-| S2-F5  | External Traceability — **delivered** | Traceability  |
-| S2-F6  | Email Notifications                   | Notifications |
-| S2-F7  | File & Evidence Uploads               | Evidence      |
-| S2-F8  | Granular Permissions                  | Authorization |
-| S2-F9  | Project KPI & Analytics Dashboard     | Analytics     |
-| S2-F10 | Production Readiness                  | Operations    |
-| S2-F11 | Billing & Subscriptions               | Commercial    |
+| Phase  | Name                                              | Theme         |
+| ------ | ------------------------------------------------- | ------------- |
+| S2-F1  | Integration Settings — **delivered**              | Integrations  |
+| S2-F2  | Jira Mock — **delivered**                         | Integrations  |
+| S2-F3  | TestRail Mock — **delivered**                     | Integrations  |
+| S2-F4  | GitHub Mock — **delivered**                       | Integrations  |
+| S2-F5  | External Traceability — **delivered**             | Traceability  |
+| S2-F6  | Email Notifications                               | Notifications |
+| S2-F7  | File & Evidence Uploads                           | Evidence      |
+| S2-F8  | Granular Permissions                              | Authorization |
+| S2-F9  | Project KPI & Analytics Dashboard — **delivered** | Analytics     |
+| S2-F10 | Production Readiness                              | Operations    |
+| S2-F11 | Billing & Subscriptions                           | Commercial    |
 
 KPI & Analytics was added after the stage was approved and is inserted **before**
 Production Readiness and Billing, which shifts those two phases to F10 and F11.
@@ -711,6 +711,54 @@ queries — aggregate in SQL; add indexes or aggregate queries where measurement
 shows they are needed; isolation tests and metric-calculation tests; and every
 KPI formula documented, including what it does with a case that was never
 executed, which is the number people disagree about.
+
+### Delivered
+
+Six endpoints, all behind `analytics.read`; the five project routes are
+`@ProjectScoped` and resolved by `ProjectAccessService.assertRouteAccess`. The
+query string is `from`, `to` (ISO-8601, `[from, to)`) and `bucket`
+(`day|week|month`); defaults are the last 30 days and a bucket chosen from the
+window length (≤ 31 days → day, ≤ 186 → week, otherwise month); the window is at
+most 366 days and `from < to`. Buckets are UTC, weeks start on Monday. Every
+response carries `period { from, to, bucket }` and `computedAt`.
+
+| KPI                        | Formula                                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| planned                    | run cases of the runs in scope                                                                                            |
+| executed / pending         | `planned − untested` / `untested`                                                                                         |
+| pass, failed, blocked rate | count / `verdicts`, where `verdicts = passed + failed + blocked`                                                          |
+| skipped, untested rate     | count / `planned`                                                                                                         |
+| execution progress         | `executed / planned`                                                                                                      |
+| coverage                   | active (not deleted, not `obsolete`) requirements with ≥ 1 `requirement → test_case` link / active requirements           |
+| open defects               | not deleted, status not in `closed`, `rejected`                                                                           |
+| open critical              | open with severity `blocker` or `critical`                                                                                |
+| defects per executed case  | defects whose `testRunId` is a run in scope / executed cases                                                              |
+| mean time to resolve       | mean of `COALESCE(resolvedAt, closedAt) − createdAt`, in hours, over defects resolved in the window, with its sample size |
+| period comparison          | same KPI over the previous window of equal length; `delta` in points                                                      |
+
+A **run in scope** is a non-deleted, non-aborted run that was alive during the
+window: created before `to`, and not completed before `from`. The current
+distribution uses `TestRunCase.latestStatus` (one row per case, the last
+result wins); trends count **every** result recorded in each bucket. Every rate
+with a zero denominator is `null` (rendered as "—"), never 0 — except progress of
+a non-empty plan with nothing executed, which is a real 0.
+
+The organization dashboard aggregates only the active projects in which the
+caller holds `analytics.read` (a project revoke removes the project from every
+total, ranking, trend and activity item), with health totals, the five projects
+with most failed cases, the five with the lowest coverage, open critical
+defects, global trends and the last 15 activity items (results, defects, runs).
+
+Every figure comes from grouped SQL (`COUNT … GROUP BY`, `EXISTS` for coverage)
+inside a transaction that sets `app.current_organization`, with every table
+filtered by `organizationId` and an explicit, already-authorized
+`projectId = ANY(...)` list; no request transfers `TestResult` or `Defect`
+rows, and the bounded lists (20 runs, 50 uncovered requirements, 15 activity
+items) are the only row-level data. The web renders the KPIs, an execution
+distribution with its table, bar lists with printed values, SVG trend lines
+with distinct dash patterns and a data table each, and a window selector. The
+MVP endpoint `GET /dashboard` stays for compatibility; its coverage count is
+now one `EXISTS` statement instead of loading requirement ids. Debt: entry 35.
 
 ## S2-F10 — Production Readiness
 

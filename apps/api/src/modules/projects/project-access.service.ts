@@ -128,6 +128,37 @@ export class ProjectAccessService {
     return permissions;
   }
 
+  /**
+   * The subset of `projectIds` in which the caller holds `permission`, resolved
+   * with the same rule as `effectivePermissions` but in two queries for any
+   * number of projects — for views that aggregate across projects.
+   */
+  async projectsAllowing(permission: Permission, projectIds: readonly string[]): Promise<string[]> {
+    const organizationRole = this.tenant.requireRole();
+    if (organizationRole === OrganizationRole.organization_owner || projectIds.length === 0) {
+      return [...projectIds];
+    }
+
+    const userId = this.tenant.requireUserId();
+    const [grants, overrides] = await Promise.all([
+      this.grants.listForUser(userId),
+      this.overrides.listForUserPermission(userId, permission),
+    ]);
+    const roleByProject = new Map(grants.map((grant) => [grant.projectId, grant.role]));
+    const effectByProject = new Map(
+      overrides.map((override) => [override.projectId, override.effect]),
+    );
+
+    return projectIds.filter((projectId) => {
+      const role = roleByProject.get(projectId) ?? organizationRole;
+      if (role === OrganizationRole.organization_owner) {
+        return true;
+      }
+      const effect = effectByProject.get(projectId);
+      return effect === undefined ? roleHasPermission(role, permission) : effect === 'grant';
+    });
+  }
+
   async hasPermission(projectId: string, permission: Permission): Promise<boolean> {
     return (await this.effectivePermissions(projectId)).has(permission);
   }

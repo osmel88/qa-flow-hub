@@ -290,6 +290,10 @@ results refreshing a dashboard every minute.
 
 - **Trigger to fix:** measured p95 above ~300 ms. Then materialize per project
   and invalidate on write, which needs a job runner.
+- **After S2-F9:** the analytics endpoints follow the same rule (grouped SQL,
+  no rows) but run more statements per call — trends add five bucketed
+  aggregates — and still nothing is cached or materialized. The MVP endpoint's
+  coverage count no longer loads requirement ids.
 
 ## 17. Coverage counts links, not intent
 
@@ -360,6 +364,9 @@ customer assumes when they set somebody to `viewer` on one project only.
 - **After S2-F8:** revoking `requirements.read` (or any `*.read`) is enforced on
   the routes that resolve a project, but the project list and the dashboard's
   organization view still show every project of the organization.
+- **After S2-F9:** the new organization analytics (`/dashboard/organization`)
+  aggregates only projects where the caller holds `analytics.read`. The project
+  list and the MVP `GET /dashboard` without `projectId` still do not filter.
 
 ## 23. The roles guard fails open on project-scoped routes
 
@@ -826,3 +833,35 @@ What moving to S3-compatible storage requires — and what it does **not**:
   two things a support engineer will meet first.
 - **Trigger to fix:** custom roles (S2-F11 plans) or the first request for an
   organization-wide exception.
+
+## 35. Analytics are computed live, in UTC, from internal data only (S2-F9)
+
+- **Computed on every request.** No cache, no materialized views, no new
+  indexes: the existing `organizationId`/`projectId`/status indexes serve the
+  grouped statements, and nothing was measured yet that justifies more. A
+  dashboard load issues ~6 project requests in parallel, each one transaction.
+- **UTC buckets only.** A team in UTC−8 sees a day bucket that starts at 16:00
+  local time. A `tz` parameter needs `date_trunc(..., AT TIME ZONE)` and a
+  validated IANA zone.
+- **Run scope is "alive in the window"**, not "executed in the window": the
+  current distribution uses each case's latest status even if that result
+  predates `from`. Trends, by contrast, count results by `executedAt`. Both are
+  documented; a customer may still expect one definition everywhere.
+- **Coverage is link coverage** (entry 17): the history counts a requirement
+  from the bucket of its first link and does not see links that were later
+  removed (deleted links are gone). A `verified` series is not in analytics yet.
+- **Activity covers results, defects and runs** — not requirements, cases or
+  traceability changes — and is capped at 15 items without paging.
+- **Charts are hand-rolled SVG** with a data table each; no tooltips, zoom or
+  export (CSV/PDF). Adding a chart library is a product decision, not needed
+  for accessibility.
+- **No external sources.** Jira, TestRail, GitHub Actions and Playwright are not
+  aggregated; the contracts keep sources out of the response shape so a feed
+  can add a series without breaking the page.
+- **The MVP `GET /dashboard` stays**, unused by the web, for compatibility. It
+  should be removed or redirected once nothing calls it.
+
+- **Cost:** low at current scale; time zone and run-scope semantics are the
+  first questions a customer report will raise.
+- **Trigger to fix:** measured p95 over ~300 ms (materialize, with the job
+  runner of entry 3), the first non-UTC customer, or the first external source.

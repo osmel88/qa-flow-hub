@@ -215,6 +215,24 @@ organization, accepting an invitation) announce the target organization with
 `TenantContextService.runForOrganization` before writing tenant rows such as
 the audit entry; otherwise RLS rejects them under the runtime role.
 
+## KPI & analytics (S2-F9)
+
+```text
+AnalyticsController  (@RequirePermission('analytics.read'), @ProjectScoped)
+  → AnalyticsService     resolve window · authorize project(s) · apply shared formulas
+  → AnalyticsRepository  read(tx => …): one transaction, app.current_organization set
+      grouped raw SQL, organizationId on every table, projectId = ANY($authorized)
+```
+
+The service never receives rows to count: the repository returns counts per
+status/dimension/bucket and the service turns them into KPIs with the pure
+functions in `packages/shared/src/analytics` (`executionKpis`, `coverageKpis`,
+`compare`), the same ones the shared unit tests pin down. The organization view
+asks `ProjectAccessService.projectsAllowing('analytics.read', ids)` for the
+subset of projects the caller may analyse — role, project role and overrides,
+resolved in two reads for the whole organization — and aggregates only those,
+in the same batched statements (no per-project query loop).
+
 ## Operations
 
 Docker Compose runs PostgreSQL (dev), PostgreSQL (test, tmpfs, port 5433), the

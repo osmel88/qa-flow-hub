@@ -27,6 +27,7 @@ así.
 | Calidad | 28–29, 33–35 | Pruebas, depuración, rendimiento, refactorización |
 | Operación | 31–32 | Docker y CI/CD |
 | Cierre | 36–39 | Entrevistas, ejercicios, plan de estudio, hoja de ruta comercial |
+| Producto | 40 | KPI y analytics: fórmulas, agregación en SQL y aislamiento |
 
 Los capítulos se pueden leer en orden o por bloques. Si vienes de frontend y
 quieres el camino más corto a "entiendo cómo funciona esto", lee 01, 04, 11, 12,

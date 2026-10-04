@@ -30,6 +30,13 @@ export class PermissionOverridesRepository extends TenantAwareRepository {
     });
   }
 
+  /** Every override of one permission a person holds across the organization's projects. */
+  listForUserPermission(userId: string, permission: string): Promise<ProjectPermissionOverride[]> {
+    return this.prisma.projectPermissionOverride.findMany({
+      where: this.scope({ userId, permission }),
+    });
+  }
+
   /** Every grant override a person holds anywhere in the active organization. */
   listGrantsForUser(userId: string): Promise<ProjectPermissionOverride[]> {
     return this.prisma.projectPermissionOverride.findMany({

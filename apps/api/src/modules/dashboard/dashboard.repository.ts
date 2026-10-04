@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import {
   AuditLog,
   DefectStatus,
-  LinkableEntity,
   Prisma,
   ProjectStatus,
   RequirementStatus,
@@ -33,8 +32,11 @@ interface GroupedCount {
  */
 @Injectable()
 export class DashboardRepository extends TenantAwareRepository {
-  constructor(prisma: PrismaService, tenant: TenantContextService) {
-    super(prisma, tenant);
+  constructor(
+    private readonly database: PrismaService,
+    tenant: TenantContextService,
+  ) {
+    super(database, tenant);
   }
 
   countProjects(archived: boolean): Promise<number> {
@@ -157,29 +159,26 @@ export class DashboardRepository extends TenantAwareRepository {
     });
   }
 
-  /** Requirements that appear as the source of a requirement→case link. */
+  /** Active, non-obsolete requirements with at least one requirement → test case link, in one statement. */
   async countCoveredRequirements(projectId?: string): Promise<number> {
-    const requirements = await this.prisma.requirement.findMany({
-      where: this.active({
-        ...(projectId === undefined ? {} : { projectId }),
-        status: { not: RequirementStatus.obsolete },
-      }),
-      select: { id: true },
-    });
-    if (requirements.length === 0) {
-      return 0;
-    }
-
-    const links = await this.prisma.traceabilityLink.groupBy({
-      by: ['sourceId'],
-      where: this.scope({
-        sourceType: LinkableEntity.requirement,
-        targetType: LinkableEntity.test_case,
-        sourceId: { in: requirements.map((requirement) => requirement.id) },
-      }),
-    });
-
-    return links.length;
+    const organizationId = this.organizationId;
+    const projectFilter =
+      projectId === undefined ? Prisma.empty : Prisma.sql`AND q."projectId" = ${projectId}`;
+    const rows = await this.database.runInTransaction(
+      (tx) => tx.$queryRaw<Array<{ covered: number }>>`
+        SELECT COUNT(*)::int AS covered
+        FROM requirements q
+        WHERE q."organizationId" = ${organizationId}
+          AND q."deletedAt" IS NULL
+          AND q.status <> 'obsolete'
+          ${projectFilter}
+          AND EXISTS (
+            SELECT 1 FROM traceability_links l
+            WHERE l."organizationId" = ${organizationId}
+              AND l."sourceType" = 'requirement' AND l."targetType" = 'test_case'
+              AND l."sourceId" = q.id)`,
+    );
+    return rows[0]?.covered ?? 0;
   }
 
   async listAudit(query: PaginationQuery, filters: AuditFilters): Promise<Paginated<AuditLog>> {

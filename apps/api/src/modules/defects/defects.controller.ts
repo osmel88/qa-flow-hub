@@ -13,17 +13,8 @@ import {
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { DefectsService } from './defects.service';
-
-/** Reporting a defect is the tester's core output, so testers can create. */
-const REPORTERS = [
-  'organization_owner',
-  'organization_admin',
-  'project_manager',
-  'qa_lead',
-  'tester',
-] as const;
 
 @ApiTags('defects')
 @ApiBearerAuth()
@@ -33,7 +24,7 @@ const REPORTERS = [
 export class DefectsController {
   constructor(private readonly defects: DefectsService) {}
 
-  @Roles(...REPORTERS)
+  @RequirePermission('defects.create')
   @Post()
   @ApiOperation({ summary: 'Report a defect, optionally from a failed result' })
   create(
@@ -55,14 +46,14 @@ export class DefectsController {
     return this.defects.get(id);
   }
 
-  @Roles(...REPORTERS)
+  @RequirePermission('defects.create')
   @Patch(':id')
   @ApiOperation({ summary: 'Edit a defect' })
   update(@Param('id') id: string, @Body(zodBody(updateDefectSchema)) body: UpdateDefectInput) {
     return this.defects.update(id, body);
   }
 
-  @Roles(...REPORTERS)
+  @RequirePermission('defects.create')
   @Post(':id/status')
   @HttpCode(200)
   @ApiOperation({ summary: 'Move a defect through its workflow' })
@@ -73,7 +64,7 @@ export class DefectsController {
     return this.defects.changeStatus(id, body);
   }
 
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('defects.manage')
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Soft delete a defect' })

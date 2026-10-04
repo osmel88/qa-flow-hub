@@ -14,15 +14,8 @@ import {
 } from '@qa-flow-hub/shared';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { GitHubSyncService } from './github-sync.service';
-
-const PLANNERS = [
-  'organization_owner',
-  'organization_admin',
-  'project_manager',
-  'qa_lead',
-] as const;
 
 /**
  * The GitHub side of the integration: browse CI, link a run, import results.
@@ -96,7 +89,7 @@ export class GitHubSyncController {
   }
 
   @ProjectScoped()
-  @Roles(...PLANNERS)
+  @RequirePermission('testruns.create')
   @Post('sync/test-runs/:id')
   @HttpCode(200)
   @ApiOperation({
@@ -110,7 +103,7 @@ export class GitHubSyncController {
   }
 
   @ProjectScoped()
-  @Roles(...PLANNERS, 'tester')
+  @RequirePermission('testruns.execute')
   @Post('sync/test-runs/:id/results')
   @HttpCode(200)
   @ApiOperation({

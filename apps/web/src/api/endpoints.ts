@@ -20,7 +20,12 @@ import type {
   DefectView,
   EmailProviderView,
   ListNotificationsQuery,
+  MemberPermissionsView,
   MockEmailPreview,
+  PermissionDescriptor,
+  PermissionOverrideView,
+  ROLE_PERMISSIONS,
+  SetPermissionOverridesInput,
   NotificationPreferencesView,
   NotificationView,
   UpdateNotificationPreferencesInput,
@@ -44,6 +49,7 @@ import type {
   JiraSyncableEntity,
   LoginInput,
   MemberView,
+  OrganizationRoleName,
   OrganizationSummary,
   Paginated,
   ProjectMemberView,
@@ -133,11 +139,14 @@ export const organizationsApi = {
   revokeInvitation: (id: string) =>
     apiFetch<void>(`/organizations/current/invitations/${id}`, { method: 'DELETE' }),
   acceptInvitation: (token: string) =>
-    apiFetch<OrganizationSummary>('/organizations/invitations/accept', {
-      method: 'POST',
-      body: { token },
-      withoutOrganization: true,
-    }),
+    apiFetch<{ organizationId: string; organizationName: string; role: OrganizationRoleName }>(
+      '/organizations/invitations/accept',
+      {
+        method: 'POST',
+        body: { token },
+        withoutOrganization: true,
+      },
+    ),
 };
 
 export const projectsApi = {
@@ -158,6 +167,24 @@ export const projectsApi = {
     }),
   revokeRole: (projectId: string, userId: string) =>
     apiFetch<void>(`/projects/${projectId}/members/${userId}`, { method: 'DELETE' }),
+};
+
+export const permissionsApi = {
+  catalog: () =>
+    apiFetch<{ permissions: PermissionDescriptor[]; roles: typeof ROLE_PERMISSIONS }>(
+      '/permissions/catalog',
+    ),
+  mine: (projectId: string) =>
+    apiFetch<MemberPermissionsView>(`/projects/${projectId}/permissions/me`),
+  forMember: (projectId: string, userId: string) =>
+    apiFetch<MemberPermissionsView>(`/projects/${projectId}/permissions/members/${userId}`),
+  overrides: (projectId: string) =>
+    apiFetch<PermissionOverrideView[]>(`/projects/${projectId}/permissions/overrides`),
+  replace: (projectId: string, userId: string, body: SetPermissionOverridesInput) =>
+    apiFetch<MemberPermissionsView>(`/projects/${projectId}/permissions/members/${userId}`, {
+      method: 'PUT',
+      body,
+    }),
 };
 
 export const requirementsApi = {

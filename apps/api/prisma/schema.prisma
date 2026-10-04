@@ -51,6 +51,15 @@ enum OrganizationRole {
   viewer
 }
 
+/// A project permission override either adds one permission on top of the
+/// effective project role or takes one away. The permission itself is a text
+/// column validated by the shared Zod catalogue, so adding a permission is a
+/// code change and not a migration.
+enum PermissionEffect {
+  grant
+  revoke
+}
+
 enum MembershipStatus {
   active
   suspended
@@ -262,15 +271,17 @@ model User {
 
   memberships            OrganizationMember[]
   projectMembers         ProjectMember[]
+  permissionOverrides    ProjectPermissionOverride[] @relation("PermissionOverrideUser")
+  permissionsGranted     ProjectPermissionOverride[] @relation("PermissionOverrideGrantedBy")
   sessions               Session[]
-  invitationsSent        OrganizationInvitation[] @relation("InvitationCreatedBy")
+  invitationsSent        OrganizationInvitation[]    @relation("InvitationCreatedBy")
   auditLogs              AuditLog[]
-  assignedRunCases       TestRunCase[]            @relation("TestRunCaseAssignee")
-  executedResults        TestResult[]             @relation("TestResultExecutedBy")
-  reportedDefects        Defect[]                 @relation("DefectReportedBy")
-  assignedDefects        Defect[]                 @relation("DefectAssignee")
+  assignedRunCases       TestRunCase[]               @relation("TestRunCaseAssignee")
+  executedResults        TestResult[]                @relation("TestResultExecutedBy")
+  reportedDefects        Defect[]                    @relation("DefectReportedBy")
+  assignedDefects        Defect[]                    @relation("DefectAssignee")
   uploadedFiles          AttachmentMetadata[]
-  notifications          Notification[]           @relation("NotificationRecipient")
+  notifications          Notification[]              @relation("NotificationRecipient")
   notificationPreference NotificationPreference?
 
   @@index([deletedAt])
@@ -325,25 +336,26 @@ model Organization {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  members            OrganizationMember[]
-  invitations        OrganizationInvitation[]
-  projects           Project[]
-  requirements       Requirement[]
-  testSuites         TestSuite[]
-  testSections       TestSection[]
-  testCases          TestCase[]
-  testSteps          TestStep[]
-  testRuns           TestRun[]
-  testRunCases       TestRunCase[]
-  testResults        TestResult[]
-  defects            Defect[]
-  attachments        AttachmentMetadata[]
-  traceabilityLinks  TraceabilityLink[]
-  auditLogs          AuditLog[]
-  integrations       IntegrationConnection[]
-  externalReferences ExternalReference[]
-  projectMemberships ProjectMember[]
-  notifications      Notification[]
+  members             OrganizationMember[]
+  invitations         OrganizationInvitation[]
+  projects            Project[]
+  requirements        Requirement[]
+  testSuites          TestSuite[]
+  testSections        TestSection[]
+  testCases           TestCase[]
+  testSteps           TestStep[]
+  testRuns            TestRun[]
+  testRunCases        TestRunCase[]
+  testResults         TestResult[]
+  defects             Defect[]
+  attachments         AttachmentMetadata[]
+  traceabilityLinks   TraceabilityLink[]
+  auditLogs           AuditLog[]
+  integrations        IntegrationConnection[]
+  externalReferences  ExternalReference[]
+  projectMemberships  ProjectMember[]
+  permissionOverrides ProjectPermissionOverride[]
+  notifications       Notification[]
 
   @@index([deletedAt])
   @@map("organizations")
@@ -438,12 +450,13 @@ model Project {
   archivedAt DateTime?
   deletedAt  DateTime?
 
-  members      ProjectMember[]
-  requirements Requirement[]
-  testSuites   TestSuite[]
-  testCases    TestCase[]
-  testRuns     TestRun[]
-  defects      Defect[]
+  members             ProjectMember[]
+  permissionOverrides ProjectPermissionOverride[]
+  requirements        Requirement[]
+  testSuites          TestSuite[]
+  testCases           TestCase[]
+  testRuns            TestRun[]
+  defects             Defect[]
 
   @@unique([organizationId, key])
   @@index([organizationId, status])
@@ -469,6 +482,34 @@ model ProjectMember {
   @@unique([projectId, userId])
   @@index([organizationId, userId])
   @@map("project_members")
+}
+
+/// S2-F8. One row per (project, user, permission): a grant or a revoke applied
+/// on top of the member's effective project role. No row means "the role
+/// decides", which is why existing installations need no backfill. Owners never
+/// have rows: the service refuses them and the resolver ignores them.
+model ProjectPermissionOverride {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation("PermissionOverrideUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  permission String
+  effect     PermissionEffect
+
+  grantedById String?
+  grantedBy   User?   @relation("PermissionOverrideGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, userId, permission])
+  @@index([organizationId, userId])
+  @@index([organizationId, projectId])
+  @@map("project_permission_overrides")
 }
 
 // ---------------------------------------------------------------------------
@@ -813,7 +854,7 @@ model AttachmentMetadata {
   /// sha256 hex of the stored bytes, computed while streaming to the provider.
   checksum        String
   storageProvider String
-  storageKey      String       @unique
+  storageKey      String @unique
 
   uploadedById String?
   uploadedBy   User?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)

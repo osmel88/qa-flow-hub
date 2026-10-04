@@ -189,6 +189,32 @@ The port has no notion of paths, URLs or buckets, so an S3-compatible provider
 is one more class in `storage/` plus a `STORAGE_PROVIDER` value; the module,
 the controller and the web client stay as they are (debt 33 lists the rest).
 
+## Granular permissions (S2-F8)
+
+```text
+RolesGuard (pre-filter)          ProjectAccessService (decision)
+  @Roles / @RequirePermission  →   effectiveRole(project)
+  org role satisfies? → pass         owner → everything
+  @ProjectScoped and any grant       ProjectMember.role ?? org role
+  or override could? → pass          ROLE_PERMISSIONS[role] + grants − revokes
+  otherwise 403                    assertRouteAccess(project) → 403 or continue
+```
+
+The guard cannot know the project of `PATCH /defects/:id` without loading the
+defect, so it only rejects what no grant could ever allow; the service resolves
+the project and calls `assertRouteAccess`, which compares the route's metadata
+(stored per request in `TenantContextService`) with the **effective** set.
+A revoke therefore passes the guard (the organization role allows it) and is
+refused by the service. Effective roles and permissions are memoized per
+request and project. The catalogue and the role presets live in
+`packages/shared`, so the web renders the same matrix the API enforces — the
+UI only decides what to show.
+
+Flows that run before the caller has an organization header (creating an
+organization, accepting an invitation) announce the target organization with
+`TenantContextService.runForOrganization` before writing tenant rows such as
+the audit entry; otherwise RLS rejects them under the runtime role.
+
 ## Operations
 
 Docker Compose runs PostgreSQL (dev), PostgreSQL (test, tmpfs, port 5433), the

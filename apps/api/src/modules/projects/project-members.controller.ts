@@ -10,7 +10,7 @@ import {
 } from '@qa-flow-hub/shared';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { ProjectMembersService } from './project-members.service';
 
 /**
@@ -39,7 +39,7 @@ export class ProjectMembersController {
     return this.members.list(projectId, query);
   }
 
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('members.manage')
   @Post()
   @HttpCode(201)
   @ApiOperation({ summary: 'Grant a member a role that applies only in this project' })
@@ -50,7 +50,7 @@ export class ProjectMembersController {
     return this.members.grant(projectId, body);
   }
 
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('members.manage')
   @Patch(':userId')
   @ApiOperation({ summary: 'Change the role a member holds in this project' })
   update(
@@ -61,7 +61,7 @@ export class ProjectMembersController {
     return this.members.update(projectId, userId, body);
   }
 
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('members.manage')
   @Delete(':userId')
   @HttpCode(204)
   @ApiOperation({ summary: 'Revoke the grant, returning the member to their organization role' })

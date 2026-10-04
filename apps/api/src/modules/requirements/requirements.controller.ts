@@ -13,7 +13,7 @@ import {
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { RequirementsService } from './requirements.service';
 
 @ApiTags('requirements')
@@ -24,7 +24,7 @@ import { RequirementsService } from './requirements.service';
 export class RequirementsController {
   constructor(private readonly requirements: RequirementsService) {}
 
-  @Roles('organization_owner', 'organization_admin', 'project_manager', 'qa_lead')
+  @RequirePermission('requirements.write')
   @Post()
   @ApiOperation({ summary: 'Create a requirement and reserve its key' })
   create(
@@ -52,7 +52,7 @@ export class RequirementsController {
     return this.requirements.history(id);
   }
 
-  @Roles('organization_owner', 'organization_admin', 'project_manager', 'qa_lead')
+  @RequirePermission('requirements.write')
   @Patch(':id')
   @ApiOperation({ summary: 'Edit a requirement, appending a version' })
   update(
@@ -68,7 +68,7 @@ export class RequirementsController {
    * approval: it follows a transition table and it is what somebody will look
    * for in the audit log six months from now.
    */
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('requirements.manage')
   @Post(':id/status')
   @HttpCode(200)
   @ApiOperation({ summary: 'Move a requirement through its workflow' })
@@ -80,7 +80,7 @@ export class RequirementsController {
     return this.requirements.changeStatus(id, body, user.userId);
   }
 
-  @Roles('organization_owner', 'organization_admin', 'project_manager', 'qa_lead')
+  @RequirePermission('requirements.write')
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Soft-delete a requirement' })

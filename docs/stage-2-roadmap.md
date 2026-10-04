@@ -593,6 +593,60 @@ project-scoped guard fails open and the decision lives in the services (debt
 the scattered decisions, or the product ends up with two authorization systems
 disagreeing. Both debt entries are paid here or the phase does not close.
 
+### Delivery (S2-F8)
+
+Roles stay; they become **presets** of a permission catalogue, and a project can
+add or remove single permissions per member. The organization is still governed
+by roles alone (decision taken at the start of the phase).
+
+```text
+Organization role → ProjectMember.role (optional) → ROLE_PERMISSIONS[role]
+                  → + project grants − project revokes → effective permissions
+organization_owner → the whole catalogue, never narrowed
+```
+
+- Catalogue (`packages/shared/src/permissions/permission.contracts.ts`): 25
+  `<module>.<action>` permissions in 11 modules. Renames against the original
+  request: `test_design.*` for `testcases.*`, `project.manage` for
+  `project.settings.manage`; added `requirements.manage` and
+  `test_design.manage` because the routes already separated "edit" from
+  "change status / delete". `ROLE_PERMISSIONS` is derived from the previous
+  `@Roles` lists, so with no overrides every user keeps exactly what they had;
+  a unit test asserts the ladder is monotonic.
+- Model (migration `20261004100000_project_permission_overrides`):
+  `ProjectPermissionOverride` (`organizationId`, `projectId`, `userId`,
+  `permission`, `effect grant|revoke`, `grantedById`), unique per
+  `(projectId, userId, permission)`, RLS like every tenant table. No backfill:
+  no rows means the old behaviour.
+- Enforcement: `@RequirePermission(...)` next to `@Roles(...)` (both read by
+  the same guard, both re-applied by `ProjectAccessService.assertRouteAccess`).
+  Project-scoped controllers moved to permissions; organization routes
+  (create project, invitations, members, audit log) stay on `@Roles`.
+- Rules (`ProjectPermissionsService`): no self-edit; owners untouchable; nobody
+  edits a member more powerful than themselves; a grant must be a permission
+  the actor effectively holds **in the same project**; archived projects are
+  read-only; every change audited.
+- Endpoints: `GET /permissions/catalog`, `GET /projects/:id/permissions/me`,
+  `GET /projects/:id/permissions/members/:userId`,
+  `GET /projects/:id/permissions/overrides` (`members.read`) and
+  `PUT /projects/:id/permissions/members/:userId` (`members.manage`).
+- Web: Project access → "Show" per member opens a matrix grouped by module with
+  `Allowed / Not allowed`, the source (`ownership | role | override`) and a
+  `Role default / Grant / Revoke` choice; `Grant` is disabled for what the actor
+  does not hold.
+- Found while running the E2E as the runtime role: creating an organization and
+  accepting an invitation wrote their audit row with no tenant in context, which
+  RLS rejects (500 under `qaflow_app`, invisible under the owner connection the
+  integration suites use). Both now announce the organization
+  (`runForOrganization`); `test/rls-runtime.int-spec.ts` boots the API as
+  `qaflow_app` to keep it that way. The web also selected `undefined` after
+  accepting an invitation (wrong response type); fixed.
+
+Debt 22 (reading is not restricted per project) and 23 (the guard pre-filters
+and the service decides) **stay open**: the phase kept the approved scope, and
+both are now described in permission terms in `technical-debt.md`. Debt 34
+records what S2-F8 itself leaves.
+
 ## S2-F9 — Project KPI & Analytics Dashboard
 
 Quality dashboards at project and organization level.

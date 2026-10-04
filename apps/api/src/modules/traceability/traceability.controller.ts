@@ -11,16 +11,8 @@ import {
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { TraceabilityService } from './traceability.service';
-
-const LINKERS = [
-  'organization_owner',
-  'organization_admin',
-  'project_manager',
-  'qa_lead',
-  'tester',
-] as const;
 
 @ApiTags('traceability')
 @ApiBearerAuth()
@@ -30,7 +22,7 @@ const LINKERS = [
 export class TraceabilityController {
   constructor(private readonly traceability: TraceabilityService) {}
 
-  @Roles(...LINKERS)
+  @RequirePermission('traceability.manage')
   @Post('links')
   @ApiOperation({ summary: 'Link two entities' })
   createLink(
@@ -46,7 +38,7 @@ export class TraceabilityController {
     return this.traceability.listLinks(query);
   }
 
-  @Roles(...LINKERS)
+  @RequirePermission('traceability.manage')
   @Delete('links/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Remove a link' })

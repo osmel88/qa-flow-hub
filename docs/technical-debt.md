@@ -357,6 +357,9 @@ customer assumes when they set somebody to `viewer` on one project only.
   without both seeing each other's test data.
 - **Trigger to fix:** the first customer asking for a project a colleague cannot
   open. It touches every list endpoint, so it is a phase, not a patch.
+- **After S2-F8:** revoking `requirements.read` (or any `*.read`) is enforced on
+  the routes that resolve a project, but the project list and the dashboard's
+  organization view still show every project of the organization.
 
 ## 23. The roles guard fails open on project-scoped routes
 
@@ -373,6 +376,10 @@ means the guard is no longer the last line of defence on those routes.
 - **Trigger to fix:** an interceptor that fails the response when a
   project-scoped handler completed without resolving a project — cheap to add
   once, and it turns the convention into a check.
+- **After S2-F8:** the shape is the same with permissions: the guard also passes
+  when any project override *grants* the required permission somewhere, and a
+  *revoke* is only applied by `assertRouteAccess`. The convention now carries
+  more weight, which makes the interceptor more urgent, not less.
 
 ## 24. Three advisories with no upgrade path we can take
 
@@ -789,3 +796,33 @@ What moving to S3-compatible storage requires — and what it does **not**:
   multi-instance deployment or for evidence that must survive the host.
 - **Trigger to fix:** the first deployment with more than one API replica, or
   the first customer whose evidence must be retained under an SLA.
+
+## 34. Project permission overrides: what S2-F8 leaves (S2-F8)
+
+- **No organization-level overrides** — by decision. The organization is
+  governed by roles; an override exists only per (project, user). This is a
+  future extension, not a blocker: the table would gain a nullable `projectId`
+  and the resolver one more layer.
+- **Permissions are strings in the database.** `permission` is `text`
+  validated by Zod on write and filtered with `isPermission` on read, so a
+  renamed or removed permission leaves inert rows instead of failing a
+  migration. There is no clean-up job for them.
+- **Overrides do not follow the role.** Changing somebody's project role keeps
+  their overrides; a grant that became redundant stays visible as an override.
+  Removing a member from the organization cascades nothing yet — the rows stay
+  until the project or user is deleted (inert, because the membership guard
+  runs first).
+- **Effective permissions cost two reads per request and project** (grants and
+  overrides), memoized per request only. Fine at this size; a cache keyed on a
+  membership version would be the next step if it shows up in traces.
+- **`@Roles` and `@RequirePermission` coexist.** Organization routes still use
+  roles; a route carrying both is satisfied by either. Migrating the remaining
+  `@Roles` routes is mechanical but changes their semantics for nobody today,
+  so it was left out.
+- **No denial audit.** A 403 caused by a revoke is not recorded (same as
+  before; see the permissions matrix).
+
+- **Cost:** low today; the string column and the role/override drift are the
+  two things a support engineer will meet first.
+- **Trigger to fix:** custom roles (S2-F11 plans) or the first request for an
+  organization-wide exception.

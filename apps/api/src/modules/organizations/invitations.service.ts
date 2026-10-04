@@ -14,19 +14,12 @@ import {
 } from '@qa-flow-hub/shared';
 import { AppConfigService } from '../../config/app-config.service';
 import { PrismaService } from '../../database/prisma.service';
-import {
-  ConflictError,
-  DuplicateResourceError,
-  ForbiddenError,
-  NotFoundError,
-} from '../../errors';
+import { TenantContextService } from '../../database/tenant-context.service';
+import { ConflictError, DuplicateResourceError, ForbiddenError, NotFoundError } from '../../errors';
 import { DomainEventsPublisher } from '../../events/domain-events';
 import { AuditService } from '../audit/audit.service';
 import { OrganizationInvitationsRepository } from './organization-invitations.repository';
-import {
-  hashInvitationToken,
-  issueInvitationToken,
-} from './organization-invitations.repository';
+import { hashInvitationToken, issueInvitationToken } from './organization-invitations.repository';
 import { OrganizationMembersRepository } from './organization-members.repository';
 
 export interface InvitationPreview {
@@ -62,6 +55,7 @@ export class InvitationsService {
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
     private readonly events: DomainEventsPublisher,
+    private readonly tenant: TenantContextService,
   ) {}
 
   /**
@@ -76,7 +70,9 @@ export class InvitationsService {
     input: CreateInvitationInput,
   ): Promise<CreatedInvitationView> {
     if (ROLE_RANK[input.role] < ROLE_RANK[invitedBy.role]) {
-      throw new ForbiddenError('You cannot invite somebody with a role more powerful than your own');
+      throw new ForbiddenError(
+        'You cannot invite somebody with a role more powerful than your own',
+      );
     }
 
     // Lapsed invitations are settled first, otherwise the partial unique index
@@ -148,7 +144,9 @@ export class InvitationsService {
       throw new NotFoundError('Invitation');
     }
     if (invitation.status !== InvitationStatus.pending) {
-      throw new ConflictError(`Only a pending invitation can be resent (this one is ${invitation.status})`);
+      throw new ConflictError(
+        `Only a pending invitation can be resent (this one is ${invitation.status})`,
+      );
     }
 
     const issued = issueInvitationToken();
@@ -184,7 +182,9 @@ export class InvitationsService {
       throw new NotFoundError('Invitation');
     }
     if (!(await this.invitations.revoke(organizationId, id))) {
-      throw new ConflictError(`Only a pending invitation can be revoked (this one is ${invitation.status})`);
+      throw new ConflictError(
+        `Only a pending invitation can be revoked (this one is ${invitation.status})`,
+      );
     }
 
     await this.audit.record({
@@ -243,42 +243,52 @@ export class InvitationsService {
     // One transaction: consuming the invitation and granting the membership are
     // the same fact. Half of it would either grant access no invitation
     // accounts for, or burn an invitation without granting anything.
-    await this.prisma.runInTransaction(async (tx) => {
-      if (!(await this.invitations.markAccepted(invitation.id, userId, tx))) {
-        throw new ConflictError('The invitation is no longer pending');
-      }
+    //
+    // The request carries no organization header — the caller is not a member
+    // yet — so the joined organization is announced explicitly: the audit row
+    // belongs to it, and its policy refuses a tenant row written from nowhere.
+    await this.tenant.runForOrganization(organization.id, () =>
+      this.prisma.runInTransaction(async (tx) => {
+        if (!(await this.invitations.markAccepted(invitation.id, userId, tx))) {
+          throw new ConflictError('The invitation is no longer pending');
+        }
 
-      // Read through `tx`: a read on the pooled client would run on another
-      // connection and could not see the write above.
-      const existing = await this.members.findAnyMembership(userId, organization.id, tx);
-      if (existing === null) {
-        await this.members.create(
+        // Read through `tx`: a read on the pooled client would run on another
+        // connection and could not see the write above.
+        const existing = await this.members.findAnyMembership(userId, organization.id, tx);
+        if (existing === null) {
+          await this.members.create(
+            {
+              organizationId: organization.id,
+              userId,
+              role: invitation.role,
+              status: MembershipStatus.active,
+            },
+            tx,
+          );
+        } else {
+          await this.members.reactivate(organization.id, userId, invitation.role, tx);
+        }
+
+        await this.audit.record(
           {
+            action: AuditAction.accept_invite,
+            entityType: 'OrganizationInvitation',
+            entityId: invitation.id,
+            summary: `${userEmail} joined as ${invitation.role}`,
             organizationId: organization.id,
-            userId,
-            role: invitation.role,
-            status: MembershipStatus.active,
           },
           tx,
         );
-      } else {
-        await this.members.reactivate(organization.id, userId, invitation.role, tx);
-      }
-
-      await this.audit.record(
-        {
-          action: AuditAction.accept_invite,
-          entityType: 'OrganizationInvitation',
-          entityId: invitation.id,
-          summary: `${userEmail} joined as ${invitation.role}`,
-          organizationId: organization.id,
-        },
-        tx,
-      );
-    });
+      }),
+    );
 
     this.logger.log(`Invitation accepted: org=${organization.id} user=${userId}`);
-    return { organizationId: organization.id, organizationName: organization.name, role: invitation.role };
+    return {
+      organizationId: organization.id,
+      organizationName: organization.name,
+      role: invitation.role,
+    };
   }
 
   /**
@@ -319,10 +329,7 @@ export class InvitationsService {
     };
   }
 
-  private toCreatedView(
-    invitation: OrganizationInvitation,
-    token: string,
-  ): CreatedInvitationView {
+  private toCreatedView(invitation: OrganizationInvitation, token: string): CreatedInvitationView {
     return {
       ...this.toView(invitation),
       token,

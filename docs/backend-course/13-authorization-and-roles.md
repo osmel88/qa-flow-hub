@@ -206,3 +206,103 @@ de integración lo comprueban sin pasar por la interfaz.
 | Alcance | Organización y proyecto | Restringir además la lectura por proyecto |
 | Auditoría | Registro de acciones | Registro también de denegaciones |
 | Delegación | No | Roles personalizados por cliente |
+
+## S2-F8: de roles a permisos sin romper los roles
+
+El MVP decía "roles, no permisos granulares" porque seis roles no justificaban
+un motor de permisos. S2-F8 añade el motor **sin retirar los roles**: un rol
+pasa a ser un *preset*, un nombre para un conjunto fijo de permisos.
+
+```text
+rol de organización → ProjectMember.role (opcional) → ROLE_PERMISSIONS[rol]
+                    → + grants del proyecto − revokes del proyecto
+                    → permisos efectivos
+organization_owner → todo el catálogo, nunca se restringe
+```
+
+### El catálogo vive en `packages/shared`
+
+```ts
+// packages/shared/src/permissions/permission.contracts.ts
+export const PERMISSIONS = ['requirements.read', 'requirements.write', /* … */] as const;
+export type Permission = (typeof PERMISSIONS)[number];
+export const ROLE_PERMISSIONS: Record<OrganizationRoleName, readonly Permission[]> = { /* … */ };
+```
+
+Un `as const` convertido en tipo hace que `@RequirePermission('defects.mange')`
+no compile. Y como la web importa el mismo módulo, la matriz que pinta la UI es
+literalmente la que aplica la API. `ROLE_PERMISSIONS` se derivó de las listas
+`@Roles` que tenían las rutas: sin overrides, nadie gana ni pierde nada. Un test
+unitario comprueba que la escalera es monótona (cada rol contiene al de abajo):
+es la invariante que hace que "nadie concede por encima de sí mismo" tenga
+sentido.
+
+### Overrides: una tabla, dos efectos
+
+`project_permission_overrides` guarda `(projectId, userId, permission, effect)`
+con `effect = grant | revoke` y una restricción única por terna. No hay backfill:
+ninguna fila significa comportamiento anterior. Por decisión de producto no hay
+overrides de organización; la organización se gobierna solo por roles.
+
+### Dos decoradores, un guard, una decisión
+
+```ts
+@ProjectScoped()
+@RequirePermission('requirements.write')
+@Post()
+create(...) { ... }
+```
+
+`RolesGuard` lee `@Roles` **y** `@RequirePermission`, guarda ambas listas en
+`TenantContextService` y hace solo un pre-filtro: deja pasar si el rol de
+organización basta, o si la ruta es `@ProjectScoped` y *algún* grant u override
+del usuario podría bastar. La decisión real la toma el servicio cuando ya
+conoce el proyecto:
+
+```ts
+await this.access.assertRouteAccess(projectId); // rol efectivo + permisos efectivos
+```
+
+Por eso un *revoke* funciona aunque el guard deje pasar la petición: el rol de
+organización satisface el pre-filtro, pero `assertRouteAccess` calcula el
+conjunto efectivo del proyecto y responde 403. La UI que oculta un botón es
+cortesía; el 403 es la seguridad. El E2E `permissions.e2e.spec.ts` lo prueba
+llamando a la API directamente después de revocar.
+
+### Reglas contra la escalada
+
+En `ProjectPermissionsService.replace`:
+
+1. nadie edita sus propios overrides;
+2. un owner no se toca (su acceso es total igualmente);
+3. nadie edita a alguien con rol efectivo superior al suyo;
+4. solo se concede lo que el actor **tiene efectivamente en ese proyecto** —
+   tener `members.manage` no convierte a nadie en una escalera hacia permisos
+   que no posee;
+5. un proyecto archivado es de solo lectura;
+6. cada cambio se audita como `role_change`.
+
+### Lo que enseñó RLS
+
+Al ejecutar el E2E contra la API conectada como `qaflow_app` apareció un 500 al
+aceptar una invitación: la fila de auditoría pertenece a una organización, pero
+la petición aún no tenía cabecera de organización, así que
+`app.current_organization` estaba vacío y la política la rechazó. Las suites de
+integración no lo veían porque se conectan como dueño de las tablas, que se
+salta RLS. La corrección es anunciar el tenant explícitamente:
+
+```ts
+await this.tenant.runForOrganization(organization.id, () =>
+  this.prisma.runInTransaction(async (tx) => { /* invitación + membresía + auditoría */ }),
+);
+```
+
+y `test/rls-runtime.int-spec.ts` arranca la API con el rol de ejecución para que
+no vuelva a pasar desapercibido.
+
+### Preguntas de repaso (S2-F8)
+
+1. ¿Por qué un revoke no puede aplicarse en el guard?
+2. ¿Qué rompería que `ROLE_PERMISSIONS` no fuera monótono?
+3. ¿Por qué `permission` es `text` en PostgreSQL y no un enum?
+

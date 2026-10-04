@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Injectable } from '@nestjs/common';
 import { OrganizationRole } from '@prisma/client';
+import { Permission } from '@qa-flow-hub/shared';
 import { UnauthenticatedError } from '../errors';
 
 /**
@@ -31,6 +32,10 @@ export interface RequestContext {
    * how the two layers would drift.
    */
   requiredRoles?: readonly OrganizationRole[];
+  /** The permissions the matched route declared with `@RequirePermission`. */
+  requiredPermissions?: readonly Permission[];
+  /** Per-request memo of resolved effective permissions per project. */
+  projectPermissions?: Map<string, ReadonlySet<Permission>>;
   /**
    * Per-request memo of resolved project roles. A single request may touch the
    * same project several times (loader, service, audit), and re-reading the
@@ -129,6 +134,30 @@ export class TenantContextService {
 
   get requiredRoles(): readonly OrganizationRole[] {
     return this.storage.getStore()?.requiredRoles ?? [];
+  }
+
+  setRequiredPermissions(permissions: readonly Permission[]): void {
+    const store = this.storage.getStore();
+    if (store !== undefined) {
+      store.requiredPermissions = permissions;
+    }
+  }
+
+  get requiredPermissions(): readonly Permission[] {
+    return this.storage.getStore()?.requiredPermissions ?? [];
+  }
+
+  cachedProjectPermissions(projectId: string): ReadonlySet<Permission> | undefined {
+    return this.storage.getStore()?.projectPermissions?.get(projectId);
+  }
+
+  rememberProjectPermissions(projectId: string, permissions: ReadonlySet<Permission>): void {
+    const store = this.storage.getStore();
+    if (store === undefined) {
+      return;
+    }
+    store.projectPermissions ??= new Map();
+    store.projectPermissions.set(projectId, permissions);
   }
 
   cachedProjectRole(projectId: string): OrganizationRole | undefined {

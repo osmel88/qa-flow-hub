@@ -21,17 +21,8 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { ValidationError } from '../../errors';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { AttachmentsService } from './attachments.service';
-
-/** Whoever can record a result or report a defect can attach evidence to it. */
-const CONTRIBUTORS = [
-  'organization_owner',
-  'organization_admin',
-  'project_manager',
-  'qa_lead',
-  'tester',
-] as const;
 
 /**
  * The only door to the bytes. There is no static route over the storage root:
@@ -53,7 +44,7 @@ export class AttachmentsController {
     return this.attachments.limits();
   }
 
-  @Roles(...CONTRIBUTORS)
+  @RequirePermission('attachments.upload')
   @Post()
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -119,7 +110,7 @@ export class AttachmentsController {
     await reply.send(body);
   }
 
-  @Roles(...CONTRIBUTORS)
+  @RequirePermission('attachments.delete')
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete evidence (uploader, or a project lead)' })

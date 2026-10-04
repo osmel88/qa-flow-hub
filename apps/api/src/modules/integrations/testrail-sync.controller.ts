@@ -10,10 +10,8 @@ import {
 } from '@qa-flow-hub/shared';
 import { zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { TestRailSyncService } from './testrail-sync.service';
-
-const AUTHORS = ['organization_owner', 'organization_admin', 'project_manager', 'qa_lead'] as const;
 
 /**
  * The TestRail side of the integration: browse the provider, push our entities.
@@ -74,7 +72,7 @@ export class TestRailSyncController {
   }
 
   @ProjectScoped()
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Post('sync/test-suites/:id')
   @HttpCode(200)
   @ApiOperation({ summary: 'Create or update the TestRail suite for a test suite' })
@@ -83,7 +81,7 @@ export class TestRailSyncController {
   }
 
   @ProjectScoped()
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Post('sync/test-cases/:id')
   @HttpCode(200)
   @ApiOperation({ summary: 'Create or update the TestRail case for a test case (and its suite)' })
@@ -92,7 +90,7 @@ export class TestRailSyncController {
   }
 
   @ProjectScoped()
-  @Roles(...AUTHORS)
+  @RequirePermission('testruns.create')
   @Post('sync/test-runs/:id')
   @HttpCode(200)
   @ApiOperation({
@@ -103,7 +101,7 @@ export class TestRailSyncController {
   }
 
   @ProjectScoped()
-  @Roles(...AUTHORS, 'tester')
+  @RequirePermission('testruns.execute')
   @Post('sync/test-results/:id')
   @HttpCode(200)
   @ApiOperation({ summary: 'Add the TestRail result for a test result (and its run)' })

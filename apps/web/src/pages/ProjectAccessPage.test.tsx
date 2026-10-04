@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { OrganizationRoleName } from '@qa-flow-hub/shared';
+import { computeEffectivePermissions } from '@qa-flow-hub/shared';
+import type { MemberPermissionsView, OrganizationRoleName } from '@qa-flow-hub/shared';
 import { renderScreen } from '../test/render';
 
 /**
@@ -46,7 +47,39 @@ const projectMembers = {
   meta: { total: 3, page: 1, pageSize: 100 },
 };
 
+/** What `/permissions/me` and `/permissions/members/:id` answer in the stub. */
+function permissionsOf(userId: string): MemberPermissionsView {
+  const member = projectMembers.data.find((row) => row.userId === userId);
+  const organizationRole = (member?.organizationRole ??
+    'organization_admin') as OrganizationRoleName;
+  const projectRole = (member?.projectRole ?? null) as OrganizationRoleName | null;
+  const effectiveRole = projectRole ?? organizationRole;
+  const overrides =
+    userId === 'u_tester'
+      ? [
+          {
+            permission: 'requirements.write' as const,
+            effect: 'revoke' as const,
+            grantedById: 'u_owner',
+            updatedAt: '2026-03-01T00:00:00.000Z',
+          },
+        ]
+      : [];
+  return {
+    projectId: 'p_1',
+    userId,
+    organizationRole,
+    projectRole,
+    effectiveRole,
+    overrides,
+    permissions: computeEffectivePermissions(effectiveRole, overrides),
+  };
+}
+
+let currentUserId = 'u_owner';
+
 function renderAs(role: OrganizationRoleName, userId: string): void {
+  currentUserId = userId;
   vi.doMock('../auth/auth-context', () => ({
     useAuth: () => ({
       user: { id: userId, email: 'me@example.test', fullName: 'Me', avatarUrl: null },
@@ -72,7 +105,17 @@ afterEach(() => {
 function stubApi(): void {
   vi.stubGlobal(
     'fetch',
-    vi.fn(() => Promise.resolve(new Response(JSON.stringify(projectMembers), { status: 200 }))),
+    vi.fn((input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const forMember = /\/permissions\/members\/([^/?]+)/.exec(url);
+      const body =
+        forMember !== null
+          ? permissionsOf(forMember[1] ?? '')
+          : url.endsWith('/permissions/me')
+            ? permissionsOf(currentUserId)
+            : projectMembers;
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+    }),
   );
 }
 
@@ -110,7 +153,9 @@ describe('ProjectAccessPage', () => {
 
     renderScreen(<Page />);
 
-    expect(await screen.findByLabelText('Set the project role of owner@example.test')).toBeDisabled();
+    expect(
+      await screen.findByLabelText('Set the project role of owner@example.test'),
+    ).toBeDisabled();
     expect(screen.getByText(/keeps full access to every project/i)).toBeInTheDocument();
   });
 
@@ -127,5 +172,55 @@ describe('ProjectAccessPage', () => {
     expect(
       screen.queryByLabelText('Set the project role of tester@example.test'),
     ).not.toBeInTheDocument();
+  });
+
+  it('explains each permission by module with its source, and offers overrides only to a manager', async () => {
+    stubApi();
+    renderAs('organization_owner', 'u_owner');
+    const { ProjectAccessPage: Page } = await import('./ProjectAccessPage');
+    const { default: userEvent } = await import('@testing-library/user-event');
+
+    renderScreen(<Page />);
+
+    await userEvent.click(
+      await screen.findByLabelText('Show the permissions of tester@example.test'),
+    );
+    const panel = await screen.findByLabelText(
+      'Permissions of tester@example.test in this project',
+    );
+    // Grouped by module, not one flat list.
+    expect(within(panel).getByText('Requirements')).toBeInTheDocument();
+    expect(within(panel).getByText('Test Design')).toBeInTheDocument();
+    expect(within(panel).getByText('Executions')).toBeInTheDocument();
+
+    // The revoked permission says so, and says where the answer came from.
+    const revoked = panel.querySelector('[data-permission="requirements.write"]');
+    expect(revoked?.textContent).toContain('Not allowed');
+    expect(revoked?.textContent).toContain('override');
+    const fromRole = panel.querySelector('[data-permission="test_design.write"]');
+    expect(fromRole?.textContent).toContain('Allowed');
+    expect(fromRole?.textContent).toContain('role');
+
+    // An owner may edit, and the select reflects the stored override.
+    expect(
+      within(panel).getByLabelText('Override requirements.write for tester@example.test'),
+    ).toHaveValue('revoke');
+  });
+
+  it('shows ownership as the source for an owner and offers no overrides on them', async () => {
+    stubApi();
+    renderAs('organization_admin', 'u_admin');
+    const { ProjectAccessPage: Page } = await import('./ProjectAccessPage');
+    const { default: userEvent } = await import('@testing-library/user-event');
+
+    renderScreen(<Page />);
+
+    await userEvent.click(
+      await screen.findByLabelText('Show the permissions of owner@example.test'),
+    );
+    const panel = await screen.findByLabelText('Permissions of owner@example.test in this project');
+    expect(within(panel).getAllByText('ownership').length).toBeGreaterThan(0);
+    expect(within(panel).queryByRole('combobox')).not.toBeInTheDocument();
+    expect(within(panel).getByText(/overrides do not apply/i)).toBeInTheDocument();
   });
 });

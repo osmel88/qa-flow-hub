@@ -7,7 +7,7 @@ import {
   upsertIntegrationSchema,
 } from '@qa-flow-hub/shared';
 import { zodBody } from '../../common/pipes/zod-validation.pipe';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { IntegrationSettingsService } from './integration-settings.service';
 
 /**
@@ -40,7 +40,7 @@ export class IntegrationSettingsController {
     return this.integrations.findOne(this.parseProvider(provider));
   }
 
-  @Roles('organization_owner', 'organization_admin')
+  @RequirePermission('integrations.manage')
   @Put(':provider')
   @ApiOperation({ summary: 'Create or update the non-sensitive configuration of an integration' })
   upsert(
@@ -50,7 +50,7 @@ export class IntegrationSettingsController {
     return this.integrations.upsert(this.parseProvider(provider), body);
   }
 
-  @Roles('organization_owner', 'organization_admin')
+  @RequirePermission('integrations.manage')
   @Post(':provider/connect')
   @HttpCode(200)
   @ApiOperation({ summary: 'Enable a configured integration' })
@@ -58,7 +58,7 @@ export class IntegrationSettingsController {
     return this.integrations.connect(this.parseProvider(provider));
   }
 
-  @Roles('organization_owner', 'organization_admin')
+  @RequirePermission('integrations.manage')
   @Post(':provider/disconnect')
   @HttpCode(200)
   @ApiOperation({ summary: 'Disable an integration, keeping its configuration and references' })
@@ -66,7 +66,7 @@ export class IntegrationSettingsController {
     return this.integrations.disconnect(this.parseProvider(provider));
   }
 
-  @Roles('organization_owner', 'organization_admin')
+  @RequirePermission('integrations.manage')
   @Post(':provider/test-connection')
   @HttpCode(200)
   @ApiOperation({ summary: 'Ask the provider whether it is reachable' })

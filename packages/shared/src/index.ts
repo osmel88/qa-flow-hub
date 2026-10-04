@@ -16,3 +16,4 @@ export * from './integrations/github-sync.contracts.js';
 export * from './integrations/external-traceability.contracts.js';
 export * from './notifications/notification.contracts.js';
 export * from './attachments/attachment.contracts.js';
+export * from './permissions/permission.contracts.js';

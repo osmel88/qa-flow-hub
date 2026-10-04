@@ -1,10 +1,11 @@
 # Permissions matrix
 
-Six roles, no granular permission system. The reasoning is in
+Six roles, which since S2-F8 are **presets of a permission catalogue**: each
+role maps to a fixed set of `<module>.<action>` permissions, and a project can
+grant or revoke single permissions per member (see
+[Granular permissions](#granular-permissions-s2-f8) below). The reasoning is in
 [`backend-course/13-authorization-and-roles.md`](backend-course/13-authorization-and-roles.md);
-the short version is that a resource/action permission engine is more machinery
-than six roles justify, and the migration path keeps `@Roles` as the public API
-of the decorator.
+`@Roles` stays valid next to the new `@RequirePermission`.
 
 Roles are scoped to an **organization**, and may be overridden **per project**.
 The same person can be a `qa_lead` in one organization and a `viewer` in
@@ -137,6 +138,49 @@ Rules that hold even for an owner:
   historical record; a correction is a new result.
 - **Audit entries are never editable or deletable**, by anybody.
 
+## Granular permissions (S2-F8)
+
+`effective = ROLE_PERMISSIONS[effective role] + project grants − project revokes`;
+`organization_owner` always holds the whole catalogue. Overrides exist only per
+(project, user) — never per organization.
+
+| Permission | owner | admin | proj. manager | qa_lead | tester | viewer |
+| --- | :-: | :-: | :-: | :-: | :-: | :-: |
+| `requirements.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `requirements.write` | ✓ | ✓ | ✓ | ✓ | — | — |
+| `requirements.manage` | ✓ | ✓ | ✓ | — | — | — |
+| `test_design.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `test_design.write` | ✓ | ✓ | ✓ | ✓ | — | — |
+| `test_design.manage` | ✓ | ✓ | ✓ | — | — | — |
+| `testruns.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `testruns.create` | ✓ | ✓ | ✓ | ✓ | — | — |
+| `testruns.execute` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `testruns.manage` | ✓ | ✓ | ✓ | — | — | — |
+| `defects.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `defects.create` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `defects.manage` | ✓ | ✓ | ✓ | — | — | — |
+| `traceability.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `traceability.manage` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `attachments.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `attachments.upload` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `attachments.delete` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `integrations.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `integrations.manage` | ✓ | ✓ | — | — | — | — |
+| `members.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `members.manage` | ✓ | ✓ | ✓ | — | — | — |
+| `project.manage` | ✓ | ✓ | ✓ | — | — | — |
+| `notifications.manage` | ✓ | ✓ | — | — | — | — |
+| `analytics.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+The table is `ROLE_PERMISSIONS` in `packages/shared`; it was derived from the
+`@Roles` lists the routes carried before, so an installation without overrides
+behaves exactly as it did. Object-level `own` rules above still apply on top.
+
+Rules on overrides (`ProjectPermissionsService`): nobody edits their own; an
+owner is never touched; nobody edits a member above their own effective role;
+a grant must be a permission the actor effectively holds in that project;
+archived projects are read-only; every change is an audited `role_change`.
+
 ## Not implemented yet
 
 - **Per-project read restrictions.** A grant changes what somebody may *do* in a
@@ -144,5 +188,7 @@ Rules that hold even for an owner:
   read every project. Hiding a project is a different feature — it needs the
   tenant filter to gain a second dimension, and every list endpoint to respect
   it — and pretending a narrowed role hides data would be worse than saying so.
-- **Custom roles per customer.** Requires the permission engine.
+- **Custom roles per customer.** The catalogue exists now; named, reusable
+  permission sets per organization do not.
+- **Organization-level overrides.** Deliberately out of S2-F8 (debt 34).
 - **Denial auditing.** A burst of 403s is a useful signal, currently unrecorded.

@@ -8,7 +8,7 @@ import {
 } from '@qa-flow-hub/shared';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { SkipOrganization } from '../auth/decorators/skip-organization.decorator';
 import { NotificationsService } from './notifications.service';
 
@@ -64,7 +64,7 @@ export class NotificationsController {
   }
 
   @ApiHeader({ name: 'X-Organization-Id', required: true })
-  @Roles('organization_owner', 'organization_admin')
+  @RequirePermission('notifications.manage')
   @Get('outbox')
   @ApiOperation({
     summary: 'Development outbox: messages the mock provider captured for this organization',

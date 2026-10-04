@@ -19,16 +19,8 @@ import {
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { TestRunsService } from './test-runs.service';
-
-/** Who plans execution. Testers execute, they do not decide what gets run. */
-const PLANNERS = [
-  'organization_owner',
-  'organization_admin',
-  'project_manager',
-  'qa_lead',
-] as const;
 
 @ApiTags('test-runs')
 @ApiBearerAuth()
@@ -38,7 +30,7 @@ const PLANNERS = [
 export class TestRunsController {
   constructor(private readonly runs: TestRunsService) {}
 
-  @Roles(...PLANNERS)
+  @RequirePermission('testruns.create')
   @Post()
   @ApiOperation({ summary: 'Plan a run, optionally including cases straight away' })
   create(
@@ -60,14 +52,14 @@ export class TestRunsController {
     return this.runs.get(id);
   }
 
-  @Roles(...PLANNERS)
+  @RequirePermission('testruns.create')
   @Patch(':id')
   @ApiOperation({ summary: 'Edit an open run' })
   update(@Param('id') id: string, @Body(zodBody(updateTestRunSchema)) body: UpdateTestRunInput) {
     return this.runs.update(id, body);
   }
 
-  @Roles(...PLANNERS)
+  @RequirePermission('testruns.create')
   @Post(':id/start')
   @HttpCode(200)
   @ApiOperation({ summary: 'Move a planned run to in progress' })
@@ -75,7 +67,7 @@ export class TestRunsController {
     return this.runs.transition(id, 'in_progress');
   }
 
-  @Roles(...PLANNERS)
+  @RequirePermission('testruns.create')
   @Post(':id/complete')
   @HttpCode(200)
   @ApiOperation({ summary: 'Close a run; it becomes read-only' })
@@ -83,7 +75,7 @@ export class TestRunsController {
     return this.runs.transition(id, 'completed');
   }
 
-  @Roles(...PLANNERS)
+  @RequirePermission('testruns.create')
   @Post(':id/abort')
   @HttpCode(200)
   @ApiOperation({ summary: 'Abandon a run; it becomes read-only' })
@@ -91,7 +83,7 @@ export class TestRunsController {
     return this.runs.transition(id, 'aborted');
   }
 
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('testruns.manage')
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Soft delete a run' })
@@ -101,7 +93,7 @@ export class TestRunsController {
 
   // --- Cases in a run ------------------------------------------------------
 
-  @Roles(...PLANNERS)
+  @RequirePermission('testruns.create')
   @Post(':id/cases')
   @HttpCode(200)
   @ApiOperation({ summary: 'Include more cases, frozen as snapshots' })
@@ -118,7 +110,7 @@ export class TestRunsController {
     return this.runs.listCases(id, query);
   }
 
-  @Roles(...PLANNERS)
+  @RequirePermission('testruns.create')
   @Delete(':id/cases/:runCaseId')
   @HttpCode(204)
   @ApiOperation({ summary: 'Remove a case that has not been executed yet' })
@@ -126,7 +118,7 @@ export class TestRunsController {
     await this.runs.removeCase(id, runCaseId);
   }
 
-  @Roles(...PLANNERS)
+  @RequirePermission('testruns.create')
   @Post(':id/assignments')
   @HttpCode(200)
   @ApiOperation({ summary: 'Assign or unassign cases in bulk' })
@@ -136,7 +128,7 @@ export class TestRunsController {
 
   // --- Results -------------------------------------------------------------
 
-  @Roles(...PLANNERS, 'tester')
+  @RequirePermission('testruns.execute')
   @Post(':id/cases/:runCaseId/results')
   @ApiOperation({ summary: 'Record an execution attempt; results are append-only' })
   recordResult(

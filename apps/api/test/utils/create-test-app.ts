@@ -1,8 +1,10 @@
 import { VersioningType } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from '../../src/app.module';
 import { AppConfigService } from '../../src/config/app-config.service';
+import type { Env } from '../../src/config/env.schema';
 import { AllExceptionsFilter } from '../../src/errors/all-exceptions.filter';
 
 /**
@@ -12,8 +14,29 @@ import { AllExceptionsFilter } from '../../src/errors/all-exceptions.filter';
  * exception filter are part of the contract under test. A test app that skips
  * them would pass while production returns 404s.
  */
-export async function createTestApp(): Promise<NestFastifyApplication> {
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+export async function createTestApp(
+  options: { databaseUrl?: string } = {},
+): Promise<NestFastifyApplication> {
+  const builder = Test.createTestingModule({ imports: [AppModule] });
+
+  // The RLS suite boots the API as the runtime role, the way production runs
+  // it. Only the connection string changes; every other setting is the
+  // validated environment.
+  if (options.databaseUrl !== undefined) {
+    const databaseUrl = options.databaseUrl;
+    class RuntimeRoleConfigService extends AppConfigService {
+      override get databaseUrl(): string {
+        return databaseUrl;
+      }
+    }
+    builder.overrideProvider(AppConfigService).useFactory({
+      inject: [ConfigService],
+      factory: (config: ConfigService<Env, true>): AppConfigService =>
+        new RuntimeRoleConfigService(config),
+    });
+  }
+
+  const moduleRef = await builder.compile();
 
   const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {
     logger: false,

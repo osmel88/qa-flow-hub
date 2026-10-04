@@ -35,9 +35,9 @@ export function OrganizationsPage(): React.JSX.Element {
 
   const accept = useMutation({
     mutationFn: () => organizationsApi.acceptInvitation(token),
-    onSuccess: async (organization) => {
+    onSuccess: async (joined) => {
       await refreshOrganizations();
-      selectOrganization(organization.id);
+      selectOrganization(joined.organizationId);
       void navigate('/dashboard');
     },
     onError: (cause) => {

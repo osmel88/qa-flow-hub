@@ -1,11 +1,12 @@
 import { ORGANIZATION_ROLES, outranksOrEquals } from '@qa-flow-hub/shared';
-import type { OrganizationRoleName, ProjectMemberView } from '@qa-flow-hub/shared';
+import type { OrganizationRoleName, Permission, ProjectMemberView } from '@qa-flow-hub/shared';
 import { Badge, Button, DataState } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { projectsApi } from '../api/endpoints';
+import { Fragment, useState } from 'react';
+import { permissionsApi, projectsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
+import { MemberPermissionsPanel } from '../components/MemberPermissionsPanel';
 import { PageHeader } from '../components/PageHeader';
 import { NoProject } from './NoProject';
 import { useProject } from '../project/project-context';
@@ -44,6 +45,7 @@ export function ProjectAccessPage(): React.JSX.Element {
   const { activeProjectId, activeProject } = useProject();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const organizationRole = activeOrganization?.role ?? null;
 
@@ -53,12 +55,19 @@ export function ProjectAccessPage(): React.JSX.Element {
     enabled: activeProjectId !== null,
   });
 
+  const myPermissions = useQuery({
+    queryKey: ['member-permissions', activeProjectId, 'me'],
+    queryFn: () => permissionsApi.mine(activeProjectId ?? ''),
+    enabled: activeProjectId !== null,
+  });
+
   const grant = useMutation({
     mutationFn: (input: { userId: string; role: string }) =>
       projectsApi.grantRole(activeProjectId ?? '', input.userId, input.role),
     onSuccess: async () => {
       setError(null);
       await queryClient.invalidateQueries({ queryKey: ['project-members'] });
+      await queryClient.invalidateQueries({ queryKey: ['member-permissions'] });
     },
     onError: (cause) => {
       setError(cause instanceof ApiError ? cause.message : 'Could not change the role.');
@@ -70,6 +79,7 @@ export function ProjectAccessPage(): React.JSX.Element {
     onSuccess: async () => {
       setError(null);
       await queryClient.invalidateQueries({ queryKey: ['project-members'] });
+      await queryClient.invalidateQueries({ queryKey: ['member-permissions'] });
     },
     onError: (cause) => {
       setError(cause instanceof ApiError ? cause.message : 'Could not revoke the role.');
@@ -83,17 +93,22 @@ export function ProjectAccessPage(): React.JSX.Element {
   // The actor's own effective role in this project, not their organization one:
   // a project manager narrowed to viewer here should not be offered controls.
   const mine = members.data?.data.find((row) => row.userId === user?.id);
-  const actorRole = mine?.effectiveRole ?? organizationRole;
-  const canManage =
-    actorRole === 'organization_owner' ||
-    actorRole === 'organization_admin' ||
-    actorRole === 'project_manager';
+  const actorRole: OrganizationRoleName =
+    myPermissions.data?.effectiveRole ?? mine?.effectiveRole ?? organizationRole ?? 'viewer';
+  // `members.manage` is what the API checks, so it is what decides here too —
+  // an override can hand it to a qa_lead or take it from a project manager.
+  const actorPermissions = new Set<Permission>(
+    myPermissions.data?.permissions
+      .filter((entry) => entry.granted)
+      .map((entry) => entry.permission) ?? [],
+  );
+  const canManage = actorPermissions.has('members.manage');
 
   return (
     <>
       <PageHeader
         title={`Access to ${activeProject?.key ?? 'this project'}`}
-        description="A project role overrides the organization role, but only inside this project. Revoking it returns the member to their organization role."
+        description="A project role overrides the organization role, but only inside this project. Overrides then grant or revoke single permissions on top of that role. Whatever is shown here, the API checks the same rules on every call."
       />
 
       {error !== null && (
@@ -115,79 +130,106 @@ export function ProjectAccessPage(): React.JSX.Element {
               <th scope="col">In the organization</th>
               <th scope="col">In this project</th>
               <th scope="col">Enforced</th>
+              <th scope="col">Permissions</th>
               {canManage && <th scope="col">Change</th>}
             </tr>
           </thead>
           <tbody>
             {members.data?.data.map((member) => {
               const reason = canManage
-                ? reasonBlocked(
-                    actorRole,
-                    member,
-                    member.userId === user?.id,
-                  )
-                : 'Only owners, admins and project managers change project roles.';
+                ? reasonBlocked(actorRole, member, member.userId === user?.id)
+                : 'Only members who may manage access here change project roles.';
               const hintId = `project-role-hint-${member.userId}`;
+              const isExpanded = expanded === member.userId;
+              const columns = canManage ? 6 : 5;
 
               return (
-                <tr key={member.userId}>
-                  <td>
-                    {member.fullName}
-                    <div className="muted">{member.email}</div>
-                  </td>
-                  <td>{humanize(member.organizationRole)}</td>
-                  <td>
-                    {member.projectRole === null ? (
-                      <span className="muted">Inherited</span>
-                    ) : (
-                      <Badge tone={toneFor(member.projectRole)}>
-                        {humanize(member.projectRole)}
-                      </Badge>
-                    )}
-                  </td>
-                  <td>{humanize(member.effectiveRole)}</td>
-                  {canManage && (
+                <Fragment key={member.userId}>
+                  <tr>
                     <td>
-                      <select
-                        className="ui-input"
-                        aria-label={`Set the project role of ${member.email}`}
-                        value=""
-                        disabled={reason !== null}
-                        {...(reason === null ? {} : { 'aria-describedby': hintId })}
-                        onChange={(event) => {
-                          grant.mutate({ userId: member.userId, role: event.target.value });
-                        }}
-                      >
-                        <option value="">Choose…</option>
-                        {ORGANIZATION_ROLES.filter(
-                          (role) =>
-                            outranksOrEquals(actorRole as OrganizationRoleName, role) &&
-                            role !== member.projectRole,
-                        ).map((role) => (
-                          <option key={role} value={role}>
-                            {humanize(role)}
-                          </option>
-                        ))}
-                      </select>
-                      {member.projectRole !== null && reason === null && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            revoke.mutate(member.userId);
-                          }}
-                        >
-                          Revoke
-                        </Button>
-                      )}
-                      {reason !== null && (
-                        <p className="muted" id={hintId}>
-                          {reason}
-                        </p>
+                      {member.fullName}
+                      <div className="muted">{member.email}</div>
+                    </td>
+                    <td>{humanize(member.organizationRole)}</td>
+                    <td>
+                      {member.projectRole === null ? (
+                        <span className="muted">Inherited</span>
+                      ) : (
+                        <Badge tone={toneFor(member.projectRole)}>
+                          {humanize(member.projectRole)}
+                        </Badge>
                       )}
                     </td>
+                    <td>{humanize(member.effectiveRole)}</td>
+                    <td>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-expanded={isExpanded}
+                        aria-label={`${isExpanded ? 'Hide' : 'Show'} the permissions of ${member.email}`}
+                        onClick={() => {
+                          setExpanded(isExpanded ? null : member.userId);
+                        }}
+                      >
+                        {isExpanded ? 'Hide' : 'Show'}
+                      </Button>
+                    </td>
+                    {canManage && (
+                      <td>
+                        <select
+                          className="ui-input"
+                          aria-label={`Set the project role of ${member.email}`}
+                          value=""
+                          disabled={reason !== null}
+                          {...(reason === null ? {} : { 'aria-describedby': hintId })}
+                          onChange={(event) => {
+                            grant.mutate({ userId: member.userId, role: event.target.value });
+                          }}
+                        >
+                          <option value="">Choose…</option>
+                          {ORGANIZATION_ROLES.filter(
+                            (role) =>
+                              outranksOrEquals(actorRole, role) &&
+                              role !== member.projectRole,
+                          ).map((role) => (
+                            <option key={role} value={role}>
+                              {humanize(role)}
+                            </option>
+                          ))}
+                        </select>
+                        {member.projectRole !== null && reason === null && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              revoke.mutate(member.userId);
+                            }}
+                          >
+                            Revoke
+                          </Button>
+                        )}
+                        {reason !== null && (
+                          <p className="muted" id={hintId}>
+                            {reason}
+                          </p>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={columns}>
+                        <MemberPermissionsPanel
+                          projectId={activeProjectId}
+                          userId={member.userId}
+                          email={member.email}
+                          canEdit={canManage && member.userId !== user?.id}
+                          actorPermissions={actorPermissions}
+                        />
+                      </td>
+                    </tr>
                   )}
-                </tr>
+                </Fragment>
               );
             })}
           </tbody>

@@ -10,6 +10,7 @@ import {
 } from '@qa-flow-hub/shared';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ProjectsService } from './projects.service';
 
@@ -49,7 +50,7 @@ export class ProjectsController {
   }
 
   @ProjectScoped()
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('project.manage')
   @Patch(':id')
   @ApiOperation({ summary: 'Rename a project or change its description' })
   update(@Param('id') id: string, @Body(zodBody(updateProjectSchema)) body: UpdateProjectInput) {
@@ -57,7 +58,7 @@ export class ProjectsController {
   }
 
   @ProjectScoped()
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('project.manage')
   @Post(':id/archive')
   @HttpCode(200)
   @ApiOperation({ summary: 'Archive a project, making it read-only' })
@@ -66,7 +67,7 @@ export class ProjectsController {
   }
 
   @ProjectScoped()
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('project.manage')
   @Post(':id/restore')
   @HttpCode(200)
   @ApiOperation({ summary: 'Bring an archived project back' })

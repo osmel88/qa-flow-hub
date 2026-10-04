@@ -8,7 +8,7 @@ import {
 } from '@qa-flow-hub/shared';
 import { zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { JiraSyncService } from './jira-sync.service';
 
 /**
@@ -58,7 +58,7 @@ export class JiraSyncController {
   }
 
   @ProjectScoped()
-  @Roles('organization_owner', 'organization_admin', 'project_manager', 'qa_lead')
+  @RequirePermission('requirements.write')
   @Post('sync/requirements/:id')
   @HttpCode(200)
   @ApiOperation({ summary: 'Create or update the Jira issue for a requirement' })
@@ -67,7 +67,7 @@ export class JiraSyncController {
   }
 
   @ProjectScoped()
-  @Roles('organization_owner', 'organization_admin', 'project_manager', 'qa_lead', 'tester')
+  @RequirePermission('defects.create')
   @Post('sync/defects/:id')
   @HttpCode(200)
   @ApiOperation({ summary: 'Create or update the Jira bug for a defect' })

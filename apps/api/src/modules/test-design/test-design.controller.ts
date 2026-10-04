@@ -23,11 +23,8 @@ import {
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { TestDesignService } from './test-design.service';
-
-/** Everyone who designs tests. Testers execute them but do not author them. */
-const AUTHORS = ['organization_owner', 'organization_admin', 'project_manager', 'qa_lead'] as const;
 
 @ApiTags('test-design')
 @ApiBearerAuth()
@@ -39,7 +36,7 @@ export class TestDesignController {
 
   // --- Suites --------------------------------------------------------------
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Post('test-suites')
   @ApiOperation({ summary: 'Create a test suite' })
   createSuite(@Body(zodBody(createSuiteSchema)) body: CreateSuiteInput) {
@@ -52,14 +49,14 @@ export class TestDesignController {
     return this.design.listSuites(projectId);
   }
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Patch('test-suites/:id')
   @ApiOperation({ summary: 'Rename or reposition a suite' })
   updateSuite(@Param('id') id: string, @Body(zodBody(updateSuiteSchema)) body: UpdateSuiteInput) {
     return this.design.updateSuite(id, body);
   }
 
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('test_design.manage')
   @Delete('test-suites/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete a suite together with its sections and cases' })
@@ -69,7 +66,7 @@ export class TestDesignController {
 
   // --- Sections ------------------------------------------------------------
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Post('test-sections')
   @ApiOperation({ summary: 'Create a section inside a suite' })
   createSection(@Body(zodBody(createSectionSchema)) body: CreateSectionInput) {
@@ -82,7 +79,7 @@ export class TestDesignController {
     return this.design.sectionTree(id);
   }
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Patch('test-sections/:id')
   @ApiOperation({ summary: 'Rename, reposition or reparent a section' })
   updateSection(
@@ -92,7 +89,7 @@ export class TestDesignController {
     return this.design.updateSection(id, body);
   }
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Delete('test-sections/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete a section; its cases move to the suite root' })
@@ -102,7 +99,7 @@ export class TestDesignController {
 
   // --- Cases ---------------------------------------------------------------
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Post('test-cases')
   @ApiOperation({ summary: 'Create a test case with its steps' })
   createCase(
@@ -124,7 +121,7 @@ export class TestDesignController {
     return this.design.getCase(id);
   }
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Patch('test-cases/:id')
   @ApiOperation({ summary: 'Edit a test case, bumping its version' })
   updateCase(
@@ -134,7 +131,7 @@ export class TestDesignController {
     return this.design.updateCase(id, body);
   }
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Post('test-cases/:id/steps')
   @HttpCode(200)
   @ApiOperation({ summary: 'Replace the whole ordered list of steps' })
@@ -145,7 +142,7 @@ export class TestDesignController {
     return this.design.replaceSteps(id, body);
   }
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Post('test-cases/:id/duplicate')
   @ApiOperation({ summary: 'Duplicate a case and its steps under a new key' })
   duplicateCase(
@@ -156,7 +153,7 @@ export class TestDesignController {
     return this.design.duplicateCase(id, body, user.userId);
   }
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Post('test-cases/:id/archive')
   @HttpCode(200)
   @ApiOperation({ summary: 'Archive a case so it stops being planned' })
@@ -164,7 +161,7 @@ export class TestDesignController {
     return this.design.archiveCase(id);
   }
 
-  @Roles(...AUTHORS)
+  @RequirePermission('test_design.write')
   @Post('test-cases/:id/restore')
   @HttpCode(200)
   @ApiOperation({ summary: 'Bring an archived case back' })
@@ -172,7 +169,7 @@ export class TestDesignController {
     return this.design.restoreCase(id);
   }
 
-  @Roles('organization_owner', 'organization_admin', 'project_manager')
+  @RequirePermission('test_design.manage')
   @Delete('test-cases/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Soft-delete a test case' })

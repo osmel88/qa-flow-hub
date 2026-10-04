@@ -1,26 +1,28 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { OrganizationRole } from '@prisma/client';
+import { Permission, ROLE_PERMISSIONS } from '@qa-flow-hub/shared';
 import { TenantContextService } from '../../../database/tenant-context.service';
 import { ForbiddenError } from '../../../errors';
 import { ProjectAccessService } from '../../projects/project-access.service';
 import { PROJECT_SCOPED_KEY } from '../decorators/project-scoped.decorator';
+import { PERMISSIONS_KEY } from '../decorators/require-permission.decorator';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
 /**
- * Checks the role the active-organization guard resolved for this request.
+ * Authorization at the route boundary: `@Roles` and/or `@RequirePermission`.
  *
- * Deliberately dumb: it compares against the list on the handler and nothing
- * else. Rules that depend on the *object* being touched ("a tester may edit
- * their own result but not somebody else's") are not authorization in the
- * route sense and belong in the service, where the object is loaded.
+ * A route declaring neither is open to every member of the organization. A
+ * route declaring one or both passes when the caller's organization role is in
+ * the `@Roles` list, or when that role's default permissions cover every
+ * required permission. Overrides are not consulted here: they exist per
+ * project, and the guard does not know the project yet.
  *
- * The one concession to complexity is project scoping. A role may be granted
- * per project, and the project is usually a property of the entity the request
- * names, so this guard cannot resolve it. On a route marked `@ProjectScoped` it
- * therefore lets a caller through when *some* grant they hold would allow the
- * action, and the service — which does know the project — makes the final
- * decision. Without that, a grant could only ever take power away.
+ * For `@ProjectScoped` routes the guard is only a pre-filter: when the
+ * organization role fails, it lets the request through if *some* project grant
+ * or override could satisfy the route, and `ProjectAccessService.assertRouteAccess`
+ * makes the real decision once the service knows the project. Routes that are
+ * not project-scoped are decided here, finally, on the organization role.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -31,39 +33,49 @@ export class RolesGuard implements CanActivate {
   ) {}
 
   async canActivate(executionContext: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.getAllAndOverride<OrganizationRole[] | undefined>(ROLES_KEY, [
-      executionContext.getHandler(),
-      executionContext.getClass(),
-    ]);
+    const targets = [executionContext.getHandler(), executionContext.getClass()];
+    const requiredRoles =
+      this.reflector.getAllAndOverride<OrganizationRole[] | undefined>(ROLES_KEY, targets) ?? [];
+    const requiredPermissions =
+      this.reflector.getAllAndOverride<Permission[] | undefined>(PERMISSIONS_KEY, targets) ?? [];
 
-    // Stashed even when empty: the project-scoped check reads this list instead
-    // of restating it, so a route's roles are declared exactly once.
-    this.context.setRequiredRoles(required ?? []);
+    this.context.setRequiredRoles(requiredRoles);
+    this.context.setRequiredPermissions(requiredPermissions);
 
-    if (required === undefined || required.length === 0) {
+    if (requiredRoles.length === 0 && requiredPermissions.length === 0) {
       return true;
     }
 
     const role = this.context.role;
-    if (role !== undefined && required.includes(role)) {
+    if (role !== undefined && satisfies(role, requiredRoles, requiredPermissions)) {
       return true;
     }
 
-    const projectScoped = this.reflector.getAllAndOverride<boolean>(PROJECT_SCOPED_KEY, [
-      executionContext.getHandler(),
-      executionContext.getClass(),
-    ]);
+    const projectScoped = this.reflector.getAllAndOverride<boolean>(PROJECT_SCOPED_KEY, targets);
 
-    // `role === undefined` means the organization guard did not run, and no
-    // grant may compensate for that: failing closed is the only safe answer.
     if (
       projectScoped === true &&
       role !== undefined &&
-      (await this.access.mayHoldGrantFor(required))
+      (await this.access.mayHoldGrantFor(requiredRoles, requiredPermissions))
     ) {
       return true;
     }
 
     throw new ForbiddenError('Your role does not allow this action');
   }
+}
+
+function satisfies(
+  role: OrganizationRole,
+  roles: readonly OrganizationRole[],
+  permissions: readonly Permission[],
+): boolean {
+  if (roles.includes(role)) {
+    return true;
+  }
+  if (permissions.length === 0) {
+    return false;
+  }
+  const defaults = ROLE_PERMISSIONS[role];
+  return permissions.every((permission) => defaults.includes(permission));
 }

@@ -1,6 +1,12 @@
 import { Module } from '@nestjs/common';
 import { OrganizationsModule } from '../organizations/organizations.module';
+import { PermissionOverridesRepository } from './permission-overrides.repository';
 import { ProjectAccessService } from './project-access.service';
+import {
+  PermissionCatalogController,
+  ProjectPermissionsController,
+} from './project-permissions.controller';
+import { ProjectPermissionsService } from './project-permissions.service';
 import { ProjectMembersController } from './project-members.controller';
 import { ProjectMembersRepository } from './project-members.repository';
 import { ProjectMembersService } from './project-members.service';
@@ -14,13 +20,20 @@ import { ProjectsService } from './projects.service';
   // against. The dependency stays one-directional — organizations know nothing
   // about projects.
   imports: [OrganizationsModule],
-  controllers: [ProjectsController, ProjectMembersController],
+  controllers: [
+    ProjectsController,
+    ProjectMembersController,
+    ProjectPermissionsController,
+    PermissionCatalogController,
+  ],
   providers: [
     ProjectsService,
     ProjectsRepository,
     ProjectAccessService,
     ProjectMembersService,
     ProjectMembersRepository,
+    PermissionOverridesRepository,
+    ProjectPermissionsService,
   ],
   // Exported because later modules (requirements, suites, runs) need the
   // repository to reserve human-readable keys inside their own transactions,

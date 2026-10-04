@@ -10,6 +10,7 @@ import {
   UpdateOrganizationInput,
 } from '@qa-flow-hub/shared';
 import { ConflictError, DuplicateResourceError, ForbiddenError, NotFoundError } from '../../errors';
+import { TenantContextService } from '../../database/tenant-context.service';
 import { AuditService } from '../audit/audit.service';
 import { MemberWithUser, OrganizationMembersRepository } from './organization-members.repository';
 import { OrganizationsRepository } from './organizations.repository';
@@ -27,6 +28,7 @@ export class OrganizationsService {
     private readonly organizations: OrganizationsRepository,
     private readonly members: OrganizationMembersRepository,
     private readonly audit: AuditService,
+    private readonly tenant: TenantContextService,
   ) {}
 
   /**
@@ -43,14 +45,18 @@ export class OrganizationsService {
       userId,
     );
 
-    await this.audit.record({
-      action: AuditAction.create,
-      entityType: 'Organization',
-      entityId: organization.id,
-      summary: `Created the organization ${organization.name}`,
-      organizationId: organization.id,
-      changes: { name: organization.name, slug: organization.slug },
-    });
+    // The new tenant is announced for the audit row: no header names it yet,
+    // and its policy refuses a tenant row written from nowhere.
+    await this.tenant.runForOrganization(organization.id, () =>
+      this.audit.record({
+        action: AuditAction.create,
+        entityType: 'Organization',
+        entityId: organization.id,
+        summary: `Created the organization ${organization.name}`,
+        organizationId: organization.id,
+        changes: { name: organization.name, slug: organization.slug },
+      }),
+    );
 
     return toOrganizationView(organization);
   }
@@ -203,10 +209,7 @@ export class OrganizationsService {
     });
   }
 
-  private async findMemberView(
-    organizationId: string,
-    userId: string,
-  ): Promise<MemberView | null> {
+  private async findMemberView(organizationId: string, userId: string): Promise<MemberView | null> {
     const member = await this.members.findWithUser(organizationId, userId);
     return member === null ? null : toMemberView(member);
   }

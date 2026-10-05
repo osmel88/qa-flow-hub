@@ -32,6 +32,7 @@ export class TraceabilityController {
     return this.traceability.createLink(body, user.userId);
   }
 
+  @RequirePermission('traceability.read')
   @Get('links')
   @ApiOperation({ summary: 'Every link touching an entity, in either direction' })
   listLinks(@Query(zodQuery(listTraceLinksQuerySchema)) query: ListTraceLinksQuery) {
@@ -46,6 +47,7 @@ export class TraceabilityController {
     await this.traceability.removeLink(id);
   }
 
+  @RequirePermission('traceability.read')
   @Get('matrix')
   @ApiOperation({ summary: 'Requirement coverage matrix for a project' })
   matrix(@Query(zodQuery(traceabilityMatrixQuerySchema)) query: TraceabilityMatrixQuery) {

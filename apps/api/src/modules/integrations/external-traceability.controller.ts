@@ -8,6 +8,7 @@ import {
 } from '@qa-flow-hub/shared';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ExternalTraceabilityService } from './external-traceability.service';
 
@@ -28,6 +29,7 @@ export class ExternalTraceabilityController {
   constructor(private readonly traceability: ExternalTraceabilityService) {}
 
   @ProjectScoped()
+  @RequirePermission('integrations.read')
   @Get()
   @ApiOperation({ summary: 'External references of a project with their derived sync status' })
   list(@Query(zodQuery(externalTraceabilityQuerySchema)) query: ExternalTraceabilityQuery) {

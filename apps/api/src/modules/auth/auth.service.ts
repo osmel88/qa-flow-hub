@@ -163,6 +163,17 @@ export class AuthService {
       userAgent: this.context.get()?.userAgent,
     });
 
+    // Lost a race against another refresh of the same token (two tabs, a
+    // retried request). The winner's successor is the session now, so only
+    // this request fails; presenting the consumed token again afterwards is a
+    // replay and goes through the reuse branch above.
+    if (next === null) {
+      this.logger.warn(
+        `Concurrent refresh lost the race: user=${session.userId} family=${session.familyId}`,
+      );
+      throw new UnauthenticatedError('The refresh token was already used by a concurrent request');
+    }
+
     return {
       accessToken: this.tokens.signAccessToken({ sub: user.id, sid: next.id, email: user.email }),
       refreshToken: issued.token,

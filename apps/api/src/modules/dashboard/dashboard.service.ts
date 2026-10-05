@@ -8,6 +8,7 @@ import {
   Paginated,
 } from '@qa-flow-hub/shared';
 import { NotFoundError } from '../../errors';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { DashboardRepository } from './dashboard.repository';
 
@@ -16,17 +17,31 @@ export class DashboardService {
   constructor(
     private readonly dashboard: DashboardRepository,
     private readonly projects: ProjectsRepository,
+    private readonly access: ProjectAccessService,
   ) {}
 
   /**
    * Eight aggregate queries in parallel. None of them loads rows to count them,
    * and none of them runs per project or per requirement.
    */
-  async summary(query: DashboardQuery): Promise<DashboardSummary> {
-    if (query.projectId !== undefined && (await this.projects.findById(query.projectId)) === null) {
-      throw new NotFoundError('Project');
+  /**
+   * One project after its own access check, or every project where the caller
+   * holds `analytics.read` — a revoked project contributes nothing.
+   */
+  private async projectScope(projectId: string | undefined): Promise<string[]> {
+    if (projectId !== undefined) {
+      const project = await this.projects.findById(projectId);
+      if (project === null) {
+        throw new NotFoundError('Project');
+      }
+      await this.access.assertRouteAccess(project.id);
+      return [project.id];
     }
-    const projectId = query.projectId;
+    return this.access.projectsAllowing('analytics.read', await this.dashboard.projectIds());
+  }
+
+  async summary(query: DashboardQuery): Promise<DashboardSummary> {
+    const projectId = await this.projectScope(query.projectId);
 
     const [
       activeProjects,
@@ -40,8 +55,8 @@ export class DashboardService {
       requirementCount,
       coveredCount,
     ] = await Promise.all([
-      this.dashboard.countProjects(false),
-      this.dashboard.countProjects(true),
+      this.dashboard.countProjects(false, projectId),
+      this.dashboard.countProjects(true, projectId),
       this.dashboard.requirementsByStatus(projectId),
       this.dashboard.testCasesByStatus(projectId),
       this.dashboard.runsByStatus(projectId),

@@ -5,6 +5,7 @@ import { TenantContextService } from '../../database/tenant-context.service';
 import { ForbiddenError } from '../../errors';
 import { PermissionOverridesRepository } from './permission-overrides.repository';
 import { ProjectMembersRepository } from './project-members.repository';
+import { ProjectsRepository } from './projects.repository';
 
 /**
  * Answers "what may this person do *in this project*".
@@ -43,7 +44,24 @@ export class ProjectAccessService {
     private readonly grants: ProjectMembersRepository,
     private readonly overrides: PermissionOverridesRepository,
     private readonly tenant: TenantContextService,
+    private readonly projects: ProjectsRepository,
   ) {}
+
+  /**
+   * The check for routes that filter a collection by a `projectId` taken from
+   * the query string. A project of this organization goes through the route's
+   * own project decision; an id that names nothing here (another tenant's
+   * project, a deleted one, garbage) is decided too — the tenant-scoped query
+   * that follows can only come back empty, exactly as before.
+   */
+  async authorizeProjectScope(projectId: string): Promise<void> {
+    const project = await this.projects.findById(projectId);
+    if (project === null) {
+      this.tenant.markProjectAccessChecked();
+      return;
+    }
+    await this.assertRouteAccess(project.id);
+  }
 
   /**
    * Could *any* project let this caller through a route that requires `roles`
@@ -135,6 +153,7 @@ export class ProjectAccessService {
    */
   async projectsAllowing(permission: Permission, projectIds: readonly string[]): Promise<string[]> {
     const organizationRole = this.tenant.requireRole();
+    this.tenant.markProjectAccessChecked();
     if (organizationRole === OrganizationRole.organization_owner || projectIds.length === 0) {
       return [...projectIds];
     }
@@ -172,6 +191,7 @@ export class ProjectAccessService {
     if (!(await this.hasPermission(projectId, permission))) {
       throw new ForbiddenError(`You need ${permission} in this project for this action`);
     }
+    this.tenant.markProjectAccessChecked();
   }
 
   /**
@@ -185,15 +205,17 @@ export class ProjectAccessService {
     const requiredPermissions = this.tenant.requiredPermissions;
     const role = await this.effectiveRole(projectId);
 
-    if (requiredRoles.length === 0 && requiredPermissions.length === 0) {
-      return role;
-    }
-    if (requiredRoles.includes(role)) {
+    if (
+      requiredRoles.includes(role) ||
+      (requiredRoles.length === 0 && requiredPermissions.length === 0)
+    ) {
+      this.tenant.markProjectAccessChecked();
       return role;
     }
     if (requiredPermissions.length > 0) {
       const held = await this.effectivePermissions(projectId);
       if (requiredPermissions.every((permission) => held.has(permission))) {
+        this.tenant.markProjectAccessChecked();
         return role;
       }
     }

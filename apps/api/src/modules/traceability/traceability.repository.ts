@@ -51,6 +51,9 @@ export class TraceabilityRepository extends TenantAwareRepository {
       where: this.scope({
         testCaseId: { in: testCaseIds },
         latestStatus: { not: TestResultStatus.untested },
+        // A deleted run is gone everywhere else; its verdicts must not decide
+        // whether a requirement is verified either.
+        testRun: { deletedAt: null },
       }),
       select: { testCaseId: true, latestStatus: true, updatedAt: true },
       orderBy: { updatedAt: 'asc' },

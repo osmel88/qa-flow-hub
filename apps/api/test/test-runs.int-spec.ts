@@ -186,7 +186,12 @@ describe('test runs', () => {
       const [runCase] = await casesOf(run.json().id);
       expect(runCase.snapshot.title).toBe('Pay with a valid card');
       expect(runCase.snapshot.steps).toEqual([
-        { position: 1, action: 'Enter the card number', expectedResult: 'The form accepts it' },
+        {
+          position: 1,
+          action: 'Enter the card number',
+          expectedResult: 'The form accepts it',
+          data: null,
+        },
       ]);
       expect(runCase.caseVersion).toBe(1);
     });

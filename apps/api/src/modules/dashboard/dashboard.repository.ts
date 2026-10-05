@@ -39,28 +39,38 @@ export class DashboardRepository extends TenantAwareRepository {
     super(database, tenant);
   }
 
-  countProjects(archived: boolean): Promise<number> {
+  /** Every live project of the organization, active or archived. */
+  async projectIds(): Promise<string[]> {
+    const rows = await this.prisma.project.findMany({
+      where: this.active({}),
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
+  countProjects(archived: boolean, projectIds: readonly string[]): Promise<number> {
     return this.prisma.project.count({
       where: this.active({
+        id: { in: [...projectIds] },
         status: archived ? ProjectStatus.archived : ProjectStatus.active,
       }),
     });
   }
 
-  async requirementsByStatus(projectId?: string): Promise<GroupedCount[]> {
+  async requirementsByStatus(projectIds: readonly string[]): Promise<GroupedCount[]> {
     const rows = await this.prisma.requirement.groupBy({
       by: ['status'],
-      where: this.active(projectId === undefined ? {} : { projectId }),
+      where: this.active({ projectId: { in: [...projectIds] } }),
       _count: { _all: true },
     });
     return rows.map((row) => ({ key: row.status, count: row._count._all }));
   }
 
-  async testCasesByStatus(projectId?: string): Promise<GroupedCount[]> {
+  async testCasesByStatus(projectIds: readonly string[]): Promise<GroupedCount[]> {
     const rows = await this.prisma.testCase.groupBy({
       by: ['status'],
       where: this.active({
-        ...(projectId === undefined ? {} : { projectId }),
+        projectId: { in: [...projectIds] },
         archivedAt: null,
       }),
       _count: { _all: true },
@@ -68,18 +78,18 @@ export class DashboardRepository extends TenantAwareRepository {
     return rows.map((row) => ({ key: row.status, count: row._count._all }));
   }
 
-  async runsByStatus(projectId?: string): Promise<GroupedCount[]> {
+  async runsByStatus(projectIds: readonly string[]): Promise<GroupedCount[]> {
     const rows = await this.prisma.testRun.groupBy({
       by: ['status'],
-      where: this.active(projectId === undefined ? {} : { projectId }),
+      where: this.active({ projectId: { in: [...projectIds] } }),
       _count: { _all: true },
     });
     return rows.map((row) => ({ key: row.status, count: row._count._all }));
   }
 
-  recentRuns(projectId?: string): Promise<TestRun[]> {
+  recentRuns(projectIds: readonly string[]): Promise<TestRun[]> {
     return this.prisma.testRun.findMany({
-      where: this.active(projectId === undefined ? {} : { projectId }),
+      where: this.active({ projectId: { in: [...projectIds] } }),
       orderBy: [{ startedAt: 'desc' }, { createdAt: 'desc' }],
       take: 5,
     });
@@ -89,12 +99,10 @@ export class DashboardRepository extends TenantAwareRepository {
    * Current status of every case in every run: the projection on TestRunCase,
    * not a scan of the result history.
    */
-  async resultsByStatus(projectId?: string): Promise<GroupedCount[]> {
+  async resultsByStatus(projectIds: readonly string[]): Promise<GroupedCount[]> {
     const rows = await this.prisma.testRunCase.groupBy({
       by: ['latestStatus'],
-      where: this.scope(
-        projectId === undefined ? {} : { testRun: { projectId, deletedAt: null } },
-      ),
+      where: this.scope({ testRun: { projectId: { in: [...projectIds] }, deletedAt: null } }),
       _count: { _all: true },
     });
     return rows.map((row) => ({ key: row.latestStatus, count: row._count._all }));
@@ -130,11 +138,11 @@ export class DashboardRepository extends TenantAwareRepository {
     );
   }
 
-  async openDefectsBySeverity(projectId?: string): Promise<GroupedCount[]> {
+  async openDefectsBySeverity(projectIds: readonly string[]): Promise<GroupedCount[]> {
     const rows = await this.prisma.defect.groupBy({
       by: ['severity'],
       where: this.active({
-        ...(projectId === undefined ? {} : { projectId }),
+        projectId: { in: [...projectIds] },
         status: {
           in: [
             DefectStatus.open,
@@ -150,20 +158,18 @@ export class DashboardRepository extends TenantAwareRepository {
     return rows.map((row) => ({ key: row.severity, count: row._count._all }));
   }
 
-  countRequirements(projectId?: string): Promise<number> {
+  countRequirements(projectIds: readonly string[]): Promise<number> {
     return this.prisma.requirement.count({
       where: this.active({
-        ...(projectId === undefined ? {} : { projectId }),
+        projectId: { in: [...projectIds] },
         status: { not: RequirementStatus.obsolete },
       }),
     });
   }
 
   /** Active, non-obsolete requirements with at least one requirement → test case link, in one statement. */
-  async countCoveredRequirements(projectId?: string): Promise<number> {
+  async countCoveredRequirements(projectIds: readonly string[]): Promise<number> {
     const organizationId = this.organizationId;
-    const projectFilter =
-      projectId === undefined ? Prisma.empty : Prisma.sql`AND q."projectId" = ${projectId}`;
     const rows = await this.database.runInTransaction(
       (tx) => tx.$queryRaw<Array<{ covered: number }>>`
         SELECT COUNT(*)::int AS covered
@@ -171,12 +177,17 @@ export class DashboardRepository extends TenantAwareRepository {
         WHERE q."organizationId" = ${organizationId}
           AND q."deletedAt" IS NULL
           AND q.status <> 'obsolete'
-          ${projectFilter}
+          AND q."projectId" = ANY(${[...projectIds]}::text[])
           AND EXISTS (
             SELECT 1 FROM traceability_links l
             WHERE l."organizationId" = ${organizationId}
               AND l."sourceType" = 'requirement' AND l."targetType" = 'test_case'
-              AND l."sourceId" = q.id)`,
+              AND l."sourceId" = q.id
+              AND EXISTS (
+                SELECT 1 FROM test_cases t
+                WHERE t.id = l."targetId" AND t."organizationId" = ${organizationId}
+                  AND t."projectId" = q."projectId"
+                  AND t."deletedAt" IS NULL AND t."archivedAt" IS NULL))`,
     );
     return rows[0]?.covered ?? 0;
   }

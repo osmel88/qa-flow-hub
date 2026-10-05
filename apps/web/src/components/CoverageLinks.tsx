@@ -32,24 +32,24 @@ export function CoverageLinks({
   });
 
   const cases = useQuery({
-    queryKey: ['cases', projectId, null],
-    queryFn: () => testDesignApi.cases({ projectId }),
+    queryKey: ['cases', projectId, 'all'],
+    queryFn: () => testDesignApi.allCases({ projectId }),
     enabled: side === 'requirement',
   });
 
   const requirements = useQuery({
-    queryKey: ['requirements', projectId, '', ''],
-    queryFn: () => requirementsApi.list({ projectId }),
+    queryKey: ['requirements', projectId, 'all'],
+    queryFn: () => requirementsApi.listAll({ projectId }),
     enabled: side === 'test_case',
   });
 
   const counterparts =
     side === 'requirement'
-      ? (cases.data?.data ?? []).map((testCase) => ({
+      ? (cases.data ?? []).map((testCase) => ({
           id: testCase.id,
           label: `${testCase.key} — ${testCase.title}`,
         }))
-      : (requirements.data?.data ?? []).map((requirement) => ({
+      : (requirements.data ?? []).map((requirement) => ({
           id: requirement.id,
           label: `${requirement.key} — ${requirement.title}`,
         }));

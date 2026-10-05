@@ -257,7 +257,12 @@ export class AnalyticsRepository extends TenantAwareRepository {
       SELECT 1 FROM traceability_links l
       WHERE l."organizationId" = ${this.organizationId}
         AND l."sourceType" = 'requirement' AND l."targetType" = 'test_case'
-        AND l."sourceId" = q.id AND l."createdAt" < ${at})`;
+        AND l."sourceId" = q.id AND l."createdAt" < ${at}
+        AND EXISTS (
+          SELECT 1 FROM test_cases t
+          WHERE t.id = l."targetId" AND t."organizationId" = ${this.organizationId}
+            AND t."projectId" = q."projectId"
+            AND t."deletedAt" IS NULL AND t."archivedAt" IS NULL))`;
   }
 
   private requirementsInScope(projectIds: readonly string[], at: Date): Prisma.Sql {
@@ -421,7 +426,12 @@ export class AnalyticsRepository extends TenantAwareRepository {
       SELECT MIN(l."createdAt") FROM traceability_links l
       WHERE l."organizationId" = ${org}
         AND l."sourceType" = 'requirement' AND l."targetType" = 'test_case'
-        AND l."sourceId" = q.id)`;
+        AND l."sourceId" = q.id
+        AND EXISTS (
+          SELECT 1 FROM test_cases t
+          WHERE t.id = l."targetId" AND t."organizationId" = ${org}
+            AND t."projectId" = q."projectId"
+            AND t."deletedAt" IS NULL AND t."archivedAt" IS NULL))`;
     const requirementsIn = this.requirementsInScope(ids, period.to);
     const requirementsAdded = await tx.$queryRaw<BucketedCount[]>`
       SELECT ${truncate(bucket, Prisma.sql`q."createdAt"`)} AS bucket, COUNT(*)::int AS count

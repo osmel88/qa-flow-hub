@@ -280,7 +280,7 @@ export function IntegrationsPage(): React.JSX.Element {
   const canManage = role === 'organization_owner' || role === 'organization_admin';
 
   const integrations = useQuery({
-    queryKey: ['integrations'],
+    queryKey: ['integrations', activeOrganization?.id],
     queryFn: () => integrationsApi.list(),
   });
 

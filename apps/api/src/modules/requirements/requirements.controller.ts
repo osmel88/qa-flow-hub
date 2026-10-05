@@ -34,18 +34,21 @@ export class RequirementsController {
     return this.requirements.create(body, user.userId);
   }
 
+  @RequirePermission('requirements.read')
   @Get()
   @ApiOperation({ summary: 'List a project’s requirements with filters' })
   list(@Query(zodQuery(listRequirementsQuerySchema)) query: ListRequirementsQuery) {
     return this.requirements.list(query);
   }
 
+  @RequirePermission('requirements.read')
   @Get(':id')
   @ApiOperation({ summary: 'Requirement detail' })
   get(@Param('id') id: string) {
     return this.requirements.get(id);
   }
 
+  @RequirePermission('requirements.read')
   @Get(':id/history')
   @ApiOperation({ summary: 'Every version of a requirement, newest first' })
   history(@Param('id') id: string) {

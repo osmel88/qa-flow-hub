@@ -103,7 +103,7 @@ export function AppLayout(): React.JSX.Element {
         </nav>
 
         <main className="shell__main" id="main">
-          <Outlet />
+          <Outlet key={activeOrganizationId ?? 'none'} />
         </main>
       </div>
     </div>

@@ -93,11 +93,11 @@ export function NotificationsPage(): React.JSX.Element {
   const [status, setStatus] = useState<NotificationStatus | ''>('');
 
   const provider = useQuery({
-    queryKey: ['notifications', 'provider'],
+    queryKey: ['notifications', activeOrganization?.id, 'provider'],
     queryFn: () => notificationsApi.provider(),
   });
   const ledger = useQuery({
-    queryKey: ['notifications', 'list', scope, type, status],
+    queryKey: ['notifications', activeOrganization?.id, 'list', scope, type, status],
     staleTime: 0,
     refetchOnMount: 'always',
     queryFn: () =>

@@ -30,6 +30,7 @@ export class ProjectMembersController {
   constructor(private readonly members: ProjectMembersService) {}
 
   /** No `@Roles`: any member may see who works on a project. */
+  @RequirePermission('members.read')
   @Get()
   @ApiOperation({ summary: 'List the effective role of every member in a project' })
   list(

@@ -7,6 +7,7 @@ import {
   listAuditQuerySchema,
 } from '@qa-flow-hub/shared';
 import { zodQuery } from '../../common/pipes/zod-validation.pipe';
+import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { DashboardService } from './dashboard.service';
@@ -18,6 +19,7 @@ import { DashboardService } from './dashboard.service';
 export class DashboardController {
   constructor(private readonly dashboard: DashboardService) {}
 
+  @ProjectScoped()
   @RequirePermission('analytics.read')
   @Get('dashboard')
   @ApiOperation({ summary: 'Aggregated state of the organization or one project' })

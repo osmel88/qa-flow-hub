@@ -66,8 +66,49 @@ export class TraceabilityService {
     return toLinkView(link);
   }
 
+  /**
+   * The requested entity is authorized like any other project read; each link
+   * is then kept only if its *other* end still exists and sits in a project the
+   * caller may read traceability for, so a link never exposes another
+   * project's identifiers.
+   */
   async listLinks(query: ListTraceLinksQuery): Promise<TraceLinkView[]> {
-    return (await this.links.linksFor(query.entityType, query.entityId)).map(toLinkView);
+    const located = await this.reads.locateEntity(query.entityType, query.entityId);
+    if (located === null) {
+      throw new NotFoundError('Linked entity');
+    }
+    if (located.projectId !== null) {
+      await this.access.assertRouteAccess(located.projectId);
+    }
+
+    const links = await this.links.linksFor(query.entityType, query.entityId);
+    const others = await Promise.all(
+      links.map((link) => {
+        const isSource = link.sourceType === query.entityType && link.sourceId === query.entityId;
+        return isSource
+          ? this.reads.locateEntity(link.targetType, link.targetId)
+          : this.reads.locateEntity(link.sourceType, link.sourceId);
+      }),
+    );
+    const projectIds = [
+      ...new Set(
+        others.flatMap((other) =>
+          other === null || other.projectId === null ? [] : [other.projectId],
+        ),
+      ),
+    ];
+    const allowed = new Set(await this.access.projectsAllowing('traceability.read', projectIds));
+
+    return links
+      .filter((_, index) => {
+        const other = others[index];
+        return (
+          other !== undefined &&
+          other !== null &&
+          (other.projectId === null || allowed.has(other.projectId))
+        );
+      })
+      .map(toLinkView);
   }
 
   async removeLink(id: string): Promise<void> {

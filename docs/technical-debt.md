@@ -35,7 +35,7 @@ a project forgets that it once shipped without Row Level Security.
 | 20  | Refresh token body transport                            | open                                    | scoped API keys                 |
 | 21  | Project roles not enforced                              | **resolved**                            | —                               |
 | 22  | Project roles do not restrict reading                   | open                                    | a customer needing it           |
-| 23  | Roles guard fails open on project routes                | open                                    | response interceptor            |
+| 23  | Roles guard fails open on project routes                | **resolved** (PR #1 security round)     | —                               |
 | 24  | Three dependency advisories                             | open, unreachable                       | upstream peer ranges            |
 | 25  | Intermittent logout on full page loads                  | open, not reproducible                  | instrumentation                 |
 | 26  | Destructive actions that only exist in the API          | open, partly closed                     | product decision per entity     |
@@ -367,8 +367,21 @@ customer assumes when they set somebody to `viewer` on one project only.
 - **After S2-F9:** the new organization analytics (`/dashboard/organization`)
   aggregates only projects where the caller holds `analytics.read`. The project
   list and the MVP `GET /dashboard` without `projectId` still do not filter.
+- **After the PR #1 security round:** every list that takes a `projectId`
+  (requirements, suites, sections, cases, runs, defects, links) now authorizes
+  that project with the effective `*.read` permission before querying, and a
+  missing `projectId` is rejected. The MVP `GET /dashboard` aggregates only
+  projects where the caller holds `analytics.read`. What remains is the
+  project list itself: every member still sees the names of every project in
+  the organization (not their content).
 
-## 23. The roles guard fails open on project-scoped routes
+## 23. The roles guard fails open on project-scoped routes — resolved
+
+**Resolved in the PR #1 security round:** `ProjectScopeContractInterceptor`
+(global) fails a `@ProjectScoped` handler with 403 when it completes without a
+project access decision (`ProjectAccessService.assertRouteAccess`,
+`authorizeProjectScope` or `projectsAllowing`). The convention below is now a
+runtime check; the original description is kept for context.
 
 On a route marked `@ProjectScoped`, a caller whose organization role is
 insufficient still passes the guard when _any_ grant they hold would allow the
@@ -430,6 +443,13 @@ frontend toolchain; it never ships in a bundle and never sees a request.
   the severity badge.
 
 ## 25. Intermittent logout on full page loads
+
+> **PR #1 security round:** a confirmed cause of spurious logouts was fixed —
+> two concurrent refreshes of the same token both rotated it, and the loser's
+> reuse detection revoked the winner's family. `SessionsRepository.rotate()`
+> now consumes the predecessor conditionally (`revokedAt IS NULL`); the loser
+> gets a plain 401 and the winner's session survives. A later replay of the
+> consumed token still revokes the family.
 
 During the manual end-to-end session the client logged itself out twice while
 navigating by typing a URL in the address bar with a valid session, and once on

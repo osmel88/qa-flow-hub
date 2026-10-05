@@ -77,8 +77,11 @@ export class TestDesignService {
     return toSuiteView(suite, 0);
   }
 
-  async listSuites(projectId: string): Promise<SuiteView[]> {
-    const suites = await this.repository.listSuites(projectId);
+  async listSuites(projectId: string | undefined): Promise<SuiteView[]> {
+    if (projectId === undefined || projectId === '') {
+      throw new ValidationError('projectId is required');
+    }
+    const suites = await this.repository.listSuites(await this.authorizedProject(projectId));
     return suites.map((suite) => toSuiteView(suite, suite._count.testCases));
   }
 
@@ -292,8 +295,9 @@ export class TestDesignService {
   }
 
   async listCases(query: ListTestCasesQuery): Promise<Paginated<TestCaseView>> {
+    const projectId = await this.authorizedProject(query.projectId);
     const page = await this.repository.listCases(query, {
-      projectId: query.projectId,
+      projectId,
       includeArchived: query.includeArchived === 'true',
       ...(query.suiteId === undefined ? {} : { suiteId: query.suiteId }),
       ...(query.sectionId === undefined ? {} : { sectionId: query.sectionId }),
@@ -309,6 +313,7 @@ export class TestDesignService {
   }
 
   async getCase(id: string): Promise<TestCaseDetailView> {
+    await this.requireCase(id);
     return this.detail(id);
   }
 
@@ -405,6 +410,7 @@ export class TestDesignService {
     if (source === null) {
       throw new NotFoundError('Test case');
     }
+    await this.access.assertRouteAccess(source.projectId);
 
     const sectionId =
       input.sectionId === undefined
@@ -524,6 +530,11 @@ export class TestDesignService {
     if (testCase.archivedAt !== null) {
       throw new ConflictError('An archived test case is read-only. Restore it first.');
     }
+  }
+
+  private async authorizedProject(projectId: string): Promise<string> {
+    await this.access.authorizeProjectScope(projectId);
+    return projectId;
   }
 
   private async requireSuite(id: string): Promise<TestSuite> {

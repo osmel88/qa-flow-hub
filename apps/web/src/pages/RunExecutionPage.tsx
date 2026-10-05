@@ -13,6 +13,7 @@ import { ApiError } from '../api/http-client';
 import { AttachmentsPanel } from '../components/AttachmentsPanel';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
+import { invalidateAfterResult } from './run-execution-cache';
 import {
   GitHubResultOrigin,
   GitHubRunPanel,
@@ -41,12 +42,7 @@ export function RunExecutionPage(): React.JSX.Element {
     queryFn: () => testRunsApi.cases(runId),
   });
 
-  const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['run', runId] });
-    await queryClient.invalidateQueries({ queryKey: ['run-cases', runId] });
-    await queryClient.invalidateQueries({ queryKey: ['run-case-results', runId] });
-    await queryClient.invalidateQueries({ queryKey: ['runs'] });
-  };
+  const refresh = () => invalidateAfterResult(queryClient, runId);
 
   const record = useMutation({
     mutationFn: (input: { runCase: RunCaseView; status: RecordableResultStatus }) =>
@@ -231,6 +227,7 @@ export function RunExecutionPage(): React.JSX.Element {
                       {runCase.snapshot.steps.map((step) => (
                         <li key={step.position}>
                           {step.action}
+                          {step.data !== null && <div className="muted">Data: {step.data}</div>}
                           {step.expectedResult !== null && (
                             <div className="muted">Expected: {step.expectedResult}</div>
                           )}

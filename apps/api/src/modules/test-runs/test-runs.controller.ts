@@ -40,12 +40,14 @@ export class TestRunsController {
     return this.runs.create(body, user.userId);
   }
 
+  @RequirePermission('testruns.read')
   @Get()
   @ApiOperation({ summary: 'List a project’s runs with their progress' })
   list(@Query(zodQuery(listTestRunsQuerySchema)) query: ListTestRunsQuery) {
     return this.runs.list(query);
   }
 
+  @RequirePermission('testruns.read')
   @Get(':id')
   @ApiOperation({ summary: 'Get a run with its progress breakdown' })
   get(@Param('id') id: string) {
@@ -101,6 +103,7 @@ export class TestRunsController {
     return this.runs.addCases(id, body);
   }
 
+  @RequirePermission('testruns.read')
   @Get(':id/cases')
   @ApiOperation({ summary: 'List the cases in a run and their latest status' })
   listCases(
@@ -140,6 +143,7 @@ export class TestRunsController {
     return this.runs.recordResult(id, runCaseId, body, user.userId, user.role);
   }
 
+  @RequirePermission('testruns.read')
   @Get(':id/cases/:runCaseId/results')
   @ApiOperation({ summary: 'The full history of attempts, newest first' })
   listResults(@Param('id') id: string, @Param('runCaseId') runCaseId: string) {

@@ -93,9 +93,12 @@ export function MembersPage(): React.JSX.Element {
       ? []
       : invitableRoleSchema.options.filter((role) => outranksOrEquals(actorRole, role));
 
-  const members = useQuery({ queryKey: ['members'], queryFn: () => organizationsApi.members() });
+  const members = useQuery({
+    queryKey: ['members', activeOrganization?.id],
+    queryFn: () => organizationsApi.members(),
+  });
   const invitations = useQuery({
-    queryKey: ['invitations'],
+    queryKey: ['invitations', activeOrganization?.id],
     queryFn: () => organizationsApi.invitations(),
     enabled: canManage,
   });

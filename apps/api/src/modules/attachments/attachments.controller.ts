@@ -74,18 +74,21 @@ export class AttachmentsController {
     });
   }
 
+  @RequirePermission('attachments.read')
   @Get()
   @ApiOperation({ summary: 'List the evidence attached to an entity' })
   list(@Query(zodQuery(listAttachmentsQuerySchema)) query: ListAttachmentsQuery) {
     return this.attachments.list(query.entityType, query.entityId);
   }
 
+  @RequirePermission('attachments.read')
   @Get(':id')
   @ApiOperation({ summary: 'Attachment metadata' })
   get(@Param('id') id: string) {
     return this.attachments.get(id);
   }
 
+  @RequirePermission('attachments.read')
   @Get(':id/content')
   @ApiOperation({ summary: 'Download the bytes (authenticated; never a static path)' })
   async content(

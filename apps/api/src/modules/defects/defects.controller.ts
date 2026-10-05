@@ -34,12 +34,14 @@ export class DefectsController {
     return this.defects.create(body, user.userId);
   }
 
+  @RequirePermission('defects.read')
   @Get()
   @ApiOperation({ summary: 'List defects with filters' })
   list(@Query(zodQuery(listDefectsQuerySchema)) query: ListDefectsQuery) {
     return this.defects.list(query);
   }
 
+  @RequirePermission('defects.read')
   @Get(':id')
   @ApiOperation({ summary: 'Get a defect' })
   get(@Param('id') id: string) {

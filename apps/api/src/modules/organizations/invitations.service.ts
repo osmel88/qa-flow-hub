@@ -267,6 +267,9 @@ export class InvitationsService {
             tx,
           );
         } else {
+          // A returning member starts from the invitation's role alone, never
+          // from project access left over from a previous membership.
+          await this.members.purgeProjectAccess(organization.id, userId, tx);
           await this.members.reactivate(organization.id, userId, invitation.role, tx);
         }
 

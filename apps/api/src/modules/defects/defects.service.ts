@@ -63,7 +63,9 @@ export class DefectsService {
     let origin: { testResultId: string; testRunId: string; testCaseId: string } | null = null;
     if (input.testResultId !== undefined && input.testResultId !== null) {
       const result = await this.defects.findResultOrigin(input.testResultId);
-      if (result === null) {
+      // A result of another project is reported exactly like a missing one: the
+      // defect's project is the only scope this request was authorized for.
+      if (result === null || result.projectId !== project.id) {
         throw new NotFoundError('Test result');
       }
       if (result.status !== 'failed' && result.status !== 'blocked') {
@@ -149,8 +151,9 @@ export class DefectsService {
   }
 
   async list(query: ListDefectsQuery): Promise<Paginated<DefectView>> {
+    const projectId = await this.authorizedProject(query.projectId);
     const page = await this.defects.list(query, {
-      projectId: query.projectId,
+      projectId,
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.severity === undefined ? {} : { severity: query.severity }),
       ...(query.priority === undefined ? {} : { priority: query.priority }),
@@ -308,6 +311,11 @@ export class DefectsService {
     if (membership === null) {
       throw new ValidationError('The assignee is not a member of this organization');
     }
+  }
+
+  private async authorizedProject(projectId: string): Promise<string> {
+    await this.access.authorizeProjectScope(projectId);
+    return projectId;
   }
 
   private async require(id: string): Promise<Defect> {

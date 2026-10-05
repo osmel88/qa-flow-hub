@@ -56,6 +56,35 @@ afterEach(() => {
 });
 
 describe('CoverageLinks', () => {
+  it('offers cases that only appear on a later page', async () => {
+    const page = (number: number) => ({
+      data: [
+        number === 1
+          ? { id: 'case_1', key: 'WEB-C-1', title: 'Pay with a valid card' }
+          : { id: 'case_101', key: 'WEB-C-101', title: 'Refund an order' },
+      ],
+      meta: { total: 101, page: number, pageSize: 100, totalPages: 2 },
+    });
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = new URL(String(input), 'http://localhost');
+      if (url.pathname.endsWith('/traceability/links')) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      return new Response(JSON.stringify(page(Number(url.searchParams.get('page')))), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderScreen(<CoverageLinks side="requirement" entityId="req_1" projectId="proj_1" />);
+
+    const select = await screen.findByLabelText('Link a test case');
+    await waitFor(() => {
+      expect(select).toHaveTextContent('WEB-C-101');
+    });
+    expect(select).toHaveTextContent('WEB-C-1');
+  });
+
   it('links a requirement to a case and makes the matrix ask again', async () => {
     const fetchMock = stubApi([]);
     renderScreen(

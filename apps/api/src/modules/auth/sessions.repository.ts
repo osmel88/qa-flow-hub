@@ -64,8 +64,19 @@ export class SessionsRepository {
     previous: Session,
     refreshTokenHash: string,
     next: { expiresAt: Date; ipAddress?: string | undefined; userAgent?: string | undefined },
-  ): Promise<Session> {
+  ): Promise<Session | null> {
     return this.prisma.runInTransaction(async (tx) => {
+      // Consuming the predecessor is conditional and comes first: a concurrent
+      // rotation of the same token blocks on the row lock, re-reads it as
+      // revoked and gets zero rows, so one refresh token yields one successor.
+      const consumed = await tx.session.updateMany({
+        where: { id: previous.id, revokedAt: null },
+        data: { revokedAt: new Date(), revokedReason: 'rotated' },
+      });
+      if (consumed.count !== 1) {
+        return null;
+      }
+
       const created = await this.create(
         {
           userId: previous.userId,
@@ -80,7 +91,7 @@ export class SessionsRepository {
 
       await tx.session.update({
         where: { id: previous.id },
-        data: { replacedById: created.id, revokedAt: new Date(), revokedReason: 'rotated' },
+        data: { replacedById: created.id },
       });
 
       return created;

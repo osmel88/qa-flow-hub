@@ -47,20 +47,22 @@ export function ProjectProvider({ children }: { children: ReactNode }): React.JS
     );
   }, [projects, activeOrganizationId]);
 
-  const value = useMemo<ProjectContextValue>(
-    () => ({
+  const value = useMemo<ProjectContextValue>(() => {
+    // `selected` lags one render behind an organization switch; resolving it
+    // against the current organization's list means a stale id is never used.
+    const activeProject = projects.find((project) => project.id === selected) ?? null;
+    return {
       projects,
-      activeProjectId: selected,
-      activeProject: projects.find((project) => project.id === selected) ?? null,
+      activeProjectId: activeProject?.id ?? null,
+      activeProject,
       selectProject: (projectId) => {
         localStorage.setItem(`${STORAGE_KEY}.${activeOrganizationId ?? ''}`, projectId);
         setSelected(projectId);
       },
       isPending,
       error,
-    }),
-    [projects, selected, isPending, error, activeOrganizationId],
-  );
+    };
+  }, [projects, selected, isPending, error, activeOrganizationId]);
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }

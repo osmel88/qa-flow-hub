@@ -49,6 +49,7 @@ export class JiraSyncController {
   }
 
   @ProjectScoped()
+  @RequirePermission('integrations.read')
   @Get('references')
   @ApiOperation({ summary: 'Jira references of every requirement or defect in a project' })
   listReferences(

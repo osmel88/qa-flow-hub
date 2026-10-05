@@ -78,6 +78,7 @@ export class GitHubSyncController {
   }
 
   @ProjectScoped()
+  @RequirePermission('integrations.read')
   @Get('references')
   @ApiOperation({
     summary: 'GitHub references of every run in a project, or every result in a run',

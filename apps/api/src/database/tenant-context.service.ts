@@ -42,6 +42,12 @@ export interface RequestContext {
    * grant each time buys nothing: membership cannot change mid-request.
    */
   projectRoles?: Map<string, OrganizationRole>;
+  /**
+   * Set once the request passed a project-level authorization decision. The
+   * `@ProjectScoped` contract interceptor refuses to answer a route that
+   * declared requirements but never reached one.
+   */
+  projectAccessChecked?: boolean;
 }
 
 @Injectable()
@@ -158,6 +164,13 @@ export class TenantContextService {
     }
     store.projectPermissions ??= new Map();
     store.projectPermissions.set(projectId, permissions);
+  }
+
+  markProjectAccessChecked(): void {
+    const store = this.storage.getStore();
+    if (store !== undefined) {
+      store.projectAccessChecked = true;
+    }
   }
 
   cachedProjectRole(projectId: string): OrganizationRole | undefined {

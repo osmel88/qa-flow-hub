@@ -8,6 +8,7 @@ import { Badge, DataState } from '@qa-flow-hub/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { type AnalyticsWindow, analyticsApi } from '../api/endpoints';
+import { useAuth } from '../auth/auth-context';
 import { PageHeader } from '../components/PageHeader';
 import {
   BarList,
@@ -50,7 +51,8 @@ function ProjectAnalytics({
   projectId: string;
   window: AnalyticsWindow;
 }): React.JSX.Element {
-  const key = ['analytics', projectId, window] as const;
+  const { activeOrganizationId } = useAuth();
+  const key = ['analytics', activeOrganizationId, projectId, window] as const;
   const summary = useQuery({
     queryKey: [...key, 'summary'],
     queryFn: () => analyticsApi.summary(projectId, window),
@@ -339,9 +341,11 @@ function ProjectAnalytics({
 }
 
 function OrganizationAnalytics({ window }: { window: AnalyticsWindow }): React.JSX.Element {
+  const { activeOrganizationId, isRestoring } = useAuth();
   const { data, isPending, error } = useQuery({
-    queryKey: ['analytics', 'organization', window],
+    queryKey: ['analytics', activeOrganizationId, 'organization', window],
     queryFn: () => analyticsApi.organization(window),
+    enabled: !isRestoring && activeOrganizationId !== null,
   });
 
   return (

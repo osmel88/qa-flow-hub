@@ -152,6 +152,12 @@ const responses: Record<string, unknown> = {
   },
 };
 
+const auth = vi.hoisted(() => ({ activeOrganizationId: 'org_1', isRestoring: false }));
+
+vi.mock('../auth/auth-context', () => ({
+  useAuth: () => auth,
+}));
+
 vi.mock('../project/project-context', () => ({
   useProject: () => ({
     projects: [project],

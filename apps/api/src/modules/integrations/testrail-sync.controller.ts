@@ -60,6 +60,7 @@ export class TestRailSyncController {
   }
 
   @ProjectScoped()
+  @RequirePermission('integrations.read')
   @Get('references')
   @ApiOperation({
     summary:

@@ -142,13 +142,29 @@ export class OrganizationMembersRepository {
   /**
    * Removes a member. Soft delete, because audit entries, test results and
    * defect assignments all point at this person and must keep resolving.
+   * Every project grant and permission override they held here goes in the
+   * same transaction: access must never outlive the membership that justified
+   * it, nor come back with a later re-invitation.
    */
   async softDelete(organizationId: string, userId: string): Promise<boolean> {
-    const { count } = await this.prisma.organizationMember.updateMany({
-      where: { organizationId, userId, deletedAt: null },
-      data: { deletedAt: new Date() },
+    return this.prisma.runInTransaction(async (tx) => {
+      const { count } = await tx.organizationMember.updateMany({
+        where: { organizationId, userId, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      await this.purgeProjectAccess(organizationId, userId, tx);
+      return count > 0;
     });
-    return count > 0;
+  }
+
+  /** Every project grant and override a user holds in one organization. */
+  async purgeProjectAccess(
+    organizationId: string,
+    userId: string,
+    tx: PrismaTransaction,
+  ): Promise<void> {
+    await tx.projectPermissionOverride.deleteMany({ where: { organizationId, userId } });
+    await tx.projectMember.deleteMany({ where: { organizationId, userId } });
   }
 
   /**

@@ -100,8 +100,9 @@ export class TestRunsService {
   }
 
   async list(query: ListTestRunsQuery): Promise<Paginated<TestRunView>> {
+    const projectId = await this.authorizedProject(query.projectId);
     const page = await this.runs.list(query, {
-      projectId: query.projectId,
+      projectId,
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.milestone === undefined ? {} : { milestone: query.milestone }),
       ...(query.search === undefined ? {} : { search: query.search }),
@@ -461,6 +462,11 @@ export class TestRunsService {
     }
   }
 
+  private async authorizedProject(projectId: string): Promise<string> {
+    await this.access.authorizeProjectScope(projectId);
+    return projectId;
+  }
+
   private async require(id: string): Promise<TestRun> {
     const run = await this.runs.findById(id);
     if (run === null) {
@@ -500,6 +506,7 @@ function snapshotOf(testCase: TestCase & { steps: TestStep[] }): RunCaseSnapshot
       position: step.position,
       action: step.action,
       expectedResult: step.expectedResult,
+      data: step.data,
     })),
   };
 }
@@ -549,12 +556,17 @@ function toTestRunView(run: TestRun, progress: RunProgress): TestRunView {
 }
 
 function toRunCaseView(runCase: TestRunCase): RunCaseView {
+  const snapshot = runCase.caseSnapshot as unknown as RunCaseSnapshot;
   return {
     id: runCase.id,
     testRunId: runCase.testRunId,
     testCaseId: runCase.testCaseId,
     caseVersion: runCase.caseVersion,
-    snapshot: runCase.caseSnapshot as unknown as RunCaseSnapshot,
+    // Snapshots frozen before step data was captured carry no `data` key.
+    snapshot: {
+      ...snapshot,
+      steps: snapshot.steps.map((step) => ({ ...step, data: step.data ?? null })),
+    },
     assignedToId: runCase.assignedToId,
     latestStatus: runCase.latestStatus,
     position: runCase.position,

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { OrganizationsModule } from '../organizations/organizations.module';
@@ -10,6 +10,7 @@ import { CurrentUserContextHolder } from './decorators/current-user.decorator';
 import { ActiveOrganizationGuard } from './guards/active-organization.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
+import { ProjectScopeContractInterceptor } from './interceptors/project-scope-contract.interceptor';
 import { PasswordService } from './password.service';
 import { RefreshCookieService } from './refresh-cookie.service';
 import { SessionsRepository } from './sessions.repository';
@@ -39,6 +40,7 @@ import { UsersRepository } from './users.repository';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: ActiveOrganizationGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_INTERCEPTOR, useClass: ProjectScopeContractInterceptor },
   ],
   exports: [AuthService, PasswordService, TokenService, UsersRepository, SessionsRepository],
 })

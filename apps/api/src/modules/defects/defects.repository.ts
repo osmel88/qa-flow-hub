@@ -109,15 +109,17 @@ export class DefectsRepository extends TenantAwareRepository {
   async findResultOrigin(testResultId: string): Promise<{
     id: string;
     status: string;
+    projectId: string;
     testRunId: string;
     testCaseId: string;
   } | null> {
     const result = await this.prisma.testResult.findFirst({
-      where: this.scope({ id: testResultId }),
+      where: this.scope({ id: testResultId, testRun: { deletedAt: null } }),
       select: {
         id: true,
         status: true,
         testRunId: true,
+        testRun: { select: { projectId: true } },
         testRunCase: { select: { testCaseId: true } },
       },
     });
@@ -127,6 +129,7 @@ export class DefectsRepository extends TenantAwareRepository {
       : {
           id: result.id,
           status: result.status,
+          projectId: result.testRun.projectId,
           testRunId: result.testRunId,
           testCaseId: result.testRunCase.testCaseId,
         };

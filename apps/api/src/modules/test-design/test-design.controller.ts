@@ -43,9 +43,10 @@ export class TestDesignController {
     return this.design.createSuite(body);
   }
 
+  @RequirePermission('test_design.read')
   @Get('test-suites')
   @ApiOperation({ summary: 'List a project’s suites with their case counts' })
-  listSuites(@Query('projectId') projectId: string) {
+  listSuites(@Query('projectId') projectId: string | undefined) {
     return this.design.listSuites(projectId);
   }
 
@@ -73,6 +74,7 @@ export class TestDesignController {
     return this.design.createSection(body);
   }
 
+  @RequirePermission('test_design.read')
   @Get('test-suites/:id/sections')
   @ApiOperation({ summary: 'The section tree of a suite' })
   sectionTree(@Param('id') id: string) {
@@ -109,12 +111,14 @@ export class TestDesignController {
     return this.design.createCase(body, user.userId);
   }
 
+  @RequirePermission('test_design.read')
   @Get('test-cases')
   @ApiOperation({ summary: 'List test cases with filters' })
   listCases(@Query(zodQuery(listTestCasesQuerySchema)) query: ListTestCasesQuery) {
     return this.design.listCases(query);
   }
 
+  @RequirePermission('test_design.read')
   @Get('test-cases/:id')
   @ApiOperation({ summary: 'Test case with its ordered steps' })
   getCase(@Param('id') id: string) {

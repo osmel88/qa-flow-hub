@@ -1,4 +1,5 @@
 import type { AuthSession, LoginInput, OrganizationSummary, RegisterInput } from '@qa-flow-hub/shared';
+import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../api/endpoints';
@@ -46,8 +47,20 @@ const EMPTY: AuthState = {
  */
 export function AuthProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const [state, setState] = useState<AuthState>(EMPTY);
+  const queryClient = useQueryClient();
+
+  /**
+   * Every cached response belongs to one tenant and one user. Changing either
+   * drops the whole cache — in-flight requests included — so no screen can
+   * render, even for a frame, data fetched under the previous identity.
+   */
+  const forgetTenantData = useCallback(() => {
+    void queryClient.cancelQueries();
+    queryClient.clear();
+  }, [queryClient]);
 
   const applySession = useCallback((session: AuthSession) => {
+    forgetTenantData();
     storeSession(session);
     const stored = getActiveOrganizationId();
     const active =
@@ -61,12 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
       activeOrganizationId: active,
       isRestoring: false,
     });
-  }, []);
+  }, [forgetTenantData]);
 
   const signOut = useCallback(() => {
     clearSession();
+    forgetTenantData();
     setState({ ...EMPTY, isRestoring: false });
-  }, []);
+  }, [forgetTenantData]);
 
   useEffect(() => {
     setSessionLostHandler(signOut);
@@ -129,7 +143,13 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
         signOut();
       },
       selectOrganization: (organizationId) => {
+        if (organizationId === state.activeOrganizationId) {
+          return;
+        }
+        // The header is switched first so that any refetch triggered by the
+        // cleared cache already speaks for the new organization.
         setActiveOrganizationId(organizationId);
+        forgetTenantData();
         setState((current) => ({ ...current, activeOrganizationId: organizationId }));
       },
       refreshOrganizations: async () => {
@@ -138,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
         setState((current) => ({ ...current, user, organizations }));
       },
     }),
-    [state, applySession, signOut],
+    [state, applySession, signOut, forgetTenantData],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

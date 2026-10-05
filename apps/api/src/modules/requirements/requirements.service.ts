@@ -100,8 +100,9 @@ export class RequirementsService {
   }
 
   async list(query: ListRequirementsQuery): Promise<Paginated<RequirementView>> {
+    const projectId = await this.authorizedProject(query.projectId);
     const page = await this.requirements.list(query, {
-      projectId: query.projectId,
+      projectId,
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.type === undefined ? {} : { type: query.type }),
       ...(query.priority === undefined ? {} : { priority: query.priority }),
@@ -244,6 +245,11 @@ export class RequirementsService {
     // the project-scoped role can be checked.
     await this.access.assertRouteAccess(requirement.projectId);
     return requirement;
+  }
+
+  private async authorizedProject(projectId: string): Promise<string> {
+    await this.access.authorizeProjectScope(projectId);
+    return projectId;
   }
 }
 

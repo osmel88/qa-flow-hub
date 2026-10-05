@@ -137,7 +137,13 @@ export interface RunCaseSnapshot {
   expectedResult: string | null;
   priority: string;
   type: string;
-  steps: Array<{ position: number; action: string; expectedResult: string | null }>;
+  steps: Array<{
+    position: number;
+    action: string;
+    expectedResult: string | null;
+    /** Test data the step is executed with. */
+    data: string | null;
+  }>;
 }
 
 export interface RunCaseView {

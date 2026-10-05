@@ -193,9 +193,30 @@ export const permissionsApi = {
     }),
 };
 
+/**
+ * Walks every page of a collection. For pickers that must offer the whole
+ * set: a select fed by page one silently hides everything after it.
+ */
+export async function allPages<T>(
+  fetchPage: (page: number) => Promise<Paginated<T>>,
+): Promise<T[]> {
+  const first = await fetchPage(1);
+  const items = [...first.data];
+  for (let page = 2; page <= first.meta.totalPages; page += 1) {
+    items.push(...(await fetchPage(page)).data);
+  }
+  return items;
+}
+
 export const requirementsApi = {
   list: (params: { projectId: string; status?: string; priority?: string; search?: string }) =>
     apiFetch<Paginated<RequirementView>>(`/requirements${query({ ...params, pageSize: 100 })}`),
+  listAll: (params: { projectId: string }) =>
+    allPages((page) =>
+      apiFetch<Paginated<RequirementView>>(
+        `/requirements${query({ ...params, page, pageSize: 100 })}`,
+      ),
+    ),
   create: (body: CreateRequirementInput) =>
     apiFetch<RequirementView>('/requirements', { method: 'POST', body }),
   changeStatus: (id: string, status: string) =>
@@ -215,6 +236,10 @@ export const testDesignApi = {
     search?: string;
     includeArchived?: 'true' | 'false';
   }) => apiFetch<Paginated<TestCaseView>>(`/test-cases${query({ ...params, pageSize: 100 })}`),
+  allCases: (params: { projectId: string }) =>
+    allPages((page) =>
+      apiFetch<Paginated<TestCaseView>>(`/test-cases${query({ ...params, page, pageSize: 100 })}`),
+    ),
   case: (id: string) => apiFetch<TestCaseDetailView>(`/test-cases/${id}`),
   createCase: (body: CreateTestCaseInput) =>
     apiFetch<TestCaseDetailView>('/test-cases', { method: 'POST', body }),

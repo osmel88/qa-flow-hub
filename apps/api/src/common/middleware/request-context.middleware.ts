@@ -1,6 +1,8 @@
-import { randomUUID } from 'node:crypto';
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { REQUEST_ID_HEADER, resolveRequestId } from '../../bootstrap/request-id';
+import { resolveClientIp } from '../../bootstrap/client-ip';
+import { AppConfigService } from '../../config/app-config.service';
 import { TenantContextService } from '../../database/tenant-context.service';
 
 /**
@@ -11,24 +13,30 @@ import { TenantContextService } from '../../database/tenant-context.service';
  * organization, the audit interceptor that reads the request id — shares one
  * store. The `next()` call happens *inside* `run()`, which is what makes the
  * context survive every subsequent `await`.
+ *
+ * The request id is the one Fastify already resolved (see `createFastifyAdapter`),
+ * so the response header, the error body, the log lines and the audit row all
+ * carry the same value. The client address follows the same proxy-hop rule as
+ * Fastify's `request.ip`, which the rate limiter keys on.
  */
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {
-  constructor(private readonly tenant: TenantContextService) {}
+  constructor(
+    private readonly tenant: TenantContextService,
+    private readonly config: AppConfigService,
+  ) {}
 
-  use(request: FastifyRequest['raw'], reply: FastifyReply['raw'], next: () => void): void {
-    const headerId = request.headers['x-request-id'];
-    const requestId = typeof headerId === 'string' ? headerId : randomUUID();
-    const forwardedFor = request.headers['x-forwarded-for'];
+  use(request: FastifyRequest['raw'], _reply: FastifyReply['raw'], next: () => void): void {
+    const requestId = resolveRequestId(request.headers[REQUEST_ID_HEADER]);
     const userAgent = request.headers['user-agent'];
-
-    reply.setHeader('X-Request-Id', requestId);
 
     // Absent rather than `undefined`: with exactOptionalPropertyTypes, "we do
     // not know the caller's address" is the field not being there.
-    const ipAddress =
-      (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0]?.trim() : undefined) ??
-      request.socket.remoteAddress;
+    const ipAddress = resolveClientIp(
+      request.socket.remoteAddress,
+      request.headers['x-forwarded-for'],
+      this.config.trustProxyHops,
+    );
 
     this.tenant.run(
       {

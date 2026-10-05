@@ -60,15 +60,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const normalised = this.normalise(exception);
 
+    // The route template, not the URL: a query string can carry a token.
+    const line = {
+      requestId: String(request.id),
+      method: request.method,
+      route: request.routeOptions.url ?? 'unmatched',
+      statusCode: normalised.status,
+      code: normalised.code,
+    };
     if (normalised.status >= SERVER_ERROR) {
       this.logger.error(
-        `${request.method} ${request.url} -> ${normalised.status} ${normalised.code}`,
-        exception instanceof Error ? exception.stack : String(exception),
+        { msg: 'request failed', ...line },
+        exception instanceof Error ? exception.stack : undefined,
       );
     } else {
-      this.logger.debug(
-        `${request.method} ${request.url} -> ${normalised.status} ${normalised.code}: ${normalised.message}`,
-      );
+      this.logger.debug({ msg: normalised.message, ...line });
     }
 
     const body: ApiErrorResponse = {
@@ -115,6 +121,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
       };
     }
 
+    // Fastify's own errors — a body over the limit, an unsupported media type,
+    // malformed JSON — carry the status they mean. A client error stays a
+    // client error with Fastify's message, which describes the request and not
+    // the server; anything else falls through to the generic 500.
+    const clientStatus = fastifyClientErrorStatus(exception);
+    if (clientStatus !== null && exception instanceof Error) {
+      return {
+        status: clientStatus,
+        code: this.codeForStatus(clientStatus),
+        message: exception.message,
+      };
+    }
+
     return {
       status: HttpStatus.INTERNAL_SERVER_ERROR,
       code: 'INTERNAL_ERROR',
@@ -145,4 +164,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       CODE_BY_STATUS[status] ?? (status >= SERVER_ERROR ? 'INTERNAL_ERROR' : 'VALIDATION_ERROR')
     );
   }
+}
+
+/** The 4xx status of a Fastify framework error (`FST_*` code), or `null`. */
+function fastifyClientErrorStatus(exception: unknown): number | null {
+  if (!(exception instanceof Error) || !('statusCode' in exception) || !('code' in exception)) {
+    return null;
+  }
+  const { statusCode, code } = exception;
+  if (typeof code !== 'string' || !code.startsWith('FST_') || typeof statusCode !== 'number') {
+    return null;
+  }
+  return statusCode >= 400 && statusCode < SERVER_ERROR ? statusCode : null;
 }

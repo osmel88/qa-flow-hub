@@ -47,6 +47,11 @@ COPY --from=build /app/node_modules/.prisma node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma/client node_modules/@prisma/client
 COPY apps/api/prisma apps/api/prisma
 
+# Evidence storage (STORAGE_LOCAL_ROOT). Created here and owned by `node` so a
+# named volume mounted on it inherits the ownership; without it the readiness
+# probe reports storage as failed because the process cannot write.
+RUN mkdir -p /app/var/storage && chown node:node /app/var/storage
+
 # Never run as root: a container escape should not start with uid 0.
 USER node
 EXPOSE 3000

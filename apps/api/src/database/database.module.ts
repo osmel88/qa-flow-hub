@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { DatabaseRoleInspector } from './database-role.inspector';
 import { PrismaService } from './prisma.service';
 import { TenantContextService } from './tenant-context.service';
 
@@ -8,7 +9,7 @@ import { TenantContextService } from './tenant-context.service';
  */
 @Global()
 @Module({
-  providers: [PrismaService, TenantContextService],
-  exports: [PrismaService, TenantContextService],
+  providers: [PrismaService, TenantContextService, DatabaseRoleInspector],
+  exports: [PrismaService, TenantContextService, DatabaseRoleInspector],
 })
 export class DatabaseModule {}

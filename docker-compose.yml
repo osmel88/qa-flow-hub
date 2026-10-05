@@ -70,10 +70,34 @@ services:
       # demo behind nobody's firewall but your own, so it opts back in; a real
       # deployment should leave the variable unset.
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      # nginx in the `web` service is the one proxy in front of the API.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_ROOT: /app/var/storage
+      # SIGTERM → readiness 503 → wait → stop accepting → close. Keep it below
+      # stop_grace_period so Docker does not SIGKILL in the middle.
+      SHUTDOWN_GRACE_MS: ${SHUTDOWN_GRACE_MS:-5000}
+    stop_grace_period: 20s
+    volumes:
+      # Evidence files outlive the container. Back this volume up with the
+      # database (docs/deployment.md, "Backup and restore").
+      - api-storage:/app/var/storage
     ports:
-      - '3000:3000'
+      # Loopback only: callers on the network go through nginx, the hop the API
+      # trusts. A published 0.0.0.0:3000 would let anyone write their own
+      # X-Forwarded-For and pick their rate-limit bucket.
+      - '127.0.0.1:3000:3000'
     healthcheck:
-      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      # Readiness, not liveness: healthy means database reachable, migrations
+      # applied, storage writable and the runtime role subject to RLS.
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -92,3 +116,4 @@ services:
 
 volumes:
   postgres-data:
+  api-storage:

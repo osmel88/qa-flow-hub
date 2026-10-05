@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DefectsModule } from './modules/defects/defects.module';
 import { HealthModule } from './modules/health/health.module';
+import { SecretsModule } from './secrets/secrets.module';
 import { IntegrationSettingsModule } from './modules/integrations/integration-settings.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -38,6 +39,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     DomainEventsModule,
     AuditModule,
     HealthModule,
+    SecretsModule,
     AuthModule,
     OrganizationsModule,
     ProjectsModule,

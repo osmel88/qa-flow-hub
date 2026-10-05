@@ -27,6 +27,8 @@ jobs:
       - run: npm run db:generate
       - run: npm run build -w @qa-flow-hub/shared
       - run: npm run lint
+      - name: Review migrations for destructive statements
+        run: npm run db:migrations:check
       - run: npm run typecheck
       - run: npm run test
       - run: npm run build
@@ -104,6 +106,8 @@ jobs:
       # The whole Playwright suite runs from one address in under a minute and
       # exceeds the default 300 requests/minute; see docs/technical-debt.md §1.
       RATE_LIMIT_MAX: '2000'
+      # Every spec logs in; the credential budget is per address too.
+      AUTH_RATE_LIMIT_MAX: '2000'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

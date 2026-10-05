@@ -28,6 +28,7 @@
     "test:integration": "npm run test:integration -w @qa-flow-hub/api",
     "test:e2e": "npm run test:e2e -w @qa-flow-hub/web",
     "db:migrate": "npm run db:migrate -w @qa-flow-hub/api",
+    "db:migrations:check": "npm run db:migrations:check -w @qa-flow-hub/api",
     "db:seed": "npm run db:seed -w @qa-flow-hub/api",
     "db:reset": "npm run db:reset -w @qa-flow-hub/api",
     "db:generate": "npm run db:generate -w @qa-flow-hub/api",

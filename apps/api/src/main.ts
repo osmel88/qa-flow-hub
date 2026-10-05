@@ -1,77 +1,96 @@
 import 'reflect-metadata';
-import { randomUUID } from 'node:crypto';
-import type { IncomingMessage } from 'node:http';
-import { Logger, VersioningType } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
+import { ProxyTrust, configureApp, createFastifyAdapter } from './bootstrap/configure-app';
 import { AppConfigService } from './config/app-config.service';
-import { AllExceptionsFilter } from './errors/all-exceptions.filter';
+import { TenantContextService } from './database/tenant-context.service';
+import { AppLifecycleService } from './modules/health/app-lifecycle.service';
+import { createAppLogger } from './observability/app-logger';
 import { setupSwagger } from './swagger';
 
-async function bootstrap(): Promise<void> {
-  const adapter = new FastifyAdapter({
-    trustProxy: true,
-    // Correlates every log line, audit row and error response of one request.
-    genReqId: (request: IncomingMessage) =>
-      (request.headers['x-request-id'] as string | undefined) ?? randomUUID(),
-  });
+const logger = new Logger('Bootstrap');
 
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
-    bufferLogs: true,
-  });
+async function bootstrap(): Promise<void> {
+  const proxyTrust = new ProxyTrust();
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    createFastifyAdapter(proxyTrust),
+    // Buffered until the configured logger is installed, so even the module
+    // initialisation lines come out in the production format.
+    { bufferLogs: true },
+  );
 
   const config = app.get(AppConfigService);
+  const tenant = app.get(TenantContextService);
+  app.useLogger(
+    createAppLogger({
+      format: config.logFormat,
+      level: config.logLevel,
+      requestId: () => tenant.requestId,
+    }),
+  );
 
-  // Security headers first: they must be present even on responses produced by
-  // plugins that run before the Nest router (rate limiting, for instance).
-  // Omitted in production so helmet applies its own default policy; passing
-  // `undefined` explicitly is not the same thing to a plugin that checks for
-  // the key's presence.
-  await app.register(import('@fastify/helmet'), {
-    ...(config.isProduction ? {} : { contentSecurityPolicy: false }),
-  });
-
-  // Refresh tokens travel as an HttpOnly cookie; see RefreshCookieService.
-  await app.register(import('@fastify/cookie'));
-
-  // Evidence uploads. The parser truncates at the size limit instead of
-  // throwing, so the attachments service sees the whole request, removes the
-  // partial object and answers 413 itself. One file per request, on purpose.
-  await app.register(import('@fastify/multipart'), {
-    throwFileSizeLimit: false,
-    limits: { files: 1, fields: 4, fileSize: config.storage.maxSizeBytes },
-  });
-
-  await app.register(import('@fastify/cors'), {
-    origin: config.corsOrigins,
-    credentials: true,
-    exposedHeaders: ['X-Request-Id'],
-  });
-
-  await app.register(import('@fastify/rate-limit'), {
-    max: config.rateLimit.max,
-    timeWindow: config.rateLimit.windowMs,
-    // In-process store. Documented limitation: with more than one API instance
-    // the effective limit is `max * instances`. See docs/technical-debt.md.
-  });
-
-  app.setGlobalPrefix(config.apiPrefix, { exclude: ['health'] });
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
-  app.useGlobalFilters(new AllExceptionsFilter());
-  app.enableShutdownHooks();
+  await configureApp(app, proxyTrust);
 
   if (config.swaggerEnabled) {
     setupSwagger(app);
   }
 
+  // `listen` runs the bootstrap hooks: an unsafe database role or a broken
+  // connection fails here, before the port is open.
   await app.listen({ port: config.port, host: config.host });
+  installGracefulShutdown(app, config, app.get(AppLifecycleService));
 
-  const logger = new Logger('Bootstrap');
   logger.log(`API listening on http://${config.host}:${config.port}/${config.apiPrefix}/v1`);
   if (config.swaggerEnabled) {
     logger.log(`OpenAPI UI on http://${config.host}:${config.port}/docs`);
   }
 }
 
-void bootstrap();
+/**
+ * SIGTERM is "stop taking new work", not "die now". Readiness turns 503 at
+ * once, the listener stays open for `SHUTDOWN_GRACE_MS` while the load
+ * balancer notices and in-flight requests finish, and only then Nest closes:
+ * the HTTP server, then the database pool. A second signal is ignored; the
+ * orchestrator's own kill timeout is the backstop.
+ *
+ * This replaces `enableShutdownHooks()`, whose listener would close the
+ * application immediately and skip the drain.
+ */
+function installGracefulShutdown(
+  app: NestFastifyApplication,
+  config: AppConfigService,
+  lifecycle: AppLifecycleService,
+): void {
+  const shutdown = (signal: NodeJS.Signals): void => {
+    if (lifecycle.draining) {
+      return;
+    }
+    lifecycle.beginDraining();
+    logger.log({ msg: 'shutdown requested, draining', signal, graceMs: config.shutdownGraceMs });
+
+    setTimeout(() => {
+      app.close().then(
+        () => process.exit(0),
+        (error: unknown) => {
+          logger.error(
+            { msg: 'shutdown failed' },
+            error instanceof Error ? error.stack : undefined,
+          );
+          process.exit(1);
+        },
+      );
+    }, config.shutdownGraceMs);
+  };
+
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
+}
+
+bootstrap().catch((error: unknown) => {
+  // The configured logger may not exist yet: write the reason plainly.
+  console.error(error instanceof Error ? (error.stack ?? error.message) : error);
+  process.exit(1);
+});

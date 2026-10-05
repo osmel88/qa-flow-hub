@@ -96,7 +96,7 @@ docker compose up -d --build  # web on :8080, API on :3000, OpenAPI on :3000/doc
   [integrations roadmap](docs/integrations-roadmap.md),
   [stage 2 roadmap](docs/stage-2-roadmap.md) and
   [technical debt](docs/technical-debt.md).
-- [`docs/backend-course/`](docs/backend-course/) — a 40-chapter guided tour of
+- [`docs/backend-course/`](docs/backend-course/) — a 41-chapter guided tour of
   this backend, written against the real code in this repository. Start at
   [`00-how-to-use-this-course.md`](docs/backend-course/00-how-to-use-this-course.md).
 

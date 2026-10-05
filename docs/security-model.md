@@ -6,18 +6,18 @@ than described in the future tense.
 
 ## Threat model
 
-| Threat | Control | Where |
-| --- | --- | --- |
-| Cross-tenant data access | Row-level filter injected by the repository base, plus RLS policies enforced against a non-owning role | `tenant-aware.repository.ts`, `tenancy.int-spec.ts`, `rls.int-spec.ts` |
-| Rewriting the audit trail | Append-only triggers on `audit_logs`; the API role cannot disable them | `20260816135824_audit_log_append_only`, `dashboard.int-spec.ts`, `rls.int-spec.ts` |
-| Credential stuffing | Argon2id, per-account lockout, rate limiting | `password.service.ts`, `auth.service.ts` |
-| Account enumeration | Identical error and identical timing | `auth.service.ts` (`wasteTime()`) |
-| Stolen refresh token | Rotation with family revocation on reuse | `auth.service.ts`, `sessions.repository.ts` |
-| Stale authorization | Session and membership checked per request | `jwt-auth.guard.ts`, `active-organization.guard.ts` |
-| Mass assignment | Zod strips unknown keys | `zod-validation.pipe.ts` |
-| Injection | Parameterised queries via Prisma | Repositories |
-| Information disclosure in errors | Single exception filter, no internals | `all-exceptions.filter.ts` |
-| Secrets in a database dump | Password hashes, token HMACs, `secretRef` only | Schema |
+| Threat                           | Control                                                                                                | Where                                                                              |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Cross-tenant data access         | Row-level filter injected by the repository base, plus RLS policies enforced against a non-owning role | `tenant-aware.repository.ts`, `tenancy.int-spec.ts`, `rls.int-spec.ts`             |
+| Rewriting the audit trail        | Append-only triggers on `audit_logs`; the API role cannot disable them                                 | `20260816135824_audit_log_append_only`, `dashboard.int-spec.ts`, `rls.int-spec.ts` |
+| Credential stuffing              | Argon2id, per-account lockout, rate limiting                                                           | `password.service.ts`, `auth.service.ts`                                           |
+| Account enumeration              | Identical error and identical timing                                                                   | `auth.service.ts` (`wasteTime()`)                                                  |
+| Stolen refresh token             | Rotation with family revocation on reuse                                                               | `auth.service.ts`, `sessions.repository.ts`                                        |
+| Stale authorization              | Session and membership checked per request                                                             | `jwt-auth.guard.ts`, `active-organization.guard.ts`                                |
+| Mass assignment                  | Zod strips unknown keys                                                                                | `zod-validation.pipe.ts`                                                           |
+| Injection                        | Parameterised queries via Prisma                                                                       | Repositories                                                                       |
+| Information disclosure in errors | Single exception filter, no internals                                                                  | `all-exceptions.filter.ts`                                                         |
+| Secrets in a database dump       | Password hashes, token HMACs, `secretRef` only                                                         | Schema                                                                             |
 
 ## Authentication
 
@@ -84,19 +84,46 @@ and chapter 10 of the backend course. Summary:
 - OpenAPI: `/docs` and `/docs/openapi.json` are unauthenticated, so they are
   disabled by default when `NODE_ENV=production` — the document is a complete map
   of the API, including every role-restricted route.
-- Rate limiting: `@fastify/rate-limit`, in-memory. **Per instance** — see
+- Content Security Policy: the API answers JSON only, so its policy is
+  `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`
+  (helmet's default when Swagger is served). The web client gets its own
+  policy from nginx (`apps/web/security-headers.conf`, mirrored in
+  `vite preview` so the E2E suite runs under it): scripts from `'self'` only,
+  API calls to the same origin, `blob:` images and frames for evidence
+  previews, no framing.
+- Rate limiting: `@fastify/rate-limit`, in-memory. A global per-address budget
+  and a stricter one shared by `/auth/login`, `/auth/register` and
+  `/auth/refresh`; 429 `RATE_LIMITED` with `Retry-After`. **Per instance** — see
   limitations.
-- Request id: taken from `X-Request-Id` or generated, echoed back and attached
-  to every log line and error response.
+- Client address: resolved from `X-Forwarded-For` only through `TRUST_PROXY`
+  trusted hops, counted from the right, so a client cannot choose the address
+  the rate limiter and the audit log see.
+- Request id: an incoming `X-Request-Id` is kept only if it matches
+  `[A-Za-z0-9._:-]{8,128}` (no log injection), otherwise generated; the same
+  value is in the response header, the error body, every log line and the
+  audit row.
+- Errors: framework errors keep their real 4xx (400, 404, 413, 415, 429);
+  anything unexpected is a generic 500 with the request id. No stack, SQL or
+  infrastructure detail reaches a client.
+- Probes and metrics: `/health` and `/health/ready` disclose statuses only;
+  `/metrics` is off by default and token-protected, with no tenant or entity
+  ids in labels.
 
 ## Secrets
 
 - Never in git. `.env.example` documents names and shapes, never values.
 - `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` must be at least 32 characters;
-  the application refuses to boot otherwise, in every environment.
+  the application refuses to boot otherwise, in every environment. In
+  production they must also differ, contain no placeholder and have at least
+  10 distinct characters; `METRICS_TOKEN` is held to the same rules.
+- The API refuses to boot in production when its database role is a
+  superuser, has `BYPASSRLS` or owns application tables: any of them would
+  turn Row Level Security off without a single error.
 - `IntegrationConnection` stores `secretRef`, a pointer into a secret manager,
   never a customer's API token. A database dump must not yield credentials for
-  a customer's Jira.
+  a customer's Jira. References resolve through the `SecretResolver` port,
+  scoped to the caller's organization (ADR 0014); the environment provider
+  only reads `QAFLOW_SECRET_<ORG>_*`, never the platform's own variables.
 - Logs never contain tokens, hashes or passwords. Failures log user ids.
 
 ## Known limitations
@@ -111,8 +138,8 @@ These are real and deliberate, not oversights. Also tracked in
    and the integration suite use. The default is the safe one, but any script
    holding a 30-day credential in a variable is still a credential to protect.
 2. **Rate limiting is per instance.** Two API replicas allow twice the
-   configured rate. A shared store is the fix and it implies Redis, which is
-   explicitly out of scope for now.
+   configured rate. By decision (S2-F10) there is no shared store; the
+   cluster-wide limit belongs to the edge (`docs/deployment.md`).
 3. **No second factor and no SSO.** Both are expected by enterprise buyers.
 4. **No password recovery**, because it requires real email delivery, which is
    out of scope for this version.

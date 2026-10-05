@@ -76,6 +76,8 @@ export class TenantContextService {
       requestId: current?.requestId ?? 'system',
       ...(current?.userId === undefined ? {} : { userId: current.userId }),
       ...(current?.email === undefined ? {} : { email: current.email }),
+      ...(current?.ipAddress === undefined ? {} : { ipAddress: current.ipAddress }),
+      ...(current?.userAgent === undefined ? {} : { userAgent: current.userAgent }),
       ...(organizationId === null
         ? {}
         : {

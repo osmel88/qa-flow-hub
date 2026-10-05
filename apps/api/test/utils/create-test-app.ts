@@ -1,61 +1,67 @@
-import { VersioningType } from '@nestjs/common';
+import type { LoggerService } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from '../../src/app.module';
+import { ProxyTrust, configureApp, createFastifyAdapter } from '../../src/bootstrap/configure-app';
 import { AppConfigService } from '../../src/config/app-config.service';
 import type { Env } from '../../src/config/env.schema';
-import { AllExceptionsFilter } from '../../src/errors/all-exceptions.filter';
+
+/** Settings a suite may change without touching the process environment. */
+export interface TestAppOptions {
+  /** The RLS suites boot the API as the runtime role, the way production runs it. */
+  databaseUrl?: string;
+  authRateLimit?: { max: number; windowMs: number };
+  metrics?: { enabled: boolean; token: string | null };
+  trustProxyHops?: number;
+  /** Receives the application's log lines; silent by default. */
+  logger?: LoggerService;
+}
 
 /**
  * Boots the real application for integration tests.
  *
- * It mirrors `src/main.ts` on purpose: global prefix, versioning and the
- * exception filter are part of the contract under test. A test app that skips
- * them would pass while production returns 404s.
+ * Plugins, hooks, prefix, versioning and the exception filter come from
+ * `configureApp`, the same function `main.ts` calls: they are part of the
+ * contract under test, and a test app assembled by hand would pass while
+ * production returns 404s.
  */
-export async function createTestApp(
-  options: { databaseUrl?: string } = {},
-): Promise<NestFastifyApplication> {
+export async function createTestApp(options: TestAppOptions = {}): Promise<NestFastifyApplication> {
   const builder = Test.createTestingModule({ imports: [AppModule] });
 
-  // The RLS suite boots the API as the runtime role, the way production runs
-  // it. Only the connection string changes; every other setting is the
-  // validated environment.
-  if (options.databaseUrl !== undefined) {
-    const databaseUrl = options.databaseUrl;
-    class RuntimeRoleConfigService extends AppConfigService {
-      override get databaseUrl(): string {
-        return databaseUrl;
-      }
+  // Only the overridden settings change; every other one is the validated
+  // environment.
+  class TestConfigService extends AppConfigService {
+    override get databaseUrl(): string {
+      return options.databaseUrl ?? super.databaseUrl;
     }
-    builder.overrideProvider(AppConfigService).useFactory({
-      inject: [ConfigService],
-      factory: (config: ConfigService<Env, true>): AppConfigService =>
-        new RuntimeRoleConfigService(config),
-    });
+    override get authRateLimit(): { max: number; windowMs: number } {
+      return options.authRateLimit ?? super.authRateLimit;
+    }
+    override get metrics(): { enabled: boolean; token: string | null } {
+      return options.metrics ?? super.metrics;
+    }
+    override get trustProxyHops(): number {
+      return options.trustProxyHops ?? super.trustProxyHops;
+    }
   }
+  builder.overrideProvider(AppConfigService).useFactory({
+    inject: [ConfigService],
+    factory: (config: ConfigService<Env, true>): AppConfigService => new TestConfigService(config),
+  });
 
   const moduleRef = await builder.compile();
 
-  const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {
-    logger: false,
-  });
+  const proxyTrust = new ProxyTrust();
+  const app = moduleRef.createNestApplication<NestFastifyApplication>(
+    createFastifyAdapter(proxyTrust),
+    { logger: false },
+  );
+  if (options.logger !== undefined) {
+    app.useLogger(options.logger);
+  }
 
-  // Registered in main.ts too: without it, `request.cookies` is undefined and
-  // the refresh cookie tests would fail for the wrong reason.
-  await app.register(import('@fastify/cookie'));
-
-  // Same options as main.ts: the 413 path depends on truncation, not throwing.
-  const config = app.get(AppConfigService);
-  await app.register(import('@fastify/multipart'), {
-    throwFileSizeLimit: false,
-    limits: { files: 1, fields: 4, fileSize: config.storage.maxSizeBytes },
-  });
-
-  app.setGlobalPrefix('api', { exclude: ['health'] });
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
-  app.useGlobalFilters(new AllExceptionsFilter());
+  await configureApp(app, proxyTrust);
 
   await app.init();
   await app.getHttpAdapter().getInstance().ready();

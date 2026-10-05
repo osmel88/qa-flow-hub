@@ -45,6 +45,18 @@ export class AppConfigService {
     return this.get('LOG_LEVEL');
   }
 
+  get logFormat(): Env['LOG_FORMAT'] {
+    return this.get('LOG_FORMAT');
+  }
+
+  get trustProxyHops(): number {
+    return this.get('TRUST_PROXY');
+  }
+
+  get shutdownGraceMs(): number {
+    return this.get('SHUTDOWN_GRACE_MS');
+  }
+
   get databaseUrl(): string {
     return this.get('DATABASE_URL');
   }
@@ -76,6 +88,17 @@ export class AppConfigService {
 
   get rateLimit(): { max: number; windowMs: number } {
     return { max: this.get('RATE_LIMIT_MAX'), windowMs: this.get('RATE_LIMIT_WINDOW_MS') };
+  }
+
+  get authRateLimit(): { max: number; windowMs: number } {
+    return {
+      max: this.get('AUTH_RATE_LIMIT_MAX'),
+      windowMs: this.get('AUTH_RATE_LIMIT_WINDOW_MS'),
+    };
+  }
+
+  get metrics(): { enabled: boolean; token: string | null } {
+    return { enabled: this.get('METRICS_ENABLED'), token: this.get('METRICS_TOKEN') ?? null };
   }
 
   get authLockout(): { maxFailedAttempts: number; lockoutMinutes: number } {

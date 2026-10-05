@@ -13,7 +13,7 @@ a project forgets that it once shipped without Row Level Security.
 
 | #   | Entry                                                   | Status                                  | Blocked on                      |
 | --- | ------------------------------------------------------- | --------------------------------------- | ------------------------------- |
-| 1   | Rate limiting is per process                            | open                                    | Redis                           |
+| 1   | Rate limiting is per process                            | open, by decision (S2-F10)              | Redis, only with approval       |
 | 2   | Attachments store metadata only                         | open                                    | object storage                  |
 | 3   | No background job runner                                | open                                    | first slow operation            |
 | 4   | No email delivery                                       | open                                    | email provider                  |
@@ -67,6 +67,13 @@ that are **not** blocked on a product decision or a third party — 14, 16, 17, 
   CI and local E2E runs set `RATE_LIMIT_MAX=2000`. Mapping the plugin error to
   `RateLimitedError` (429 + `Retry-After`) is a small fix for the hardening
   phase (S2-F10).
+- **S2-F10 decision (option A, no Redis):** the per-instance store stays.
+  The 429 mapping is fixed (`RATE_LIMITED` + `Retry-After`), credential
+  endpoints (`/auth/login`, `/auth/register`, `/auth/refresh`) get their own
+  stricter per-address budget (`AUTH_RATE_LIMIT_*`), the key is the address
+  `TRUST_PROXY` resolves, and `docs/deployment.md` documents the edge limit
+  that does not scale with the replica count. Re-open with a shared store
+  only if a limit must be exact across replicas (a commercial quota, S2-F11).
 
 ## 2. Attachments store metadata only — closed in S2-F7
 
@@ -397,8 +404,8 @@ means the guard is no longer the last line of defence on those routes.
   project-scoped handler completed without resolving a project — cheap to add
   once, and it turns the convention into a check.
 - **After S2-F8:** the shape is the same with permissions: the guard also passes
-  when any project override *grants* the required permission somewhere, and a
-  *revoke* is only applied by `assertRouteAccess`. The convention now carries
+  when any project override _grants_ the required permission somewhere, and a
+  _revoke_ is only applied by `assertRouteAccess`. The convention now carries
   more weight, which makes the interceptor more urgent, not less.
 
 ## 24. Three advisories with no upgrade path we can take
@@ -787,7 +794,9 @@ S2-F7 made evidence real, but the only production-shaped provider is
 - **Single host, no durability story.** The directory is not replicated and is
   not part of any backup; two API instances would see two different stores.
   A container restart keeps the files only if `./var/storage` is a mounted
-  volume — `docker-compose.yml` does not mount one yet.
+  volume. _S2-F10:_ compose mounts `api-storage`, readiness probes writes,
+  and `docs/deployment.md` covers backing it up with the database; replication
+  and multi-instance sharing remain open.
 - **Downloads stream through the API.** There are no pre-signed or
   time-limited URLs: every byte of every screenshot passes through Node and
   through the session token. Safe, but it makes the API the bandwidth
@@ -803,9 +812,8 @@ S2-F7 made evidence real, but the only production-shaped provider is
 - **The migration emptied `attachment_metadata`.** Correct for this codebase
   (the MVP never wrote a row) but a deployment that had used the scaffold
   table would have lost its metadata; there is no backfill path.
-- **`MemoryStorageProvider` is selectable at runtime** (`STORAGE_PROVIDER=memory`).
-  Intended for tests; nothing prevents a misconfigured deployment from storing
-  evidence in RAM.
+- ~~**`MemoryStorageProvider` is selectable at runtime**~~ — closed in S2-F10:
+  `STORAGE_PROVIDER=memory` is refused when `NODE_ENV=production`.
 
 What moving to S3-compatible storage requires — and what it does **not**:
 
@@ -814,7 +822,7 @@ What moving to S3-compatible storage requires — and what it does **not**:
    taken), registered in `StorageModule` under a new `STORAGE_PROVIDER` value;
    `AttachmentsService`, the controller, the repository and the web client do
    not change: they see keys and streams only;
-2. credentials from the credential store S2-F10 introduces — never in
+2. credentials through the `SecretResolver` port (ADR 0014) — never in
    `.env` committed to Git, never in `IntegrationConnection.settings`;
 3. optionally a `presignGet(key, ttl)` method on the port for time-limited
    download URLs, with `LocalStorageProvider` returning `null` so the API
@@ -891,3 +899,49 @@ What moving to S3-compatible storage requires — and what it does **not**:
   first questions a customer report will raise.
 - **Trigger to fix:** measured p95 over ~300 ms (materialize, with the job
   runner of entry 3), the first non-UTC customer, or the first external source.
+
+## 36. Production readiness: what S2-F10 leaves (S2-F10)
+
+S2-F10 made an instance safe to deploy and operate; it did not deploy one.
+
+- **Rate limits are per instance** (entry 1, by decision). The edge limit is
+  documented, not provisioned: nothing in this repository configures a CDN
+  or a WAF.
+- **`SecretResolver` has no consumer and one provider.** `EnvSecretResolver`
+  cannot hold per-tenant credentials created at runtime; the external manager,
+  its client, caching and rotation arrive with GitHub Real (ADR 0014).
+- **Metrics are in-process and minimal.** Counters reset on restart (Prometheus
+  handles that), there are no database pool, event-loop lag or business
+  metrics, no alert rules and no dashboards. A metrics library
+  (`prom-client`) becomes worth it with the first such metric.
+- **No tracing.** Correlation is the request id across header, logs, errors
+  and audit; there is no OpenTelemetry span propagation to the database or
+  to integrations.
+- **Error tracking is the log.** Unexpected exceptions are JSON lines with a
+  stack; nothing groups or alerts on them.
+- **Readiness re-checks on every probe**: one `SELECT 1`, one read of
+  `_prisma_migrations`, one write+delete in storage. Cheap at a 5–10 s probe
+  interval; a busy orchestrator probing every second would want a short cache.
+- **The role check runs at boot**, not continuously: a grant changed while the
+  instance runs is seen only at the next start (readiness reports the boot
+  result).
+- **Migration safety is pattern matching** on the SQL text, not a parser, and
+  only for migrations after `REVIEWED_HISTORY`. It catches the common
+  destructive statements; it cannot tell whether a backfill is batched or an
+  index is built concurrently on a large table.
+- **Backups are scripts, not a schedule.** `db-backup.sh` and
+  `restore-drill.sh` exist and were exercised against the development
+  database; cron/CI scheduling, off-host encrypted copies and PITR depend on
+  the hosting choice. RPO/RTO targets are targets until a drill runs on
+  production-sized data.
+- **CSP allows `'unsafe-inline'` styles** in the web client (React inline
+  `style` attributes and SVG charts); scripts are `'self'` only.
+- **`/docs` in production uses helmet's default CSP**, which is what Swagger UI
+  needs; leaving `SWAGGER_ENABLED` off in production remains the rule.
+
+- **Cost:** the platform can be deployed and operated by someone who reads
+  `docs/deployment.md`; incidents are still noticed by logs and probes, not
+  by alerts.
+- **Trigger to fix:** the first production deployment (alerts, scheduled
+  backups, edge limit), GitHub Real (secret manager), or a measured need for
+  tracing.

@@ -772,6 +772,32 @@ No real deployment without explicit authorization. Distributable rate limiting
 limits plus an edge limit at the provider — is presented first, and Redis is
 introduced only with approval.
 
+**Delivered.** Decisions approved before implementation: rate limiting **A**
+(no Redis: per-instance global limit, a stricter per-address limit on login,
+register and refresh, the edge limit documented — with N replicas the
+effective limit is N×) and credential store **A** (ADR 0014: external secret
+manager behind a `SecretResolver` port with an environment provider; no
+table, no migration; the real provider arrives with GitHub Real). No
+migration, no UI change, no product behaviour change.
+
+| Area           | What exists now                                                                                                                                                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Configuration  | production fails closed: equal/placeholder/low-entropy JWT secrets, `STORAGE_PROVIDER=memory`, wildcard CORS, metrics without a strong token. New: `TRUST_PROXY`, `LOG_FORMAT`, `SHUTDOWN_GRACE_MS`, `AUTH_RATE_LIMIT_*`, `METRICS_*` |
+| Bootstrap      | one `configureApp()` shared by `main.ts` and the integration harness (plugins, hooks, filter, prefix), so tests exercise the production pipeline                                                                                      |
+| RLS role guard | `DatabaseRoleInspector` refuses to boot in production as superuser, `BYPASSRLS` or table owner                                                                                                                                        |
+| Probes         | `GET /health` liveness (no DB); `GET /health/ready` DB, migrations applied, storage writable, role, draining → 200/503, no details                                                                                                    |
+| Shutdown       | SIGTERM → readiness 503 → `SHUTDOWN_GRACE_MS` → close                                                                                                                                                                                 |
+| Correlation    | validated `X-Request-Id`, one id across header, error, logs and audit; proxy-aware client address shared by rate limiter and audit                                                                                                    |
+| Logs           | JSON lines in production, one `request completed` line per request (method, route template, status, duration), credential keys redacted                                                                                               |
+| Metrics        | optional `GET /metrics` (Prometheus text, bearer token), labels method/route template/status only                                                                                                                                     |
+| Errors         | 429 `RATE_LIMITED` + `Retry-After`; Fastify 4xx (413, 415, 400) keep their status; generic 5xx                                                                                                                                        |
+| Headers        | API CSP `default-src 'none'`; web CSP and security headers in nginx, mirrored in `vite preview` for E2E; nginx `client_max_body_size` matches uploads                                                                                 |
+| Storage        | `api-storage` volume in compose, writable directory in the image, readiness probe                                                                                                                                                     |
+| Migrations     | `npm run db:migrations:check` in CI: destructive and RLS-weakening statements need an explicit marker                                                                                                                                 |
+| DR             | `scripts/db-backup.sh`, `scripts/restore-drill.sh` (checksum, migrations, RLS identical to source, runtime grants), RPO/RTO, retention and restore runbook in `deployment.md`                                                         |
+
+Course: chapter 41. Debt: entry 36 (and updates to 1 and 33).
+
 ## S2-F11 — Billing & Subscriptions
 
 Plans, subscriptions, usage limits, trial, subscription states, billing

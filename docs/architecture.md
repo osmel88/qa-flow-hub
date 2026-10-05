@@ -165,7 +165,8 @@ event → recipients → type/category + preference decision → typed template
   outbox worker would drain.
 - `EMAIL_PROVIDER` accepts only `mock`. A real provider is one class
   implementing `EmailAdapter`, registered in `IntegrationsModule`, plus a
-  credential source that does not exist yet (post-S2, with S2-F10).
+  credential resolved through the `SecretResolver` port (ADR 0014; the real
+  provider arrives with GitHub Real).
 
 ## Evidence storage (S2-F7)
 
@@ -249,3 +250,24 @@ The three worth knowing before reading any code:
 1. Rate limiting is **per process**. With N replicas the effective limit is N×.
 2. There is **no background job runner**. Anything slow would block a request.
 3. Attachments store **metadata only**.
+
+## Production pipeline (S2-F10)
+
+```text
+main.ts ── NestFactory(createFastifyAdapter(proxyTrust)) ── configureApp(app, proxyTrust)
+              │ genReqId: validated X-Request-Id or UUID          │ onRequest: X-Request-Id header
+              │ trustProxy: TRUST_PROXY hops                      │ onResponse: metrics + one JSON log line
+              ▼                                                   │ helmet (CSP) · cookie · multipart · CORS
+   RequestContextMiddleware (same id, same client address)        │ rate-limit: global | auth:<ip>
+   → guards → interceptors → controllers                          │ /metrics (optional, bearer)
+   AllExceptionsFilter: DomainError | Fastify 4xx | generic 500   └ prefix /api, URI versioning, filter
+
+boot:   validateEnv (fails closed in production) → DatabaseRoleInspector (no owner/superuser/BYPASSRLS)
+probes: /health (process) · /health/ready (DB, migrations, storage, role, draining)
+stop:   SIGTERM → draining (ready 503) → SHUTDOWN_GRACE_MS → app.close()
+```
+
+The integration harness (`test/utils/create-test-app.ts`) calls the same
+`configureApp`, so the suites run behind the production plugins and hooks.
+`SecretsModule` binds the `SecretResolver` port (ADR 0014) with no consumer
+yet.

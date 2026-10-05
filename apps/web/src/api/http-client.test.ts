@@ -130,3 +130,23 @@ describe('apiFetch', () => {
     expect(init.body).not.toContain('refreshToken');
   });
 });
+
+describe('refreshSession across tabs', () => {
+  it('rotates under the shared cross-tab lock', async () => {
+    const held: string[] = [];
+    const request = vi.fn(async (name: string, callback: () => Promise<boolean>) => {
+      held.push(name);
+      return callback();
+    });
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ accessToken: 'access-2', expiresIn: 900, tokenType: 'Bearer' }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(refreshSession()).resolves.toBe(true);
+
+    expect(held).toEqual(['qa-flow-hub:refresh']);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});

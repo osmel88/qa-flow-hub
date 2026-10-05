@@ -140,7 +140,7 @@ export class TestRunsController {
     @Body(zodBody(recordResultSchema)) body: RecordResultInput,
     @CurrentUser() user: CurrentUserContext,
   ) {
-    return this.runs.recordResult(id, runCaseId, body, user.userId, user.role);
+    return this.runs.recordResult(id, runCaseId, body, user.userId);
   }
 
   @RequirePermission('testruns.read')

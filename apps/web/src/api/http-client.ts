@@ -43,6 +43,18 @@ let refreshInFlight: Promise<boolean> | null = null;
  * here is the only way the client learns it has no session.
  */
 export async function refreshSession(): Promise<boolean> {
+  // Tabs share the refresh cookie but not `refreshInFlight`. Two tabs rotating
+  // the same token at once would make the later one look like a replay, so the
+  // rotation is serialised across every tab of the origin.
+  if ('locks' in navigator) {
+    return navigator.locks.request(REFRESH_LOCK, rotateRefreshToken);
+  }
+  return rotateRefreshToken();
+}
+
+const REFRESH_LOCK = 'qa-flow-hub:refresh';
+
+async function rotateRefreshToken(): Promise<boolean> {
   const response = await fetch(`${API_BASE}/auth/refresh`, {
     method: 'POST',
     credentials: 'include',

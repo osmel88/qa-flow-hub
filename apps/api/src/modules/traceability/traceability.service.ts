@@ -159,7 +159,7 @@ export class TraceabilityService {
 
     const caseIds = [...new Set(caseLinks.map((link) => link.targetId))];
     const [cases, statuses, defects] = await Promise.all([
-      this.reads.listCasesByIds(caseIds),
+      this.reads.listCasesByIds(project.id, caseIds),
       this.reads.latestStatusByCase(caseIds),
       this.links.listForProject(project.id),
     ]);

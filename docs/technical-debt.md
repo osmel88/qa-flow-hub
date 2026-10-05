@@ -450,6 +450,12 @@ frontend toolchain; it never ships in a bundle and never sees a request.
 > now consumes the predecessor conditionally (`revokedAt IS NULL`); the loser
 > gets a plain 401 and the winner's session survives. A later replay of the
 > consumed token still revokes the family.
+>
+> **S2-F9 close review:** the remaining cross-tab half of the hypothesis is
+> closed on the client — `refreshSession()` rotates under a Web Lock
+> (`navigator.locks`, name `qa-flow-hub:refresh`), so two tabs or a full page
+> load no longer present the same cookie at once. Server semantics are
+> unchanged: no reuse grace window was added.
 
 During the manual end-to-end session the client logged itself out twice while
 navigating by typing a URL in the address bar with a valid session, and once on

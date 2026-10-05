@@ -35,6 +35,14 @@ export class DefectsRepository extends TenantAwareRepository {
     return (tx ?? this.prisma).defect.findFirst({ where: this.active({ id }) });
   }
 
+  async liveRequirementIds(projectId: string, ids: readonly string[]): Promise<string[]> {
+    const rows = await this.prisma.requirement.findMany({
+      where: this.active({ projectId, id: { in: [...ids] } }),
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
   async listIds(projectId: string): Promise<string[]> {
     const rows = await this.prisma.defect.findMany({
       where: this.active({ projectId }),

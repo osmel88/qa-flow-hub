@@ -316,7 +316,6 @@ export class TestRunsService {
     runCaseId: string,
     input: RecordResultInput,
     userId: string,
-    role: string,
   ): Promise<TestResultView> {
     const run = await this.require(runId);
     if (run.status === 'completed' || run.status === 'aborted') {
@@ -326,7 +325,9 @@ export class TestRunsService {
     const runCase = await this.requireRunCase(runCaseId, runId);
 
     // Testers execute what they were given. Anyone senior can record for
-    // anybody, because leads do fill in for absent testers.
+    // anybody, because leads do fill in for absent testers. Seniority is the
+    // role in this project, which a project grant can raise or narrow.
+    const role = await this.access.effectiveRole(run.projectId);
     if (role === 'tester' && runCase.assignedToId !== null && runCase.assignedToId !== userId) {
       throw new ForbiddenError('This case is assigned to somebody else');
     }

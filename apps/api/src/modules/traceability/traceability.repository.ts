@@ -27,11 +27,12 @@ export class TraceabilityRepository extends TenantAwareRepository {
     });
   }
 
-  listCasesByIds(ids: string[]): Promise<TestCase[]> {
+  /** Only cases of the project: a case elsewhere neither covers nor appears. */
+  listCasesByIds(projectId: string, ids: string[]): Promise<TestCase[]> {
     if (ids.length === 0) {
       return Promise.resolve([]);
     }
-    return this.prisma.testCase.findMany({ where: this.active({ id: { in: ids } }) });
+    return this.prisma.testCase.findMany({ where: this.active({ projectId, id: { in: ids } }) });
   }
 
   countCases(projectId: string): Promise<number> {

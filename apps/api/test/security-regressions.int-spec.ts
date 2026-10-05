@@ -642,4 +642,97 @@ describe('PR #1 security regressions', () => {
       expect(row.cases[0]?.lastStatus).toBe('passed');
     });
   });
+
+  describe('S2-F9 close review', () => {
+    it("keeps another project's cases out of the matrix", async () => {
+      const other = await createProject('OTH');
+      const foreignCase = await createCase({}, await createSuite(other));
+      const requirementId = await createRequirement();
+      await verifies(requirementId, foreignCase);
+
+      const row = await rowFor(requirementId);
+      expect(row.cases).toEqual([]);
+      expect(row.covered).toBe(false);
+    });
+
+    it('refuses to link a defect to a requirement outside its project', async () => {
+      const other = await createProject('OTH');
+      const foreignRequirement = await createRequirement(other);
+      const stranger = await createWorkspace(app, { emailPrefix: 'stranger', slug: 'globex' });
+      const strangerRequirement = (
+        await request(
+          'POST',
+          '/api/v1/requirements',
+          as(
+            stranger.owner,
+            { projectId: stranger.projectId, title: 'Foreign tenant requirement' },
+            stranger.organizationId,
+          ),
+        )
+      ).json().id;
+
+      for (const requirementId of [foreignRequirement, strangerRequirement, 'does-not-exist']) {
+        const refused = await request(
+          'POST',
+          '/api/v1/defects',
+          asOwner({ projectId: workspace.projectId, title: 'Cross link', requirementIds: [requirementId] }),
+        );
+        expect(refused.statusCode, refused.body).toBe(400);
+      }
+      expect(await prisma.defect.count({ where: { organizationId: workspace.organizationId } })).toBe(0);
+      expect(
+        await prisma.traceabilityLink.count({ where: { sourceType: 'defect' } }),
+      ).toBe(0);
+
+      const ownRequirement = await createRequirement();
+      const raised = await request(
+        'POST',
+        '/api/v1/defects',
+        asOwner({ projectId: workspace.projectId, title: 'Own link', requirementIds: [ownRequirement] }),
+      );
+      expect(raised.statusCode, raised.body).toBe(201);
+    });
+
+    it("applies the project role, not the organization role, to someone else's assigned case", async () => {
+      const narrowed = await workspace.addMember('qa_lead', 'narrowed');
+      const raised = await workspace.addMember('tester', 'raised');
+      for (const [account, role] of [
+        [narrowed, 'tester'],
+        [raised, 'qa_lead'],
+      ] as const) {
+        const grant = await request(
+          'POST',
+          `/api/v1/projects/${workspace.projectId}/members`,
+          asOwner({ userId: account.userId, role }),
+        );
+        expect(grant.statusCode, grant.body).toBe(201);
+      }
+
+      const caseId = await createCase();
+      const run = await request(
+        'POST',
+        '/api/v1/test-runs',
+        asOwner({ projectId: workspace.projectId, name: 'Assigned', selection: { testCaseIds: [caseId] } }),
+      );
+      const runId: string = run.json().id;
+      const runCaseId: string = (
+        await request('GET', `/api/v1/test-runs/${runId}/cases`, asOwner())
+      ).json().data[0].id;
+      await request(
+        'POST',
+        `/api/v1/test-runs/${runId}/assignments`,
+        asOwner({ runCaseIds: [runCaseId], assignedToId: workspace.owner.userId }),
+      );
+      const record = (account: TestAccount) =>
+        request(
+          'POST',
+          `/api/v1/test-runs/${runId}/cases/${runCaseId}/results`,
+          as(account, { status: 'passed' }),
+        );
+
+      expect((await record(narrowed)).statusCode).toBe(403);
+      const filled = await record(raised);
+      expect(filled.statusCode, filled.body).toBe(201);
+    });
+  });
 });

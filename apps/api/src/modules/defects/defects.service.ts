@@ -78,6 +78,14 @@ export class DefectsService {
       };
     }
 
+    const requirementIds = [...new Set(input.requirementIds)];
+    const found = await this.defects.liveRequirementIds(project.id, requirementIds);
+    if (found.length !== requirementIds.length) {
+      throw new ValidationError(
+        'Some requirements do not exist, were deleted, or belong to another project',
+      );
+    }
+
     const defect = await this.prisma.runInTransaction(async (tx) => {
       const key = await this.projects.nextKey(project.id, 'defectCounter', 'D', tx);
 
@@ -102,7 +110,7 @@ export class DefectsService {
 
       // A defect found while executing a case verifies nothing on its own; the
       // link is what makes it show up in the requirement's row of the matrix.
-      for (const requirementId of input.requirementIds) {
+      for (const requirementId of requirementIds) {
         await this.defects.createLink(
           {
             sourceType: 'defect',

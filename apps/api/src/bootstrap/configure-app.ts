@@ -7,6 +7,7 @@ import { AppConfigService } from '../config/app-config.service';
 import { AllExceptionsFilter } from '../errors/all-exceptions.filter';
 import { RateLimitedError } from '../errors';
 import { HttpMetrics, UNMATCHED_ROUTE } from '../observability/http-metrics';
+import { SnapshotRateLimitStore } from './rate-limit-store';
 import { REQUEST_ID_HEADER, resolveRequestId } from './request-id';
 
 /**
@@ -124,6 +125,7 @@ export async function configureApp(
   const authRoutes = new Set(AUTH_LIMITED_ROUTES.map((path) => `/${config.apiPrefix}/v1/${path}`));
   const isAuthBucket = (key: string): boolean => key.startsWith(AUTH_BUCKET);
   await app.register(import('@fastify/rate-limit'), {
+    store: SnapshotRateLimitStore,
     keyGenerator: (request) =>
       authRoutes.has(request.routeOptions.url ?? '') ? `${AUTH_BUCKET}${request.ip}` : request.ip,
     max: (_request, key) => (isAuthBucket(key) ? config.authRateLimit.max : config.rateLimit.max),

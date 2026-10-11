@@ -52,8 +52,9 @@ S2-F10 ships the seam, not the integration:
 - `EnvSecretResolver`: resolves `env:QAFLOW_SECRET_<ORGANIZATION_ID>_<NAME>`.
   The `QAFLOW_SECRET_` prefix keeps `env:JWT_ACCESS_SECRET` or
   `env:DATABASE_URL` unreachable, and the organization segment keeps tenant A
-  from naming tenant B's variable. It is the development and single-tenant
-  provider.
+  from naming tenant B's variable. Only alphanumeric organization ids are
+  accepted, so no id can normalise into another's prefix. It is the
+  development and single-tenant provider.
 - No table, no migration, no consumer yet.
 
 The concrete manager, its client library, caching and the first caller arrive

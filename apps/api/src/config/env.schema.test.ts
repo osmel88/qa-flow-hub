@@ -32,6 +32,15 @@ describe('validateEnv', () => {
     expect(validateEnv({ ...validEnv, CORS_ORIGINS: '*' }).CORS_ORIGINS).toBe('*');
   });
 
+  it('refuses a wildcard hidden inside a list of origins in production', () => {
+    // @fastify/cors turns any list containing "*" into "allow every origin".
+    for (const origins of ['https://app.example.com,*', 'https://app.example.com, * ']) {
+      expect(() =>
+        validateEnv({ ...validEnv, NODE_ENV: 'production', CORS_ORIGINS: origins }),
+      ).toThrow(/CORS_ORIGINS/);
+    }
+  });
+
   it('rejects a short access secret', () => {
     expect(() => validateEnv({ ...validEnv, JWT_ACCESS_SECRET: 'too-short' })).toThrow(
       /JWT_ACCESS_SECRET/,
@@ -70,6 +79,7 @@ describe('validateEnv', () => {
 
     it.each([
       ['the example placeholder', 'replace-me-with-a-long-random-value-0123'],
+      ['a replace-with instruction', 'replace-with-a-long-random-string-0123456789'],
       ['a change-me value', 'Change-Me-Before-Deploying-This-Thing-42'],
       ['a repeated character', 'a'.repeat(48)],
     ])('refuses %s as a production secret', (_label, secret) => {

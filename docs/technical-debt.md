@@ -920,8 +920,14 @@ S2-F10 made an instance safe to deploy and operate; it did not deploy one.
 - **Error tracking is the log.** Unexpected exceptions are JSON lines with a
   stack; nothing groups or alerts on them.
 - **Readiness re-checks on every probe**: one `SELECT 1`, one read of
-  `_prisma_migrations`, one write+delete in storage. Cheap at a 5–10 s probe
-  interval; a busy orchestrator probing every second would want a short cache.
+  `_prisma_migrations`, one write+delete in storage. Concurrent probes share
+  the running check (single flight), so a burst costs one check; sequential
+  probes are not cached, so an orchestrator probing every second pays one
+  check per second per instance.
+- **The rate-limit store is ours** (`SnapshotRateLimitStore`), because the
+  plugin's default store rejected a whole concurrent burst. It is a fixed
+  window capped at 5,000 tracked keys; a plugin upgrade should re-run the
+  concurrent-burst regression before switching back.
 - **The role check runs at boot**, not continuously: a grant changed while the
   instance runs is seen only at the next start (readiness reports the boot
   result).

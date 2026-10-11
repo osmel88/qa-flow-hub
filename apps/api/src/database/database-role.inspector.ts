@@ -1,12 +1,16 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { AppConfigService } from '../config/app-config.service';
+import type { PrismaClient } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 
 export interface DatabaseRoleInfo {
   role: string;
   superuser: boolean;
   bypassRls: boolean;
+  /** Directly or through membership of the owning role. */
   ownsTables: boolean;
+  /** Member of a superuser or BYPASSRLS role: one `SET ROLE` away from both. */
+  assumesPrivilegedRole: boolean;
 }
 
 /**
@@ -22,6 +26,7 @@ export function databaseRoleProblems(info: DatabaseRoleInfo): string[] {
     ...(info.superuser ? ['is a superuser'] : []),
     ...(info.bypassRls ? ['has BYPASSRLS'] : []),
     ...(info.ownsTables ? ['owns application tables'] : []),
+    ...(info.assumesPrivilegedRole ? ['can assume a superuser or BYPASSRLS role'] : []),
   ];
 }
 
@@ -69,30 +74,54 @@ export class DatabaseRoleInspector implements OnApplicationBootstrap {
     this.logger.warn(message);
   }
 
-  async inspect(): Promise<DatabaseRoleInfo> {
-    const [row] = await this.prisma.$queryRaw<
-      Array<{ role: string; superuser: boolean; bypass_rls: boolean; owns_tables: boolean }>
-    >`
-      SELECT current_user AS role,
-             r.rolsuper AS superuser,
-             r.rolbypassrls AS bypass_rls,
-             EXISTS (
-               SELECT 1 FROM pg_tables
-               WHERE schemaname = 'public' AND tableowner = current_user
-             ) AS owns_tables
-      FROM pg_roles r
-      WHERE r.rolname = current_user
-    `;
-
-    if (row === undefined) {
-      throw new Error('Could not inspect the database role of DATABASE_URL');
-    }
-
-    return {
-      role: row.role,
-      superuser: row.superuser,
-      bypassRls: row.bypass_rls,
-      ownsTables: row.owns_tables,
-    };
+  inspect(): Promise<DatabaseRoleInfo> {
+    return inspectDatabaseRole(this.prisma);
   }
+}
+
+/**
+ * Who the connection is and what it can become. Ownership is checked through
+ * `pg_has_role`, because PostgreSQL grants an owner's RLS exemption to every
+ * role that inherits the owner's privileges; a member of a superuser or
+ * BYPASSRLS role is flagged too, since it can `SET ROLE` into it.
+ */
+export async function inspectDatabaseRole(prisma: PrismaClient): Promise<DatabaseRoleInfo> {
+  const [row] = await prisma.$queryRaw<
+    Array<{
+      role: string;
+      superuser: boolean;
+      bypass_rls: boolean;
+      owns_tables: boolean;
+      assumes_privileged_role: boolean;
+    }>
+  >`
+    SELECT current_user AS role,
+           r.rolsuper AS superuser,
+           r.rolbypassrls AS bypass_rls,
+           EXISTS (
+             SELECT 1 FROM pg_tables t
+             WHERE t.schemaname = 'public'
+               AND pg_has_role(current_user, t.tableowner, 'MEMBER')
+           ) AS owns_tables,
+           EXISTS (
+             SELECT 1 FROM pg_roles p
+             WHERE (p.rolsuper OR p.rolbypassrls)
+               AND p.rolname <> current_user
+               AND pg_has_role(current_user, p.oid, 'MEMBER')
+           ) AS assumes_privileged_role
+    FROM pg_roles r
+    WHERE r.rolname = current_user
+  `;
+
+  if (row === undefined) {
+    throw new Error('Could not inspect the database role of DATABASE_URL');
+  }
+
+  return {
+    role: row.role,
+    superuser: row.superuser,
+    bypassRls: row.bypass_rls,
+    ownsTables: row.owns_tables,
+    assumesPrivilegedRole: row.assumes_privileged_role,
+  };
 }

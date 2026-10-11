@@ -27,16 +27,18 @@ Código de referencia:
 
 ## Fallar cerrado: la configuración como frontera de seguridad
 
-`validateEnv` ya rechazaba un `CORS_ORIGINS=*` en producción. Ahora, con
+`validateEnv` ya rechazaba un `CORS_ORIGINS=*` en producción (y ahora también
+un `*` escondido dentro de una lista: `@fastify/cors` trata `['https://a', '*']`
+como "cualquier origen"). Ahora, con
 `NODE_ENV=production`, también rechaza:
 
-| Configuración                                            | Por qué es peligrosa                                   |
-| -------------------------------------------------------- | ------------------------------------------------------ |
-| `JWT_ACCESS_SECRET === JWT_REFRESH_SECRET`               | quien filtra uno puede firmar el otro tipo de token    |
-| un secreto con `replace-me`, `change-me`, `placeholder`… | es el valor de `.env.example`, público en Git          |
-| un secreto con menos de 10 caracteres distintos          | `'a'.repeat(32)` cumple la longitud y no es un secreto |
-| `STORAGE_PROVIDER=memory`                                | las evidencias desaparecen en cada reinicio            |
-| `METRICS_ENABLED=true` sin `METRICS_TOKEN` fuerte        | `/metrics` describe el tráfico de todos los tenants    |
+| Configuración                                             | Por qué es peligrosa                                   |
+| --------------------------------------------------------- | ------------------------------------------------------ |
+| `JWT_ACCESS_SECRET === JWT_REFRESH_SECRET`                | quien filtra uno puede firmar el otro tipo de token    |
+| un secreto con `replace-me`, `replace-with`, `change-me`… | es el valor de `.env.example`, público en Git          |
+| un secreto con menos de 10 caracteres distintos           | `'a'.repeat(32)` cumple la longitud y no es un secreto |
+| `STORAGE_PROVIDER=memory`                                 | las evidencias desaparecen en cada reinicio            |
+| `METRICS_ENABLED=true` sin `METRICS_TOKEN` fuerte         | `/metrics` describe el tráfico de todos los tenants    |
 
 La idea clave: **un error de arranque es barato; una configuración insegura en
 marcha es cara**. Un pod que no arranca se ve en el despliegue; un secreto de
@@ -58,12 +60,22 @@ existir sin un solo error.
 
 ```sql
 SELECT current_user, rolsuper, rolbypassrls,
-       EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public'
-               AND tableowner = current_user) AS owns_tables
+       EXISTS (SELECT 1 FROM pg_tables t WHERE t.schemaname = 'public'
+               AND pg_has_role(current_user, t.tableowner, 'MEMBER')) AS owns_tables,
+       EXISTS (SELECT 1 FROM pg_roles p WHERE (p.rolsuper OR p.rolbypassrls)
+               AND p.rolname <> current_user
+               AND pg_has_role(current_user, p.oid, 'MEMBER')) AS assumes_privileged_role
 FROM pg_roles WHERE rolname = current_user;
 ```
 
-En producción, cualquiera de los tres problemas **detiene el arranque**. Fuera de
+¿Por qué `pg_has_role` y no `tableowner = current_user`? La revisión final de
+S2-F10 lo demostró: un rol `NOSUPERUSER NOBYPASSRLS` al que se le hace
+`GRANT qaflow TO ...` no es el owner, pero **hereda** los privilegios del owner,
+incluida la exención de RLS, y leía las 43 filas de `projects` sin contexto de
+tenant. La primera versión de la consulta lo daba por seguro. Lo mismo con un
+miembro de un rol `BYPASSRLS`: está a un `SET ROLE` de saltarse las políticas.
+
+En producción, cualquiera de los cuatro problemas **detiene el arranque**. Fuera de
 producción es un warning (las suites de integración se conectan como owner a
 propósito) y readiness lo informa como `warn`.
 
@@ -124,6 +136,14 @@ max: (_request, key) => (key.startsWith('auth:') ? auth.max : global.max),
 
 `routeOptions.url` es la **plantilla** de ruta, no la URL concreta: así
 `/auth/login?x=1` no escapa del presupuesto.
+
+Un detalle que solo aparece con concurrencia: el store por defecto del plugin
+le devuelve su **objeto contador vivo**, y el plugin lo lee después de un
+`await`. Con 12 logins simultáneos y un presupuesto de 3, las 12 peticiones
+leían `current = 12` y **todas** recibían 429, incluidas las tres legítimas.
+`SnapshotRateLimitStore` devuelve una copia del valor en el momento de cada
+incremento: exactamente 3 pasan y 9 reciben 429. Lección: un test secuencial no
+prueba un contador compartido; hay que lanzar las peticiones con `Promise.all`.
 
 El error del plugin ahora es un `RateLimitedError`, así que el filtro global
 escribe el envelope estándar: `429 { error: { code: 'RATE_LIMITED', … } }` y
@@ -196,6 +216,12 @@ el resultado del chequeo de rol y si la instancia está drenando. Responde estad
 (`ok`/`warn`/`fail`) y duraciones, **nunca mensajes de error**: el endpoint es
 público y un mensaje de error de PostgreSQL revela host, usuario o versión.
 
+Al ser público y escribir en storage, readiness también es un amplificador: 25
+probes simultáneos eran 25 escrituras y 50 conexiones. Las peticiones que llegan
+mientras un chequeo está en curso **esperan ese mismo chequeo** (_single
+flight_: una promesa compartida en `inFlight`), así que un burst cuesta un solo
+chequeo. No hay caché entre chequeos: cada probe posterior ve el estado real.
+
 ### Apagado ordenado
 
 ```text
@@ -249,7 +275,10 @@ interface SecretResolver {
 y un proveedor de entorno que solo lee `QAFLOW_SECRET_<ORG>_<NOMBRE>`. Las dos
 restricciones evitan el _confused deputy_: `secretRef` es dato del tenant, y sin
 ellas un tenant podría apuntar a `env:JWT_ACCESS_SECRET` o al token de otra
-organización. El proveedor real llega con GitHub Real.
+organización. Además, el id de organización debe ser alfanumérico: el segmento
+termina en el primer `_`, así que una organización `ab-x` (normalizada como
+`AB_X`) y la organización `ab` reclamarían la misma variable
+`QAFLOW_SECRET_AB_X_TOKEN`. El proveedor real llega con GitHub Real.
 
 ## Cabeceras de seguridad
 

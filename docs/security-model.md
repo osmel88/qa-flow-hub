@@ -78,7 +78,8 @@ and chapter 10 of the backend course. Summary:
 
 - Helmet: `X-Content-Type-Options`, `X-Frame-Options`, HSTS in production.
 - CORS: explicit allow-list from `CORS_ORIGINS`, credentials enabled. A wildcard
-  is accepted in development and **rejected at boot** in production, because a
+  (alone or anywhere in the list) is accepted in development and **rejected at
+  boot** in production, because a
   reflected origin plus credentials is the combination the allow-list exists to
   prevent.
 - OpenAPI: `/docs` and `/docs/openapi.json` are unauthenticated, so they are
@@ -118,12 +119,15 @@ and chapter 10 of the backend course. Summary:
   10 distinct characters; `METRICS_TOKEN` is held to the same rules.
 - The API refuses to boot in production when its database role is a
   superuser, has `BYPASSRLS` or owns application tables: any of them would
-  turn Row Level Security off without a single error.
+  turn Row Level Security off without a single error. Membership counts: a
+  role granted the owner role inherits the owner's exemption, and a member of
+  a superuser or `BYPASSRLS` role can `SET ROLE` into it; both are refused.
 - `IntegrationConnection` stores `secretRef`, a pointer into a secret manager,
   never a customer's API token. A database dump must not yield credentials for
   a customer's Jira. References resolve through the `SecretResolver` port,
   scoped to the caller's organization (ADR 0014); the environment provider
-  only reads `QAFLOW_SECRET_<ORG>_*`, never the platform's own variables.
+  only reads `QAFLOW_SECRET_<ORG>_*`, never the platform's own variables, and
+  refuses organization ids that are not alphanumeric.
 - Logs never contain tokens, hashes or passwords. Failures log user ids.
 
 ## Known limitations

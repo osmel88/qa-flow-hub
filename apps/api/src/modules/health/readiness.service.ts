@@ -53,6 +53,7 @@ const MIGRATIONS_DIR = resolve(__dirname, '../../../prisma/migrations');
 export class ReadinessService {
   private readonly logger = new Logger(ReadinessService.name);
   private expectedMigrations: readonly string[] | null = null;
+  private inFlight: Promise<ReadinessReport['checks']> | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -63,20 +64,35 @@ export class ReadinessService {
   ) {}
 
   async check(): Promise<ReadinessReport> {
-    const [database, migrations, storage] = await Promise.all([
-      this.timed('database', () => this.checkDatabase()),
-      this.checkMigrations(),
-      this.timed('storage', () => this.checkStorage()),
-    ]);
-    const databaseRole = this.checkDatabaseRole();
-
-    const checks = { database, migrations, storage, databaseRole };
+    const checks = await this.sharedChecks();
     const failing = Object.values(checks).some((check) => check.status === 'fail');
 
     return {
       status: this.lifecycle.draining ? 'draining' : failing ? 'not_ready' : 'ready',
       checks,
     };
+  }
+
+  /**
+   * Probes that arrive while a check is running wait for it instead of
+   * starting their own. The endpoint is anonymous and every check writes to
+   * storage and holds database connections, so without this a burst of probes
+   * is a burst of writes and an exhausted pool.
+   */
+  private sharedChecks(): Promise<ReadinessReport['checks']> {
+    this.inFlight ??= this.runChecks().finally(() => {
+      this.inFlight = null;
+    });
+    return this.inFlight;
+  }
+
+  private async runChecks(): Promise<ReadinessReport['checks']> {
+    const [database, migrations, storage] = await Promise.all([
+      this.timed('database', () => this.checkDatabase()),
+      this.checkMigrations(),
+      this.timed('storage', () => this.checkStorage()),
+    ]);
+    return { database, migrations, storage, databaseRole: this.checkDatabaseRole() };
   }
 
   private async checkDatabase(): Promise<void> {

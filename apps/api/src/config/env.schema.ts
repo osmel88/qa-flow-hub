@@ -132,10 +132,11 @@ export const envSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
     };
 
-    if (env.CORS_ORIGINS.trim() === '*') {
+    // Anywhere in the list: @fastify/cors treats a list containing "*" as "*".
+    if (env.CORS_ORIGINS.split(',').some((origin) => origin.trim() === '*')) {
       fail(
         'CORS_ORIGINS',
-        'CORS_ORIGINS cannot be "*" in production: CORS is configured with credentials',
+        'CORS_ORIGINS cannot contain "*" in production: CORS is configured with credentials',
       );
     }
 
@@ -177,6 +178,8 @@ export const envSchema = z
 const PLACEHOLDER_MARKERS = [
   'replace-me',
   'replace_me',
+  'replace-with',
+  'replace_with',
   'change-me',
   'changeme',
   'placeholder',

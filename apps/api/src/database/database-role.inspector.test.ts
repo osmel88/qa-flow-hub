@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { databaseRoleProblems } from './database-role.inspector';
 
-const runtime = { role: 'qaflow_app', superuser: false, bypassRls: false, ownsTables: false };
+const runtime = {
+  role: 'qaflow_app',
+  superuser: false,
+  bypassRls: false,
+  ownsTables: false,
+  assumesPrivilegedRole: false,
+};
 
 describe('databaseRoleProblems', () => {
   it('accepts the non-owning runtime role', () => {
@@ -12,6 +18,11 @@ describe('databaseRoleProblems', () => {
     ['the table owner', { ownsTables: true }, 'owns application tables'],
     ['a superuser', { superuser: true }, 'is a superuser'],
     ['a BYPASSRLS role', { bypassRls: true }, 'has BYPASSRLS'],
+    [
+      'a member of a superuser or BYPASSRLS role',
+      { assumesPrivilegedRole: true },
+      'can assume a superuser or BYPASSRLS role',
+    ],
   ])('flags %s, because the policies do not apply to it', (_label, change, problem) => {
     expect(databaseRoleProblems({ ...runtime, ...change })).toEqual([problem]);
   });

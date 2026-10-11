@@ -46,6 +46,40 @@ describe('EnvSecretResolver', () => {
     );
   });
 
+  it('refuses an organization id that cannot be mapped to a variable unambiguously', async () => {
+    // "ab-x" would normalise to AB_X, and QAFLOW_SECRET_AB_X_TOKEN would then
+    // also read as organization "ab"'s secret named X_TOKEN.
+    const shadowing = new EnvSecretResolver({ QAFLOW_SECRET_AB_X_TOKEN: 'token-of-ab-x' });
+
+    expect(() => EnvSecretResolver.variableFor('ab-x', 'token')).toThrow(
+      InvalidSecretReferenceError,
+    );
+    await expect(
+      shadowing.resolve('env:QAFLOW_SECRET_AB_X_TOKEN', { organizationId: 'ab-x' }),
+    ).rejects.toBeInstanceOf(InvalidSecretReferenceError);
+    await expect(
+      shadowing.resolve('env:QAFLOW_SECRET_AB_X_TOKEN', { organizationId: 'ab_x' }),
+    ).rejects.toBeInstanceOf(InvalidSecretReferenceError);
+  });
+
+  it('answers null for an empty value, and for a name nobody configured', async () => {
+    const empty = new EnvSecretResolver({ [EnvSecretResolver.variableFor(orgA, 'token')]: '' });
+    const ref = `env:${EnvSecretResolver.variableFor(orgA, 'token')}`;
+
+    await expect(empty.resolve(ref, { organizationId: orgA })).resolves.toBeNull();
+  });
+
+  it.each([
+    'env:QAFLOW_SECRET_X\n',
+    ' env:QAFLOW_SECRET_X_Y',
+    'env:QAFLOW_SECRET_X_Y ',
+    'ENV:QAFLOW_SECRET_X_Y',
+  ])('refuses the padded or mis-cased reference %j', async (ref) => {
+    await expect(resolver.resolve(ref, { organizationId: 'x' })).rejects.toBeInstanceOf(
+      InvalidSecretReferenceError,
+    );
+  });
+
   it('answers null when the reference is valid but nothing is stored', async () => {
     const ref = `env:${EnvSecretResolver.variableFor(orgA, 'jira_token')}`;
 

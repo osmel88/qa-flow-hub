@@ -72,18 +72,18 @@ in every environment that ever ran it.
 **fails closed**: it refuses to boot rather than run with a configuration that
 is merely unusual in development.
 
-| Variable                                  | Production rule                                                                                                                                                                                             |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                            | `qaflow_app`, never the owner. At boot the API inspects its own role and **exits** if it is a superuser, has `BYPASSRLS` or owns application tables — any of the three silently disables Row Level Security |
-| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | ≥ 32 chars everywhere; in production also **different** from each other, free of placeholders (`replace-me`, `change-me`, …) and with at least 10 distinct characters                                       |
-| `CORS_ORIGINS`                            | explicit list; a wildcard fails validation, because CORS is registered with credentials                                                                                                                     |
-| `STORAGE_PROVIDER`                        | `local` (or a future S3 provider); `memory` is refused — evidence would vanish on restart                                                                                                                   |
-| `STORAGE_LOCAL_ROOT`                      | a persistent volume, backed up with the database                                                                                                                                                            |
-| `TRUST_PROXY`                             | the exact number of proxies in front of the API (see below)                                                                                                                                                 |
-| `METRICS_ENABLED`, `METRICS_TOKEN`        | metrics off by default; when on, the token is required and held to the secret rules                                                                                                                         |
-| `LOG_FORMAT`                              | `json` by default in production                                                                                                                                                                             |
-| `WEB_BASE_URL`                            | invitation links are built from this, never from a request header                                                                                                                                           |
-| `SWAGGER_ENABLED`                         | off by default in production, because the schema is a map of the API. Set it to `true` only for a deployment that is not publicly reachable                                                                 |
+| Variable                                  | Production rule                                                                                                                                                                                                                                                                           |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                            | `qaflow_app`, never the owner. At boot the API inspects its own role and **exits** if it is a superuser, has `BYPASSRLS`, owns application tables (directly or as a member of the owning role) or is a member of a superuser/`BYPASSRLS` role — each silently disables Row Level Security |
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | ≥ 32 chars everywhere; in production also **different** from each other, free of placeholders (`replace-me`, `replace-with`, `change-me`, …) and with at least 10 distinct characters                                                                                                     |
+| `CORS_ORIGINS`                            | explicit list; a wildcard fails validation, also inside a list (`https://a.example,*`), because CORS is registered with credentials                                                                                                                                                       |
+| `STORAGE_PROVIDER`                        | `local` (or a future S3 provider); `memory` is refused — evidence would vanish on restart                                                                                                                                                                                                 |
+| `STORAGE_LOCAL_ROOT`                      | a persistent volume, backed up with the database                                                                                                                                                                                                                                          |
+| `TRUST_PROXY`                             | the exact number of proxies in front of the API (see below)                                                                                                                                                                                                                               |
+| `METRICS_ENABLED`, `METRICS_TOKEN`        | metrics off by default; when on, the token is required and held to the secret rules                                                                                                                                                                                                       |
+| `LOG_FORMAT`                              | `json` by default in production                                                                                                                                                                                                                                                           |
+| `WEB_BASE_URL`                            | invitation links are built from this, never from a request header                                                                                                                                                                                                                         |
+| `SWAGGER_ENABLED`                         | off by default in production, because the schema is a map of the API. Set it to `true` only for a deployment that is not publicly reachable                                                                                                                                               |
 
 Rotating a JWT secret invalidates every token signed with it: access tokens die
 within 15 minutes, refresh tokens immediately (their HMAC no longer matches), so a
@@ -93,7 +93,9 @@ suspected leak; it is also why it should not be done casually on a Friday.
 Integration credentials are not environment configuration: they live in an
 external secret manager reached through the `SecretResolver` port
 ([ADR 0014](adr/0014-external-secret-manager.md)). Until GitHub Real chooses
-the manager, the only provider reads `QAFLOW_SECRET_<ORG>_<NAME>` variables.
+the manager, the only provider reads `QAFLOW_SECRET_<ORG>_<NAME>` variables,
+for alphanumeric organization ids only (an id containing `_` or `-` could claim
+another organization's variables).
 
 ## Behind a proxy
 
@@ -127,8 +129,9 @@ accept `Lax` and add CSRF protection. The current deployment assumes one origin.
 
 ## Rate limiting
 
-`@fastify/rate-limit` with its in-memory store, so the limits are **per
-instance**: with N replicas the effective limit is N times the configured one.
+`@fastify/rate-limit` with an in-memory store (`SnapshotRateLimitStore`: the
+plugin's default store rejected a whole concurrent burst once it exceeded the
+budget, instead of only the excess), so the limits are **per instance**: with N replicas the effective limit is N times the configured one.
 That is the approved trade-off (no Redis); the cluster-wide limit is the
 edge's job.
 
@@ -284,10 +287,10 @@ check refuses.
 
 ## Health, logs and metrics
 
-| Endpoint            | Meaning                                 | Checks                                                                                                                                                                             | Use for                                          |
-| ------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `GET /health`       | **liveness** — the process answers      | none (no database)                                                                                                                                                                 | restart decisions                                |
-| `GET /health/ready` | **readiness** — this instance can serve | `SELECT 1`; every migration on disk applied and none failed; a probe object written to and deleted from storage; the runtime role is not superuser/`BYPASSRLS`/owner; not draining | load balancer, compose healthcheck, deploy gates |
+| Endpoint            | Meaning                                 | Checks                                                                                                                                                                                                                        | Use for                                          |
+| ------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `GET /health`       | **liveness** — the process answers      | none (no database)                                                                                                                                                                                                            | restart decisions                                |
+| `GET /health/ready` | **readiness** — this instance can serve | `SELECT 1`; every migration on disk applied and none failed; a probe object written to and deleted from storage; the runtime role is not superuser/`BYPASSRLS`/owner; not draining. Concurrent probes share one running check | load balancer, compose healthcheck, deploy gates |
 
 Readiness answers `200 {"status":"ready","checks":{...}}` or `503` with
 `not_ready` / `draining`. Each check reports `ok`, `warn` (role check outside

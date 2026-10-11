@@ -101,6 +101,18 @@ describe('production readiness (integration)', () => {
       expect(otherClient.statusCode).toBe(401);
     });
 
+    it('admits exactly the budget when the attempts arrive at the same time', async () => {
+      const attempts = await Promise.all(
+        Array.from({ length: 12 }, (_value, index) =>
+          login('203.0.113.50', `burst${index}@example.test`),
+        ),
+      );
+      const statuses = attempts.map((response) => response.statusCode);
+
+      expect(statuses.filter((status) => status === 401)).toHaveLength(AUTH_LIMIT);
+      expect(statuses.filter((status) => status === 429)).toHaveLength(12 - AUTH_LIMIT);
+    });
+
     it('does not spend the stricter budget on other routes, nor limit the probes', async () => {
       const browsing = await app.inject({
         method: 'GET',
@@ -268,6 +280,21 @@ describe('production readiness (integration)', () => {
         expect(response.body).not.toContain('EACCES');
       } finally {
         spy.mockRestore();
+      }
+    });
+
+    it('runs one check for a burst of concurrent probes, so the probe cannot be used to flood storage', async () => {
+      const storage = app.get<StorageProvider>(STORAGE_PROVIDER);
+      const put = vi.spyOn(storage, 'put');
+      try {
+        const responses = await Promise.all(
+          Array.from({ length: 25 }, () => app.inject({ method: 'GET', url: '/health/ready' })),
+        );
+
+        expect(responses.map((response) => response.statusCode)).toEqual(Array(25).fill(200));
+        expect(put).toHaveBeenCalledTimes(1);
+      } finally {
+        put.mockRestore();
       }
     });
 

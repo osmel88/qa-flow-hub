@@ -975,6 +975,20 @@ behind the `BillingProvider` port (ADR 0015). What it leaves:
 - **Webhook events are kept forever.** `billing_webhook_events` needs a
   retention job once volume matters; deduplication only needs a window longer
   than the provider's retry period.
+- **Event ordering is by provider timestamp only.** Subscription and invoice
+  rows remember the newest event applied (`lastEventAt`) and ignore older
+  ones, under a per-organization billing-state lock; two events with the
+  _same_ timestamp are applied in arrival order. Stripe timestamps have
+  one-second resolution, so its adapter should re-fetch the object instead of
+  trusting a tie.
+- **The mock's in-process delivery is not retried.** If applying one queued
+  webhook fails, the rest of that batch is dropped (a real provider retries;
+  the mock forgets). The webhook itself is atomic: a failure or a restart
+  halfway leaves neither the event row nor its effects.
+- **The organization list shows the cached plan.** `GET /organizations/current`
+  and `/billing` refresh it from the subscription and the clock; the list of
+  the caller's organizations may show a trial plan that already expired until
+  one of those runs.
 - **Dunning is passive.** `past_due` keeps the paid plan for the grace period
   and then falls back to Free; nobody is emailed.
 - **The members limit counts active members plus pending, unexpired

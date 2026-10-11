@@ -61,7 +61,8 @@ export class OrganizationsService {
       }),
     );
 
-    return toOrganizationView(organization);
+    const fresh = await this.organizations.findById(organization.id);
+    return toOrganizationView(fresh ?? organization);
   }
 
   /**
@@ -75,6 +76,7 @@ export class OrganizationsService {
   }
 
   async get(organizationId: string): Promise<OrganizationView> {
+    await this.billing.syncCachedPlan();
     const organization = await this.organizations.findById(organizationId);
     if (organization === null) {
       throw new NotFoundError('Organization');

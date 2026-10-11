@@ -90,6 +90,21 @@ export class BillingRepository extends TenantAwareRepository {
         trialEndsAt,
       },
     });
+    await tx.organization.update({ where: { id: organizationId }, data: { plan } });
+  }
+
+  /**
+   * Cancels the trial only if it is still a trial, under the billing-state
+   * lock: a webhook that activated a paid subscription meanwhile wins.
+   */
+  cancelTrial(now: Date): Promise<Prisma.BatchPayload> {
+    return this.base.runInTransaction(async (tx) => {
+      await this.lockBillingState(tx);
+      return tx.subscription.updateMany({
+        where: { ...this.scope(), status: SubscriptionStatus.trialing },
+        data: { status: SubscriptionStatus.canceled, canceledAt: now },
+      });
+    });
   }
 
   /** Local-only change (a trial has no provider subscription to ask). */
@@ -117,6 +132,24 @@ export class BillingRepository extends TenantAwareRepository {
   async lockUsage(resource: LimitedResource, tx: PrismaTransaction): Promise<void> {
     const key = `billing:${this.organizationId}:${resource}`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+  }
+
+  /**
+   * Serialises every change to the organization's subscription and invoices
+   * (webhooks, trial cancellation), so the "is this event newer?" check and
+   * the write it guards cannot interleave with another one.
+   */
+  async lockBillingState(tx: PrismaTransaction): Promise<void> {
+    const key = `billing:${this.organizationId}:state`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+  }
+
+  findInvoice(
+    provider: BillingProviderKind,
+    externalInvoiceId: string,
+    tx: PrismaTransaction,
+  ): Promise<Invoice | null> {
+    return tx.invoice.findFirst({ where: { ...this.scope(), provider, externalInvoiceId } });
   }
 
   async countUsage(resource: LimitedResource, tx?: PrismaTransaction): Promise<number> {

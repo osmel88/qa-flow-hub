@@ -1155,6 +1155,8 @@ model Invoice {
   periodEnd         DateTime?
   hostedUrl         String?
   issuedAt          DateTime
+  /// `createdAt` of the newest provider event applied; older events are ignored.
+  lastEventAt       DateTime?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 

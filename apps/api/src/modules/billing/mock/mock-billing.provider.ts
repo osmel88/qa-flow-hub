@@ -144,6 +144,9 @@ export class MockBillingProvider implements BillingProvider {
     if (input.atPeriodEnd) {
       subscription.pendingPlan = input.plan === subscription.plan ? null : input.plan;
       subscription.cancelAtPeriodEnd = false;
+    } else if (input.plan === subscription.plan) {
+      // Already there (a concurrent request won): nothing to charge.
+      return Promise.resolve();
     } else {
       const difference =
         PLAN_CATALOG[input.plan].monthlyPriceCents -
@@ -229,6 +232,15 @@ export class MockBillingProvider implements BillingProvider {
     const session = this.session(sessionId, externalCustomerId);
     if (session.status !== 'open') {
       throw new ConflictError('The checkout session is no longer open');
+    }
+    const live = [...this.store.subscriptions.values()].some(
+      (existing) =>
+        existing.externalCustomerId === externalCustomerId &&
+        (existing.status === 'active' || existing.status === 'past_due'),
+    );
+    if (live) {
+      session.status = 'failed';
+      throw new ConflictError('The customer already has a live subscription');
     }
     session.status = outcome === 'succeeded' ? 'completed' : 'failed';
 

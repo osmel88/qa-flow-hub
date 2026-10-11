@@ -126,6 +126,7 @@ export class BillingWebhooksService {
     event: BillingEvent,
     tx: PrismaTransaction,
   ): Promise<void> {
+    await this.billing.lockBillingState(tx);
     if (event.type === 'invoice.updated') {
       await this.applyInvoice(kind, event, tx);
     } else {
@@ -199,6 +200,12 @@ export class BillingWebhooksService {
   ): Promise<void> {
     const invoice = event.invoice;
     const organizationId = this.tenant.organizationId as string;
+    const eventAt = new Date(event.createdAt);
+    const existing = await this.billing.findInvoice(kind, invoice.externalInvoiceId, tx);
+    if (existing?.lastEventAt != null && existing.lastEventAt > eventAt) {
+      // Same rule as subscriptions: an older snapshot must not undo a newer one.
+      return;
+    }
     const data = {
       number: invoice.number,
       status: invoice.status,
@@ -210,6 +217,7 @@ export class BillingWebhooksService {
       periodEnd: date(invoice.periodEnd),
       hostedUrl: invoice.hostedUrl,
       issuedAt: new Date(invoice.issuedAt),
+      lastEventAt: eventAt,
     };
 
     const { count } = await tx.invoice.updateMany({

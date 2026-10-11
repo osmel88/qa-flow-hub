@@ -64,6 +64,12 @@ export class BillingService {
     return this.billing.startTrial(organizationId, OrganizationPlan.team, trialEndsAt, tx);
   }
 
+  /** Brings the cached `Organization.plan` up to date with the clock. */
+  async syncCachedPlan(): Promise<void> {
+    const subscription = await this.billing.findSubscription();
+    await this.billing.cachePlan(this.limits.effectivePlanOf(subscription).plan);
+  }
+
   async overview(): Promise<BillingOverviewView> {
     const subscription = await this.billing.findSubscription();
     const effective = this.limits.effectivePlanOf(subscription);
@@ -159,11 +165,11 @@ export class BillingService {
     }
 
     if (subscription.status === SubscriptionStatus.trialing) {
-      const now = new Date();
-      await this.billing.updateSubscription({
-        status: SubscriptionStatus.canceled,
-        canceledAt: now,
-      });
+      const { count } = await this.billing.cancelTrial(new Date());
+      if (count === 0) {
+        // A checkout was confirmed meanwhile: cancel what exists now instead.
+        return this.cancel();
+      }
       await this.audit.record({
         action: AuditAction.update,
         entityType: 'subscription',
@@ -212,6 +218,10 @@ export class BillingService {
     sessionId: string,
     outcome: 'succeeded' | 'failed',
   ): Promise<BillingOverviewView> {
+    const subscription = await this.billing.findSubscription();
+    if (subscription?.externalSubscriptionId != null && LIVE.has(subscription.status)) {
+      throw new ConflictError('The organization already has a paid subscription');
+    }
     this.mock().completeCheckout(sessionId, await this.requireCustomerId(), outcome);
     await this.deliverPending();
     return this.overview();

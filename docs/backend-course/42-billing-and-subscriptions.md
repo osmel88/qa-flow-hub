@@ -104,6 +104,22 @@ Después de verificar:
 transacción que aplica el cambio, en otra transacción? (Pista: un fallo entre
 ambas pierde el evento para siempre.)
 
+## Webhooks fuera de orden y carreras
+
+Los proveedores no garantizan el orden. Cada suscripción y cada factura guarda
+`lastEventAt`, el `createdAt` del evento más nuevo aplicado; un evento más viejo
+se registra (para deduplicar) pero no cambia nada. Esa comparación es otro
+_check-then-act_: dos webhooks simultáneos leerían el mismo `lastEventAt` y el
+viejo podría escribir el último. Por eso `apply()` toma primero
+`pg_advisory_xact_lock('billing:<org>:state')`, y la cancelación local de un
+trial usa el mismo lock con un `UPDATE ... WHERE status = 'trialing'`: si un
+checkout se confirmó entretanto, la cancelación no lo pisa.
+
+La revisión de S2-F11 encontró estas carreras con tests que fallaban antes del
+arreglo (`billing.int-spec.ts`, bloque _review_), igual que un segundo checkout
+pagado sobre una suscripción ya activa o cuatro upgrades simultáneos que
+generaban cuatro facturas.
+
 ## Límites bajo concurrencia
 
 "Free permite 3 proyectos" parece un `if (count >= 3) throw`. Con dos peticiones

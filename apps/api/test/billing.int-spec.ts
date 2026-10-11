@@ -180,7 +180,8 @@ describe('billing and subscriptions', () => {
       const row = await owner.organization.findUniqueOrThrow({
         where: { id: acme.organizationId },
       });
-      expect(row.plan).toBe('free');
+      // The cache holds the trial plan, never the one the request asked for.
+      expect(row.plan).toBe('team');
     });
   });
 
@@ -770,6 +771,220 @@ describe('billing and subscriptions', () => {
       expect(response.statusCode).toBe(402);
       expect(response.json().error.details[0].path).toBe('storage');
       expect(await owner.attachmentMetadata.count()).toBe(1);
+    });
+  });
+
+  describe('review: ordering, races and idempotency', () => {
+    const invoiceEvent = (
+      externalCustomerId: string,
+      externalInvoiceId: string,
+      status: 'open' | 'paid',
+      createdAt: Date,
+    ) => ({
+      id: `evt_test_${Math.random().toString(36).slice(2)}`,
+      type: 'invoice.updated',
+      createdAt: createdAt.toISOString(),
+      externalCustomerId,
+      invoice: {
+        externalInvoiceId,
+        number: 'TEST-000001',
+        status,
+        plan: 'team',
+        amountDueCents: 4900,
+        amountPaidCents: status === 'paid' ? 4900 : 0,
+        currency: 'usd',
+        periodStart: null,
+        periodEnd: null,
+        hostedUrl: null,
+        issuedAt: createdAt.toISOString(),
+      },
+    });
+
+    it('never lets an older invoice event undo a newer one', async () => {
+      await subscribe('team');
+      const customer = await owner.billingCustomer.findFirstOrThrow();
+      const now = Date.now();
+      const paid = signed(
+        invoiceEvent(customer.externalCustomerId, 'in_test_order', 'paid', new Date(now)),
+      );
+      const open = signed(
+        invoiceEvent(customer.externalCustomerId, 'in_test_order', 'open', new Date(now - 60_000)),
+      );
+      expect((await postWebhook(paid.body, paid.signature)).statusCode).toBe(200);
+      expect((await postWebhook(open.body, open.signature)).statusCode).toBe(200);
+      const invoice = await owner.invoice.findFirstOrThrow({
+        where: { externalInvoiceId: 'in_test_order' },
+      });
+      expect(invoice.status).toBe('paid');
+      expect(invoice.amountPaidCents).toBe(4900);
+    });
+
+    it('applies the newest subscription snapshot when webhooks race', async () => {
+      await subscribe('team');
+      const customer = await owner.billingCustomer.findFirstOrThrow();
+      const sub = await owner.subscription.findFirstOrThrow({
+        where: { organizationId: acme.organizationId },
+      });
+      for (let round = 1; round <= 8; round += 1) {
+        const base = Date.now() + round * 60_000;
+        const newer = signed(
+          subscriptionEvent(
+            customer.externalCustomerId,
+            { externalSubscriptionId: sub.externalSubscriptionId, plan: 'business' },
+            { createdAt: new Date(base).toISOString() },
+          ),
+        );
+        const older = signed(
+          subscriptionEvent(
+            customer.externalCustomerId,
+            { externalSubscriptionId: sub.externalSubscriptionId, status: 'canceled' },
+            { createdAt: new Date(base - 1_000).toISOString() },
+          ),
+        );
+        const responses = await Promise.all([
+          postWebhook(newer.body, newer.signature),
+          postWebhook(older.body, older.signature),
+        ]);
+        expect(responses.map((response) => response.statusCode)).toEqual([200, 200]);
+        const current = await owner.subscription.findFirstOrThrow({
+          where: { organizationId: acme.organizationId },
+        });
+        expect({ round, status: current.status, plan: current.plan }).toEqual({
+          round,
+          status: 'active',
+          plan: 'business',
+        });
+      }
+    });
+
+    it('does not let a trial cancellation overwrite a checkout confirmed meanwhile', async () => {
+      for (let round = 0; round < 5; round += 1) {
+        const workspace = await createWorkspace(app, {
+          emailPrefix: `race-${round}`,
+          slug: `race-${round}`,
+        });
+        const ctx = (payload?: object) => as(workspace.owner, payload, workspace.organizationId);
+        const checkout = await request('POST', '/api/v1/billing/checkout', ctx({ plan: 'team' }));
+        const { sessionId } = checkout.json();
+        const [completed, canceled] = await Promise.all([
+          request(
+            'POST',
+            `/api/v1/billing/mock/checkout/${sessionId}/complete`,
+            ctx({ outcome: 'succeeded' }),
+          ),
+          request('POST', '/api/v1/billing/cancel', ctx()),
+        ]);
+        expect(completed.statusCode).toBe(200);
+        expect(canceled.statusCode).toBe(200);
+        const current = await owner.subscription.findUniqueOrThrow({
+          where: { organizationId: workspace.organizationId },
+        });
+        // Paid for: the subscription must be live (possibly canceling at period end).
+        expect({ round, status: current.status }).toEqual({ round, status: 'active' });
+      }
+    });
+
+    it('charges a second open checkout session never, once one was paid', async () => {
+      const first = await request(
+        'POST',
+        '/api/v1/billing/checkout',
+        as(acme.owner, { plan: 'team' }),
+      );
+      const second = await request(
+        'POST',
+        '/api/v1/billing/checkout',
+        as(acme.owner, { plan: 'business' }),
+      );
+      const pay = (sessionId: string) =>
+        request(
+          'POST',
+          `/api/v1/billing/mock/checkout/${sessionId}/complete`,
+          as(acme.owner, { outcome: 'succeeded' }),
+        );
+      expect((await pay(first.json().sessionId)).statusCode).toBe(200);
+      expect((await pay(second.json().sessionId)).statusCode).toBe(409);
+      expect(await owner.invoice.count()).toBe(1);
+      expect((await overview()).subscription).toMatchObject({ plan: 'team', status: 'active' });
+    });
+
+    it('upgrades once when the same upgrade is requested concurrently', async () => {
+      await subscribe('team');
+      const responses = await Promise.all(
+        Array.from({ length: 4 }, () =>
+          request('POST', '/api/v1/billing/plan', as(acme.owner, { plan: 'business' })),
+        ),
+      );
+      expect(responses.some((response) => response.statusCode === 200)).toBe(true);
+      for (const response of responses) {
+        expect([200, 409]).toContain(response.statusCode);
+      }
+      // The checkout invoice plus exactly one upgrade invoice.
+      expect(await owner.invoice.count()).toBe(2);
+      expect((await overview()).effectivePlan).toBe('business');
+    });
+
+    it('cancels once however many times, and concurrently, it is asked', async () => {
+      await subscribe('team');
+      const responses = await Promise.all(
+        Array.from({ length: 4 }, () => request('POST', '/api/v1/billing/cancel', as(acme.owner))),
+      );
+      expect(responses.map((response) => response.statusCode)).toEqual([200, 200, 200, 200]);
+      expect((await overview()).subscription).toMatchObject({
+        status: 'active',
+        cancelAtPeriodEnd: true,
+      });
+      expect(await owner.invoice.count()).toBe(1);
+      expect((await request('POST', '/api/v1/billing/cancel', as(acme.owner))).statusCode).toBe(
+        200,
+      );
+    });
+
+    it('never takes the plan from organization endpoints, and reports the effective one', async () => {
+      const created = await request('POST', '/api/v1/organizations', {
+        payload: { name: 'Org sneaky', slug: 'sneaky', plan: 'business' },
+        token: acme.owner.accessToken,
+      });
+      expect(created.statusCode).toBe(201);
+      expect(created.json().plan).toBe('team');
+      const sneaky = await owner.subscription.findUniqueOrThrow({
+        where: { organizationId: created.json().id },
+      });
+      expect(sneaky).toMatchObject({ plan: 'team', status: 'trialing' });
+
+      await expireTrial();
+      const current = await request('GET', '/api/v1/organizations/current', as(acme.owner));
+      expect(current.json().plan).toBe('free');
+    });
+
+    it('rolls back a webhook that fails halfway, so a redelivery is not a duplicate', async () => {
+      const globex = await createWorkspace(app, { emailPrefix: 'globex-owner', slug: 'globex' });
+      await subscribe('team');
+      await subscribe('team', 'succeeded', globex);
+      const acmeCustomer = await owner.billingCustomer.findUniqueOrThrow({
+        where: { organizationId: acme.organizationId },
+      });
+      const globexInvoice = await owner.invoice.findFirstOrThrow({
+        where: { organizationId: globex.organizationId },
+      });
+      const before = {
+        events: await owner.billingWebhookEvent.count(),
+        audits: await owner.auditLog.count(),
+      };
+      const hijack = signed(
+        invoiceEvent(
+          acmeCustomer.externalCustomerId,
+          globexInvoice.externalInvoiceId,
+          'open',
+          new Date(),
+        ),
+      );
+      expect((await postWebhook(hijack.body, hijack.signature)).statusCode).toBe(400);
+      expect((await postWebhook(hijack.body, hijack.signature)).statusCode).toBe(400);
+      expect(await owner.billingWebhookEvent.count()).toBe(before.events);
+      expect(await owner.auditLog.count()).toBe(before.audits);
+      expect(await owner.invoice.findUniqueOrThrow({ where: { id: globexInvoice.id } })).toEqual(
+        globexInvoice,
+      );
     });
   });
 });

@@ -3,6 +3,13 @@ import type {
   AttachmentLimitsView,
   AttachmentView,
   AuthSession,
+  BillingOverviewView,
+  ChangePlanInput,
+  CheckoutSessionView,
+  CompleteMockCheckoutInput,
+  InvoiceView,
+  MockCheckoutSessionView,
+  PaidPlanName,
   ChangePasswordInput,
   ConfigurableIntegrationProvider,
   CreateDefectInput,
@@ -335,6 +342,30 @@ export const attachmentsApi = {
   download: (id: string, disposition: 'inline' | 'attachment' = 'attachment') =>
     apiFetchBlob(`/attachments/${id}/content${query({ disposition })}`),
   remove: (id: string) => apiFetch<void>(`/attachments/${id}`, { method: 'DELETE' }),
+};
+
+export const billingApi = {
+  overview: () => apiFetch<BillingOverviewView>('/billing'),
+  invoices: (page: number) =>
+    apiFetch<Paginated<InvoiceView>>(`/billing/invoices${query({ page, pageSize: 10 })}`),
+  checkout: (plan: PaidPlanName) =>
+    apiFetch<CheckoutSessionView>('/billing/checkout', { method: 'POST', body: { plan } }),
+  changePlan: (body: ChangePlanInput) =>
+    apiFetch<BillingOverviewView>('/billing/plan', { method: 'POST', body }),
+  cancel: () => apiFetch<BillingOverviewView>('/billing/cancel', { method: 'POST' }),
+  resume: () => apiFetch<BillingOverviewView>('/billing/resume', { method: 'POST' }),
+  mockSession: (sessionId: string) =>
+    apiFetch<MockCheckoutSessionView>(`/billing/mock/checkout/${sessionId}`),
+  completeMockCheckout: (sessionId: string, body: CompleteMockCheckoutInput) =>
+    apiFetch<BillingOverviewView>(`/billing/mock/checkout/${sessionId}/complete`, {
+      method: 'POST',
+      body,
+    }),
+  endMockPeriod: (outcome: 'succeeded' | 'failed') =>
+    apiFetch<BillingOverviewView>('/billing/mock/end-period', {
+      method: 'POST',
+      body: { outcome },
+    }),
 };
 
 export const dashboardApi = {

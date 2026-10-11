@@ -233,6 +233,28 @@ enum NotificationType {
   defect_status_changed
 }
 
+/// S2-F11. Mirrors the provider's subscription lifecycle (Stripe's names).
+enum SubscriptionStatus {
+  trialing
+  active
+  past_due
+  canceled
+  incomplete
+}
+
+enum InvoiceStatus {
+  draft
+  open
+  paid
+  void
+  uncollectible
+}
+
+/// Which `BillingProvider` owns a customer, subscription or invoice.
+enum BillingProviderKind {
+  mock
+}
+
 enum NotificationChannel {
   email
 }
@@ -328,8 +350,8 @@ model Organization {
   name String
   /// URL-safe identifier, unique across the installation.
   slug String           @unique
-  /// Present from day one so that billing becomes a module rather than a
-  /// schema migration.
+  /// Cache of the effective plan. Written only by the billing module (S2-F11);
+  /// the authority is `resolveEffectivePlan(subscription, now)`.
   plan OrganizationPlan @default(free)
 
   createdAt DateTime  @default(now())
@@ -356,6 +378,9 @@ model Organization {
   projectMemberships  ProjectMember[]
   permissionOverrides ProjectPermissionOverride[]
   notifications       Notification[]
+  billingCustomer     BillingCustomer?
+  subscription        Subscription?
+  invoices            Invoice[]
 
   @@index([deletedAt])
   @@map("organizations")
@@ -1064,4 +1089,95 @@ model ExternalReference {
   @@index([organizationId, provider, externalId])
   @@index([organizationId, projectId, provider])
   @@map("external_references")
+}
+
+// ---------------------------------------------------------------------------
+// Billing (S2-F11)
+// ---------------------------------------------------------------------------
+
+/// The organization as the billing provider knows it. One per organization.
+model BillingCustomer {
+  id                 String              @id @default(cuid())
+  organizationId     String              @unique
+  provider           BillingProviderKind
+  externalCustomerId String
+  email              String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalCustomerId])
+  @@map("billing_customers")
+}
+
+/// The organization's current subscription. One row per organization: plan
+/// history lives in the audit log and in invoices, not in old rows.
+model Subscription {
+  id                     String              @id @default(cuid())
+  organizationId         String              @unique
+  provider               BillingProviderKind
+  externalSubscriptionId String?
+  plan                   OrganizationPlan
+  status                 SubscriptionStatus
+  trialEndsAt            DateTime?
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean             @default(false)
+  /// A downgrade scheduled for the end of the current period.
+  pendingPlan            OrganizationPlan?
+  pastDueSince           DateTime?
+  canceledAt             DateTime?
+  /// `createdAt` of the newest provider event applied; older events are ignored.
+  lastEventAt            DateTime?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalSubscriptionId])
+  @@map("subscriptions")
+}
+
+/// A mirror of the provider's invoice, written from webhooks only.
+model Invoice {
+  id                String              @id @default(cuid())
+  organizationId    String
+  provider          BillingProviderKind
+  externalInvoiceId String
+  number            String
+  status            InvoiceStatus
+  plan              OrganizationPlan?
+  amountDueCents    Int
+  amountPaidCents   Int                 @default(0)
+  currency          String
+  periodStart       DateTime?
+  periodEnd         DateTime?
+  hostedUrl         String?
+  issuedAt          DateTime
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalInvoiceId])
+  @@index([organizationId, issuedAt])
+  @@map("invoices")
+}
+
+/// Every verified webhook, keyed by the provider's event id: the replay and
+/// idempotency guard. The payload is not stored, only its SHA-256.
+model BillingWebhookEvent {
+  id              String              @id @default(cuid())
+  provider        BillingProviderKind
+  externalEventId String
+  type            String
+  organizationId  String?
+  payloadSha256   String
+  receivedAt      DateTime            @default(now())
+  processedAt     DateTime?
+
+  @@unique([provider, externalEventId])
+  @@index([organizationId])
+  @@map("billing_webhook_events")
 }

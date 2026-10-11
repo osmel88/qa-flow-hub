@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
+import { BillingBanner } from './BillingBanner';
 import { useProject } from '../project/project-context';
 
 const NAV = [
@@ -14,6 +15,7 @@ const NAV = [
   { to: '/members', label: 'Members' },
   { to: '/project-access', label: 'Project access' },
   { to: '/settings/integrations', label: 'Integrations' },
+  { to: '/billing', label: 'Billing' },
   { to: '/notifications', label: 'Notifications' },
   { to: '/profile', label: 'Profile' },
 ];
@@ -103,6 +105,7 @@ export function AppLayout(): React.JSX.Element {
         </nav>
 
         <main className="shell__main" id="main">
+          <BillingBanner />
           <Outlet key={activeOrganizationId ?? 'none'} />
         </main>
       </div>

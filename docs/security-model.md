@@ -74,6 +74,30 @@ and chapter 10 of the backend course. Summary:
   policies, which is why the role — not the policy — is what protects the data.
   The owner credential is used only by migrations, the seed and the test harness.
 
+## Billing
+
+- The plan is not tenant input. `PATCH /organizations/current` rejects `plan`;
+  `Organization.plan` is a cache written only by the billing module, and the
+  effective plan is recomputed from the subscription and the clock.
+- Billing webhooks are public routes authenticated by an HMAC-SHA256 signature
+  over the **raw body** (`x-qaflow-signature: t=<unix>,v1=<hex>`), with a
+  300 s tolerance, a 64 KiB body limit and their own per-IP rate limit. An
+  invalid signature is rejected before anything is written.
+- The organization a webhook applies to is resolved from the stored
+  `billing_customers` mapping, never from the payload. An event for an unknown
+  customer is recorded (replay protection) and applied to nobody; a subscription
+  or invoice id already owned by another organization is rejected.
+- Events are deduplicated by provider + event id inside the same transaction
+  that applies them, so a retry is idempotent.
+- Billing tables have RLS like every tenant table; the webhook path runs under
+  the tenant context of the resolved organization, and an event row without an
+  organization can only be written when no tenant context is active.
+- Limits are enforced server-side under a per-organization advisory lock, so
+  concurrent requests cannot exceed the remaining slots. Exceeding a limit
+  returns `402 PLAN_LIMIT_REACHED` and deletes nothing.
+- Production refuses to boot with `BILLING_PROVIDER=mock` or a weak
+  `BILLING_WEBHOOK_SECRET`.
+
 ## Transport and headers
 
 - Helmet: `X-Content-Type-Options`, `X-Frame-Options`, HSTS in production.

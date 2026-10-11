@@ -8,6 +8,7 @@ import {
   UpdateProjectInput,
 } from '@qa-flow-hub/shared';
 import { ConflictError, DuplicateResourceError, NotFoundError } from '../../errors';
+import { UsageLimitsService } from '../billing/usage-limits.service';
 import { AuditService } from '../audit/audit.service';
 import { ProjectAccessService } from './project-access.service';
 import { ProjectsRepository } from './projects.repository';
@@ -18,6 +19,7 @@ export class ProjectsService {
     private readonly projects: ProjectsRepository,
     private readonly access: ProjectAccessService,
     private readonly audit: AuditService,
+    private readonly limits: UsageLimitsService,
   ) {}
 
   /**
@@ -34,11 +36,16 @@ export class ProjectsService {
       throw new DuplicateResourceError('project', 'key');
     }
 
-    const project = await this.projects.create({
-      name: input.name,
-      key: input.key,
-      ...(input.description === undefined ? {} : { description: input.description }),
-    });
+    const project = await this.limits.guard('projects', 1, (tx) =>
+      this.projects.create(
+        {
+          name: input.name,
+          key: input.key,
+          ...(input.description === undefined ? {} : { description: input.description }),
+        },
+        tx,
+      ),
+    );
 
     await this.audit.record({
       action: AuditAction.create,

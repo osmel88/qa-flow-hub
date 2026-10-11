@@ -14,58 +14,60 @@ another — and, inside one organization, a `qa_lead` on the mobile project and 
 
 ## Roles
 
-| Role | Intended for |
-| --- | --- |
+| Role                 | Intended for                                                 |
+| -------------------- | ------------------------------------------------------------ |
 | `organization_owner` | Whoever signed up. Billing and the organization's existence. |
-| `organization_admin` | Day-to-day administration: members, projects, settings. |
-| `project_manager` | Owns a project's scope: requirements, planning, releases. |
-| `qa_lead` | Owns test design and execution planning. |
-| `tester` | Executes tests and reports defects. |
-| `viewer` | Read-only. Stakeholders, clients, auditors. |
+| `organization_admin` | Day-to-day administration: members, projects, settings.      |
+| `project_manager`    | Owns a project's scope: requirements, planning, releases.    |
+| `qa_lead`            | Owns test design and execution planning.                     |
+| `tester`             | Executes tests and reports defects.                          |
+| `viewer`             | Read-only. Stakeholders, clients, auditors.                  |
 
 ## Matrix
 
 `✓` allowed · `own` only the rows they created or are assigned · `—` denied
 
-| Action | owner | admin | proj. manager | qa_lead | tester | viewer |
-| --- | :-: | :-: | :-: | :-: | :-: | :-: |
-| **Organization** | | | | | | |
-| Rename, change plan | ✓ | — | — | — | — | — |
-| Delete organization | ✓ | — | — | — | — | — |
-| View members | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Invite / revoke invitation | ✓ | ✓ | — | — | — | — |
-| Change a member's role | ✓ | ✓ | — | — | — | — |
-| Remove a member | ✓ | ✓ | — | — | — | — |
-| **Projects** | | | | | | |
-| Create | ✓ | ✓ | — | — | — | — |
-| Edit, archive | ✓ | ✓ | ✓ | — | — | — |
-| View | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Manage project members | ✓ | ✓ | ✓ | — | — | — |
-| **Requirements** | | | | | | |
-| Create, edit, delete | ✓ | ✓ | ✓ | ✓ | — | — |
-| Approve (status change) | ✓ | ✓ | ✓ | — | — | — |
-| View, view history | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **Suites, sections, cases, steps** | | | | | | |
-| Create, edit, duplicate | ✓ | ✓ | ✓ | ✓ | — | — |
-| Archive, delete | ✓ | ✓ | ✓ | ✓ | — | — |
-| View | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **Test runs** | | | | | | |
-| Create, close, delete | ✓ | ✓ | ✓ | ✓ | — | — |
-| Assign cases to testers | ✓ | ✓ | ✓ | ✓ | — | — |
-| Record a result | ✓ | ✓ | ✓ | ✓ | own | — |
-| View | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **Defects** | | | | | | |
-| Create | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| Edit any | ✓ | ✓ | ✓ | ✓ | own | — |
-| Change status, assign | ✓ | ✓ | ✓ | ✓ | — | — |
-| View | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **Traceability** | | | | | | |
-| Create or remove links | ✓ | ✓ | ✓ | ✓ | — | — |
-| View the matrix | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **Audit log** | | | | | | |
-| Read | ✓ | ✓ | — | — | — | — |
-| **Integrations** | | | | | | |
-| Configure a connection | ✓ | ✓ | — | — | — | — |
+| Action                                     | owner | admin | proj. manager | qa_lead | tester | viewer |
+| ------------------------------------------ | :---: | :---: | :-----------: | :-----: | :----: | :----: |
+| **Organization**                           |       |       |               |         |        |        |
+| Rename                                     |   ✓   |   —   |       —       |    —    |   —    |   —    |
+| Read plan, usage and invoices (`/billing`) |   ✓   |   ✓   |       —       |    —    |   —    |   —    |
+| Checkout, change plan, cancel, resume      |   ✓   |   —   |       —       |    —    |   —    |   —    |
+| Delete organization                        |   ✓   |   —   |       —       |    —    |   —    |   —    |
+| View members                               |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| Invite / revoke invitation                 |   ✓   |   ✓   |       —       |    —    |   —    |   —    |
+| Change a member's role                     |   ✓   |   ✓   |       —       |    —    |   —    |   —    |
+| Remove a member                            |   ✓   |   ✓   |       —       |    —    |   —    |   —    |
+| **Projects**                               |       |       |               |         |        |        |
+| Create                                     |   ✓   |   ✓   |       —       |    —    |   —    |   —    |
+| Edit, archive                              |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| View                                       |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| Manage project members                     |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| **Requirements**                           |       |       |               |         |        |        |
+| Create, edit, delete                       |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| Approve (status change)                    |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| View, view history                         |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| **Suites, sections, cases, steps**         |       |       |               |         |        |        |
+| Create, edit, duplicate                    |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| Archive, delete                            |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| View                                       |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| **Test runs**                              |       |       |               |         |        |        |
+| Create, close, delete                      |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| Assign cases to testers                    |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| Record a result                            |   ✓   |   ✓   |       ✓       |    ✓    |  own   |   —    |
+| View                                       |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| **Defects**                                |       |       |               |         |        |        |
+| Create                                     |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   —    |
+| Edit any                                   |   ✓   |   ✓   |       ✓       |    ✓    |  own   |   —    |
+| Change status, assign                      |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| View                                       |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| **Traceability**                           |       |       |               |         |        |        |
+| Create or remove links                     |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| View the matrix                            |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| **Audit log**                              |       |       |               |         |        |        |
+| Read                                       |   ✓   |   ✓   |       —       |    —    |   —    |   —    |
+| **Integrations**                           |       |       |               |         |        |        |
+| Configure a connection                     |   ✓   |   ✓   |       —       |    —    |   —    |   —    |
 
 ## Where each rule is enforced
 
@@ -83,7 +85,7 @@ scattering a business rule away from the code that owns it.
 
 ## Project-scoped roles
 
-A row in `ProjectMember` says "inside this project, treat this person as *this*
+A row in `ProjectMember` says "inside this project, treat this person as _this_
 role instead". It may raise or lower them, and it applies to exactly one
 project. Revoking the row returns them to their organization role; there is no
 separate "removed from project" state, because a member who can read every
@@ -105,7 +107,7 @@ loading that entity.
 
 1. `RolesGuard` checks the organization role. If it passes, the request
    continues.
-2. If it fails on a route marked `@ProjectScoped`, the guard asks whether *any*
+2. If it fails on a route marked `@ProjectScoped`, the guard asks whether _any_
    grant the caller holds would allow the action. This is what makes a grant
    able to raise somebody, and it is deliberately weaker than the final answer.
 3. The service loads the entity, resolves the project, and re-applies the very
@@ -113,7 +115,7 @@ loading that entity.
    authoritative check, and the resolved role is memoized per request.
 
 The contract a `@ProjectScoped` route signs is therefore: it **must** reach
-`assertRouteAccess()` before it writes. `POST /projects` is deliberately *not*
+`assertRouteAccess()` before it writes. `POST /projects` is deliberately _not_
 project-scoped — there is no project yet, so no grant may become permission to
 create one.
 
@@ -144,33 +146,33 @@ Rules that hold even for an owner:
 `organization_owner` always holds the whole catalogue. Overrides exist only per
 (project, user) — never per organization.
 
-| Permission | owner | admin | proj. manager | qa_lead | tester | viewer |
-| --- | :-: | :-: | :-: | :-: | :-: | :-: |
-| `requirements.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `requirements.write` | ✓ | ✓ | ✓ | ✓ | — | — |
-| `requirements.manage` | ✓ | ✓ | ✓ | — | — | — |
-| `test_design.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `test_design.write` | ✓ | ✓ | ✓ | ✓ | — | — |
-| `test_design.manage` | ✓ | ✓ | ✓ | — | — | — |
-| `testruns.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `testruns.create` | ✓ | ✓ | ✓ | ✓ | — | — |
-| `testruns.execute` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `testruns.manage` | ✓ | ✓ | ✓ | — | — | — |
-| `defects.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `defects.create` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `defects.manage` | ✓ | ✓ | ✓ | — | — | — |
-| `traceability.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `traceability.manage` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `attachments.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `attachments.upload` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `attachments.delete` | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `integrations.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `integrations.manage` | ✓ | ✓ | — | — | — | — |
-| `members.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `members.manage` | ✓ | ✓ | ✓ | — | — | — |
-| `project.manage` | ✓ | ✓ | ✓ | — | — | — |
-| `notifications.manage` | ✓ | ✓ | — | — | — | — |
-| `analytics.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Permission             | owner | admin | proj. manager | qa_lead | tester | viewer |
+| ---------------------- | :---: | :---: | :-----------: | :-----: | :----: | :----: |
+| `requirements.read`    |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `requirements.write`   |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| `requirements.manage`  |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| `test_design.read`     |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `test_design.write`    |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| `test_design.manage`   |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| `testruns.read`        |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `testruns.create`      |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| `testruns.execute`     |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   —    |
+| `testruns.manage`      |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| `defects.read`         |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `defects.create`       |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   —    |
+| `defects.manage`       |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| `traceability.read`    |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `traceability.manage`  |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   —    |
+| `attachments.read`     |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `attachments.upload`   |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   —    |
+| `attachments.delete`   |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   —    |
+| `integrations.read`    |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `integrations.manage`  |   ✓   |   ✓   |       —       |    —    |   —    |   —    |
+| `members.read`         |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `members.manage`       |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| `project.manage`       |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| `notifications.manage` |   ✓   |   ✓   |       —       |    —    |   —    |   —    |
+| `analytics.read`       |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
 
 The table is `ROLE_PERMISSIONS` in `packages/shared`; it was derived from the
 `@Roles` lists the routes carried before, so an installation without overrides
@@ -183,7 +185,7 @@ archived projects are read-only; every change is an audited `role_change`.
 
 ## Not implemented yet
 
-- **Per-project read restrictions.** A grant changes what somebody may *do* in a
+- **Per-project read restrictions.** A grant changes what somebody may _do_ in a
   project, not whether they can see it: every member of the organization can
   read every project. Hiding a project is a different feature — it needs the
   tenant filter to gain a second dimension, and every list endpoint to respect

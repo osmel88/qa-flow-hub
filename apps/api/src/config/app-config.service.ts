@@ -128,6 +128,22 @@ export class AppConfigService {
     };
   }
 
+  get billing(): {
+    provider: Env['BILLING_PROVIDER'];
+    webhookSecret: string;
+    trialDays: number;
+    pastDueGraceDays: number;
+    webhookRateLimitMax: number;
+  } {
+    return {
+      provider: this.get('BILLING_PROVIDER'),
+      webhookSecret: this.get('BILLING_WEBHOOK_SECRET'),
+      trialDays: this.get('BILLING_TRIAL_DAYS'),
+      pastDueGraceDays: this.get('BILLING_PAST_DUE_GRACE_DAYS'),
+      webhookRateLimitMax: this.get('BILLING_WEBHOOK_RATE_LIMIT_MAX'),
+    };
+  }
+
   get swaggerEnabled(): boolean {
     return this.get('SWAGGER_ENABLED');
   }

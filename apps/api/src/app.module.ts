@@ -7,6 +7,7 @@ import { DomainEventsModule } from './events/domain-events.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DefectsModule } from './modules/defects/defects.module';
 import { HealthModule } from './modules/health/health.module';
@@ -50,6 +51,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     TraceabilityModule,
     DashboardModule,
     IntegrationsModule,
+    BillingModule,
     IntegrationSettingsModule,
     NotificationsModule,
     AttachmentsModule,

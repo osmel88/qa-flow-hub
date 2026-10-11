@@ -50,6 +50,7 @@ export function AttachmentsPanel({
         fileInput.current.value = '';
       }
       await queryClient.invalidateQueries({ queryKey });
+      await queryClient.invalidateQueries({ queryKey: ['billing'] });
     },
     onError: (cause) => {
       setError(describeUploadError(cause));
@@ -64,6 +65,7 @@ export function AttachmentsPanel({
         setPreview(null);
       }
       await queryClient.invalidateQueries({ queryKey });
+      await queryClient.invalidateQueries({ queryKey: ['billing'] });
     },
     onError: (cause) => {
       setError(cause instanceof ApiError ? cause.message : 'Could not delete the file.');
@@ -274,6 +276,8 @@ function describeUploadError(cause: unknown): string {
       return `Unsupported file type: ${cause.message}`;
     case 'FILE_TOO_LARGE':
       return `File too large: ${cause.message}`;
+    case 'PLAN_LIMIT_REACHED':
+      return `${cause.message}. Nothing existing was removed; see Billing to upgrade.`;
     case 'STORAGE_ERROR':
       return 'Storage is unavailable right now. Try again in a moment.';
     default:

@@ -209,3 +209,38 @@ export class StorageError extends DomainError {
     super(`Storage ${operation} failed`, { operation });
   }
 }
+
+/**
+ * Creating one more project, member or byte of evidence would exceed the
+ * organization's effective plan. 402 Payment Required: the request is valid,
+ * and paying for a larger plan is what makes it succeed. Existing data is never
+ * affected — only the creation is refused. The resource travels as the single
+ * `details` entry so a client can link to the billing page for the right reason.
+ */
+export class PlanLimitReachedError extends DomainError {
+  readonly code = 'PLAN_LIMIT_REACHED' as const;
+  readonly httpStatus = 402;
+
+  constructor(resource: 'projects' | 'members' | 'storage', plan: string, limit: number, used: number) {
+    super(`The ${plan} plan allows ${limit} ${resource === 'storage' ? 'bytes of evidence' : resource}; ${used} in use`, {
+      details: [{ path: resource, message: `limit ${limit}, used ${used}, plan ${plan}` }],
+      resource,
+      plan,
+      limit,
+      used,
+    });
+  }
+}
+
+/**
+ * A billing webhook that is unsigned, stale, tampered with or malformed. One
+ * message for all of them: telling a forger *which* check failed is help.
+ */
+export class InvalidWebhookError extends DomainError {
+  readonly code = 'VALIDATION_ERROR' as const;
+  readonly httpStatus = 400;
+
+  constructor(readonly reason: string) {
+    super('The webhook could not be verified');
+  }
+}

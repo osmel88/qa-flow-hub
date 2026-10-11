@@ -20,6 +20,7 @@ import {
   ValidationError,
 } from '../../errors';
 import { STORAGE_PROVIDER, StorageProvider } from '../../storage/storage-provider';
+import { UsageLimitsService } from '../billing/usage-limits.service';
 import { AuditService } from '../audit/audit.service';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { AttachmentRow, AttachmentsRepository } from './attachments.repository';
@@ -82,6 +83,7 @@ export class AttachmentsService {
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
+    private readonly usage: UsageLimitsService,
   ) {}
 
   limits(): AttachmentLimitsView {
@@ -133,18 +135,31 @@ export class AttachmentsService {
       );
     }
 
-    const row = await this.attachments.create({
-      projectId,
-      entityType,
-      entityId,
-      fileName,
-      contentType: type.mimeType,
-      sizeBytes: inspection.sizeBytes,
-      checksum: inspection.sha256,
-      storageProvider: this.storage.name,
-      storageKey: key,
-      uploadedById: userId,
-    });
+    // The size is only known once the bytes are in; the object is removed
+    // again if they do not fit the plan's evidence storage.
+    let row: AttachmentRow;
+    try {
+      row = await this.usage.guard('storage', inspection.sizeBytes, (tx) =>
+        this.attachments.create(
+          {
+            projectId,
+            entityType,
+            entityId,
+            fileName,
+            contentType: type.mimeType,
+            sizeBytes: inspection.sizeBytes,
+            checksum: inspection.sha256,
+            storageProvider: this.storage.name,
+            storageKey: key,
+            uploadedById: userId,
+          },
+          tx,
+        ),
+      );
+    } catch (error: unknown) {
+      await this.discard(key);
+      throw error;
+    }
 
     await this.audit.record({
       action: AuditAction.create,

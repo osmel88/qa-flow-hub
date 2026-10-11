@@ -4,7 +4,9 @@ import { AuthProvider } from '../auth/auth-context';
 import { AppLayout } from '../components/AppLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { ProjectProvider } from '../project/project-context';
+import { BillingPage } from '../pages/BillingPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { MockCheckoutPage } from '../pages/MockCheckoutPage';
 import { DefectsPage } from '../pages/DefectsPage';
 import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { LoginPage } from '../pages/LoginPage';
@@ -61,6 +63,8 @@ const router = createBrowserRouter([
           { path: '/settings/integrations', element: <IntegrationsPage /> },
           { path: '/notifications', element: <NotificationsPage /> },
           { path: '/profile', element: <ProfilePage /> },
+          { path: '/billing', element: <BillingPage /> },
+          { path: '/billing/checkout/:sessionId', element: <MockCheckoutPage /> },
         ],
       },
     ],

@@ -951,3 +951,41 @@ S2-F10 made an instance safe to deploy and operate; it did not deploy one.
 - **Trigger to fix:** the first production deployment (alerts, scheduled
   backups, edge limit), GitHub Real (secret manager), or a measured need for
   tracing.
+
+## 37. Billing runs on a mock provider (S2-F11)
+
+S2-F11 built the whole subscription lifecycle against a deterministic mock
+behind the `BillingProvider` port (ADR 0015). What it leaves:
+
+- **No real provider.** Production refuses to boot with `BILLING_PROVIDER=mock`
+  by decision, so billing cannot ship to production until Stripe (or the
+  chosen alternative) is implemented. The mock keeps its state in memory: an
+  API restart forgets its customers, while our tables keep theirs.
+- **Catalog prices are display values.** With a real provider they must be
+  checked against the provider's price objects at startup.
+- **No tax, proration, coupons, seats or usage-based pricing.** The mock bills
+  an upgrade as the full monthly price difference, without proration; real
+  proration is the provider's job.
+- **Storage usage is the sum of live attachment metadata**, recomputed on
+  every guarded upload; there is no materialized counter.
+- **Limits are checked under an advisory lock per organization and
+  resource**, which serializes the guarded writes of one organization on that
+  resource (project creation; invitations and acceptances; uploads). Fine at
+  today's volumes; a counter table becomes worth it if uploads contend.
+- **Webhook events are kept forever.** `billing_webhook_events` needs a
+  retention job once volume matters; deduplication only needs a window longer
+  than the provider's retry period.
+- **Dunning is passive.** `past_due` keeps the paid plan for the grace period
+  and then falls back to Free; nobody is emailed.
+- **The members limit counts active members plus pending, unexpired
+  invitations**, so a pile of unanswered invitations can block a new one until
+  they are revoked or expire. Archived projects keep their slot (archiving is
+  reversible); only deleted projects free it.
+- **E2E cannot start the API with `NODE_ENV=production`** while the mock is the
+  only provider; the production boot rules stay covered by unit and
+  integration tests.
+
+- **Cost:** no revenue path in production yet; the product can demonstrate
+  and test every billing state.
+- **Trigger to fix:** the first paying customer (real provider, tax), or
+  measured contention on the advisory lock (counter table).

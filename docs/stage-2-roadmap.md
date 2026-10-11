@@ -804,9 +804,45 @@ Plans, subscriptions, usage limits, trial, subscription states, billing
 customer, invoices, webhooks, upgrades/downgrades, cancellation — behind a
 `BillingProvider` abstraction.
 
-`OrganizationPlan` exists today as an enum; whether it becomes a table is the
-first decision of the phase. Stripe may be evaluated when the phase starts, and
-alternatives are presented before it is assumed.
+**Status: implemented.** Decisions (approved before implementation):
+
+1. `OrganizationPlan` stays an enum; plans and limits are a catalog in
+   `packages/shared/src/billing`. `Organization.plan` is a cache written only
+   by the billing module — `PATCH /organizations/current` no longer accepts it.
+2. A `BillingProvider` port with a mock provider whose webhooks are HMAC
+   signed; ADR 0015 compares Stripe, Paddle, Lemon Squeezy and Chargebee.
+   Stripe arrives in a later phase.
+3. Limits block only new work over the limit (`402 PLAN_LIMIT_REACHED`) and
+   never delete anything. New organizations get a 14-day Team trial; an
+   expired trial or a canceled subscription falls back to Free; `past_due`
+   keeps the paid plan for 7 days of grace.
+
+   | Plan     | Projects  | Members   | Storage |
+   | -------- | --------- | --------- | ------- |
+   | Free     | 3         | 5         | 1 GB    |
+   | Team     | 25        | 50        | 50 GB   |
+   | Business | unlimited | unlimited | 500 GB  |
+
+4. Production refuses to boot with `BILLING_PROVIDER=mock`.
+
+What shipped:
+
+- Migration `20261011100000_billing`: `billing_customers`, `subscriptions`,
+  `invoices`, `billing_webhook_events`, with RLS, grants for `qaflow_app` and
+  a backfill that gives existing organizations a subscription matching the
+  plan they had, without changing their effective plan.
+- `GET /billing`, `GET /billing/invoices` (owner, admin), `POST
+/billing/checkout`, `/billing/plan`, `/billing/cancel`, `/billing/resume`
+  (owner); mock-only checkout and period simulation routes.
+- `POST /billing/webhooks/:provider`: raw-body HMAC, 300 s tolerance, 64 KiB
+  body limit, its own per-IP rate limit, deduplication by provider + event id,
+  tenant resolved from the stored customer mapping only.
+- Upgrades take effect when the provider confirms them; downgrades are
+  scheduled for the period end; cancellation is at period end and idempotent.
+- Limits enforced server-side on project creation, invitations, invitation
+  acceptance and uploads, under a per-organization `pg_advisory_xact_lock`.
+- Billing page, mock checkout, trial/grace/over-limit banner and 402 handling
+  in the web client. Every change is audited.
 
 ## Related
 

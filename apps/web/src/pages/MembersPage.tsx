@@ -7,6 +7,7 @@ import { organizationsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
 import { PageHeader } from '../components/PageHeader';
+import { PlanLimitAlert } from '../components/PlanLimitAlert';
 import { humanize, toneFor } from '../components/status';
 
 /**
@@ -112,6 +113,7 @@ export function MembersPage(): React.JSX.Element {
       // delivery exists this is the only way it reaches the invited person.
       setIssuedToken(created.token);
       await queryClient.invalidateQueries({ queryKey: ['invitations'] });
+      await queryClient.invalidateQueries({ queryKey: ['billing'] });
     },
     onError: (cause) => {
       setError(cause instanceof ApiError ? cause.message : 'Could not send the invitation.');
@@ -134,6 +136,7 @@ export function MembersPage(): React.JSX.Element {
     mutationFn: (id: string) => organizationsApi.revokeInvitation(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['invitations'] });
+      await queryClient.invalidateQueries({ queryKey: ['billing'] });
     },
   });
 
@@ -153,6 +156,7 @@ export function MembersPage(): React.JSX.Element {
       {canManage && (
         <section className="card" aria-labelledby="invite-heading">
           <h2 id="invite-heading">Invite someone</h2>
+          <PlanLimitAlert error={invite.error} />
           <TextField
             label="Email"
             type="email"

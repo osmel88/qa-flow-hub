@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BillingModule } from '../billing/billing.module';
 import { InvitationsService } from './invitations.service';
 import { OrganizationInvitationsRepository } from './organization-invitations.repository';
 import { OrganizationMembersRepository } from './organization-members.repository';
@@ -14,6 +15,7 @@ import { OrganizationsService } from './organizations.service';
  * membership and invitations live here, credentials and sessions live there.
  */
 @Module({
+  imports: [BillingModule],
   controllers: [OrganizationsController],
   providers: [
     OrganizationsService,

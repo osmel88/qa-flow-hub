@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
+import { Readable } from 'node:stream';
 import { Logger, VersioningType } from '@nestjs/common';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { FastifyRequest } from 'fastify';
@@ -7,6 +8,7 @@ import { AppConfigService } from '../config/app-config.service';
 import { AllExceptionsFilter } from '../errors/all-exceptions.filter';
 import { RateLimitedError } from '../errors';
 import { HttpMetrics, UNMATCHED_ROUTE } from '../observability/http-metrics';
+import { BILLING_WEBHOOK_ROUTE } from '../modules/billing/billing-webhooks.controller';
 import { SnapshotRateLimitStore } from './rate-limit-store';
 import { REQUEST_ID_HEADER, resolveRequestId } from './request-id';
 
@@ -24,6 +26,9 @@ export class ProxyTrust {
 /** Credential endpoints that get their own, stricter rate-limit budget. */
 const AUTH_LIMITED_ROUTES = ['auth/login', 'auth/register', 'auth/refresh'] as const;
 const AUTH_BUCKET = 'auth:';
+const WEBHOOK_BUCKET = 'billing-webhook:';
+/** Provider callbacks are small; anything bigger is not one. */
+const WEBHOOK_MAX_BYTES = 64 * 1024;
 
 /**
  * The Fastify adapter both `main.ts` and the integration harness boot.
@@ -100,6 +105,32 @@ export async function configureApp(
     done();
   });
 
+  // Billing webhooks are authenticated by an HMAC over the exact bytes sent.
+  // Keep those bytes before the JSON parser turns them into an object whose
+  // re-serialisation would not match the signature.
+  const webhookPrefix = `/${config.apiPrefix}/v1/${BILLING_WEBHOOK_ROUTE}/`;
+  fastify.addHook('preParsing', async (request, _reply, payload) => {
+    if (request.routeOptions.url?.startsWith(webhookPrefix) !== true) {
+      return payload;
+    }
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of payload) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
+      size += buffer.length;
+      if (size > WEBHOOK_MAX_BYTES) {
+        throw Object.assign(new Error('Request body is too large'), {
+          statusCode: 413,
+          code: 'FST_ERR_CTP_BODY_TOO_LARGE',
+        });
+      }
+      chunks.push(buffer);
+    }
+    const rawBody = Buffer.concat(chunks);
+    (request as FastifyRequest & { rawBody?: Buffer }).rawBody = rawBody;
+    return Readable.from([rawBody]);
+  });
+
   await app.register(import('@fastify/helmet'), contentSecurityPolicy(config));
 
   // Refresh tokens travel as an HttpOnly cookie; see RefreshCookieService.
@@ -126,9 +157,19 @@ export async function configureApp(
   const isAuthBucket = (key: string): boolean => key.startsWith(AUTH_BUCKET);
   await app.register(import('@fastify/rate-limit'), {
     store: SnapshotRateLimitStore,
-    keyGenerator: (request) =>
-      authRoutes.has(request.routeOptions.url ?? '') ? `${AUTH_BUCKET}${request.ip}` : request.ip,
-    max: (_request, key) => (isAuthBucket(key) ? config.authRateLimit.max : config.rateLimit.max),
+    keyGenerator: (request) => {
+      const route = request.routeOptions.url ?? '';
+      if (authRoutes.has(route)) {
+        return `${AUTH_BUCKET}${request.ip}`;
+      }
+      return route.startsWith(webhookPrefix) ? `${WEBHOOK_BUCKET}${request.ip}` : request.ip;
+    },
+    max: (_request, key) =>
+      isAuthBucket(key)
+        ? config.authRateLimit.max
+        : key.startsWith(WEBHOOK_BUCKET)
+          ? config.billing.webhookRateLimitMax
+          : config.rateLimit.max,
     timeWindow: (_request, key) =>
       isAuthBucket(key) ? config.authRateLimit.windowMs : config.rateLimit.windowMs,
     // An orchestrator probing every few seconds must never be told to back off.

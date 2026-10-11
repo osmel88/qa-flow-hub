@@ -109,6 +109,21 @@ export const envSchema = z
       .default(10 * 1024 * 1024),
 
     /**
+     * Billing (S2-F11). `mock` is the only provider today and is refused at
+     * boot in production (see billing-startup.ts): a production instance with
+     * a simulated payment provider would hand out paid plans for free.
+     * The webhook secret signs and verifies provider callbacks (HMAC-SHA256).
+     */
+    BILLING_PROVIDER: z.enum(['mock']).default('mock'),
+    BILLING_WEBHOOK_SECRET: z
+      .string()
+      .min(32)
+      .default('development-only-billing-webhook-secret-not-for-production'),
+    BILLING_TRIAL_DAYS: z.coerce.number().int().min(0).max(90).default(14),
+    BILLING_PAST_DUE_GRACE_DAYS: z.coerce.number().int().min(0).max(60).default(7),
+    BILLING_WEBHOOK_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(120),
+
+    /**
      * Interactive documentation. Left unset it follows the environment: on in
      * development, off in production, because `/docs` publishes the entire API
      * surface to anonymous callers. Setting it explicitly wins either way, so a

@@ -11,6 +11,7 @@ import {
 } from '@qa-flow-hub/shared';
 import { ConflictError, DuplicateResourceError, ForbiddenError, NotFoundError } from '../../errors';
 import { TenantContextService } from '../../database/tenant-context.service';
+import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../audit/audit.service';
 import { MemberWithUser, OrganizationMembersRepository } from './organization-members.repository';
 import { OrganizationsRepository } from './organizations.repository';
@@ -29,6 +30,7 @@ export class OrganizationsService {
     private readonly members: OrganizationMembersRepository,
     private readonly audit: AuditService,
     private readonly tenant: TenantContextService,
+    private readonly billing: BillingService,
   ) {}
 
   /**
@@ -43,6 +45,7 @@ export class OrganizationsService {
     const organization = await this.organizations.createWithOwner(
       { name: input.name, slug: input.slug },
       userId,
+      (created, tx) => this.billing.startTrial(created.id, tx),
     );
 
     // The new tenant is announced for the audit row: no header names it yet,
@@ -82,7 +85,6 @@ export class OrganizationsService {
   async update(organizationId: string, input: UpdateOrganizationInput): Promise<OrganizationView> {
     const organization = await this.organizations.update(organizationId, {
       ...(input.name === undefined ? {} : { name: input.name }),
-      ...(input.plan === undefined ? {} : { plan: input.plan }),
     });
     if (organization === null) {
       throw new NotFoundError('Organization');

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { projectsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { PlanLimitAlert } from '../components/PlanLimitAlert';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 
@@ -12,7 +13,11 @@ export function ProjectsPage(): React.JSX.Element {
   const [key, setKey] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const { data, isPending, error: loadError } = useQuery({
+  const {
+    data,
+    isPending,
+    error: loadError,
+  } = useQuery({
     queryKey: ['projects-page'],
     queryFn: () => projectsApi.list(),
   });
@@ -20,6 +25,7 @@ export function ProjectsPage(): React.JSX.Element {
   const invalidate = async () => {
     await queryClient.invalidateQueries({ queryKey: ['projects-page'] });
     await queryClient.invalidateQueries({ queryKey: ['projects'] });
+    await queryClient.invalidateQueries({ queryKey: ['billing'] });
   };
 
   const create = useMutation({
@@ -52,10 +58,14 @@ export function ProjectsPage(): React.JSX.Element {
 
       <section className="card" aria-labelledby="new-project">
         <h2 id="new-project">New project</h2>
-        {error !== null && (
-          <p className="ui-field__error" role="alert">
-            {error}
-          </p>
+        {create.error instanceof ApiError && create.error.code === 'PLAN_LIMIT_REACHED' ? (
+          <PlanLimitAlert error={create.error} />
+        ) : (
+          error !== null && (
+            <p className="ui-field__error" role="alert">
+              {error}
+            </p>
+          )
         )}
         <div className="grid-2">
           <TextField

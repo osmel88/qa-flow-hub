@@ -17,6 +17,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { ConflictError, DuplicateResourceError, ForbiddenError, NotFoundError } from '../../errors';
 import { DomainEventsPublisher } from '../../events/domain-events';
+import { UsageLimitsService } from '../billing/usage-limits.service';
 import { AuditService } from '../audit/audit.service';
 import { OrganizationInvitationsRepository } from './organization-invitations.repository';
 import { hashInvitationToken, issueInvitationToken } from './organization-invitations.repository';
@@ -56,6 +57,7 @@ export class InvitationsService {
     private readonly config: AppConfigService,
     private readonly events: DomainEventsPublisher,
     private readonly tenant: TenantContextService,
+    private readonly limits: UsageLimitsService,
   ) {}
 
   /**
@@ -92,14 +94,21 @@ export class InvitationsService {
     }
 
     const issued = issueInvitationToken();
-    const invitation = await this.invitations.create({
-      organizationId,
-      email: input.email,
-      role: input.role,
-      tokenHash: issued.tokenHash,
-      expiresAt: this.expiryFromNow(),
-      invitedById: invitedBy.userId,
-    });
+    // A pending invitation holds a seat, so the limit is checked when it is
+    // sent and again when it is accepted (the plan may have changed between).
+    const invitation = await this.limits.guard('members', 1, (tx) =>
+      this.invitations.create(
+        {
+          organizationId,
+          email: input.email,
+          role: input.role,
+          tokenHash: issued.tokenHash,
+          expiresAt: this.expiryFromNow(),
+          invitedById: invitedBy.userId,
+        },
+        tx,
+      ),
+    );
 
     await this.audit.record({
       action: AuditAction.invite,
@@ -249,6 +258,8 @@ export class InvitationsService {
     // belongs to it, and its policy refuses a tenant row written from nowhere.
     await this.tenant.runForOrganization(organization.id, () =>
       this.prisma.runInTransaction(async (tx) => {
+        // Adding 0: the pending invitation is already counted as a seat.
+        await this.limits.assertWithin('members', 0, tx);
         if (!(await this.invitations.markAccepted(invitation.id, userId, tx))) {
           throw new ConflictError('The invitation is no longer pending');
         }

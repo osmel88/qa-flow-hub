@@ -349,6 +349,22 @@ disposable by definition, and truncation between suites is measurably faster.
 Running the integration suite can never touch the data you are working with —
 which is a deployment decision disguised as a developer convenience.
 
+## Billing
+
+| Variable                         | Default                  | Production rule                                         |
+| -------------------------------- | ------------------------ | ------------------------------------------------------- |
+| `BILLING_PROVIDER`               | `mock`                   | `mock` is refused at boot: a real provider is required. |
+| `BILLING_WEBHOOK_SECRET`         | development-only value   | ≥ 32 characters, not weak, placeholder or the default.  |
+| `BILLING_TRIAL_DAYS`             | `14`                     | —                                                       |
+| `BILLING_PAST_DUE_GRACE_DAYS`    | `7`                      | —                                                       |
+| `BILLING_WEBHOOK_RATE_LIMIT_MAX` | `120` per window, per IP | Allow-list the provider's IPs at the edge if possible.  |
+
+The webhook endpoint is `POST /api/v1/billing/webhooks/<provider>`. It must be
+reachable from the provider without authentication; the proxy must forward
+the body unmodified (the signature covers the raw bytes) and must not buffer
+bodies above 64 KiB for it. No background job is needed: trial and grace
+expiry are evaluated on read. See ADR 0015.
+
 ## Related
 
 - [`../README.md`](../README.md) — quick start

@@ -14,6 +14,7 @@ export interface TestAppOptions {
   authRateLimit?: { max: number; windowMs: number };
   metrics?: { enabled: boolean; token: string | null };
   trustProxyHops?: number;
+  billingWebhookRateLimitMax?: number;
   /** Receives the application's log lines; silent by default. */
   logger?: LoggerService;
 }
@@ -43,6 +44,12 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestF
     }
     override get trustProxyHops(): number {
       return options.trustProxyHops ?? super.trustProxyHops;
+    }
+    override get billing(): AppConfigService['billing'] {
+      const billing = super.billing;
+      return options.billingWebhookRateLimitMax === undefined
+        ? billing
+        : { ...billing, webhookRateLimitMax: options.billingWebhookRateLimitMax };
     }
   }
   builder.overrideProvider(AppConfigService).useFactory({

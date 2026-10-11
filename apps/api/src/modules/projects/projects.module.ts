@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BillingModule } from '../billing/billing.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { PermissionOverridesRepository } from './permission-overrides.repository';
 import { ProjectAccessService } from './project-access.service';
@@ -19,7 +20,7 @@ import { ProjectsService } from './projects.service';
   // organization role, so the organization membership is what it validates
   // against. The dependency stays one-directional — organizations know nothing
   // about projects.
-  imports: [OrganizationsModule],
+  imports: [OrganizationsModule, BillingModule],
   controllers: [
     ProjectsController,
     ProjectMembersController,

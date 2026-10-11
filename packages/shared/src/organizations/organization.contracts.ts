@@ -32,10 +32,16 @@ export const createOrganizationSchema = z.object({
 });
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 
-export const updateOrganizationSchema = z.object({
-  name: z.string().trim().min(2).max(120).optional(),
-  plan: z.enum(ORGANIZATION_PLANS).optional(),
-});
+/**
+ * Strict: the plan is not editable here. It is derived from the subscription
+ * (S2-F11) and only the billing module writes it, so a `plan` field is a 400
+ * instead of a free upgrade.
+ */
+export const updateOrganizationSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+  })
+  .strict();
 export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
 
 /**

@@ -125,8 +125,12 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: apps/web
       - name: Start the API and wait until it is live
+        # Not production: billing has only the mock provider, which production
+        # refuses at boot (ADR 0015). Production boot rules are covered by the
+        # unit and integration suites.
         env:
-          NODE_ENV: production
+          NODE_ENV: test
+          LOG_FORMAT: json
         run: |
           nohup node apps/api/dist/main.js > api.log 2>&1 &
           for _ in $(seq 1 60); do

@@ -244,3 +244,42 @@ export class InvalidWebhookError extends DomainError {
     super('The webhook could not be verified');
   }
 }
+
+/**
+ * The import file exceeds a structural limit (bytes, rows, columns, record size
+ * or cases). 413: the request is well formed and simply too big to process.
+ */
+export class ImportTooLargeError extends DomainError {
+  readonly code = 'IMPORT_TOO_LARGE' as const;
+  readonly httpStatus = 413;
+
+  constructor(limit: string, max: number) {
+    super(`The import exceeds the limit of ${max} ${limit}`, {
+      details: [{ path: limit, message: `max ${max}` }],
+    });
+  }
+}
+
+/**
+ * The database changed between the dry run and the commit (a case it would
+ * create now exists, a referenced requirement is gone…). Nothing was written;
+ * running the dry run again produces a plan that matches the current state.
+ */
+export class ImportStaleError extends DomainError {
+  readonly code = 'IMPORT_STALE' as const;
+  readonly httpStatus = 409;
+
+  constructor(reason: string) {
+    super(`The project changed since the dry run (${reason}); run the dry run again`);
+  }
+}
+
+/** An export would produce more rows than `EXPORT_MAX_ROWS`; filters narrow it. */
+export class ExportTooLargeError extends DomainError {
+  readonly code = 'EXPORT_TOO_LARGE' as const;
+  readonly httpStatus = 422;
+
+  constructor(rows: number, max: number) {
+    super(`The export would contain ${rows} rows; the limit is ${max}. Narrow it with filters`);
+  }
+}

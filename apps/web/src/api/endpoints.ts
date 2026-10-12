@@ -85,6 +85,10 @@ import type {
   UpdateDefectInput,
   UpdateTestCaseInput,
   UpsertIntegrationInput,
+  CreateImportQuery,
+  ImportCommitResult,
+  ImportJobView,
+  ImportLimitsView,
 } from '@qa-flow-hub/shared';
 import { apiFetch, apiFetchBlob, query } from './http-client';
 
@@ -454,5 +458,35 @@ export const gitHubApi = {
     apiFetch<ImportAutomatedResultsView>(
       `/integrations/github/sync/test-runs/${testRunId}/results`,
       { method: 'POST' },
+    ),
+};
+
+export const importsApi = {
+  limits: (projectId: string) =>
+    apiFetch<ImportLimitsView>(`/projects/${projectId}/imports/limits`),
+  list: (projectId: string) => apiFetch<ImportJobView[]>(`/projects/${projectId}/imports`),
+  get: (projectId: string, id: string) =>
+    apiFetch<ImportJobView>(`/projects/${projectId}/imports/${id}`),
+  /** Dry run: validates and plans; nothing is created until `commit`. */
+  dryRun: (projectId: string, target: CreateImportQuery, file: File) => {
+    const body = new FormData();
+    body.append('file', file);
+    return apiFetch<ImportJobView>(`/projects/${projectId}/imports${query({ ...target })}`, {
+      method: 'POST',
+      body,
+    });
+  },
+  commit: (projectId: string, id: string) =>
+    apiFetch<ImportCommitResult>(`/projects/${projectId}/imports/${id}/commit`, {
+      method: 'POST',
+    }),
+};
+
+export const exportsApi = {
+  testCases: (projectId: string) => apiFetchBlob(`/projects/${projectId}/exports/test-cases.csv`),
+  testRun: (runId: string) => apiFetchBlob(`/test-runs/${runId}/export.csv`),
+  matrix: (projectId: string, uncoveredOnly = false) =>
+    apiFetchBlob(
+      `/traceability/matrix/export.csv${query({ projectId, uncoveredOnly: String(uncoveredOnly) })}`,
     ),
 };

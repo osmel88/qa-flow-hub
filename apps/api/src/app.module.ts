@@ -11,6 +11,8 @@ import { BillingModule } from './modules/billing/billing.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DefectsModule } from './modules/defects/defects.module';
 import { HealthModule } from './modules/health/health.module';
+import { ExportsModule } from './modules/exports/exports.module';
+import { ImportsModule } from './modules/imports/imports.module';
 import { SecretsModule } from './secrets/secrets.module';
 import { IntegrationSettingsModule } from './modules/integrations/integration-settings.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
@@ -55,6 +57,8 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     IntegrationSettingsModule,
     NotificationsModule,
     AttachmentsModule,
+    ImportsModule,
+    ExportsModule,
   ],
 })
 export class AppModule implements NestModule {

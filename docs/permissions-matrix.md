@@ -173,6 +173,8 @@ Rules that hold even for an owner:
 | `project.manage`       |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
 | `notifications.manage` |   ✓   |   ✓   |       —       |    —    |   —    |   —    |
 | `analytics.read`       |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `test_design.import`   |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
+| `data.export`          |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
 
 The table is `ROLE_PERMISSIONS` in `packages/shared`; it was derived from the
 `@Roles` lists the routes carried before, so an installation without overrides
@@ -182,6 +184,16 @@ Rules on overrides (`ProjectPermissionsService`): nobody edits their own; an
 owner is never touched; nobody edits a member above their own effective role;
 a grant must be a permission the actor effectively holds in that project;
 archived projects are read-only; every change is an audited `role_change`.
+
+### Import and export (S3-F1)
+
+- `test_design.import` covers the dry run, the commit, the job history and the
+  limits of `/projects/:projectId/imports`. A commit is also refused unless the
+  caller is the member who ran the dry run and still holds the permission.
+- Every CSV export needs `data.export` **and** the read permission of what it
+  exports (`test_design.read`, `testruns.read` or `traceability.read`). Revoking
+  `data.export` for one member in one project keeps their read access and
+  removes only the downloads; the web client hides the export and print links.
 
 ## Not implemented yet
 

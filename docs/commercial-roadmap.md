@@ -43,8 +43,8 @@ sells, that document says *what* each phase delivers and where it stops.
 | # | Item | Why now | Cost |
 | --- | --- | --- | --- |
 | 1.1 | **Jira integration (real)** | Most teams will not adopt a second defect tracker. The sell is "your defects stay in Jira, the traceability lives here". The ports exist (debt 18) | Medium-high: OAuth or token per organization, field mapping, rate limits, idempotency |
-| 1.2 | **CSV / TestRail import** | Nobody retypes 2000 cases. Import is the difference between a trial and a migration | Medium: mapping UI, dry run, partial failure reporting |
-| 1.3 | **Matrix and run export (CSV/PDF)** | The artefact customers actually send to auditors and clients | Small for CSV, medium for PDF |
+| 1.2 | **CSV / TestRail import** (done in S3-F1, file only) | Nobody retypes 2000 cases. Import is the difference between a trial and a migration | Medium: mapping UI, dry run, partial failure reporting |
+| 1.3 | **Matrix and run export (CSV/PDF)** (done in S3-F1; PDF via print, ADR 0016) | The artefact customers actually send to auditors and clients | Small for CSV, medium for PDF |
 | 1.4 | **Billing and plans** | `Organization.plan` exists, so this is a module and not a schema migration | Medium: provider integration, limits enforcement, invoices |
 | 1.5 | **Shared rate limiting** | With more than one replica the limit is `max × replicas` (debt 1) | Small, but introduces Redis as a dependency |
 

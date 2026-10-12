@@ -98,6 +98,30 @@ and chapter 10 of the backend course. Summary:
 - Production refuses to boot with `BILLING_PROVIDER=mock` or a weak
   `BILLING_WEBHOOK_SECRET`.
 
+## Import and export of untrusted files
+
+- A CSV import is untrusted input. The byte limit is checked by the multipart
+  parser before anything is decoded; the file must be strict UTF-8 (a BOM is
+  accepted), and binary signatures (XLSX/ZIP, PDF, gzip), UTF-16 and NUL bytes
+  are refused. Columns (100), record size (64 KiB), rows, cases, steps per case
+  (100) and section depth (5) are bounded.
+- Values are data, never instructions: nothing is evaluated, no URL in a cell
+  is fetched, and HTML is only ever rendered as escaped text by React. The
+  original file is not stored or logged; the job keeps a SHA-256 checksum, a
+  sanitized file name, at most 1000 issues and the normalized plan.
+- A dry run writes no domain rows. The commit applies the stored plan in one
+  transaction under a per-project advisory lock, re-resolves suites, sections,
+  duplicates and requirement keys inside it, and refuses with 409 if the
+  project changed since the dry run. Requirement keys resolve only inside the
+  same project; ids from the file are never trusted.
+- `import_jobs` has RLS like every tenant table and the runtime role cannot
+  delete from it.
+- CSV exports neutralize spreadsheet formulas (a cell starting with `=`, `+`,
+  `-`, `@`, tab or carriage return is prefixed with `'`), carry a UTF-8 BOM,
+  `nosniff`, `Cache-Control: private, no-store` and an RFC 6266
+  `Content-Disposition` built from a sanitized name. Every export is audited
+  with its row count.
+
 ## Transport and headers
 
 - Helmet: `X-Content-Type-Options`, `X-Frame-Options`, HSTS in production.

@@ -359,6 +359,21 @@ which is a deployment decision disguised as a developer convenience.
 | `BILLING_PAST_DUE_GRACE_DAYS`    | `7`                      | —                                                       |
 | `BILLING_WEBHOOK_RATE_LIMIT_MAX` | `120` per window, per IP | Allow-list the provider's IPs at the edge if possible.  |
 
+## Import and export
+
+| Variable                | Default           | Notes                                                                  |
+| ----------------------- | ----------------- | ---------------------------------------------------------------------- |
+| `IMPORT_MAX_BYTES`      | `5242880` (5 MiB) | Checked before parsing; the file is held in memory, never stored.      |
+| `IMPORT_MAX_ROWS`       | `20000`           | Data rows per file.                                                    |
+| `IMPORT_MAX_CASES`      | `5000`            | Distinct cases per file.                                               |
+| `IMPORT_JOB_TTL_HOURS`  | `24`              | A dry run left uncommitted expires and loses its stored plan.          |
+| `IMPORT_TX_TIMEOUT_MS`  | `60000`           | Upper bound of the commit transaction (it holds a per-project lock).   |
+| `IMPORT_RATE_LIMIT_MAX` | `10` per window   | Per client IP, on dry runs and commits; per instance like every limit. |
+| `EXPORT_MAX_ROWS`       | `100000`          | A larger export is refused with 422; the body is built in memory.      |
+
+Size the reverse proxy's `client_max_body_size` to at least `IMPORT_MAX_BYTES`
+plus multipart overhead, or the proxy answers 413 before the API can explain.
+
 The webhook endpoint is `POST /api/v1/billing/webhooks/<provider>`. It must be
 reachable from the provider without authentication; the proxy must forward
 the body unmodified (the signature covers the raw bytes) and must not buffer

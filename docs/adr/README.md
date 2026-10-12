@@ -41,3 +41,4 @@ Date: YYYY-MM-DD
 | [0013](0013-row-level-security-with-non-owning-role.md) | Row Level Security through a non-owning role               | accepted                  |
 | [0014](0014-external-secret-manager.md)                 | Integration credentials live in an external secret manager | accepted                  |
 | [0015](0015-billing-provider.md)                        | Billing behind a `BillingProvider` port, mock first        | accepted                  |
+| [0016](0016-printable-html-instead-of-server-pdf.md)    | PDF export through a printable HTML view                   | accepted                  |

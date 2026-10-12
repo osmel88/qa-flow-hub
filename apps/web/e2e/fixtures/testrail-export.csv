@@ -1,0 +1,4 @@
+ID,Title,Section,Type,Priority,Estimate,References,Steps (Step),Steps (Expected Result),Custom Browser
+C101,Checkout with card,Checkout > Cards,Functionality,1 - Critical,1h,IMP-R-1,Add item to the cart,The cart shows one item,Chrome
+,,,,,,,Pay with a valid card,The order is confirmed,
+C102,Refund an order,Checkout,Regression,3 - Medium,30m,,Request a refund,The refund is pending,Firefox

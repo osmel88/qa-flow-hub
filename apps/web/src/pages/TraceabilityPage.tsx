@@ -1,9 +1,12 @@
 import { Badge, DataState } from '@qa-flow-hub/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { traceabilityApi } from '../api/endpoints';
+import { Link } from 'react-router-dom';
+import { exportsApi, traceabilityApi } from '../api/endpoints';
+import { ExportButton } from '../components/ExportButton';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
+import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 
@@ -18,6 +21,7 @@ import { NoProject } from './NoProject';
 export function TraceabilityPage(): React.JSX.Element {
   const { activeProjectId } = useProject();
   const [uncoveredOnly, setUncoveredOnly] = useState(false);
+  const { can } = useProjectPermissions(activeProjectId);
 
   const matrix = useQuery({
     queryKey: ['matrix', activeProjectId, uncoveredOnly],
@@ -34,6 +38,24 @@ export function TraceabilityPage(): React.JSX.Element {
       <PageHeader
         title="Traceability"
         description="Every requirement, the cases that verify it, and the defects against it."
+        actions={
+          can('data.export') ? (
+            <>
+              <ExportButton
+                label="Export CSV"
+                fallbackName="traceability-matrix.csv"
+                download={() => exportsApi.matrix(activeProjectId, uncoveredOnly)}
+              />
+              <Link
+                to={`/print/traceability?uncoveredOnly=${String(uncoveredOnly)}`}
+                target="_blank"
+                rel="noopener"
+              >
+                Printable view
+              </Link>
+            </>
+          ) : undefined
+        }
       />
 
       <section className="card">

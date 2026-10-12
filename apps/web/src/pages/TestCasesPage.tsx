@@ -2,11 +2,13 @@ import { Badge, Button, DataState, SelectField, TextField } from '@qa-flow-hub/u
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { testDesignApi } from '../api/endpoints';
+import { exportsApi, testDesignApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { ExportButton } from '../components/ExportButton';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import { TestRailSyncCell, useTestRailReferences } from '../components/TestRailSyncCell';
+import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 
@@ -17,6 +19,7 @@ import { NoProject } from './NoProject';
  */
 export function TestCasesPage(): React.JSX.Element {
   const { activeProjectId } = useProject();
+  const { can } = useProjectPermissions(activeProjectId);
   const queryClient = useQueryClient();
   const [suiteId, setSuiteId] = useState<string | null>(null);
   const [suiteName, setSuiteName] = useState('');
@@ -176,7 +179,22 @@ export function TestCasesPage(): React.JSX.Element {
 
   return (
     <>
-      <PageHeader title="Test cases" description="Suites hold sections; sections hold cases." />
+      <PageHeader
+        title="Test cases"
+        description="Suites hold sections; sections hold cases."
+        actions={
+          <>
+            {can('test_design.import') && <Link to="/imports">Import CSV</Link>}
+            {can('data.export') && (
+              <ExportButton
+                label="Export CSV"
+                fallbackName="test-cases.csv"
+                download={() => exportsApi.testCases(activeProjectId)}
+              />
+            )}
+          </>
+        }
+      />
 
       {error !== null && (
         <p className="ui-field__error" role="alert">

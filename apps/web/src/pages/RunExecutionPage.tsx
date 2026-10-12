@@ -8,9 +8,11 @@ import { Badge, Button, DataState, TextAreaField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { defectsApi, testRunsApi } from '../api/endpoints';
+import { defectsApi, exportsApi, testRunsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { AttachmentsPanel } from '../components/AttachmentsPanel';
+import { ExportButton } from '../components/ExportButton';
+import { useProjectPermissions } from '../components/use-project-permissions';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import { invalidateAfterResult } from './run-execution-cache';
@@ -37,6 +39,7 @@ export function RunExecutionPage(): React.JSX.Element {
   const [defectFor, setDefectFor] = useState<{ resultId: string; title: string } | null>(null);
 
   const run = useQuery({ queryKey: ['run', runId], queryFn: () => testRunsApi.get(runId) });
+  const { can } = useProjectPermissions(run.data?.projectId ?? null);
   const cases = useQuery({
     queryKey: ['run-cases', runId],
     queryFn: () => testRunsApi.cases(runId),
@@ -113,7 +116,23 @@ export function RunExecutionPage(): React.JSX.Element {
       <PageHeader
         title={run.data?.name ?? 'Run'}
         description="Results are append-only: a re-execution adds a row, it never overwrites one."
-        actions={<Link to="/test-runs">Back to runs</Link>}
+        actions={
+          <>
+            {can('data.export') && (
+              <>
+                <ExportButton
+                  label="Export CSV"
+                  fallbackName="test-run.csv"
+                  download={() => exportsApi.testRun(runId)}
+                />
+                <Link to={`/print/test-runs/${runId}`} target="_blank" rel="noopener">
+                  Printable view
+                </Link>
+              </>
+            )}
+            <Link to="/test-runs">Back to runs</Link>
+          </>
+        }
       />
 
       {error !== null && (

@@ -8,6 +8,9 @@ import { BillingPage } from '../pages/BillingPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { MockCheckoutPage } from '../pages/MockCheckoutPage';
 import { DefectsPage } from '../pages/DefectsPage';
+import { ImportPage } from '../pages/ImportPage';
+import { PrintableMatrixPage } from '../pages/PrintableMatrixPage';
+import { PrintableRunPage } from '../pages/PrintableRunPage';
 import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { MembersPage } from '../pages/MembersPage';
@@ -45,6 +48,8 @@ const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       { path: '/organizations', element: <OrganizationsPage /> },
+      { path: '/print/traceability', element: <PrintableMatrixPage /> },
+      { path: '/print/test-runs/:runId', element: <PrintableRunPage /> },
       {
         element: <AppLayout />,
         children: [
@@ -53,6 +58,7 @@ const router = createBrowserRouter([
           { path: '/requirements', element: <RequirementsPage /> },
           { path: '/test-cases', element: <TestCasesPage /> },
           { path: '/test-cases/:caseId', element: <TestCaseEditorPage /> },
+          { path: '/imports', element: <ImportPage /> },
           { path: '/test-runs', element: <TestRunsPage /> },
           { path: '/test-runs/:runId', element: <RunExecutionPage /> },
           { path: '/defects', element: <DefectsPage /> },

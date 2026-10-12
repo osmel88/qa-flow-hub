@@ -122,6 +122,25 @@ export const envSchema = z
     BILLING_TRIAL_DAYS: z.coerce.number().int().min(0).max(90).default(14),
     BILLING_PAST_DUE_GRACE_DAYS: z.coerce.number().int().min(0).max(60).default(7),
     BILLING_WEBHOOK_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(120),
+    // Case import (S3-F1). The file is held in memory while it is parsed, so the
+    // byte limit is its own and far below UPLOAD_MAX_SIZE_BYTES.
+    IMPORT_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1024)
+      .max(50 * 1024 * 1024)
+      .default(5 * 1024 * 1024),
+    IMPORT_MAX_ROWS: z.coerce.number().int().min(1).max(200_000).default(20_000),
+    IMPORT_MAX_CASES: z.coerce.number().int().min(1).max(50_000).default(5_000),
+    IMPORT_JOB_TTL_HOURS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(24 * 7)
+      .default(24),
+    IMPORT_TX_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(600_000).default(60_000),
+    IMPORT_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
+    EXPORT_MAX_ROWS: z.coerce.number().int().min(1).max(1_000_000).default(100_000),
 
     /**
      * Interactive documentation. Left unset it follows the environment: on in

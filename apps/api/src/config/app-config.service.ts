@@ -144,6 +144,28 @@ export class AppConfigService {
     };
   }
 
+  get imports(): {
+    maxBytes: number;
+    maxRows: number;
+    maxCases: number;
+    jobTtlHours: number;
+    transactionTimeoutMs: number;
+    rateLimitMax: number;
+  } {
+    return {
+      maxBytes: this.get('IMPORT_MAX_BYTES'),
+      maxRows: this.get('IMPORT_MAX_ROWS'),
+      maxCases: this.get('IMPORT_MAX_CASES'),
+      jobTtlHours: this.get('IMPORT_JOB_TTL_HOURS'),
+      transactionTimeoutMs: this.get('IMPORT_TX_TIMEOUT_MS'),
+      rateLimitMax: this.get('IMPORT_RATE_LIMIT_MAX'),
+    };
+  }
+
+  get exportMaxRows(): number {
+    return this.get('EXPORT_MAX_ROWS');
+  }
+
   get swaggerEnabled(): boolean {
     return this.get('SWAGGER_ENABLED');
   }

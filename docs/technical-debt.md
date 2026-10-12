@@ -1003,3 +1003,38 @@ behind the `BillingProvider` port (ADR 0015). What it leaves:
   and test every billing state.
 - **Trigger to fix:** the first paying customer (real provider, tax), or
   measured contention on the advisory lock (counter table).
+
+## 38. Import & export: what S3-F1 leaves (S3-F1)
+
+- **Imports run inside the request.** There is no job runner (debt 3); the
+  commit is bounded by `IMPORT_MAX_CASES` and `IMPORT_TX_TIMEOUT_MS` and holds
+  a per-project advisory lock while it runs, so two imports into the same
+  project queue behind each other.
+- **Exports are assembled in memory.** Cases are read with keyset pagination,
+  but the CSV body is built as one string before it is sent; `EXPORT_MAX_ROWS`
+  (100 000) is what bounds memory. Streaming the reply is the fix when a
+  customer needs larger exports.
+- **Duplicates are detected by suite, section and normalized title.** The
+  TestRail `ID` is used while parsing but not stored as an external reference,
+  so renaming a case in TestRail and re-importing creates a new one.
+- **Section depth is limited to 5**, not the 10 mentioned in the plan; a
+  deeper TestRail hierarchy is reported row by row (`SECTION_DEPTH`) and has to
+  be flattened before importing.
+- **Linking from `references` needs `traceability.manage`**; a qa_lead whose
+  override revokes it gets `REFERENCE_NOT_ALLOWED` for those rows.
+- **`import_jobs` are kept forever.** The runtime role cannot delete them and
+  expired jobs keep their summary and issues (the plan is cleared). A
+  retention job belongs with the audit-retention work (debt 19).
+- **The import rate limit is per client IP and per instance**, like every
+  other limit (debt 1).
+- **Printing is not audited**: the browser prints what an authenticated page
+  already shows. CSV exports are audited with their row count.
+- **Manual case creation is still allowed in archived projects.** The import
+  refuses them; the existing manual endpoint was left untouched in this phase.
+- **CSV and TestRail CSV only.** XML and XLSX exports from TestRail, and
+  custom fields, are reported as warnings and ignored.
+
+- **Cost:** large migrations need splitting into files of 5 000 cases; no
+  server-made PDF.
+- **Trigger to fix:** the first customer import above the limits, a request
+  for scheduled reports, or the job runner landing for another reason.

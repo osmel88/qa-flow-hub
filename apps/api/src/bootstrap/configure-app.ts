@@ -27,6 +27,7 @@ export class ProxyTrust {
 const AUTH_LIMITED_ROUTES = ['auth/login', 'auth/register', 'auth/refresh'] as const;
 const AUTH_BUCKET = 'auth:';
 const WEBHOOK_BUCKET = 'billing-webhook:';
+const IMPORT_BUCKET = 'import:';
 /** Provider callbacks are small; anything bigger is not one. */
 const WEBHOOK_MAX_BYTES = 64 * 1024;
 
@@ -147,7 +148,7 @@ export async function configureApp(
   await app.register(import('@fastify/cors'), {
     origin: config.corsOrigins,
     credentials: true,
-    exposedHeaders: ['X-Request-Id', 'Retry-After'],
+    exposedHeaders: ['X-Request-Id', 'Retry-After', 'Content-Disposition', 'X-Export-Rows'],
   });
 
   // In-process store, per instance: with N replicas the effective limit is N
@@ -155,6 +156,9 @@ export async function configureApp(
   // balancer) is where the cluster-wide limit lives; see docs/deployment.md.
   const authRoutes = new Set(AUTH_LIMITED_ROUTES.map((path) => `/${config.apiPrefix}/v1/${path}`));
   const isAuthBucket = (key: string): boolean => key.startsWith(AUTH_BUCKET);
+  const importRoutes = new RegExp(
+    `^/${config.apiPrefix}/v1/projects/:projectId/imports(/:id/commit)?$`,
+  );
   await app.register(import('@fastify/rate-limit'), {
     store: SnapshotRateLimitStore,
     keyGenerator: (request) => {
@@ -162,14 +166,23 @@ export async function configureApp(
       if (authRoutes.has(route)) {
         return `${AUTH_BUCKET}${request.ip}`;
       }
-      return route.startsWith(webhookPrefix) ? `${WEBHOOK_BUCKET}${request.ip}` : request.ip;
+      if (route.startsWith(webhookPrefix)) {
+        return `${WEBHOOK_BUCKET}${request.ip}`;
+      }
+      // Parsing and planning an import is the most expensive request the API
+      // serves, so dry runs and commits share a much smaller bucket per client.
+      return request.method === 'POST' && importRoutes.test(route)
+        ? `${IMPORT_BUCKET}${request.ip}`
+        : request.ip;
     },
     max: (_request, key) =>
       isAuthBucket(key)
         ? config.authRateLimit.max
         : key.startsWith(WEBHOOK_BUCKET)
           ? config.billing.webhookRateLimitMax
-          : config.rateLimit.max,
+          : key.startsWith(IMPORT_BUCKET)
+            ? config.imports.rateLimitMax
+            : config.rateLimit.max,
     timeWindow: (_request, key) =>
       isAuthBucket(key) ? config.authRateLimit.windowMs : config.rateLimit.windowMs,
     // An orchestrator probing every few seconds must never be told to back off.

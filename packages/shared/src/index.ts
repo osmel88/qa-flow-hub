@@ -19,3 +19,5 @@ export * from './attachments/attachment.contracts.js';
 export * from './permissions/permission.contracts.js';
 export * from './analytics/analytics.contracts.js';
 export * from './billing/billing.contracts.js';
+export * from './imports/import.contracts.js';
+export * from './imports/export.contracts.js';

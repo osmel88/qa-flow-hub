@@ -687,3 +687,63 @@ body {
 .plan-card--current {
   border-color: var(--color-primary);
 }
+
+.export-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-4);
+  align-items: end;
+}
+
+.print-page {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: var(--space-4);
+  background: #fff;
+  color: #000;
+}
+
+.print-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
+}
+
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.print-table th,
+.print-table td {
+  border: 1px solid #999;
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.print-table thead {
+  display: table-header-group;
+}
+
+.print-table tr {
+  break-inside: avoid;
+}
+
+@media print {
+  .print-toolbar {
+    display: none;
+  }
+
+  .print-page {
+    max-width: none;
+    padding: 0;
+  }
+}

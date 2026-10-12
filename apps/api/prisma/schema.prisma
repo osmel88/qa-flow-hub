@@ -305,6 +305,7 @@ model User {
   uploadedFiles          AttachmentMetadata[]
   notifications          Notification[]              @relation("NotificationRecipient")
   notificationPreference NotificationPreference?
+  importJobs             ImportJob[]
 
   @@index([deletedAt])
   @@map("users")
@@ -381,6 +382,7 @@ model Organization {
   billingCustomer     BillingCustomer?
   subscription        Subscription?
   invoices            Invoice[]
+  importJobs          ImportJob[]
 
   @@index([deletedAt])
   @@map("organizations")
@@ -482,6 +484,7 @@ model Project {
   testCases           TestCase[]
   testRuns            TestRun[]
   defects             Defect[]
+  importJobs          ImportJob[]
 
   @@unique([organizationId, key])
   @@index([organizationId, status])
@@ -1182,4 +1185,53 @@ model BillingWebhookEvent {
   @@unique([provider, externalEventId])
   @@index([organizationId])
   @@map("billing_webhook_events")
+}
+
+// ---------------------------------------------------------------------------
+// Import (S3-F1)
+// ---------------------------------------------------------------------------
+
+enum ImportFormat {
+  qaflow_csv
+  testrail_csv
+}
+
+enum ImportJobStatus {
+  ready
+  invalid
+  committed
+  expired
+}
+
+/// A dry run and, once confirmed, its commit. The uploaded file is never
+/// stored: only its name, size and SHA-256, the report and the normalized plan
+/// the commit applies. `plan` is cleared once committed or expired.
+model ImportJob {
+  id              String          @id @default(cuid())
+  organizationId  String
+  projectId       String
+  createdById     String?
+  format          ImportFormat
+  status          ImportJobStatus
+  fileName        String
+  fileSizeBytes   Int
+  checksum        String
+  targetSuiteId   String?
+  targetSuiteName String?
+  summary         Json
+  issues          Json
+  issueCount      Int
+  plan            Json?
+  expiresAt       DateTime
+  committedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, projectId, createdAt])
+  @@index([projectId, status])
+  @@map("import_jobs")
 }

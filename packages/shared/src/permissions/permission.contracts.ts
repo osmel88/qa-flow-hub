@@ -34,6 +34,7 @@ export const PERMISSION_MODULES = [
   'settings',
   'notifications',
   'analytics',
+  'exports',
 ] as const;
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
 
@@ -44,6 +45,7 @@ export const PERMISSIONS = [
   'test_design.read',
   'test_design.write',
   'test_design.manage',
+  'test_design.import',
   'testruns.read',
   'testruns.create',
   'testruns.execute',
@@ -63,6 +65,7 @@ export const PERMISSIONS = [
   'project.manage',
   'notifications.manage',
   'analytics.read',
+  'data.export',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -82,6 +85,7 @@ export const PERMISSION_CATALOG: readonly PermissionDescriptor[] = [
   { permission: 'test_design.read', module: 'test_design', label: 'Read', description: 'View suites, sections, cases and steps' },
   { permission: 'test_design.write', module: 'test_design', label: 'Write', description: 'Create and edit suites, sections, cases and steps; archive cases' },
   { permission: 'test_design.manage', module: 'test_design', label: 'Manage', description: 'Permanently delete suites and cases' },
+  { permission: 'test_design.import', module: 'test_design', label: 'Import', description: 'Import cases, suites and sections from CSV files' },
   { permission: 'testruns.read', module: 'testruns', label: 'Read', description: 'View runs, their cases and results' },
   { permission: 'testruns.create', module: 'testruns', label: 'Plan', description: 'Create and edit runs, add cases, assign testers, start/complete/abort' },
   { permission: 'testruns.execute', module: 'testruns', label: 'Execute', description: 'Record results and import automated results' },
@@ -101,6 +105,7 @@ export const PERMISSION_CATALOG: readonly PermissionDescriptor[] = [
   { permission: 'project.manage', module: 'settings', label: 'Manage project', description: 'Edit, archive and restore the project' },
   { permission: 'notifications.manage', module: 'notifications', label: 'Manage', description: 'Inspect the organization notification ledger and outbox' },
   { permission: 'analytics.read', module: 'analytics', label: 'Read', description: 'View the project dashboard' },
+  { permission: 'data.export', module: 'exports', label: 'Export', description: 'Download cases, runs and the traceability matrix as CSV or a printable report' },
 ];
 
 export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
@@ -115,6 +120,7 @@ export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
   settings: 'Settings',
   notifications: 'Notifications',
   analytics: 'Analytics',
+  exports: 'Exports',
 };
 
 const READ_ONLY: readonly Permission[] = [
@@ -127,6 +133,7 @@ const READ_ONLY: readonly Permission[] = [
   'integrations.read',
   'members.read',
   'analytics.read',
+  'data.export',
 ];
 
 const TESTER: readonly Permission[] = [
@@ -142,6 +149,7 @@ const QA_LEAD: readonly Permission[] = [
   ...TESTER,
   'requirements.write',
   'test_design.write',
+  'test_design.import',
   'testruns.create',
 ];
 

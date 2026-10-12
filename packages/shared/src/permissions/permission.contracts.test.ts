@@ -33,9 +33,14 @@ describe('permission catalog', () => {
   });
 
   it('keeps the viewer read-only', () => {
+    // Exporting reads data the viewer can already see; it writes nothing.
     for (const permission of ROLE_PERMISSIONS.viewer) {
-      expect(permission.endsWith('.read')).toBe(true);
+      expect(permission.endsWith('.read') || permission === 'data.export').toBe(true);
     }
+    expect(roleHasPermission('viewer', 'data.export')).toBe(true);
+    expect(roleHasPermission('viewer', 'test_design.import')).toBe(false);
+    expect(roleHasPermission('tester', 'test_design.import')).toBe(false);
+    expect(roleHasPermission('qa_lead', 'test_design.import')).toBe(true);
     expect(roleHasPermission('viewer', 'defects.create')).toBe(false);
     expect(roleHasPermission('tester', 'defects.create')).toBe(true);
   });

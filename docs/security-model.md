@@ -117,7 +117,8 @@ and chapter 10 of the backend course. Summary:
 - `import_jobs` has RLS like every tenant table and the runtime role cannot
   delete from it.
 - CSV exports neutralize spreadsheet formulas (a cell starting with `=`, `+`,
-  `-`, `@`, tab or carriage return is prefixed with `'`), carry a UTF-8 BOM,
+  `-`, `@`, tab or carriage return, also after leading spaces, NBSP or line
+  breaks, is prefixed with `'`), carry a UTF-8 BOM,
   `nosniff`, `Cache-Control: private, no-store` and an RFC 6266
   `Content-Disposition` built from a sanitized name. Every export is audited
   with its row count.

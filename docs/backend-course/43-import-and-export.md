@@ -121,6 +121,25 @@ los acentos, `Content-Disposition` con nombre saneado y `filename*` RFC 5987,
 `nosniff` y `no-store`. El export de un run sale de los **snapshots**
 (ADR 0009), no del caso vivo.
 
+La revisión final de S3-F1 encontró que el disparador no siempre está en la
+primera posición: algunas hojas de cálculo recortan los espacios al importar,
+así que ` =1+1` o `\n@cmd` son tan peligrosos como `=1+1`. Por eso
+`isCsvFormulaLike` salta antes los espacios, NBSP y saltos de línea iniciales, y
+`restoreCsvFormula` usa exactamente la misma regla para seguir siendo la
+inversa. Moraleja: una lista de "caracteres peligrosos" debe probarse contra
+las variantes que el consumidor normaliza, no solo contra la forma canónica.
+
+Otras dos lecciones de esa revisión:
+
+- **Normalizar antes de comparar.** `Añadir` puede llegar en NFC (un código
+  para `ñ`) o NFD (`n` + tilde combinada, típico de macOS). Son el mismo texto
+  para una persona y distintos para `===`; `normalizeTitle` aplica
+  `normalize('NFC')` antes de detectar duplicados.
+- **No reparar entradas ambiguas en silencio.** `Auth >  > Password` podría
+  interpretarse como `Auth > Password`, pero también puede ser un nivel
+  borrado por error. El validador lo reporta (`REQUIRED` en `section`) y deja
+  que la persona decida.
+
 ## PDF sin servidor
 
 Ver ADR 0016: un Chromium headless en la API es una dependencia de 150 MB, un

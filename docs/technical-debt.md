@@ -1031,6 +1031,16 @@ behind the `BillingProvider` port (ADR 0015). What it leaves:
   already shows. CSV exports are audited with their row count.
 - **Manual case creation is still allowed in archived projects.** The import
   refuses them; the existing manual endpoint was left untouched in this phase.
+- **Section and suite names match exactly (case-sensitive).** A file with
+  `login` next to an existing `Login` section creates a sibling, so its cases
+  are not detected as duplicates of the ones under `Login`. Titles are compared
+  case-insensitively and in Unicode NFC.
+- **A section name containing `>` does not round-trip.** The export joins the
+  path with `>` and the import splits on `>`, so such a name re-imports as
+  one more level. Names are not escaped.
+- **Two jobs that plan the same new suite or section cannot both commit.** The
+  second one is `IMPORT_STALE` by design (its plan said "create") and needs a
+  new dry run, which then reuses what the first created.
 - **CSV and TestRail CSV only.** XML and XLSX exports from TestRail, and
   custom fields, are reported as warnings and ignored.
 

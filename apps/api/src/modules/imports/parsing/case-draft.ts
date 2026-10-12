@@ -110,7 +110,7 @@ export function issue(
 
 /** Same rule the duplicate detection uses everywhere: trimmed, collapsed, case-insensitive. */
 export function normalizeTitle(title: string): string {
-  return title.trim().replace(/\s+/g, ' ').toLowerCase();
+  return title.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 export function splitList(value: string): string[] {
@@ -278,10 +278,20 @@ export function validateCases(
       );
     }
 
-    const sectionPath = (field('section') ?? '')
+    const rawSectionPath = (field('section') ?? '')
       .split(SECTION_PATH_SEPARATOR.trim())
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0);
+      .map((part) => part.trim());
+    const sectionPath = rawSectionPath.filter((part) => part.length > 0);
+    if (sectionPath.length > 0 && sectionPath.length !== rawSectionPath.length) {
+      issues.push(
+        issue(
+          item.line,
+          column('section', 'section'),
+          'REQUIRED',
+          `Every level of a section path needs a name ("A${SECTION_PATH_SEPARATOR}B")`,
+        ),
+      );
+    }
     if (sectionPath.length > MAX_IMPORT_SECTION_DEPTH) {
       issues.push(
         issue(

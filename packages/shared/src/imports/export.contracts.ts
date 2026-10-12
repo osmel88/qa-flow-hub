@@ -21,15 +21,21 @@ export type ExportMatrixQuery = z.infer<typeof exportMatrixQuerySchema>;
  */
 export const CSV_FORMULA_TRIGGERS = ['=', '+', '-', '@', '\t', '\r'] as const;
 
+/**
+ * Whether a spreadsheet could read the cell as a formula. Leading whitespace
+ * is skipped first: some importers trim it, so ` =1+1` is as dangerous as `=1+1`.
+ */
+export function isCsvFormulaLike(value: string): boolean {
+  const start = value.replace(/^[ \u00a0\n]+/, '');
+  return CSV_FORMULA_TRIGGERS.some((trigger) => start.startsWith(trigger));
+}
+
 /** Escapes one cell against formula injection; the importer reverses it. */
 export function neutralizeCsvFormula(value: string): string {
-  return CSV_FORMULA_TRIGGERS.some((trigger) => value.startsWith(trigger)) ? `'${value}` : value;
+  return isCsvFormulaLike(value) ? `'${value}` : value;
 }
 
 /** Inverse of `neutralizeCsvFormula`, so an export imports back unchanged. */
 export function restoreCsvFormula(value: string): string {
-  return value.startsWith("'") &&
-    CSV_FORMULA_TRIGGERS.some((trigger) => value.startsWith(trigger, 1))
-    ? value.slice(1)
-    : value;
+  return value.startsWith("'") && isCsvFormulaLike(value.slice(1)) ? value.slice(1) : value;
 }

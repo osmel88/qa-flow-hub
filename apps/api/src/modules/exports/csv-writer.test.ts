@@ -25,6 +25,24 @@ describe('csv writer', () => {
     },
   );
 
+  it.each([' =1+1', '  +SUM(A1)', '\n=cmd', '\u00a0@cmd', ' \t-2+3', '\n\n=HYPERLINK("x")'])(
+    'neutralizes the formula %j behind leading whitespace and restores it',
+    (value) => {
+      const cell = csvCell(value);
+      const parsed = parse(`${cell}\n`, { relax_quotes: false });
+      expect(parsed[0]?.[0]?.startsWith("'")).toBe(true);
+      expect(restoreCsvFormula(parsed[0]?.[0] ?? '')).toBe(value);
+    },
+  );
+
+  it.each(['plain', ' leading space', "'quoted", 'a=b', '5-3'])(
+    'leaves the non-formula %j untouched',
+    (value) => {
+      expect(csvCell(value)).toBe(value);
+      expect(restoreCsvFormula(value)).toBe(value);
+    },
+  );
+
   it('starts with a BOM and round-trips through a CSV parser', () => {
     const values = ['Añadir "日本", ok', 'multi\nline', '=HYPERLINK("http://evil")', 'plain'];
     const document = csvDocument(['a', 'b', 'c', 'd'], [values]);

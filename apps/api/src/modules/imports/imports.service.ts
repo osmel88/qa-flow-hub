@@ -285,6 +285,9 @@ export class ImportsService {
           throw new NotFoundError('Import job');
         }
         assertReady(current);
+        if (current.expiresAt.getTime() <= Date.now()) {
+          throw new ConflictError('The dry run expired; upload the file again');
+        }
         if (
           job.targetSuiteId !== null &&
           (await this.repository.findSuiteById(project.id, job.targetSuiteId, tx)) === null

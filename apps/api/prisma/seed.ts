@@ -81,8 +81,19 @@ async function main(): Promise<void> {
   // Globex data exists purely so that isolation failures have something to leak.
   await seedProject(globex.id, 'Legacy ERP', 'ERP', globexOwner.id, globexOwner.id);
 
+  // Below admin a member sees only the projects they hold a grant in. The QA
+  // lead is left out of MOB on purpose, so the seed shows a hidden project.
+  await Promise.all([
+    grantProjectAccess(acme.id, 'WEB', qaLead.id),
+    grantProjectAccess(acme.id, 'WEB', tester.id),
+    grantProjectAccess(acme.id, 'MOB', tester.id),
+    grantProjectAccess(globex.id, 'ERP', qaLead.id),
+  ]);
+
   console.log('Seed complete.');
-  console.log(`  users:      owner@acme.test (owner) / qa@acme.test (viewer in Globex) / tester@acme.test / owner@globex.test`);
+  console.log(
+    `  users:      owner@acme.test (owner) / qa@acme.test (WEB only; viewer in Globex) / tester@acme.test (WEB, MOB) / owner@globex.test`,
+  );
   console.log(`  password:   ${DEMO_PASSWORD}`);
   console.log(`  invitation: newcomer@acme.test -> ${invitationToken}`);
 }
@@ -108,6 +119,17 @@ async function upsertMember(organizationId: string, userId: string, role: Organi
     where: { organizationId_userId: { organizationId, userId } },
     update: { role },
     create: { organizationId, userId, role },
+  });
+}
+
+async function grantProjectAccess(organizationId: string, key: string, userId: string) {
+  const project = await prisma.project.findUniqueOrThrow({
+    where: { organizationId_key: { organizationId, key } },
+  });
+  return prisma.projectMember.upsert({
+    where: { projectId_userId: { projectId: project.id, userId } },
+    update: {},
+    create: { organizationId, projectId: project.id, userId, role: null },
   });
 }
 
@@ -193,9 +215,24 @@ async function seedProject(
       createdById: ownerId,
       steps: {
         create: [
-          { organizationId, position: 1, action: 'Request password recovery', expectedResult: 'A link is issued' },
-          { organizationId, position: 2, action: 'Open the link and set a new password', expectedResult: 'The password changes' },
-          { organizationId, position: 3, action: 'Open the same link again', expectedResult: 'The link is rejected' },
+          {
+            organizationId,
+            position: 1,
+            action: 'Request password recovery',
+            expectedResult: 'A link is issued',
+          },
+          {
+            organizationId,
+            position: 2,
+            action: 'Open the link and set a new password',
+            expectedResult: 'The password changes',
+          },
+          {
+            organizationId,
+            position: 3,
+            action: 'Open the same link again',
+            expectedResult: 'The link is rejected',
+          },
         ],
       },
     },
@@ -217,8 +254,18 @@ async function seedProject(
       createdById: ownerId,
       steps: {
         create: [
-          { organizationId, position: 1, action: 'Request password recovery', expectedResult: 'A link is issued' },
-          { organizationId, position: 2, action: 'Wait 31 minutes and open the link', expectedResult: 'The link is rejected' },
+          {
+            organizationId,
+            position: 1,
+            action: 'Request password recovery',
+            expectedResult: 'A link is issued',
+          },
+          {
+            organizationId,
+            position: 2,
+            action: 'Wait 31 minutes and open the link',
+            expectedResult: 'The link is rejected',
+          },
         ],
       },
     },
@@ -282,7 +329,8 @@ async function seedProject(
         testRunId: run.id,
         testRunCaseId: runCase.id,
         status,
-        comment: status === TestResultStatus.failed ? 'The link is still valid after 45 minutes' : null,
+        comment:
+          status === TestResultStatus.failed ? 'The link is still valid after 45 minutes' : null,
         elapsedSeconds: 120 + index * 60,
         executedById: testerId,
       },

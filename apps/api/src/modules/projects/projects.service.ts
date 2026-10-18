@@ -58,13 +58,18 @@ export class ProjectsService {
     return toProjectView(project);
   }
 
-  list(query: ListProjectsQuery): Promise<Paginated<ProjectView>> {
-    return this.projects
-      .list(query, {
-        ...(query.status === undefined ? {} : { status: query.status }),
-        ...(query.search === undefined ? {} : { search: query.search }),
-      })
-      .then((page) => ({ data: page.data.map(toProjectView), meta: page.meta }));
+  /**
+   * Only the projects the caller may see: the filter is part of the query, so
+   * `meta.total`, search and pagination all count visible projects alone.
+   */
+  async list(query: ListProjectsQuery): Promise<Paginated<ProjectView>> {
+    const visible = await this.access.visibleProjectIds();
+    const page = await this.projects.list(query, {
+      ...(visible === null ? {} : { ids: visible }),
+      ...(query.status === undefined ? {} : { status: query.status }),
+      ...(query.search === undefined ? {} : { search: query.search }),
+    });
+    return { data: page.data.map(toProjectView), meta: page.meta };
   }
 
   async get(id: string): Promise<ProjectView> {

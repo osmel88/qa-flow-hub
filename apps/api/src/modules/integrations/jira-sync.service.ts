@@ -132,7 +132,7 @@ export class JiraSyncService {
     if (requirement === null) {
       throw new NotFoundError('Requirement');
     }
-    await this.access.assertRouteAccess(requirement.projectId);
+    await this.access.assertRouteAccess(requirement.projectId, 'Requirement');
 
     return this.sync('requirement', requirement.id, requirement.projectId, requirement.key, {
       kind: KIND_BY_REQUIREMENT_TYPE[requirement.type],
@@ -151,7 +151,7 @@ export class JiraSyncService {
     if (defect === null) {
       throw new NotFoundError('Defect');
     }
-    await this.access.assertRouteAccess(defect.projectId);
+    await this.access.assertRouteAccess(defect.projectId, 'Defect');
 
     return this.sync('defect', defect.id, defect.projectId, defect.key, {
       kind: 'bug',

@@ -87,7 +87,7 @@ describe('project-scoped roles', () => {
     organizationId: string,
     projectId: string,
     userId: string,
-    role: OrganizationRole,
+    role: OrganizationRole | null,
   ) =>
     request('POST', `/api/v1/projects/${projectId}/members`, {
       payload: { userId, role },
@@ -127,7 +127,8 @@ describe('project-scoped roles', () => {
       const mobile = await createProject(owner, organizationId, 'MOB');
       const web = await createProject(owner, organizationId, 'WEB');
 
-      // Before the grant the tester cannot author anywhere.
+      // Before the grant the tester cannot author anywhere: the route guard
+      // refuses before any project is looked up, as it would for a made-up id.
       expect((await createSuite(tester, organizationId, mobile, 'Smoke')).statusCode).toBe(403);
 
       expect(
@@ -136,7 +137,10 @@ describe('project-scoped roles', () => {
       ).toBe(201);
 
       expect((await createSuite(tester, organizationId, mobile, 'Smoke')).statusCode).toBe(201);
-      // Same person, same token, other project: still a tester there.
+      // Same person, same token, other project: still invisible.
+      expect((await createSuite(tester, organizationId, web, 'Smoke')).statusCode).toBe(404);
+      await grant(owner, organizationId, web, tester.userId, null);
+      // With access but no raised role, the organization role applies there.
       expect((await createSuite(tester, organizationId, web, 'Smoke')).statusCode).toBe(403);
     });
 
@@ -150,6 +154,7 @@ describe('project-scoped roles', () => {
       const web = await createProject(owner, organizationId, 'WEB');
 
       await grant(owner, organizationId, mobile, lead.userId, OrganizationRole.viewer);
+      await grant(owner, organizationId, web, lead.userId, null);
 
       expect((await createSuite(lead, organizationId, mobile, 'Smoke')).statusCode).toBe(403);
       expect((await createSuite(lead, organizationId, web, 'Smoke')).statusCode).toBe(201);
@@ -161,6 +166,7 @@ describe('project-scoped roles', () => {
       const organizationId = await createOrganization(owner, 'acme');
       await addMember(organizationId, lead, OrganizationRole.qa_lead);
       const projectId = await createProject(owner, organizationId, 'WEB');
+      await grant(owner, organizationId, projectId, lead.userId, null);
 
       const suite = await createSuite(lead, organizationId, projectId, 'Smoke');
       const suiteId = suite.json().id;
@@ -195,7 +201,7 @@ describe('project-scoped roles', () => {
       expect(read.statusCode).toBe(200);
     });
 
-    it('returns the member to their organization role when the grant is revoked', async () => {
+    it('hides the project from the member as soon as the grant is revoked', async () => {
       const owner = await registerAccount('owner@example.test');
       const lead = await registerAccount('lead@example.test');
       const organizationId = await createOrganization(owner, 'acme');
@@ -212,7 +218,12 @@ describe('project-scoped roles', () => {
       );
       expect(revoked.statusCode).toBe(204);
 
-      expect((await createSuite(lead, organizationId, projectId, 'Smoke')).statusCode).toBe(201);
+      expect((await createSuite(lead, organizationId, projectId, 'Smoke')).statusCode).toBe(404);
+      const read = await request('GET', `/api/v1/projects/${projectId}`, {
+        token: lead.accessToken,
+        organizationId,
+      });
+      expect(read.statusCode).toBe(404);
     });
   });
 
@@ -225,6 +236,7 @@ describe('project-scoped roles', () => {
       await addMember(organizationId, manager, OrganizationRole.project_manager);
       await addMember(organizationId, tester, OrganizationRole.tester);
       const projectId = await createProject(owner, organizationId, 'WEB');
+      await grant(owner, organizationId, projectId, manager.userId, null);
 
       const response = await grant(
         manager,
@@ -244,6 +256,7 @@ describe('project-scoped roles', () => {
       const organizationId = await createOrganization(owner, 'acme');
       await addMember(organizationId, manager, OrganizationRole.project_manager);
       const projectId = await createProject(owner, organizationId, 'WEB');
+      await grant(owner, organizationId, projectId, manager.userId, null);
 
       const response = await grant(
         manager,

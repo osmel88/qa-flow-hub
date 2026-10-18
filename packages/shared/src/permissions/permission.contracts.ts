@@ -79,33 +79,163 @@ export interface PermissionDescriptor {
 }
 
 export const PERMISSION_CATALOG: readonly PermissionDescriptor[] = [
-  { permission: 'requirements.read', module: 'requirements', label: 'Read', description: 'View requirements and their history' },
-  { permission: 'requirements.write', module: 'requirements', label: 'Write', description: 'Create, edit and delete requirements' },
-  { permission: 'requirements.manage', module: 'requirements', label: 'Manage', description: 'Change requirement status (approve, deprecate…)' },
-  { permission: 'test_design.read', module: 'test_design', label: 'Read', description: 'View suites, sections, cases and steps' },
-  { permission: 'test_design.write', module: 'test_design', label: 'Write', description: 'Create and edit suites, sections, cases and steps; archive cases' },
-  { permission: 'test_design.manage', module: 'test_design', label: 'Manage', description: 'Permanently delete suites and cases' },
-  { permission: 'test_design.import', module: 'test_design', label: 'Import', description: 'Import cases, suites and sections from CSV files' },
-  { permission: 'testruns.read', module: 'testruns', label: 'Read', description: 'View runs, their cases and results' },
-  { permission: 'testruns.create', module: 'testruns', label: 'Plan', description: 'Create and edit runs, add cases, assign testers, start/complete/abort' },
-  { permission: 'testruns.execute', module: 'testruns', label: 'Execute', description: 'Record results and import automated results' },
-  { permission: 'testruns.manage', module: 'testruns', label: 'Manage', description: 'Delete runs' },
+  {
+    permission: 'requirements.read',
+    module: 'requirements',
+    label: 'Read',
+    description: 'View requirements and their history',
+  },
+  {
+    permission: 'requirements.write',
+    module: 'requirements',
+    label: 'Write',
+    description: 'Create, edit and delete requirements',
+  },
+  {
+    permission: 'requirements.manage',
+    module: 'requirements',
+    label: 'Manage',
+    description: 'Change requirement status (approve, deprecate…)',
+  },
+  {
+    permission: 'test_design.read',
+    module: 'test_design',
+    label: 'Read',
+    description: 'View suites, sections, cases and steps',
+  },
+  {
+    permission: 'test_design.write',
+    module: 'test_design',
+    label: 'Write',
+    description: 'Create and edit suites, sections, cases and steps; archive cases',
+  },
+  {
+    permission: 'test_design.manage',
+    module: 'test_design',
+    label: 'Manage',
+    description: 'Permanently delete suites and cases',
+  },
+  {
+    permission: 'test_design.import',
+    module: 'test_design',
+    label: 'Import',
+    description: 'Import cases, suites and sections from CSV files',
+  },
+  {
+    permission: 'testruns.read',
+    module: 'testruns',
+    label: 'Read',
+    description: 'View runs, their cases and results',
+  },
+  {
+    permission: 'testruns.create',
+    module: 'testruns',
+    label: 'Plan',
+    description: 'Create and edit runs, add cases, assign testers, start/complete/abort',
+  },
+  {
+    permission: 'testruns.execute',
+    module: 'testruns',
+    label: 'Execute',
+    description: 'Record results and import automated results',
+  },
+  {
+    permission: 'testruns.manage',
+    module: 'testruns',
+    label: 'Manage',
+    description: 'Delete runs',
+  },
   { permission: 'defects.read', module: 'defects', label: 'Read', description: 'View defects' },
-  { permission: 'defects.create', module: 'defects', label: 'Report', description: 'Create, edit and move defects through their workflow' },
-  { permission: 'defects.manage', module: 'defects', label: 'Manage', description: 'Delete defects' },
-  { permission: 'traceability.read', module: 'traceability', label: 'Read', description: 'View internal links and external references' },
-  { permission: 'traceability.manage', module: 'traceability', label: 'Manage', description: 'Link and unlink requirements and cases' },
-  { permission: 'attachments.read', module: 'attachments', label: 'Read', description: 'List, preview and download evidence' },
-  { permission: 'attachments.upload', module: 'attachments', label: 'Upload', description: 'Attach evidence' },
-  { permission: 'attachments.delete', module: 'attachments', label: 'Delete', description: 'Remove evidence' },
-  { permission: 'integrations.read', module: 'integrations', label: 'Read', description: 'Browse connected providers and their data' },
-  { permission: 'integrations.manage', module: 'integrations', label: 'Manage', description: 'Configure, connect and disconnect providers (organization-wide)' },
-  { permission: 'members.read', module: 'members', label: 'Read', description: 'See who has access to the project' },
-  { permission: 'members.manage', module: 'members', label: 'Manage', description: 'Grant project roles and permission overrides' },
-  { permission: 'project.manage', module: 'settings', label: 'Manage project', description: 'Edit, archive and restore the project' },
-  { permission: 'notifications.manage', module: 'notifications', label: 'Manage', description: 'Inspect the organization notification ledger and outbox' },
-  { permission: 'analytics.read', module: 'analytics', label: 'Read', description: 'View the project dashboard' },
-  { permission: 'data.export', module: 'exports', label: 'Export', description: 'Download cases, runs and the traceability matrix as CSV or a printable report' },
+  {
+    permission: 'defects.create',
+    module: 'defects',
+    label: 'Report',
+    description: 'Create, edit and move defects through their workflow',
+  },
+  {
+    permission: 'defects.manage',
+    module: 'defects',
+    label: 'Manage',
+    description: 'Delete defects',
+  },
+  {
+    permission: 'traceability.read',
+    module: 'traceability',
+    label: 'Read',
+    description: 'View internal links and external references',
+  },
+  {
+    permission: 'traceability.manage',
+    module: 'traceability',
+    label: 'Manage',
+    description: 'Link and unlink requirements and cases',
+  },
+  {
+    permission: 'attachments.read',
+    module: 'attachments',
+    label: 'Read',
+    description: 'List, preview and download evidence',
+  },
+  {
+    permission: 'attachments.upload',
+    module: 'attachments',
+    label: 'Upload',
+    description: 'Attach evidence',
+  },
+  {
+    permission: 'attachments.delete',
+    module: 'attachments',
+    label: 'Delete',
+    description: 'Remove evidence',
+  },
+  {
+    permission: 'integrations.read',
+    module: 'integrations',
+    label: 'Read',
+    description: 'Browse connected providers and their data',
+  },
+  {
+    permission: 'integrations.manage',
+    module: 'integrations',
+    label: 'Manage',
+    description: 'Configure, connect and disconnect providers (organization-wide)',
+  },
+  {
+    permission: 'members.read',
+    module: 'members',
+    label: 'Read',
+    description: 'See who has access to the project',
+  },
+  {
+    permission: 'members.manage',
+    module: 'members',
+    label: 'Manage',
+    description: 'Grant project roles and permission overrides',
+  },
+  {
+    permission: 'project.manage',
+    module: 'settings',
+    label: 'Manage project',
+    description: 'Edit, archive and restore the project',
+  },
+  {
+    permission: 'notifications.manage',
+    module: 'notifications',
+    label: 'Manage',
+    description: 'Inspect the organization notification ledger and outbox',
+  },
+  {
+    permission: 'analytics.read',
+    module: 'analytics',
+    label: 'Read',
+    description: 'View the project dashboard',
+  },
+  {
+    permission: 'data.export',
+    module: 'exports',
+    label: 'Export',
+    description: 'Download cases, runs and the traceability matrix as CSV or a printable report',
+  },
 ];
 
 export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
@@ -259,6 +389,8 @@ export interface MemberPermissionsView {
   organizationRole: OrganizationRoleName;
   /** `null` when no project grant exists: the organization role applies. */
   projectRole: OrganizationRoleName | null;
+  /** Without access the project is invisible to them and `permissions` grants nothing. */
+  hasAccess: boolean;
   effectiveRole: OrganizationRoleName;
   overrides: PermissionOverrideView[];
   permissions: EffectivePermissionView[];
@@ -280,6 +412,11 @@ export function computeEffectivePermissions(
     if (effect !== undefined) {
       return { permission, module, granted: effect === 'grant', source: 'override' };
     }
-    return { permission, module, granted: roleHasPermission(effectiveRole, permission), source: 'role' };
+    return {
+      permission,
+      module,
+      granted: roleHasPermission(effectiveRole, permission),
+      source: 'role',
+    };
   });
 }

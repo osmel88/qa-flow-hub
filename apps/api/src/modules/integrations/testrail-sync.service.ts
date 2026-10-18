@@ -132,7 +132,7 @@ export class TestRailSyncService {
       if (run === null) {
         throw new NotFoundError('Test run');
       }
-      await this.access.assertRouteAccess(run.projectId);
+      await this.access.assertRouteAccess(run.projectId, 'Test run');
       entityIds = await this.runs.resultIdsForRun(run.id);
     } else {
       const projectId = query.projectId ?? '';
@@ -156,7 +156,7 @@ export class TestRailSyncService {
 
   async syncSuite(id: string): Promise<TestRailSyncResultView> {
     const suite = await this.requireSuite(id);
-    await this.access.assertRouteAccess(suite.projectId);
+    await this.access.assertRouteAccess(suite.projectId, 'Test suite');
     const connection = await this.requireConnection();
 
     const synced = await this.ensureSuite(connection, suite);
@@ -168,7 +168,7 @@ export class TestRailSyncService {
     if (testCase === null) {
       throw new NotFoundError('Test case');
     }
-    await this.access.assertRouteAccess(testCase.projectId);
+    await this.access.assertRouteAccess(testCase.projectId, 'Test case');
     const connection = await this.requireConnection();
 
     const dependencies: ExternalReferenceView[] = [];
@@ -181,7 +181,7 @@ export class TestRailSyncService {
     if (run === null) {
       throw new NotFoundError('Test run');
     }
-    await this.access.assertRouteAccess(run.projectId);
+    await this.access.assertRouteAccess(run.projectId, 'Test run');
     const connection = await this.requireConnection();
 
     const dependencies: ExternalReferenceView[] = [];
@@ -199,7 +199,7 @@ export class TestRailSyncService {
     if (run === null || runCase === null) {
       throw new NotFoundError('Test run');
     }
-    await this.access.assertRouteAccess(run.projectId);
+    await this.access.assertRouteAccess(run.projectId, 'Test run');
     const connection = await this.requireConnection();
 
     const dependencies: ExternalReferenceView[] = [];

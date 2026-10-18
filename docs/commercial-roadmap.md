@@ -25,48 +25,48 @@ attach a screenshot, and nothing can be imported.**
 
 ## Stage 0 — Before a single external user (blockers)
 
-| # | Item | Why it blocks | Cost |
-| --- | --- | --- | --- |
-| 0.1 | **Email delivery** | Invitations exist and are audited, but the token comes back in the API response. Onboarding a team is impossible, and the token in the response must not survive contact with production (debt 4, 10) | Small: one adapter, one template set, the call sites already exist |
-| 0.2 | **Password recovery** | Every user who forgets a password is a support ticket you cannot resolve | Small once 0.1 exists |
-| 0.3 | **File attachments** | Only metadata is stored. A tester cannot attach the screenshot of the failure — the most visible gap against TestRail and Xray (debt 2) | Medium: object storage, signed uploads, size and type limits, virus scanning is a decision |
-| 0.4 | **Error tracking and metrics** | Today an incident is discovered by a customer telling you | Small: one SDK plus a `/metrics` endpoint |
+| #   | Item                           | Why it blocks                                                                                                                                                                                         | Cost                                                                                       |
+| --- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| 0.1 | **Email delivery**             | Invitations exist and are audited, but the token comes back in the API response. Onboarding a team is impossible, and the token in the response must not survive contact with production (debt 4, 10) | Small: one adapter, one template set, the call sites already exist                         |
+| 0.2 | **Password recovery**          | Every user who forgets a password is a support ticket you cannot resolve                                                                                                                              | Small once 0.1 exists                                                                      |
+| 0.3 | **File attachments**           | Only metadata is stored. A tester cannot attach the screenshot of the failure — the most visible gap against TestRail and Xray (debt 2)                                                               | Medium: object storage, signed uploads, size and type limits, virus scanning is a decision |
+| 0.4 | **Error tracking and metrics** | Today an incident is discovered by a customer telling you                                                                                                                                             | Small: one SDK plus a `/metrics` endpoint                                                  |
 
 Stage 0 is not features, it is the difference between a demo and a product.
 
 The agreed execution plan for the stage after the MVP lives in
-[`stage-2-roadmap.md`](stage-2-roadmap.md): the stages below say *why* an order
-sells, that document says *what* each phase delivers and where it stops.
+[`stage-2-roadmap.md`](stage-2-roadmap.md): the stages below say _why_ an order
+sells, that document says _what_ each phase delivers and where it stops.
 
 ## Stage 1 — First paying team
 
-| # | Item | Why now | Cost |
-| --- | --- | --- | --- |
-| 1.1 | **Jira integration (real)** | Most teams will not adopt a second defect tracker. The sell is "your defects stay in Jira, the traceability lives here". The ports exist (debt 18) | Medium-high: OAuth or token per organization, field mapping, rate limits, idempotency |
-| 1.2 | **CSV / TestRail import** (done in S3-F1, file only) | Nobody retypes 2000 cases. Import is the difference between a trial and a migration | Medium: mapping UI, dry run, partial failure reporting |
-| 1.3 | **Matrix and run export (CSV/PDF)** (done in S3-F1; PDF via print, ADR 0016) | The artefact customers actually send to auditors and clients | Small for CSV, medium for PDF |
-| 1.4 | **Billing and plans** | `Organization.plan` exists, so this is a module and not a schema migration | Medium: provider integration, limits enforcement, invoices |
-| 1.5 | **Shared rate limiting** | With more than one replica the limit is `max × replicas` (debt 1) | Small, but introduces Redis as a dependency |
+| #   | Item                                                                         | Why now                                                                                                                                            | Cost                                                                                  |
+| --- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 1.1 | **Jira integration (real)**                                                  | Most teams will not adopt a second defect tracker. The sell is "your defects stay in Jira, the traceability lives here". The ports exist (debt 18) | Medium-high: OAuth or token per organization, field mapping, rate limits, idempotency |
+| 1.2 | **CSV / TestRail import** (done in S3-F1, file only)                         | Nobody retypes 2000 cases. Import is the difference between a trial and a migration                                                                | Medium: mapping UI, dry run, partial failure reporting                                |
+| 1.3 | **Matrix and run export (CSV/PDF)** (done in S3-F1; PDF via print, ADR 0016) | The artefact customers actually send to auditors and clients                                                                                       | Small for CSV, medium for PDF                                                         |
+| 1.4 | **Billing and plans**                                                        | `Organization.plan` exists, so this is a module and not a schema migration                                                                         | Medium: provider integration, limits enforcement, invoices                            |
+| 1.5 | **Shared rate limiting**                                                     | With more than one replica the limit is `max × replicas` (debt 1)                                                                                  | Small, but introduces Redis as a dependency                                           |
 
 ## Stage 2 — Team of teams
 
-| # | Item | Why | Cost |
-| --- | --- | --- | --- |
-| 2.1 | **Project-scoped visibility** | Per-project roles change what you can *do*, not what you can *see* (debt 22). A customer with two client teams asks for this in week one | Medium, and it touches tenancy: needs its own tests |
-| 2.2 | **Automated result ingestion** | JUnit/Playwright reports from CI, so coverage includes automation. `AutomatedTest` already models the link | Medium: an ingestion endpoint, API keys, matching rules |
-| 2.3 | **API keys for machine clients** | CI needs a credential that is not a session refresh token (debt 20) | Small-medium: scopes, rotation, audit |
-| 2.4 | **Release as a first-class entity** | "What was verified before 2.3" is answered through runs today; auditors ask by release | Medium: a new entity plus report changes |
-| 2.5 | **Notifications** | A failed run or a reopened defect should reach Slack or email without polling | Medium: needs the job runner (debt 3) |
+| #   | Item                                          | Why                                                                                                                                                     | Cost                                                    |
+| --- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 2.1 | **Project-scoped visibility** — done in S3-F2 | Per-project roles changed what you could _do_, not what you could _see_ (debt 22, resolved). A customer with two client teams asks for this in week one | Medium, and it touches tenancy: needs its own tests     |
+| 2.2 | **Automated result ingestion**                | JUnit/Playwright reports from CI, so coverage includes automation. `AutomatedTest` already models the link                                              | Medium: an ingestion endpoint, API keys, matching rules |
+| 2.3 | **API keys for machine clients**              | CI needs a credential that is not a session refresh token (debt 20)                                                                                     | Small-medium: scopes, rotation, audit                   |
+| 2.4 | **Release as a first-class entity**           | "What was verified before 2.3" is answered through runs today; auditors ask by release                                                                  | Medium: a new entity plus report changes                |
+| 2.5 | **Notifications**                             | A failed run or a reopened defect should reach Slack or email without polling                                                                           | Medium: needs the job runner (debt 3)                   |
 
 ## Stage 3 — Enterprise
 
-| # | Item | Why | Cost |
-| --- | --- | --- | --- |
-| 3.1 | **SSO/SAML and SCIM** | A hard procurement requirement above a certain company size | High |
-| 3.2 | **MFA** | Same, and cheaper | Medium |
-| 3.3 | **Custom fields and workflows** | Enterprise QA processes never match the defaults | High, and it is the feature most likely to rot the data model |
-| 3.4 | **Audit retention and export to an external store** | Retention has no policy (debt 19), and whoever holds the migration credential can still rewrite history | Medium |
-| 3.5 | **Dedicated deployment per customer** | Regulated customers demand physical separation. The shared-schema model supports it without a rewrite, but it is an operational cost | High, operational rather than code |
+| #   | Item                                                | Why                                                                                                                                  | Cost                                                          |
+| --- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| 3.1 | **SSO/SAML and SCIM**                               | A hard procurement requirement above a certain company size                                                                          | High                                                          |
+| 3.2 | **MFA**                                             | Same, and cheaper                                                                                                                    | Medium                                                        |
+| 3.3 | **Custom fields and workflows**                     | Enterprise QA processes never match the defaults                                                                                     | High, and it is the feature most likely to rot the data model |
+| 3.4 | **Audit retention and export to an external store** | Retention has no policy (debt 19), and whoever holds the migration credential can still rewrite history                              | Medium                                                        |
+| 3.5 | **Dedicated deployment per customer**               | Regulated customers demand physical separation. The shared-schema model supports it without a rewrite, but it is an operational cost | High, operational rather than code                            |
 
 ## What is deliberately not on this roadmap
 

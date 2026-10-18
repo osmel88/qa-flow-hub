@@ -33,9 +33,9 @@ export class ProjectsController {
   }
 
   /**
-   * No `@Roles`: every member of the organization may list projects. The tenant
-   * filter is not a permission — it is applied by the repository regardless of
-   * role, which is why "readable by everyone here" is safe to state.
+   * No `@Roles`: every member may call it, and the service returns only the
+   * projects visible to them — every project for owners and admins, the
+   * granted ones for everybody else.
    */
   @Get()
   @ApiOperation({ summary: 'List projects with filters and pagination' })

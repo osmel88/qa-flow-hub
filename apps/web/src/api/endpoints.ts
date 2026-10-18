@@ -177,7 +177,7 @@ export const projectsApi = {
     apiFetch<Paginated<ProjectMemberView>>(
       `/projects/${projectId}/members${query({ pageSize: 100 })}`,
     ),
-  grantRole: (projectId: string, userId: string, role: string) =>
+  grantRole: (projectId: string, userId: string, role: string | null) =>
     apiFetch<ProjectMemberView>(`/projects/${projectId}/members`, {
       method: 'POST',
       body: { userId, role },

@@ -54,9 +54,14 @@ export type ListProjectsQuery = z.infer<typeof listProjectsQuerySchema>;
  * needs no migration to adopt this: a project with no grants behaves exactly as
  * it did before.
  */
+/**
+ * A grant is what makes a project visible to a member who is not an owner or
+ * admin. `role: null` gives access with the member's organization role;
+ * a role narrows or raises it inside this project.
+ */
 export const grantProjectRoleSchema = z.object({
   userId: z.string().trim().min(1).max(64),
-  role: z.enum(ORGANIZATION_ROLES),
+  role: z.enum(ORGANIZATION_ROLES).nullable(),
 });
 export type GrantProjectRoleInput = z.infer<typeof grantProjectRoleSchema>;
 
@@ -71,10 +76,15 @@ export interface ProjectMemberView {
   fullName: string;
   avatarUrl: string | null;
   organizationRole: OrganizationRoleName;
-  /** `null` when this person has no grant: the organization role applies. */
+  /** `null` when there is no grant or the grant keeps the organization role. */
   projectRole: OrganizationRoleName | null;
-  /** What the API will actually enforce inside this project. */
-  effectiveRole: OrganizationRoleName;
+  /**
+   * Whether this person can see the project at all: owners and admins always,
+   * everybody else only with a grant.
+   */
+  hasAccess: boolean;
+  /** What the API will actually enforce inside this project; `null` without access. */
+  effectiveRole: OrganizationRoleName | null;
   grantedAt: string | null;
 }
 

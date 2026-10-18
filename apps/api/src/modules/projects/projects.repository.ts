@@ -8,6 +8,8 @@ import { TenantContextService } from '../../database/tenant-context.service';
 export interface ProjectFilters {
   status?: ProjectStatus;
   search?: string;
+  /** Restricts the list to these projects; absent means every project of the organization. */
+  ids?: readonly string[];
 }
 
 /**
@@ -33,6 +35,7 @@ export class ProjectsRepository extends TenantAwareRepository {
 
   async list(query: PaginationQuery, filters: ProjectFilters = {}): Promise<Paginated<Project>> {
     const where: Prisma.ProjectWhereInput = this.active({
+      ...(filters.ids === undefined ? {} : { id: { in: [...filters.ids] } }),
       ...(filters.status === undefined ? {} : { status: filters.status }),
       ...(filters.search === undefined
         ? {}

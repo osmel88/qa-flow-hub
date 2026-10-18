@@ -14,6 +14,7 @@ import {
   RequirementView,
   RequirementVersionView,
   UpdateRequirementInput,
+  buildPaginationMeta,
 } from '@qa-flow-hub/shared';
 import { PrismaService } from '../../database/prisma.service';
 import { ConflictError, NotFoundError } from '../../errors';
@@ -101,6 +102,9 @@ export class RequirementsService {
 
   async list(query: ListRequirementsQuery): Promise<Paginated<RequirementView>> {
     const projectId = await this.authorizedProject(query.projectId);
+    if (projectId === null) {
+      return { data: [], meta: buildPaginationMeta(query, 0) };
+    }
     const page = await this.requirements.list(query, {
       projectId,
       ...(query.status === undefined ? {} : { status: query.status }),
@@ -243,13 +247,13 @@ export class RequirementsService {
     }
     // The requirement carries the project, so this is the first point at which
     // the project-scoped role can be checked.
-    await this.access.assertRouteAccess(requirement.projectId);
+    await this.access.assertRouteAccess(requirement.projectId, 'Requirement');
     return requirement;
   }
 
-  private async authorizedProject(projectId: string): Promise<string> {
-    await this.access.authorizeProjectScope(projectId);
-    return projectId;
+  /** `null` for a project that does not exist or is not visible: the list is empty. */
+  private authorizedProject(projectId: string): Promise<string | null> {
+    return this.access.authorizeProjectScope(projectId);
   }
 }
 

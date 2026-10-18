@@ -7,6 +7,7 @@ import {
   ListDefectsQuery,
   Paginated,
   UpdateDefectInput,
+  buildPaginationMeta,
 } from '@qa-flow-hub/shared';
 import { PrismaService } from '../../database/prisma.service';
 import { TenantContextService } from '../../database/tenant-context.service';
@@ -55,7 +56,7 @@ export class DefectsService {
     }
     await this.access.assertRouteAccess(project.id);
 
-    await this.assertAssignee(input.assigneeId);
+    await this.assertAssignee(project.id, input.assigneeId);
 
     // The origin is derived, never trusted: given a result, the case and run it
     // belongs to are facts, and letting the client send its own would allow a
@@ -160,6 +161,9 @@ export class DefectsService {
 
   async list(query: ListDefectsQuery): Promise<Paginated<DefectView>> {
     const projectId = await this.authorizedProject(query.projectId);
+    if (projectId === null) {
+      return { data: [], meta: buildPaginationMeta(query, 0) };
+    }
     const page = await this.defects.list(query, {
       projectId,
       ...(query.status === undefined ? {} : { status: query.status }),
@@ -180,7 +184,7 @@ export class DefectsService {
 
   async update(id: string, input: UpdateDefectInput): Promise<DefectView> {
     const defect = await this.require(id);
-    await this.assertAssignee(input.assigneeId);
+    await this.assertAssignee(defect.projectId, input.assigneeId);
 
     const updated = await this.defects.update(id, {
       ...(input.title === undefined ? {} : { title: input.title }),
@@ -308,7 +312,10 @@ export class DefectsService {
     });
   }
 
-  private async assertAssignee(assigneeId: string | null | undefined): Promise<void> {
+  private async assertAssignee(
+    projectId: string,
+    assigneeId: string | null | undefined,
+  ): Promise<void> {
     if (assigneeId === undefined || assigneeId === null) {
       return;
     }
@@ -319,11 +326,14 @@ export class DefectsService {
     if (membership === null) {
       throw new ValidationError('The assignee is not a member of this organization');
     }
+    if (!(await this.access.memberSees(projectId, assigneeId, membership.role))) {
+      throw new ValidationError('The assignee has no access to this project');
+    }
   }
 
-  private async authorizedProject(projectId: string): Promise<string> {
-    await this.access.authorizeProjectScope(projectId);
-    return projectId;
+  /** `null` for a project that does not exist or is not visible: the list is empty. */
+  private authorizedProject(projectId: string): Promise<string | null> {
+    return this.access.authorizeProjectScope(projectId);
   }
 
   private async require(id: string): Promise<Defect> {
@@ -331,7 +341,7 @@ export class DefectsService {
     if (defect === null) {
       throw new NotFoundError('Defect');
     }
-    await this.access.assertRouteAccess(defect.projectId);
+    await this.access.assertRouteAccess(defect.projectId, 'Defect');
     return defect;
   }
 }

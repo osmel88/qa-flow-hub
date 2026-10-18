@@ -31,6 +31,12 @@ describe('PR #1 security regressions', () => {
     organizationId: organizationId ?? workspace.organizationId,
   });
   const asOwner = (payload?: object) => as(workspace.owner, payload);
+  const giveAccess = (account: TestAccount, projectId: string) =>
+    request(
+      'POST',
+      `/api/v1/projects/${projectId}/members`,
+      asOwner({ userId: account.userId, role: null }),
+    );
 
   const createProject = async (key: string): Promise<string> => {
     const response = await request(
@@ -89,7 +95,11 @@ describe('PR #1 security regressions', () => {
     const run = await request(
       'POST',
       '/api/v1/test-runs',
-      asOwner({ projectId, name: `Run ${Math.random()}`, selection: { testCaseIds: [testCaseId] } }),
+      asOwner({
+        projectId,
+        name: `Run ${Math.random()}`,
+        selection: { testCaseIds: [testCaseId] },
+      }),
     );
     expect(run.statusCode, run.body).toBe(201);
     const runId: string = run.json().id;
@@ -251,6 +261,7 @@ describe('PR #1 security regressions', () => {
     it('refuses every list, on any page, once the project read is revoked', async () => {
       const viewer = await workspace.addMember('viewer');
       const other = await createProject('OTH');
+      await giveAccess(viewer, other);
       for (const url of listUrls(workspace.projectId)) {
         const before = await request('GET', url, as(viewer));
         expect(before.statusCode, `${url} ${before.body}`).toBe(200);
@@ -334,6 +345,7 @@ describe('PR #1 security regressions', () => {
     it('sums only the projects the caller may analyse', async () => {
       const viewer = await workspace.addMember('viewer');
       const other = await createProject('OTH');
+      await giveAccess(viewer, other);
       await createRequirement(workspace.projectId);
       await createRequirement(other);
       await createRequirement(other);
@@ -466,6 +478,7 @@ describe('PR #1 security regressions', () => {
     it('authorizes the requested end and hides ends in projects the caller cannot read', async () => {
       const tester = await workspace.addMember('tester');
       const other = await createProject('OTH');
+      await giveAccess(tester, other);
       const requirementId = await createRequirement();
       const ownCase = await createCase();
       const foreignCase = await createCase({}, await createSuite(other));
@@ -478,9 +491,7 @@ describe('PR #1 security regressions', () => {
 
       await setOverrides(tester, [{ permission: 'traceability.read', effect: 'revoke' }], other);
       const filtered = await links(tester, requirementId);
-      expect(filtered.json().map((link: { targetId: string }) => link.targetId)).toEqual([
-        ownCase,
-      ]);
+      expect(filtered.json().map((link: { targetId: string }) => link.targetId)).toEqual([ownCase]);
 
       await setOverrides(tester, [{ permission: 'traceability.read', effect: 'revoke' }]);
       expect((await links(tester, requirementId)).statusCode).toBe(403);
@@ -536,6 +547,18 @@ describe('PR #1 security regressions', () => {
       });
       expect(accepted.statusCode, accepted.body).toBe(200);
 
+      // Without a grant the project is invisible again, not merely read-only.
+      const hidden = await request(
+        'GET',
+        `/api/v1/projects/${workspace.projectId}/permissions/me`,
+        as(member),
+      );
+      expect(hidden.statusCode).toBe(404);
+      const projects = await request('GET', '/api/v1/projects', as(member));
+      expect(projects.json().data).toEqual([]);
+
+      // Given access again, they start from the invitation role with no overrides.
+      expect((await giveAccess(member, workspace.projectId)).statusCode).toBe(201);
       const mine = await request(
         'GET',
         `/api/v1/projects/${workspace.projectId}/permissions/me`,
@@ -543,6 +566,7 @@ describe('PR #1 security regressions', () => {
       );
       const view = mine.json<MemberPermissionsView>();
       const granted = view.permissions.filter((entry) => entry.granted);
+      expect(view.effectiveRole).toBe('viewer');
       expect(granted.map((entry) => entry.permission)).not.toContain('integrations.manage');
       expect(granted.map((entry) => entry.permission)).not.toContain('requirements.write');
       expect(view.permissions.every((entry) => entry.source !== 'override')).toBe(true);
@@ -572,6 +596,11 @@ describe('PR #1 security regressions', () => {
         payload: { token },
         token: member.accessToken,
       });
+      await request('POST', `/api/v1/projects/${globex.projectId}/members`, {
+        payload: { userId: member.userId, role: null },
+        token: globex.owner.accessToken,
+        organizationId: globex.organizationId,
+      });
       const elsewhere = await request(
         'PUT',
         `/api/v1/projects/${globex.projectId}/permissions/members/${member.userId}`,
@@ -584,11 +613,7 @@ describe('PR #1 security regressions', () => {
       expect(elsewhere.statusCode, elsewhere.body).toBe(200);
       await setOverrides(member, [{ permission: 'testruns.create', effect: 'grant' }]);
 
-      await request(
-        'DELETE',
-        `/api/v1/organizations/current/members/${member.userId}`,
-        asOwner(),
-      );
+      await request('DELETE', `/api/v1/organizations/current/members/${member.userId}`, asOwner());
 
       expect(
         await prisma.projectPermissionOverride.count({ where: { userId: member.userId } }),
@@ -604,7 +629,9 @@ describe('PR #1 security regressions', () => {
   describe('run snapshots and verification', () => {
     it('freezes the step inputs into the run', async () => {
       const caseId = await createCase({
-        steps: [{ action: 'Enter the card', data: '4111 1111 1111 1111', expectedResult: 'Accepted' }],
+        steps: [
+          { action: 'Enter the card', data: '4111 1111 1111 1111', expectedResult: 'Accepted' },
+        ],
       });
       const { runId } = await executeCase(caseId, 'passed');
       await request(
@@ -675,20 +702,28 @@ describe('PR #1 security regressions', () => {
         const refused = await request(
           'POST',
           '/api/v1/defects',
-          asOwner({ projectId: workspace.projectId, title: 'Cross link', requirementIds: [requirementId] }),
+          asOwner({
+            projectId: workspace.projectId,
+            title: 'Cross link',
+            requirementIds: [requirementId],
+          }),
         );
         expect(refused.statusCode, refused.body).toBe(400);
       }
-      expect(await prisma.defect.count({ where: { organizationId: workspace.organizationId } })).toBe(0);
       expect(
-        await prisma.traceabilityLink.count({ where: { sourceType: 'defect' } }),
+        await prisma.defect.count({ where: { organizationId: workspace.organizationId } }),
       ).toBe(0);
+      expect(await prisma.traceabilityLink.count({ where: { sourceType: 'defect' } })).toBe(0);
 
       const ownRequirement = await createRequirement();
       const raised = await request(
         'POST',
         '/api/v1/defects',
-        asOwner({ projectId: workspace.projectId, title: 'Own link', requirementIds: [ownRequirement] }),
+        asOwner({
+          projectId: workspace.projectId,
+          title: 'Own link',
+          requirementIds: [ownRequirement],
+        }),
       );
       expect(raised.statusCode, raised.body).toBe(201);
     });
@@ -712,7 +747,11 @@ describe('PR #1 security regressions', () => {
       const run = await request(
         'POST',
         '/api/v1/test-runs',
-        asOwner({ projectId: workspace.projectId, name: 'Assigned', selection: { testCaseIds: [caseId] } }),
+        asOwner({
+          projectId: workspace.projectId,
+          name: 'Assigned',
+          selection: { testCaseIds: [caseId] },
+        }),
       );
       const runId: string = run.json().id;
       const runCaseId: string = (

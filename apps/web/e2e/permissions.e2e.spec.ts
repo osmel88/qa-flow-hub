@@ -53,7 +53,7 @@ test('a project override is enforced by the API, not by hidden buttons', async (
     expect(token.length).toBeGreaterThan(20);
   });
 
-  await test.step('the QA lead joins and can create a requirement by role', async () => {
+  await test.step('the QA lead joins, sees no project until given access, then writes by role', async () => {
     await leadPage.goto('/register');
     await leadPage.getByLabel('Full name').fill(lead.fullName);
     await leadPage.getByLabel('Email').fill(lead.email);
@@ -63,6 +63,18 @@ test('a project override is enforced by the API, not by hidden buttons', async (
     await leadPage.getByLabel('Invitation token').fill(token);
     await leadPage.getByRole('button', { name: 'Join' }).click();
     await expect(leadPage.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+
+    await expect(leadPage.getByRole('option', { name: 'No projects yet' })).toHaveCount(1);
+
+    await ownerPage.getByRole('link', { name: 'Project access' }).click();
+    const access = ownerPage.getByRole('row', { name: new RegExp(lead.email) });
+    await expect(access).toContainText('No access');
+    await ownerPage
+      .getByLabel(`Set the project role of ${lead.email}`)
+      .selectOption({ label: 'Access with their organization role' });
+    await expect(access).toContainText('Inherited');
+    await leadPage.reload();
+    await expect(leadPage.getByRole('option', { name: 'No projects yet' })).toHaveCount(0);
 
     await leadPage.getByRole('link', { name: 'Requirements' }).click();
     await leadPage.getByLabel('Title').fill('Checkout accepts coupons');

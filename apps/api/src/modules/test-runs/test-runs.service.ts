@@ -24,6 +24,7 @@ import {
   TestResultView,
   TestRunView,
   UpdateTestRunInput,
+  buildPaginationMeta,
 } from '@qa-flow-hub/shared';
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import { TenantContextService } from '../../database/tenant-context.service';
@@ -101,6 +102,9 @@ export class TestRunsService {
 
   async list(query: ListTestRunsQuery): Promise<Paginated<TestRunView>> {
     const projectId = await this.authorizedProject(query.projectId);
+    if (projectId === null) {
+      return { data: [], meta: buildPaginationMeta(query, 0) };
+    }
     const page = await this.runs.list(query, {
       projectId,
       ...(query.status === undefined ? {} : { status: query.status }),
@@ -268,6 +272,9 @@ export class TestRunsService {
       if (membership === null) {
         throw new ValidationError('The assignee is not a member of this organization');
       }
+      if (!(await this.access.memberSees(run.projectId, input.assignedToId, membership.role))) {
+        throw new ValidationError('The assignee has no access to this project');
+      }
     }
 
     // Scoped by tenant, but ids from another run of the same organization would
@@ -354,9 +361,7 @@ export class TestRunsService {
           ...(input.elapsedSeconds === undefined || input.elapsedSeconds === null
             ? {}
             : { elapsedSeconds: input.elapsedSeconds }),
-          ...(input.stepResults === undefined
-            ? {}
-            : { stepResults: input.stepResults }),
+          ...(input.stepResults === undefined ? {} : { stepResults: input.stepResults }),
           executedById: userId,
         },
         tx,
@@ -463,9 +468,9 @@ export class TestRunsService {
     }
   }
 
-  private async authorizedProject(projectId: string): Promise<string> {
-    await this.access.authorizeProjectScope(projectId);
-    return projectId;
+  /** `null` for a project that does not exist or is not visible: the list is empty. */
+  private authorizedProject(projectId: string): Promise<string | null> {
+    return this.access.authorizeProjectScope(projectId);
   }
 
   private async require(id: string): Promise<TestRun> {
@@ -475,7 +480,7 @@ export class TestRunsService {
     }
     // Every run route goes through here, including the tester recording a
     // result, so the project role is checked once for all of them.
-    await this.access.assertRouteAccess(run.projectId);
+    await this.access.assertRouteAccess(run.projectId, 'Test run');
     return run;
   }
 

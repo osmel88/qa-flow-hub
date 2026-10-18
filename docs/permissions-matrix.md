@@ -195,13 +195,35 @@ archived projects are read-only; every change is an audited `role_change`.
   `data.export` for one member in one project keeps their read access and
   removes only the downloads; the web client hides the export and print links.
 
+## Project visibility (S3-F2)
+
+| Organization role                                | Sees a project when…                        |
+| ------------------------------------------------ | ------------------------------------------- |
+| `organization_owner`, `organization_admin`       | always, every project of the organization   |
+| `project_manager`, `qa_lead`, `tester`, `viewer` | they hold a grant in it (`project_members`) |
+
+- A grant with `role: null` gives access with the organization role; a grant
+  with a role gives access with that role (narrower or wider, within the
+  granter's own power).
+- Removing a grant removes the project and its overrides immediately. Removing
+  an organization member removes every grant and override they held there, so
+  a reinvited member starts with no projects.
+- A project the caller cannot see is answered like an id that does not exist:
+  `GET /projects/:id` and every entity route return the same 404; lists that
+  take a `projectId` return the same empty page; dashboards neither name nor
+  count it. Archived projects follow the same rule.
+- Overrides can only be set for a member who can see the project (409
+  otherwise), and work (defects, run cases) can only be assigned to such a
+  member (400), so a notification never names a project to a person who cannot
+  open it.
+- The project access page lists every organization member on purpose, with
+  `hasAccess`: it is where access is given, and it needs `members.read` in a
+  project the caller can see.
+
 ## Not implemented yet
 
-- **Per-project read restrictions.** A grant changes what somebody may _do_ in a
-  project, not whether they can see it: every member of the organization can
-  read every project. Hiding a project is a different feature — it needs the
-  tenant filter to gain a second dimension, and every list endpoint to respect
-  it — and pretending a narrowed role hides data would be worse than saying so.
+- **Database-enforced project visibility.** RLS isolates organizations; project
+  visibility is enforced by the services (debt 39).
 - **Custom roles per customer.** The catalogue exists now; named, reusable
   permission sets per organization do not.
 - **Organization-level overrides.** Deliberately out of S2-F8 (debt 34).

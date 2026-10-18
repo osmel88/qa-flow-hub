@@ -229,6 +229,18 @@ test('dry run, atomic import, TestRail file, CSV exports and printable views', a
     await viewerPage.getByRole('button', { name: 'Join' }).click();
     await expect(viewerPage.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
 
+    await expect(viewerPage.getByRole('option', { name: 'No projects yet' })).toHaveCount(1);
+
+    await ownerPage.getByRole('link', { name: 'Project access' }).click();
+    const access = ownerPage.getByRole('row', { name: new RegExp(viewer.email) });
+    await expect(access).toContainText('No access');
+    await ownerPage
+      .getByLabel(`Set the project role of ${viewer.email}`)
+      .selectOption({ label: 'Access with their organization role' });
+    await expect(access).toContainText('Inherited');
+    await viewerPage.reload();
+    await expect(viewerPage.getByRole('option', { name: 'No projects yet' })).toHaveCount(0);
+
     await viewerPage
       .getByRole('navigation', { name: 'Main' })
       .getByRole('link', { name: 'Test cases' })

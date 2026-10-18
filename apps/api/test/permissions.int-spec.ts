@@ -437,6 +437,11 @@ describe('granular permissions', () => {
         as(workspace.owner, { name: 'Mobile', key: 'MOB' }),
       );
       const otherProjectId: string = other.json().id;
+      await request(
+        'POST',
+        `/api/v1/projects/${otherProjectId}/members`,
+        as(workspace.owner, { userId: viewer.userId, role: null }),
+      );
 
       await setOverrides(manager, viewer, [{ permission: 'requirements.write', effect: 'grant' }]);
       expect((await createRequirement(viewer)).statusCode).toBe(201);

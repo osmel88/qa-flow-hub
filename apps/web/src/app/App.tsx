@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../auth/auth-context';
 import { AppLayout } from '../components/AppLayout';
@@ -27,19 +27,9 @@ import { TestCasesPage } from '../pages/TestCasesPage';
 import { TestRunsPage } from '../pages/TestRunsPage';
 import { ExternalTraceabilityPage } from '../pages/ExternalTraceabilityPage';
 import { TraceabilityPage } from '../pages/TraceabilityPage';
+import { createQueryClient } from './query-client';
 
-/**
- * Query defaults chosen for an internal tool: data is refetched when the user
- * comes back to the tab, but not on every mount, and a failed request is
- * retried once. Mutations never retry, because "create defect" twice is worse
- * than showing an error.
- */
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: true },
-    mutations: { retry: 0 },
-  },
-});
+export const queryClient = createQueryClient();
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },

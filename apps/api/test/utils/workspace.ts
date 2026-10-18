@@ -13,8 +13,16 @@ export interface TestWorkspace {
   organizationId: string;
   projectId: string;
   owner: TestAccount;
-  /** Registers a user, invites them in the given role and accepts for them. */
-  addMember(role: string, emailPrefix?: string): Promise<TestAccount>;
+  /**
+   * Registers a user, invites them in the given role and accepts for them.
+   * Below admin they are also given access to the workspace project (with
+   * their organization role), unless `projectAccess` is false.
+   */
+  addMember(
+    role: string,
+    emailPrefix?: string,
+    options?: { projectAccess?: boolean },
+  ): Promise<TestAccount>;
 }
 
 export interface RequestOptions {
@@ -94,7 +102,7 @@ export async function createWorkspace(
     organizationId,
     projectId: project.json().id,
     owner,
-    async addMember(role, emailPrefix = role): Promise<TestAccount> {
+    async addMember(role, emailPrefix = role, memberOptions = {}): Promise<TestAccount> {
       const member = await registerAccount(app, `${emailPrefix}.${slug}@example.test`);
       const invitation = await request('POST', '/api/v1/organizations/current/invitations', {
         payload: { email: member.email, role },
@@ -105,6 +113,14 @@ export async function createWorkspace(
         payload: { token: invitation.json().token },
         token: member.accessToken,
       });
+      const seesEveryProject = role === 'organization_owner' || role === 'organization_admin';
+      if (memberOptions.projectAccess !== false && !seesEveryProject) {
+        await request('POST', `/api/v1/projects/${project.json().id}/members`, {
+          payload: { userId: member.userId, role: null },
+          token: owner.accessToken,
+          organizationId,
+        });
+      }
       return member;
     },
   };

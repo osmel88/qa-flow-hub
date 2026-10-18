@@ -78,7 +78,7 @@ export class TraceabilityService {
       throw new NotFoundError('Linked entity');
     }
     if (located.projectId !== null) {
-      await this.access.assertRouteAccess(located.projectId);
+      await this.access.assertRouteAccess(located.projectId, 'Linked entity');
     }
 
     const links = await this.links.linksFor(query.entityType, query.entityId);
@@ -247,7 +247,10 @@ export class TraceabilityService {
    */
   private async locateEnd(type: CreateTraceLinkInput['sourceType'], id: string): Promise<void> {
     const located = await this.reads.locateEntity(type, id);
-    if (located === null) {
+    if (
+      located === null ||
+      (located.projectId !== null && !(await this.access.isVisible(located.projectId)))
+    ) {
       throw new ValidationError(`No ${type} with id ${id} in this organization`);
     }
     if (located.projectId !== null) {

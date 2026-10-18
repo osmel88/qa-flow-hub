@@ -164,7 +164,7 @@ export class ExportsService {
     if (run === null) {
       throw new NotFoundError('Test run');
     }
-    await this.access.assertRouteAccess(run.projectId);
+    await this.access.assertRouteAccess(run.projectId, 'Test run');
 
     const max = this.config.exportMaxRows;
     const total = await this.repository.countRunCases(run.id);

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { OrganizationRole } from '@prisma/client';
 import { PERMISSIONS, Permission, ROLE_PERMISSIONS, roleHasPermission } from '@qa-flow-hub/shared';
 import { TenantContextService } from '../../database/tenant-context.service';
-import { ForbiddenError } from '../../errors';
+import { ForbiddenError, NotFoundError } from '../../errors';
 import { PermissionOverridesRepository } from './permission-overrides.repository';
 import { ProjectMembersRepository } from './project-members.repository';
 import { ProjectsRepository } from './projects.repository';
@@ -33,10 +33,12 @@ import { ProjectsRepository } from './projects.repository';
  *    need support to get back in, which is the same reasoning that refuses to
  *    demote the last owner.
  *
- * Visibility is deliberately *not* part of this: every member of the
- * organization can still see that a project exists. Private projects are a
- * product decision, not a consequence of role scoping, and it is recorded as
- * such in docs/technical-debt.md.
+ * Visibility comes first, and it is not a permission: `organization_owner` and
+ * `organization_admin` see every project of the organization; everybody else
+ * sees exactly the projects where they hold a row in `project_members`. A
+ * project outside that set is answered as if it did not exist — the same 404,
+ * with the same message, as an id from another tenant — so neither a list, a
+ * count nor an error can be used to learn that it is there.
  */
 @Injectable()
 export class ProjectAccessService {
@@ -54,13 +56,53 @@ export class ProjectAccessService {
    * project, a deleted one, garbage) is decided too — the tenant-scoped query
    * that follows can only come back empty, exactly as before.
    */
-  async authorizeProjectScope(projectId: string): Promise<void> {
+  async authorizeProjectScope(projectId: string): Promise<string | null> {
     const project = await this.projects.findById(projectId);
-    if (project === null) {
+    if (project === null || !(await this.isVisible(project.id))) {
       this.tenant.markProjectAccessChecked();
-      return;
+      return null;
     }
     await this.assertRouteAccess(project.id);
+    return project.id;
+  }
+
+  /**
+   * The projects this caller may know exist, or `null` for "all of them"
+   * (owners and admins). Read from the database on every call: a revoked grant
+   * hides the project on the very next request.
+   */
+  async visibleProjectIds(): Promise<string[] | null> {
+    if (seesEveryProject(this.tenant.requireRole())) {
+      return null;
+    }
+    const grants = await this.grants.listForUser(this.tenant.requireUserId());
+    return grants.map((grant) => grant.projectId);
+  }
+
+  /**
+   * Whether another member can see the project — asked before somebody is
+   * assigned work in it, so a notification never names a project to a person
+   * who cannot open it.
+   */
+  async memberSees(
+    projectId: string,
+    userId: string,
+    organizationRole: OrganizationRole,
+  ): Promise<boolean> {
+    return (
+      seesEveryProject(organizationRole) ||
+      (await this.grants.findGrant(projectId, userId)) !== null
+    );
+  }
+
+  async isVisible(projectId: string): Promise<boolean> {
+    if (seesEveryProject(this.tenant.requireRole())) {
+      return true;
+    }
+    if (this.tenant.cachedProjectRole(projectId) !== undefined) {
+      return true;
+    }
+    return (await this.grants.findGrant(projectId, this.tenant.requireUserId())) !== null;
   }
 
   /**
@@ -95,10 +137,17 @@ export class ProjectAccessService {
     }
 
     const granted = await this.overrides.listGrantsForUser(userId);
-    return granted.some((override) => isPermission(override.permission) && permissions.includes(override.permission));
+    return granted.some(
+      (override) => isPermission(override.permission) && permissions.includes(override.permission),
+    );
   }
 
-  async effectiveRole(projectId: string): Promise<OrganizationRole> {
+  /**
+   * Throws `NotFoundError(resource)` when the project is not visible to the
+   * caller, so the error a route returns for "exists in a project you cannot
+   * see" is the one it returns for "does not exist".
+   */
+  async effectiveRole(projectId: string, resource = 'Project'): Promise<OrganizationRole> {
     const organizationRole = this.tenant.requireRole();
     if (organizationRole === OrganizationRole.organization_owner) {
       return organizationRole;
@@ -110,6 +159,9 @@ export class ProjectAccessService {
     }
 
     const grant = await this.grants.findGrant(projectId, this.tenant.requireUserId());
+    if (grant === null && !seesEveryProject(organizationRole)) {
+      throw new NotFoundError(resource);
+    }
     const role = grant?.role ?? organizationRole;
     this.tenant.rememberProjectRole(projectId, role);
     return role;
@@ -169,6 +221,9 @@ export class ProjectAccessService {
     );
 
     return projectIds.filter((projectId) => {
+      if (!roleByProject.has(projectId) && !seesEveryProject(organizationRole)) {
+        return false;
+      }
       const role = roleByProject.get(projectId) ?? organizationRole;
       if (role === OrganizationRole.organization_owner) {
         return true;
@@ -200,10 +255,10 @@ export class ProjectAccessService {
    * effectively holds in *this* project. A route declaring both passes when
    * either is satisfied.
    */
-  async assertRouteAccess(projectId: string): Promise<OrganizationRole> {
+  async assertRouteAccess(projectId: string, resource = 'Project'): Promise<OrganizationRole> {
     const requiredRoles = this.tenant.requiredRoles;
     const requiredPermissions = this.tenant.requiredPermissions;
-    const role = await this.effectiveRole(projectId);
+    const role = await this.effectiveRole(projectId, resource);
 
     if (
       requiredRoles.includes(role) ||
@@ -222,6 +277,13 @@ export class ProjectAccessService {
 
     throw new ForbiddenError(`Your role in this project (${role}) does not allow this action`);
   }
+}
+
+/** The organization roles that see every project without a grant. */
+export function seesEveryProject(role: OrganizationRole): boolean {
+  return (
+    role === OrganizationRole.organization_owner || role === OrganizationRole.organization_admin
+  );
 }
 
 const PERMISSION_SET: ReadonlySet<string> = new Set(PERMISSIONS);

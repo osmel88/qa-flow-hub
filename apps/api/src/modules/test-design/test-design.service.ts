@@ -16,6 +16,7 @@ import {
   UpdateSectionInput,
   UpdateSuiteInput,
   UpdateTestCaseInput,
+  buildPaginationMeta,
 } from '@qa-flow-hub/shared';
 import { PrismaService } from '../../database/prisma.service';
 import {
@@ -81,7 +82,11 @@ export class TestDesignService {
     if (projectId === undefined || projectId === '') {
       throw new ValidationError('projectId is required');
     }
-    const suites = await this.repository.listSuites(await this.authorizedProject(projectId));
+    const visibleProjectId = await this.authorizedProject(projectId);
+    if (visibleProjectId === null) {
+      return [];
+    }
+    const suites = await this.repository.listSuites(visibleProjectId);
     return suites.map((suite) => toSuiteView(suite, suite._count.testCases));
   }
 
@@ -296,6 +301,9 @@ export class TestDesignService {
 
   async listCases(query: ListTestCasesQuery): Promise<Paginated<TestCaseView>> {
     const projectId = await this.authorizedProject(query.projectId);
+    if (projectId === null) {
+      return { data: [], meta: buildPaginationMeta(query, 0) };
+    }
     const page = await this.repository.listCases(query, {
       projectId,
       includeArchived: query.includeArchived === 'true',
@@ -343,7 +351,9 @@ export class TestDesignService {
           ...(input.automationStatus === undefined
             ? {}
             : { automationStatus: input.automationStatus }),
-          ...(input.estimateMinutes === undefined ? {} : { estimateMinutes: input.estimateMinutes }),
+          ...(input.estimateMinutes === undefined
+            ? {}
+            : { estimateMinutes: input.estimateMinutes }),
           ...(input.tags === undefined ? {} : { tags: input.tags }),
           ...(sectionId === undefined ? {} : { sectionId }),
           version: { increment: 1 },
@@ -368,7 +378,6 @@ export class TestDesignService {
         },
         tx,
       );
-
     });
 
     return this.detail(id);
@@ -410,7 +419,7 @@ export class TestDesignService {
     if (source === null) {
       throw new NotFoundError('Test case');
     }
-    await this.access.assertRouteAccess(source.projectId);
+    await this.access.assertRouteAccess(source.projectId, 'Test case');
 
     const sectionId =
       input.sectionId === undefined
@@ -532,9 +541,9 @@ export class TestDesignService {
     }
   }
 
-  private async authorizedProject(projectId: string): Promise<string> {
-    await this.access.authorizeProjectScope(projectId);
-    return projectId;
+  /** `null` for a project that does not exist or is not visible: the list is empty. */
+  private authorizedProject(projectId: string): Promise<string | null> {
+    return this.access.authorizeProjectScope(projectId);
   }
 
   private async requireSuite(id: string): Promise<TestSuite> {
@@ -542,7 +551,7 @@ export class TestDesignService {
     if (suite === null) {
       throw new NotFoundError('Test suite');
     }
-    await this.access.assertRouteAccess(suite.projectId);
+    await this.access.assertRouteAccess(suite.projectId, 'Test suite');
     return suite;
   }
 
@@ -562,7 +571,7 @@ export class TestDesignService {
     if (testCase === null) {
       throw new NotFoundError('Test case');
     }
-    await this.access.assertRouteAccess(testCase.projectId);
+    await this.access.assertRouteAccess(testCase.projectId, 'Test case');
     return testCase;
   }
 

@@ -163,7 +163,7 @@ export class GitHubSyncService {
     let entityIds: string[];
     if (query.entityType === 'test_result') {
       const run = await this.requireRun(query.testRunId ?? '');
-      await this.access.assertRouteAccess(run.projectId);
+      await this.access.assertRouteAccess(run.projectId, 'Test run');
       entityIds = await this.runs.resultIdsForRun(run.id);
     } else {
       const projectId = query.projectId ?? '';
@@ -186,7 +186,7 @@ export class GitHubSyncService {
    */
   async linkRun(id: string, input: LinkWorkflowRunInput | null): Promise<GitHubSyncResultView> {
     const run = await this.requireRun(id);
-    await this.access.assertRouteAccess(run.projectId);
+    await this.access.assertRouteAccess(run.projectId, 'Test run');
     const connection = await this.requireConnection();
 
     const linked = await this.ensureRunLink(connection, run, input);
@@ -209,7 +209,7 @@ export class GitHubSyncService {
    */
   async importResults(id: string): Promise<ImportAutomatedResultsView> {
     const run = await this.requireRun(id);
-    await this.access.assertRouteAccess(run.projectId);
+    await this.access.assertRouteAccess(run.projectId, 'Test run');
     if (run.status === 'completed' || run.status === 'aborted') {
       throw new ConflictError('This run is closed. Results can no longer be recorded.');
     }

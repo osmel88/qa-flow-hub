@@ -66,8 +66,31 @@ Not in this phase: persisting TestRail ids as external references, XML/XLSX,
 scheduled or emailed reports, blocking manual case creation in archived
 projects (debt 38).
 
+## S3-F2 — Project visibility
+
+Commercial roadmap item 2.1, closes debt 22: a member below
+`organization_admin` must not discover a project they hold no grant in.
+
+**Status: implemented.** No migration and no plan round, by request.
+
+- `ProjectAccessService.visibleProjectIds()` / `isVisible()`; `effectiveRole()`
+  throws `NotFoundError(resource)` without a grant; `projectsAllowing()`
+  excludes projects without a grant; `authorizeProjectScope()` returns `null`
+  for a hidden or missing project, and the lists answer an empty page.
+- `GET /projects` filters by the visible ids before search and pagination, so
+  `meta.total` never counts hidden projects.
+- Grants accept `role: null` (access with the organization role); revoking a
+  grant also drops the member's overrides in that project.
+- Assignees of defects and run cases must see the project.
+- Web: project access page shows who has no access and can give it; 404s
+  refetch the project lists.
+- Tests: `project-visibility.int-spec.ts` compares every project and entity
+  read for a hidden project with a made-up id, for each role below admin, after
+  revocation, reinvitation, archiving, a tenant switch and from another tenant.
+
 ## Related
 
 - [`stage-2-roadmap.md`](stage-2-roadmap.md) — the stage this one builds on
 - [`technical-debt.md`](technical-debt.md) — entry 38 for this phase
 - [`adr/0016-printable-html-instead-of-server-pdf.md`](adr/0016-printable-html-instead-of-server-pdf.md)
+- [`adr/0017-project-visibility-through-grants.md`](adr/0017-project-visibility-through-grants.md)

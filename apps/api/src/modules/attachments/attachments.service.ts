@@ -179,10 +179,7 @@ export class AttachmentsService {
     return toView(row);
   }
 
-  async list(
-    entityType: AttachableEntity,
-    entityId: string,
-  ): Promise<{ data: AttachmentView[] }> {
+  async list(entityType: AttachableEntity, entityId: string): Promise<{ data: AttachmentView[] }> {
     await this.resolveTarget(entityType, entityId);
     const rows = await this.attachments.listFor(entityType, entityId);
     return { data: rows.map(toView) };
@@ -190,7 +187,7 @@ export class AttachmentsService {
 
   async get(id: string): Promise<AttachmentView> {
     const row = await this.requireRow(id);
-    await this.access.assertRouteAccess(row.projectId);
+    await this.access.assertRouteAccess(row.projectId, 'Attachment');
     return toView(row);
   }
 
@@ -201,7 +198,7 @@ export class AttachmentsService {
    */
   async content(id: string): Promise<AttachmentContent> {
     const row = await this.requireRow(id);
-    await this.access.assertRouteAccess(row.projectId);
+    await this.access.assertRouteAccess(row.projectId, 'Attachment');
 
     const body = await this.storage.get(row.storageKey);
     if (body === null) {
@@ -221,7 +218,7 @@ export class AttachmentsService {
    */
   async remove(id: string): Promise<void> {
     const row = await this.requireRow(id);
-    const role = await this.access.assertRouteAccess(row.projectId);
+    const role = await this.access.assertRouteAccess(row.projectId, 'Attachment');
     const userId = this.tenant.requireUserId();
 
     if (!CURATORS.includes(role) && row.uploadedById !== userId) {
@@ -257,7 +254,7 @@ export class AttachmentsService {
     if (projectId === null) {
       throw new NotFoundError(humanize(entityType));
     }
-    await this.access.assertRouteAccess(projectId);
+    await this.access.assertRouteAccess(projectId, humanize(entityType));
     return projectId;
   }
 

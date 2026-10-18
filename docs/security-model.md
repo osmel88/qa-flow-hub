@@ -52,6 +52,14 @@ organization does not require new tokens.
 Object-level rules ("a tester may edit their own result") live in services,
 where the object is loaded — not in guards.
 
+**Project visibility (S3-F2, ADR 0017).** Below `organization_admin` a member
+sees only the projects they hold a grant in. `ProjectAccessService` filters the
+project list and every cross-project aggregate, and answers a hidden project
+with the same 404 (or empty page) as an id that never existed, so status codes,
+messages and counts cannot be used to enumerate projects. The web client
+refetches its project lists on any 404 and drops the whole cache on a tenant
+switch. RLS remains organization-only (debt 39).
+
 ## Tenant isolation
 
 The single largest risk in a shared-schema SaaS. See

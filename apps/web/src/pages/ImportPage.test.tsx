@@ -79,6 +79,7 @@ function stubApi(
         userId: 'u_1',
         organizationRole: role,
         projectRole: null,
+        hasAccess: true,
         effectiveRole: role,
         overrides: [],
         permissions: computeEffectivePermissions(role, []),

@@ -21,6 +21,13 @@ import { humanize, toneFor } from '../components/status';
  * will actually enforce. Showing only the last one would hide why it is what it
  * is; showing only the first is the bug this feature fixes.
  */
+const ORGANIZATION_ROLE_OPTION = '__organization_role';
+
+/** Owners and admins see every project; everybody else needs a grant. */
+function seesEveryProject(role: OrganizationRoleName): boolean {
+  return role === 'organization_owner' || role === 'organization_admin';
+}
+
 function reasonBlocked(
   actor: OrganizationRoleName,
   member: ProjectMemberView,
@@ -62,7 +69,7 @@ export function ProjectAccessPage(): React.JSX.Element {
   });
 
   const grant = useMutation({
-    mutationFn: (input: { userId: string; role: string }) =>
+    mutationFn: (input: { userId: string; role: string | null }) =>
       projectsApi.grantRole(activeProjectId ?? '', input.userId, input.role),
     onSuccess: async () => {
       setError(null);
@@ -108,7 +115,7 @@ export function ProjectAccessPage(): React.JSX.Element {
     <>
       <PageHeader
         title={`Access to ${activeProject?.key ?? 'this project'}`}
-        description="A project role overrides the organization role, but only inside this project. Overrides then grant or revoke single permissions on top of that role. Whatever is shown here, the API checks the same rules on every call."
+        description="Owners and admins see every project; everybody else sees it only after being given access here. A project role overrides the organization role, but only inside this project. Overrides then grant or revoke single permissions on top of that role. Whatever is shown here, the API checks the same rules on every call."
       />
 
       {error !== null && (
@@ -152,7 +159,9 @@ export function ProjectAccessPage(): React.JSX.Element {
                     </td>
                     <td>{humanize(member.organizationRole)}</td>
                     <td>
-                      {member.projectRole === null ? (
+                      {!member.hasAccess ? (
+                        <span className="muted">No access</span>
+                      ) : member.projectRole === null ? (
                         <span className="muted">Inherited</span>
                       ) : (
                         <Badge tone={toneFor(member.projectRole)}>
@@ -160,7 +169,13 @@ export function ProjectAccessPage(): React.JSX.Element {
                         </Badge>
                       )}
                     </td>
-                    <td>{humanize(member.effectiveRole)}</td>
+                    <td>
+                      {member.effectiveRole === null ? (
+                        <span className="muted">Cannot see this project</span>
+                      ) : (
+                        humanize(member.effectiveRole)
+                      )}
+                    </td>
                     <td>
                       <Button
                         size="sm"
@@ -183,21 +198,29 @@ export function ProjectAccessPage(): React.JSX.Element {
                           disabled={reason !== null}
                           {...(reason === null ? {} : { 'aria-describedby': hintId })}
                           onChange={(event) => {
-                            grant.mutate({ userId: member.userId, role: event.target.value });
+                            const value = event.target.value;
+                            grant.mutate({
+                              userId: member.userId,
+                              role: value === ORGANIZATION_ROLE_OPTION ? null : value,
+                            });
                           }}
                         >
                           <option value="">Choose…</option>
+                          {(!member.hasAccess || member.projectRole !== null) && (
+                            <option value={ORGANIZATION_ROLE_OPTION}>
+                              Access with their organization role
+                            </option>
+                          )}
                           {ORGANIZATION_ROLES.filter(
                             (role) =>
-                              outranksOrEquals(actorRole, role) &&
-                              role !== member.projectRole,
+                              outranksOrEquals(actorRole, role) && role !== member.projectRole,
                           ).map((role) => (
                             <option key={role} value={role}>
                               {humanize(role)}
                             </option>
                           ))}
                         </select>
-                        {member.projectRole !== null && reason === null && (
+                        {member.grantedAt !== null && reason === null && (
                           <Button
                             size="sm"
                             variant="ghost"
@@ -205,7 +228,7 @@ export function ProjectAccessPage(): React.JSX.Element {
                               revoke.mutate(member.userId);
                             }}
                           >
-                            Revoke
+                            {seesEveryProject(member.organizationRole) ? 'Revoke' : 'Remove access'}
                           </Button>
                         )}
                         {reason !== null && (

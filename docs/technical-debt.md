@@ -356,31 +356,26 @@ own `@Roles` list is re-applied to it (`ProjectAccessService`,
 What remains is narrower and listed as its own limitation below, because
 conflating the two would make the matrix read as more restrictive than it is.
 
-## 22. A project role does not restrict reading
+## 22. A project role does not restrict reading — resolved
 
-Grants change what somebody may **do** in a project, never what they can
-**see**: every member of an organization can read every project in it. This is
-intentional for now — hiding a project means giving the tenant filter a second
-dimension and auditing every list endpoint for it — but it is not what a
-customer assumes when they set somebody to `viewer` on one project only.
+**Resolved in S3-F2 (project visibility, ADR 0017):** below `organization_admin`
+a member discovers a project only through a row in `project_members`. Owners and
+admins keep seeing every project of the organization. A grant with `role: null`
+gives access with the member's organization role; removing the grant removes
+the project — list, search, counts, dashboards, links, imports, exports and
+direct ids — on the very next request. A project the caller cannot see answers
+exactly like an id that never existed (same status, same code, same message),
+so neither errors nor counts enumerate it. No migration was needed.
 
-- **Cost:** an organization cannot host two clients' projects side by side
-  without both seeing each other's test data.
-- **Trigger to fix:** the first customer asking for a project a colleague cannot
-  open. It touches every list endpoint, so it is a phase, not a patch.
-- **After S2-F8:** revoking `requirements.read` (or any `*.read`) is enforced on
-  the routes that resolve a project, but the project list and the dashboard's
-  organization view still show every project of the organization.
-- **After S2-F9:** the new organization analytics (`/dashboard/organization`)
-  aggregates only projects where the caller holds `analytics.read`. The project
-  list and the MVP `GET /dashboard` without `projectId` still do not filter.
-- **After the PR #1 security round:** every list that takes a `projectId`
-  (requirements, suites, sections, cases, runs, defects, links) now authorizes
-  that project with the effective `*.read` permission before querying, and a
-  missing `projectId` is rejected. The MVP `GET /dashboard` aggregates only
-  projects where the caller holds `analytics.read`. What remains is the
-  project list itself: every member still sees the names of every project in
-  the organization (not their content).
+The original description is kept for context:
+
+Grants changed what somebody may **do** in a project, never what they could
+**see**: every member of an organization could read every project in it. S2-F8,
+S2-F9 and the PR #1 security round narrowed the content (every `projectId` list
+authorized with `*.read`, analytics aggregated only allowed projects), but the
+project list still showed every project name of the organization.
+
+What is left is tracked in entry 39.
 
 ## 23. The roles guard fails open on project-scoped routes — resolved
 
@@ -1052,3 +1047,27 @@ behind the `BillingProvider` port (ADR 0015). What it leaves:
   server-made PDF.
 - **Trigger to fix:** the first customer import above the limits, a request
   for scheduled reports, or the job runner landing for another reason.
+
+## 39. Project visibility is enforced in the application, not by RLS
+
+S3-F2 hides projects without a grant in `ProjectAccessService` and the
+repositories (`ProjectsRepository.list` with `ids`, `projectsAllowing`,
+`authorizeProjectScope`). Row Level Security still has one dimension, the
+organization: a query that forgets the visibility check returns projects of the
+caller's own tenant, never of another one.
+
+- **Why:** a per-user RLS policy needs the user id as a session setting and a
+  `project_members` sub-select on every project-scoped table (requirements,
+  cases, steps, runs, results, defects, links, attachments, imports). That is a
+  migration over every policy and a join on every read, for a check the
+  services already make once per request.
+- **Cost:** the second layer that protects against a missing tenant filter does
+  not protect against a missing visibility check. Mitigated by
+  `ProjectScopeContractInterceptor` (a `@ProjectScoped` route without an access
+  decision fails with 403) and by `project-visibility.int-spec.ts`, which
+  compares every project read for a hidden project with a made-up id.
+- **Trigger to fix:** a customer contract that requires database-enforced
+  separation between projects, or a second instance of a missed check.
+- **Also:** notifications already delivered keep the project name they were
+  sent with after the recipient loses access; owners and admins see the whole
+  organization's notification ledger by design.

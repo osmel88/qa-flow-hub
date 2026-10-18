@@ -15,7 +15,8 @@ import {
   MemberWithUser,
   OrganizationMembersRepository,
 } from '../organizations/organization-members.repository';
-import { ProjectAccessService } from './project-access.service';
+import { ProjectAccessService, seesEveryProject } from './project-access.service';
+import { PermissionOverridesRepository } from './permission-overrides.repository';
 import { ProjectMembersRepository } from './project-members.repository';
 import { ProjectsRepository } from './projects.repository';
 
@@ -32,6 +33,7 @@ export class ProjectMembersService {
   constructor(
     private readonly projects: ProjectsRepository,
     private readonly grants: ProjectMembersRepository,
+    private readonly overrides: PermissionOverridesRepository,
     private readonly organizationMembers: OrganizationMembersRepository,
     private readonly access: ProjectAccessService,
     private readonly tenant: TenantContextService,
@@ -39,11 +41,10 @@ export class ProjectMembersService {
   ) {}
 
   /**
-   * Lists everybody in the organization together with the role that applies in
-   * this project. Organization members without a grant are included on purpose:
-   * the page has to answer "who can do what here", and leaving out the people
-   * who reach the project through their organization role would answer a
-   * different, misleading question.
+   * Lists everybody in the organization together with their access to this
+   * project. Members without access are included on purpose: this page is
+   * where somebody is given access, so it has to show who does not have it.
+   * It is only reachable with `members.read` in the project.
    */
   async list(projectId: string, query: ListMembersQuery): Promise<Paginated<ProjectMemberView>> {
     await this.requireProject(projectId);
@@ -71,7 +72,7 @@ export class ProjectMembersService {
     const project = await this.requireProject(projectId);
     const target = await this.requireOrganizationMember(input.userId);
 
-    await this.assertMayAssign(project, input.userId, input.role, target.role);
+    await this.assertMayAssign(project, input.userId, input.role ?? target.role, target.role);
 
     const grant = await this.grants.upsert(projectId, input.userId, input.role);
 
@@ -79,7 +80,7 @@ export class ProjectMembersService {
       action: AuditAction.role_change,
       entityType: 'ProjectMember',
       entityId: grant.id,
-      summary: `Granted ${input.role} on ${project.key} to a member`,
+      summary: `Granted ${input.role ?? 'access'} on ${project.key} to a member`,
       changes: { projectId, userId: input.userId, role: input.role },
     });
 
@@ -96,7 +97,12 @@ export class ProjectMembersService {
     return this.grant(projectId, { userId, role: input.role });
   }
 
-  /** Revokes the grant, which returns the person to their organization role. */
+  /**
+   * Revokes the grant. For anybody below admin that removes the project
+   * entirely — it disappears from their lists on their next request — and the
+   * permission overrides they held here go with it, so a later grant starts
+   * clean.
+   */
   async revoke(projectId: string, userId: string): Promise<void> {
     const project = await this.requireProject(projectId);
     const target = await this.requireOrganizationMember(userId);
@@ -111,6 +117,9 @@ export class ProjectMembersService {
     await this.assertMayAssign(project, userId, grant.role ?? target.role, target.role);
 
     await this.grants.remove(projectId, userId);
+    if (!seesEveryProject(target.role)) {
+      await this.overrides.removeForMember(projectId, userId);
+    }
 
     await this.audit.record({
       action: AuditAction.delete,
@@ -197,6 +206,7 @@ function toProjectMemberView(
   grant: { role: OrganizationRole | null; createdAt: Date } | null,
 ): ProjectMemberView {
   const projectRole = grant?.role ?? null;
+  const hasAccess = seesEveryProject(member.role) || grant !== null;
 
   return {
     userId: member.userId,
@@ -205,11 +215,14 @@ function toProjectMemberView(
     avatarUrl: member.user.avatarUrl,
     organizationRole: member.role,
     projectRole,
+    hasAccess,
     // An owner is never narrowed, so their effective role is their own.
     effectiveRole:
       member.role === OrganizationRole.organization_owner
         ? member.role
-        : (projectRole ?? member.role),
+        : hasAccess
+          ? (projectRole ?? member.role)
+          : null,
     grantedAt: grant?.createdAt.toISOString() ?? null,
   };
 }

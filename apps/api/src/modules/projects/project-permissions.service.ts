@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { AuditAction, OrganizationRole, Project, ProjectPermissionOverride, ProjectStatus } from '@prisma/client';
+import {
+  AuditAction,
+  OrganizationRole,
+  Project,
+  ProjectPermissionOverride,
+  ProjectStatus,
+} from '@prisma/client';
 import {
   MemberPermissionsView,
   PERMISSION_CATALOG,
@@ -16,7 +22,7 @@ import { ConflictError, ForbiddenError, NotFoundError } from '../../errors';
 import { AuditService } from '../audit/audit.service';
 import { OrganizationMembersRepository } from '../organizations/organization-members.repository';
 import { PermissionOverridesRepository } from './permission-overrides.repository';
-import { ProjectAccessService, isPermission } from './project-access.service';
+import { ProjectAccessService, isPermission, seesEveryProject } from './project-access.service';
 import { ProjectMembersRepository } from './project-members.repository';
 import { ProjectsRepository } from './projects.repository';
 
@@ -122,6 +128,12 @@ export class ProjectPermissionsService {
     if (targetOrganizationRole === OrganizationRole.organization_owner) {
       throw new ForbiddenError('An organization owner always holds every permission');
     }
+    if (
+      !seesEveryProject(targetOrganizationRole) &&
+      (await this.grants.findGrant(project.id, targetUserId)) === null
+    ) {
+      throw new ConflictError('Give this member access to the project first');
+    }
 
     const actorRole = await this.access.effectiveRole(project.id);
     if (ROLE_RANK[targetOrganizationRole] < ROLE_RANK[actorRole]) {
@@ -156,20 +168,25 @@ export class ProjectPermissionsService {
         : (projectRole ?? organizationRole);
 
     const overrides = rows.filter((row) => isPermission(row.permission));
+    const hasAccess = seesEveryProject(organizationRole) || grant !== null;
+    const permissions = computeEffectivePermissions(
+      effectiveRole,
+      overrides.flatMap((row) =>
+        isPermission(row.permission) ? [{ permission: row.permission, effect: row.effect }] : [],
+      ),
+    );
 
     return {
       projectId,
       userId,
       organizationRole,
       projectRole,
+      hasAccess,
       effectiveRole,
       overrides: overrides.map(toOverrideView),
-      permissions: computeEffectivePermissions(
-        effectiveRole,
-        overrides.flatMap((row) =>
-          isPermission(row.permission) ? [{ permission: row.permission, effect: row.effect }] : [],
-        ),
-      ),
+      permissions: hasAccess
+        ? permissions
+        : permissions.map((entry) => ({ ...entry, granted: false })),
     };
   }
 

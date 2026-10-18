@@ -43,7 +43,7 @@ export class ProjectMembersRepository extends TenantAwareRepository {
   upsert(
     projectId: string,
     userId: string,
-    role: OrganizationRole,
+    role: OrganizationRole | null,
     tx?: PrismaTransaction,
   ): Promise<ProjectMember> {
     return (tx ?? this.prisma).projectMember.upsert({

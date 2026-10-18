@@ -193,6 +193,24 @@ describe('qa-flow-hub CSV', () => {
     expect(issues).toContainEqual(expect.objectContaining({ code: 'TOO_MANY_STEPS' }));
   });
 
+  it('reads escaped separators in qa-flow-hub section paths as part of the name', () => {
+    const { drafts, issues } = qaflow(
+      'title,section\n' +
+        'Escaped levels,"Auth > Login \\> Security > \\>Start > End\\> > a\\\\b"\n' +
+        'Only a separator,\\>\n',
+    );
+    expect(issues).toEqual([]);
+    expect(drafts.map((draft) => draft.sectionPath)).toEqual([
+      ['Auth', 'Login > Security', '>Start', 'End>', 'a\\b'],
+      ['>'],
+    ]);
+  });
+
+  it('keeps splitting TestRail section hierarchies on every separator', () => {
+    const { drafts } = testrail('Title,Section Hierarchy\nTestRail case,Auth > Login \\> MFA\n');
+    expect(drafts[0]?.sectionPath).toEqual(['Auth', 'Login \\', 'MFA']);
+  });
+
   it('reads back exported cells that were neutralized against formula injection', () => {
     const { drafts } = qaflow(`title,description\n"'=HYPERLINK(""x"") case",'+1 call\n`);
     expect(drafts[0]?.title).toBe('=HYPERLINK("x") case');

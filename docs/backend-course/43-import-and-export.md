@@ -140,6 +140,37 @@ Otras dos lecciones de esa revisión:
   borrado por error. El validador lo reporta (`REQUIRED` en `section`) y deja
   que la persona decida.
 
+### Un separador que también puede ser texto
+
+La celda `section` guarda una ruta (`Auth > MFA`), pero nada impide llamar a
+una sección `Login > Security`. Unir los nombres con `>` sin más hace que esa
+sección vuelva como dos niveles al reimportar: el formato era ambiguo. La
+solución clásica es un carácter de escape, como `\"` en JSON:
+
+| nombre                  | celda exportada     |
+| ----------------------- | ------------------- |
+| `Login > Security`      | `Login \> Security` |
+| `End>` dentro de `Auth` | `Auth > End\>`      |
+| `C:\temp`               | `C:\\temp`          |
+
+Reglas (`encodeSectionName` y `decodeSectionPath` en `shared`):
+
+1. Al exportar, `\` se escribe `\\` y `>` se escribe `\>`; los niveles se unen
+   con `>`.
+2. Al importar, un `>` sin escapar separa niveles; `\>` y `\\` son texto.
+3. Una `\` delante de cualquier otro carácter se deja tal cual, así que una
+   ruta escrita a mano como `C:\temp` se lee como se escribió.
+
+El escape se aplica antes del quoting CSV y sobre él no influye: comas,
+comillas y saltos de línea siguen siendo cosa del writer CSV. Son dos capas
+independientes, y por eso se prueban juntas. La regresión crea las secciones
+por la API, exporta, importa en otro proyecto, compara el árbol entero y
+exporta otra vez: las dos exportaciones deben ser idénticas salvo la columna
+`ref`. Que la propiedad `decode(encode(x)) = x` se pruebe con `>` al principio,
+al final, repetido o solo es lo que da confianza: los fallos de escaping
+aparecen en los bordes. El formato TestRail no escapa nada, así que su parser
+sigue partiendo por cada `>`.
+
 ## PDF sin servidor
 
 Ver ADR 0016: un Chromium headless en la API es una dependencia de 150 MB, un

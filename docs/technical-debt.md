@@ -1034,10 +1034,14 @@ behind the `BillingProvider` port (ADR 0015). What it leaves:
 - **Section and suite names match exactly (case-sensitive).** A file with
   `login` next to an existing `Login` section creates a sibling, so its cases
   are not detected as duplicates of the ones under `Login`. Titles are compared
-  case-insensitively and in Unicode NFC.
-- **A section name containing `>` does not round-trip.** The export joins the
-  path with `>` and the import splits on `>`, so such a name re-imports as
-  one more level. Names are not escaped.
+  case-insensitively and in Unicode NFC. Kept on purpose for now (user
+  decision in the S3-F1 review); changing it needs a rule for existing
+  siblings that differ only in case.
+- **Section path escaping is a qa-flow-hub CSV convention.** `\>` and `\\` are
+  decoded only in the `qaflow_csv` format; TestRail does not escape its
+  `Section Hierarchy`, so a TestRail section whose name contains `>` still
+  arrives as one more level. A hand-written backslash before any other
+  character is kept as typed.
 - **Two jobs that plan the same new suite or section cannot both commit.** The
   second one is `IMPORT_STALE` by design (its plan said "create") and needs a
   new dry run, which then reuses what the first created.

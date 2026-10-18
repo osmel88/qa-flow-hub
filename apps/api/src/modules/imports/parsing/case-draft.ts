@@ -11,6 +11,7 @@ import {
   TEST_CASE_TYPES,
   TestCaseStatus,
   TestCaseType,
+  decodeSectionPath,
   restoreCsvFormula,
 } from '@qa-flow-hub/shared';
 
@@ -86,6 +87,8 @@ export interface FieldDialect {
   automation: (value: string) => AutomationStatus | null;
   status: (value: string) => TestCaseStatus | null;
   estimateMinutes: (value: string) => number | null;
+  /** Splits a section path cell into its levels, root first, untrimmed. */
+  sectionPath: (value: string) => string[];
   defaultStatus: TestCaseStatus;
 }
 
@@ -140,6 +143,7 @@ export const QAFLOW_DIALECT: FieldDialect = {
   automation: exactEnum(AUTOMATION_STATUSES),
   status: exactEnum(TEST_CASE_STATUSES),
   estimateMinutes: (value) => (/^\d{1,6}$/.test(value.trim()) ? Number(value.trim()) : null),
+  sectionPath: decodeSectionPath,
   defaultStatus: 'draft',
 };
 
@@ -278,9 +282,9 @@ export function validateCases(
       );
     }
 
-    const rawSectionPath = (field('section') ?? '')
-      .split(SECTION_PATH_SEPARATOR.trim())
-      .map((part) => part.trim());
+    const sectionCell = field('section');
+    const rawSectionPath =
+      sectionCell === null ? [] : dialect.sectionPath(sectionCell).map((part) => part.trim());
     const sectionPath = rawSectionPath.filter((part) => part.length > 0);
     if (sectionPath.length > 0 && sectionPath.length !== rawSectionPath.length) {
       issues.push(

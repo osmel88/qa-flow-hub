@@ -1,5 +1,6 @@
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { PrismaClient } from '@prisma/client';
+import { parse } from 'csv-parse/sync';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp } from './utils/create-test-app';
 import { TestAccount, TestWorkspace, createWorkspace, injector } from './utils/workspace';
@@ -196,6 +197,101 @@ describe('imports and exports: final review regressions', () => {
         steps: c.steps.map((s) => [s.action, s.expectedResult, s.data]),
       }));
     expect(await shape(other.id)).toEqual(await shape(acme.projectId));
+  });
+
+  it('round-trips suite and section names containing the path separator exactly', async () => {
+    const post = async (url: string, payload: object): Promise<{ id: string }> => {
+      const response = await request('POST', url, as(acme.owner, payload));
+      expect(response.statusCode).toBe(201);
+      return response.json();
+    };
+    const suite = (name: string) =>
+      post('/api/v1/test-suites', { projectId: acme.projectId, name });
+    const section = (suiteId: string, name: string, parentId?: string) =>
+      post('/api/v1/test-sections', { suiteId, name, ...(parentId ? { parentId } : {}) });
+    const testCase = (suiteId: string, sectionId: string | null, title: string) =>
+      post('/api/v1/test-cases', {
+        suiteId,
+        sectionId,
+        title,
+        steps: [{ action: `Run ${title}`, expectedResult: 'Done' }],
+      });
+
+    const web = await suite('Web > Mobile');
+    const security = await section(web.id, 'Login > Security');
+    const many = await section(web.id, 'a > b > c >> d', security.id);
+    const mixed = await section(web.id, 'x, "y" >\nz', many.id);
+    const start = await section(web.id, '>Start');
+    const end = await section(web.id, 'End>');
+    const lone = await section(web.id, '>', end.id);
+    const plain = await suite('Plain');
+    const auth = await section(plain.id, 'Auth');
+    const mfa = await section(plain.id, 'MFA', auth.id);
+    const backslash = await section(plain.id, 'C:\\temp\\', mfa.id);
+    await testCase(web.id, null, 'Suite root case');
+    await testCase(web.id, security.id, 'Security case');
+    await testCase(web.id, many.id, 'Many separators case');
+    await testCase(web.id, mixed.id, 'Mixed characters case');
+    await testCase(web.id, start.id, 'Starts with separator');
+    await testCase(web.id, end.id, 'Ends with separator');
+    await testCase(web.id, lone.id, 'Only a separator');
+    await testCase(plain.id, auth.id, 'Auth case');
+    await testCase(plain.id, mfa.id, 'MFA case');
+    await testCase(plain.id, backslash.id, 'Backslash case');
+
+    const tree = async (projectId: string) => {
+      const sections = await owner.testSection.findMany({ where: { suite: { projectId } } });
+      const byId = new Map(sections.map((entry) => [entry.id, entry]));
+      const pathOf = (id: string | null): string[] => {
+        const entry = id === null ? undefined : byId.get(id);
+        return entry === undefined ? [] : [...pathOf(entry.parentId), entry.name];
+      };
+      const cases = await owner.testCase.findMany({
+        where: { projectId },
+        include: { suite: true },
+        orderBy: { title: 'asc' },
+      });
+      return {
+        sections: sections.length,
+        cases: cases.map((c) => ({
+          title: c.title,
+          suite: c.suite.name,
+          path: pathOf(c.sectionId),
+        })),
+      };
+    };
+    const original = await tree(acme.projectId);
+    expect(original.cases).toContainEqual({
+      title: 'Mixed characters case',
+      suite: 'Web > Mobile',
+      path: ['Login > Security', 'a > b > c >> d', 'x, "y" >\nz'],
+    });
+    expect(original.cases).toContainEqual({
+      title: 'Backslash case',
+      suite: 'Plain',
+      path: ['Auth', 'MFA', 'C:\\temp\\'],
+    });
+
+    const rowsOf = (body: string): string[][] =>
+      parse(body.replace(/^\uFEFF/, ''), { relax_quotes: false }).map((row) => row.slice(1));
+    const first = (await exportCases(acme.owner)).body;
+    expect(first).toContain('c \\>\\> d > x, ""y"" \\>\nz",Mixed characters case');
+    expect(first).toContain('Login \\> Security > a \\> b \\> c \\>\\> d');
+
+    const other = (
+      await request('POST', '/api/v1/projects', as(acme.owner, { name: 'Copy', key: 'CPY' }))
+    ).json();
+    const job = (await upload(acme.owner, Buffer.from(first), undefined, other.id)).json();
+    expect(job.status).toBe('ready');
+    expect(job.issueCount).toBe(0);
+    expect((await commit(acme.owner, job.id, other.id)).statusCode).toBe(200);
+    expect(await tree(other.id)).toEqual(original);
+
+    const second = (await exportCases(acme.owner, other.id)).body;
+    expect(rowsOf(second)).toEqual(rowsOf(first));
+
+    const again = (await upload(acme.owner, Buffer.from(second), undefined, other.id)).json();
+    expect(again.summary).toMatchObject({ duplicates: 10, newSections: 0, newSuites: 0 });
   });
 
   it('accepts CRLF, BOM and line breaks inside quoted cells exactly like LF', async () => {

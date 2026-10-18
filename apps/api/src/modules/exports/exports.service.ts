@@ -5,7 +5,7 @@ import {
   ExportTestCasesQuery,
   QAFLOW_CSV_COLUMNS,
   RunCaseSnapshot,
-  SECTION_PATH_SEPARATOR,
+  encodeSectionPath,
 } from '@qa-flow-hub/shared';
 import { AppConfigService } from '../../config/app-config.service';
 import { ExportTooLargeError, NotFoundError } from '../../errors';
@@ -99,7 +99,7 @@ export class ExportsService {
         names.unshift(cursor.name);
         cursor = cursor.parentId === null ? undefined : sectionById.get(cursor.parentId);
       }
-      return names.join(SECTION_PATH_SEPARATOR);
+      return encodeSectionPath(names);
     };
 
     const rows: Cell[][] = [];

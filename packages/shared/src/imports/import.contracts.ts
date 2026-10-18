@@ -142,3 +142,46 @@ export type QaflowCsvColumn = (typeof QAFLOW_CSV_COLUMNS)[number];
 
 /** Separator of a section path in a CSV cell: `Login > OAuth > Google`. */
 export const SECTION_PATH_SEPARATOR = ' > ';
+
+/**
+ * Escape character of a section path. Inside a name, `\>` is a literal `>`
+ * and `\\` a literal backslash; an unescaped `>` always separates levels.
+ * A backslash before any other character is kept as written, so hand-made
+ * paths such as `C:\temp` still read as typed.
+ */
+export const SECTION_PATH_ESCAPE = '\\';
+
+/** Escapes one section name so a path cell can hold it unambiguously. */
+export function encodeSectionName(name: string): string {
+  return name.replace(/[\\>]/g, (char) => `${SECTION_PATH_ESCAPE}${char}`);
+}
+
+/** The cell the qa-flow-hub CSV export writes for a section path, root first. */
+export function encodeSectionPath(names: readonly string[]): string {
+  return names.map(encodeSectionName).join(SECTION_PATH_SEPARATOR);
+}
+
+/**
+ * Splits a section path cell into its levels, root first, honouring the
+ * escapes of {@link encodeSectionName}. Levels are returned untrimmed; empty
+ * levels are kept so the caller can report them.
+ */
+export function decodeSectionPath(cell: string): string[] {
+  const levels: string[] = [];
+  let current = '';
+  for (let index = 0; index < cell.length; index += 1) {
+    const char = cell.charAt(index);
+    const next = cell.charAt(index + 1);
+    if (char === SECTION_PATH_ESCAPE && (next === SECTION_PATH_ESCAPE || next === '>')) {
+      current += next;
+      index += 1;
+    } else if (char === '>') {
+      levels.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  levels.push(current);
+  return levels;
+}

@@ -1,4 +1,9 @@
-import { AutomationStatus, PriorityValue, TestCaseType } from '@qa-flow-hub/shared';
+import {
+  AutomationStatus,
+  PriorityValue,
+  SECTION_PATH_SEPARATOR,
+  TestCaseType,
+} from '@qa-flow-hub/shared';
 import { CaseField, FieldDialect, ParsedCases, RawCase, RawCell, issue } from './case-draft';
 import { CsvTable } from './csv-input';
 import { cellOf, mapColumns } from './qaflow-csv.parser';
@@ -90,6 +95,7 @@ export const TESTRAIL_DIALECT: FieldDialect = {
   automation: testrailAutomation,
   status: () => null,
   estimateMinutes: testrailEstimateMinutes,
+  sectionPath: (value) => value.split(SECTION_PATH_SEPARATOR.trim()),
   defaultStatus: 'active',
 };
 

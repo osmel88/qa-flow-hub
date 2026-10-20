@@ -36,6 +36,7 @@ import { snapshotOf } from '../test-runs/test-runs.service';
 import { prefixOf, tokenMatches } from './api-key-token';
 import { ApiKeysRepository } from './api-keys.repository';
 import { IngestionRepository } from './ingestion.repository';
+import { ReleasesService } from '../releases/releases.service';
 import { caseKeysIn } from './parsing/case-keys';
 import { parseJUnitXml } from './parsing/junit-xml.parser';
 import { parsePlaywrightJson } from './parsing/playwright-json.parser';
@@ -85,6 +86,7 @@ export class IngestionService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
+    private readonly releases: ReleasesService,
   ) {}
 
   /** Resolves the organization of a token; verification happens in `verify`. */
@@ -214,6 +216,15 @@ export class IngestionService {
         : await this.runs.casesForSelection({ projectId: project.id, key: { in: allKeys } }, tx);
     const caseByKey = new Map(cases.map((testCase) => [testCase.key, testCase]));
 
+    // Release: a version of this project's own releases, still open.
+    const releaseId =
+      incoming.query.release === undefined
+        ? null
+        : await this.releases.findIdByVersion(project.id, incoming.query.release, tx);
+    if (releaseId !== null) {
+      await this.releases.assertAttachable(releaseId, project.id, tx);
+    }
+
     // Run: an existing open run of the same project, or a new one.
     let run =
       incoming.query.runId === undefined
@@ -226,6 +237,9 @@ export class IngestionService {
       if (run.status === TestRunStatus.completed || run.status === TestRunStatus.aborted) {
         throw new ConflictError(`The test run is ${run.status} and accepts no more results`);
       }
+      if (releaseId !== null && run.releaseId !== releaseId) {
+        throw new ConflictError('The test run does not belong to this release');
+      }
     }
 
     const matchedCases = allKeys.filter((caseKey) => caseByKey.has(caseKey));
@@ -236,6 +250,7 @@ export class IngestionService {
           name: incoming.query.runName ?? defaultRunName(parsed, incoming.format, now),
           environment: incoming.query.environment ?? null,
           milestone: incoming.query.milestone ?? null,
+          releaseId,
           status: TestRunStatus.planned,
         },
         tx,

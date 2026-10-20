@@ -13,6 +13,7 @@ import { DefectsModule } from './modules/defects/defects.module';
 import { HealthModule } from './modules/health/health.module';
 import { ExportsModule } from './modules/exports/exports.module';
 import { AutomationModule } from './modules/automation/automation.module';
+import { ReleasesModule } from './modules/releases/releases.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { SecretsModule } from './secrets/secrets.module';
 import { IntegrationSettingsModule } from './modules/integrations/integration-settings.module';
@@ -60,6 +61,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     AttachmentsModule,
     ImportsModule,
     AutomationModule,
+    ReleasesModule,
     ExportsModule,
   ],
 })

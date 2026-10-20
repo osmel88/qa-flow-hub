@@ -176,6 +176,8 @@ Rules that hold even for an owner:
 | `test_design.import`   |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
 | `data.export`          |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
 | `api_keys.manage`      |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| `releases.read`        |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `releases.manage`      |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
 
 The table is `ROLE_PERMISSIONS` in `packages/shared`; it was derived from the
 `@Roles` lists the routes carried before, so an installation without overrides
@@ -237,3 +239,12 @@ archived projects are read-only; every change is an audited `role_change`.
   permission sets per organization do not.
 - **Organization-level overrides.** Deliberately out of S2-F8 (debt 34).
 - **Denial auditing.** A burst of 403s is a useful signal, currently unrecorded.
+
+### Releases (S3-F4)
+
+- `releases.read` covers `GET /releases`, `/releases/:id`, `/:id/summary` and
+  `/:id/traceability`; `releases.manage` covers create, edit and the
+  `start`/`release`/`archive` transitions.
+- Attaching a run to a release is a run edit (`testruns.manage`); the release
+  must be open and in the same project. A release of a hidden project answers
+  like a missing one.

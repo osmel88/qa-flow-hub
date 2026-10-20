@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ProjectsModule } from '../projects/projects.module';
+import { ReleasesModule } from '../releases/releases.module';
 import { TestRunsModule } from '../test-runs/test-runs.module';
 import { ApiKeysController } from './api-keys.controller';
 import { ApiKeysRepository } from './api-keys.repository';
@@ -10,7 +11,7 @@ import { IngestionService } from './ingestion.service';
 
 /** Project API keys and the CI endpoints that use them (S3-F3). */
 @Module({
-  imports: [ProjectsModule, TestRunsModule],
+  imports: [ProjectsModule, TestRunsModule, ReleasesModule],
   controllers: [ApiKeysController, IngestionController, IngestionReportsController],
   providers: [ApiKeysService, ApiKeysRepository, IngestionService, IngestionRepository],
 })

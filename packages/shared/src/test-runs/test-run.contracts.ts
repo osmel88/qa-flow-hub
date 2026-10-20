@@ -52,6 +52,8 @@ export const createTestRunSchema = z.object({
   description: z.string().trim().max(20_000).nullish(),
   milestone: z.string().trim().max(120).nullish(),
   environment: z.string().trim().max(120).nullish(),
+  /** An open release of the same project. */
+  releaseId: z.string().min(1).nullish(),
   selection: runCaseSelectionSchema.optional(),
 });
 export type CreateTestRunInput = z.infer<typeof createTestRunSchema>;
@@ -62,6 +64,8 @@ export const updateTestRunSchema = z
     description: z.string().trim().max(20_000).nullish(),
     milestone: z.string().trim().max(120).nullish(),
     environment: z.string().trim().max(120).nullish(),
+    /** `null` detaches the run; only open runs and open releases. */
+    releaseId: z.string().min(1).nullish(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'Provide at least one field to update',
@@ -97,6 +101,7 @@ export const listTestRunsQuerySchema = paginationQuerySchema.extend({
   projectId: z.string().min(1),
   status: z.enum(TEST_RUN_STATUSES).optional(),
   milestone: z.string().trim().max(120).optional(),
+  releaseId: z.string().min(1).optional(),
   search: z.string().trim().min(1).max(120).optional(),
 });
 export type ListTestRunsQuery = z.infer<typeof listTestRunsQuerySchema>;
@@ -121,6 +126,7 @@ export interface TestRunView {
   description: string | null;
   milestone: string | null;
   environment: string | null;
+  releaseId: string | null;
   status: TestRunStatus;
   startedAt: string | null;
   completedAt: string | null;

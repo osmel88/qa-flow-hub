@@ -44,3 +44,4 @@ Date: YYYY-MM-DD
 | [0016](0016-printable-html-instead-of-server-pdf.md)    | PDF export through a printable HTML view                   | accepted                  |
 | [0017](0017-project-visibility-through-grants.md)       | Project visibility through grants, enforced in services    | accepted                  |
 | [0018](0018-api-keys-and-report-ingestion.md)           | Project API keys and atomic report ingestion               | accepted                  |
+| [0019](0019-release-as-an-entity.md)                    | Release as a project entity linked to runs                 | accepted                  |

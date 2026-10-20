@@ -45,11 +45,20 @@ export interface RunExecution {
   id: string;
   name: string;
   milestone: string | null;
+  releaseId: string | null;
   status: string;
   createdAt: Date;
   completedAt: Date | null;
   counts: ExecutionCounts;
   defects: number;
+}
+
+export interface ReleaseExecution {
+  releaseId: string | null;
+  version: string | null;
+  name: string | null;
+  runs: number;
+  counts: ExecutionCounts;
 }
 
 export interface MilestoneExecution {
@@ -191,6 +200,7 @@ export class AnalyticsRepository extends TenantAwareRepository {
           id: string;
           name: string;
           milestone: string | null;
+          releaseId: string | null;
           status: string;
           createdAt: Date;
           completedAt: Date | null;
@@ -198,7 +208,7 @@ export class AnalyticsRepository extends TenantAwareRepository {
         } & ExecutionCounts
       >
     >`
-      SELECT r.id, r.name, r.milestone, r.status::text AS status,
+      SELECT r.id, r.name, r.milestone, r."releaseId", r.status::text AS status,
         r."createdAt" AS "createdAt", r."completedAt" AS "completedAt",
         ${statusColumns()},
         COALESCE(MAX(d.count), 0)::int AS defects
@@ -220,6 +230,7 @@ export class AnalyticsRepository extends TenantAwareRepository {
       id: row.id,
       name: row.name,
       milestone: row.milestone,
+      releaseId: row.releaseId,
       status: row.status,
       createdAt: row.createdAt,
       completedAt: row.completedAt,
@@ -228,7 +239,42 @@ export class AnalyticsRepository extends TenantAwareRepository {
     }));
   }
 
-  /** Runs in scope grouped by milestone (release), runs without one last. */
+  /** Runs in scope grouped by release entity, runs without one last. */
+  async executionByRelease(
+    tx: PrismaTransaction,
+    projectId: string,
+    period: ResolvedPeriod,
+  ): Promise<ReleaseExecution[]> {
+    const rows = await tx.$queryRaw<
+      Array<
+        {
+          releaseId: string | null;
+          version: string | null;
+          name: string | null;
+          runs: number;
+        } & ExecutionCounts
+      >
+    >`
+      SELECT r."releaseId", rel.version, rel.name, COUNT(DISTINCT r.id)::int AS runs, ${statusColumns()}
+      FROM test_runs r
+      LEFT JOIN releases rel
+        ON rel.id = r."releaseId" AND rel."organizationId" = ${this.organizationId}
+      LEFT JOIN test_run_cases c
+        ON c."testRunId" = r.id AND c."organizationId" = ${this.organizationId}
+      WHERE ${this.runsInScope([projectId], period)}
+      GROUP BY r."releaseId", rel.version, rel.name, rel."createdAt"
+      ORDER BY rel."createdAt" DESC NULLS LAST`;
+
+    return rows.map((row) => ({
+      releaseId: row.releaseId,
+      version: row.version,
+      name: row.name,
+      runs: row.runs,
+      counts: pickCounts(row),
+    }));
+  }
+
+  /** Runs in scope grouped by free-text milestone, runs without one last. */
   async executionByMilestone(
     tx: PrismaTransaction,
     projectId: string,

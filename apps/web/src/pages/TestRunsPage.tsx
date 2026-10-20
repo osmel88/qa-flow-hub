@@ -2,7 +2,7 @@ import { Badge, Button, DataState, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { testDesignApi, testRunsApi } from '../api/endpoints';
+import { releasesApi, testDesignApi, testRunsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
@@ -16,13 +16,32 @@ export function TestRunsPage(): React.JSX.Element {
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [suiteId, setSuiteId] = useState('');
+  const [releaseId, setReleaseId] = useState('');
+  const [releaseFilter, setReleaseFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const runs = useQuery({
-    queryKey: ['runs', activeProjectId],
-    queryFn: () => testRunsApi.list({ projectId: activeProjectId ?? '' }),
+    queryKey: ['runs', activeProjectId, releaseFilter],
+    queryFn: () =>
+      testRunsApi.list({
+        projectId: activeProjectId ?? '',
+        ...(releaseFilter === '' ? {} : { releaseId: releaseFilter }),
+      }),
     enabled: activeProjectId !== null,
   });
+
+  const releases = useQuery({
+    queryKey: ['releases', activeProjectId, ''],
+    queryFn: () => releasesApi.list({ projectId: activeProjectId ?? '' }),
+    enabled: activeProjectId !== null,
+  });
+  const releaseList = releases.data?.data ?? [];
+  const openReleases = releaseList.filter(
+    (release) => release.status === 'planned' || release.status === 'in_progress',
+  );
+  const releaseName = new Map(
+    releaseList.map((release) => [release.id, `${release.name} (${release.version})`]),
+  );
 
   const runReferences = useTestRailReferences(
     { entityType: 'test_run', projectId: activeProjectId ?? '' },
@@ -47,11 +66,14 @@ export function TestRunsPage(): React.JSX.Element {
         // Selecting by suite rather than by id list keeps the run honest: it
         // takes whatever the suite holds at creation time and freezes a copy.
         selection: suiteId === '' ? {} : { suiteId },
+        releaseId: releaseId === '' ? null : releaseId,
       }),
     onSuccess: async () => {
       setName('');
+      setReleaseId('');
       setError(null);
       await queryClient.invalidateQueries({ queryKey: ['runs'] });
+      await queryClient.invalidateQueries({ queryKey: ['releases'] });
     },
     onError: (cause) => {
       setError(cause instanceof ApiError ? cause.message : 'Could not create the run.');
@@ -100,6 +122,24 @@ export function TestRunsPage(): React.JSX.Element {
             ))}
           </select>
         </label>
+        <label className="ui-field">
+          <span className="ui-field__label">Release</span>
+          <select
+            className="ui-input"
+            aria-label="Release"
+            value={releaseId}
+            onChange={(event) => {
+              setReleaseId(event.target.value);
+            }}
+          >
+            <option value="">No release</option>
+            {openReleases.map((release) => (
+              <option key={release.id} value={release.id}>
+                {release.name} ({release.version})
+              </option>
+            ))}
+          </select>
+        </label>
         <Button
           loading={create.isPending}
           disabled={name.trim() === ''}
@@ -110,6 +150,25 @@ export function TestRunsPage(): React.JSX.Element {
           Create run
         </Button>
       </section>
+
+      <label className="ui-field">
+        <span className="ui-field__label">Filter by release</span>
+        <select
+          className="ui-input"
+          aria-label="Filter by release"
+          value={releaseFilter}
+          onChange={(event) => {
+            setReleaseFilter(event.target.value);
+          }}
+        >
+          <option value="">All runs</option>
+          {releaseList.map((release) => (
+            <option key={release.id} value={release.id}>
+              {release.name} ({release.version})
+            </option>
+          ))}
+        </select>
+      </label>
 
       <DataState
         isPending={runs.isPending}
@@ -122,6 +181,7 @@ export function TestRunsPage(): React.JSX.Element {
             <tr>
               <th scope="col">Run</th>
               <th scope="col">Status</th>
+              <th scope="col">Release</th>
               <th scope="col">Cases</th>
               <th scope="col">Progress</th>
               <th scope="col">TestRail</th>
@@ -136,6 +196,15 @@ export function TestRunsPage(): React.JSX.Element {
                 </td>
                 <td>
                   <Badge tone={toneFor(run.status)}>{humanize(run.status)}</Badge>
+                </td>
+                <td>
+                  {run.releaseId === null ? (
+                    <span className="muted">No release</span>
+                  ) : (
+                    <Link to={`/releases/${run.releaseId}`}>
+                      {releaseName.get(run.releaseId) ?? 'Release'}
+                    </Link>
+                  )}
                 </td>
                 <td>{run.progress.total}</td>
                 <td>

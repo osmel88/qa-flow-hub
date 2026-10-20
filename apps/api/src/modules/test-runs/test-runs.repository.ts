@@ -17,6 +17,7 @@ export interface TestRunFilters {
   projectId: string;
   status?: Prisma.TestRunWhereInput['status'];
   milestone?: string;
+  releaseId?: string;
   search?: string;
 }
 
@@ -42,6 +43,7 @@ export class TestRunsRepository extends TenantAwareRepository {
       projectId: filters.projectId,
       ...(filters.status === undefined ? {} : { status: filters.status }),
       ...(filters.milestone === undefined ? {} : { milestone: filters.milestone }),
+      ...(filters.releaseId === undefined ? {} : { releaseId: filters.releaseId }),
       ...(filters.search === undefined
         ? {}
         : { name: { contains: filters.search, mode: Prisma.QueryMode.insensitive } }),
@@ -64,7 +66,7 @@ export class TestRunsRepository extends TenantAwareRepository {
 
   async update(
     id: string,
-    data: Prisma.TestRunUpdateInput,
+    data: Prisma.TestRunUncheckedUpdateManyInput,
     tx?: PrismaTransaction,
   ): Promise<TestRun | null> {
     const client = tx ?? this.prisma;

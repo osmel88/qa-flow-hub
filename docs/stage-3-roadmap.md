@@ -108,6 +108,28 @@ request; debt 39 stays as it is.
 - Tests: `ingestion.int-spec.ts`, `ingestion-limits.int-spec.ts`, parser and
   token unit tests, `api-keys-ingestion.e2e.spec.ts`.
 
+## S3-F4 — Release as an entity
+
+Commercial roadmap item 2.4 (ADR 0019, debt 41). No plan round, by request;
+debt 39 stays as it is.
+
+**Status: implemented.**
+
+- Migration `20261115100000_releases`: enum `ReleaseStatus`, table `releases`
+  with RLS and no `DELETE` for the runtime role, `test_runs.releaseId` with a
+  composite FK `(releaseId, projectId)`.
+- `GET|POST /releases`, `GET|PATCH /releases/:id`, `POST /releases/:id/start|release|archive`,
+  `GET /releases/:id/summary`, `GET /releases/:id/traceability`
+  (`releases.read` / `releases.manage`).
+- Runs: `releaseId` on create/update and as a list filter; ingestion accepts
+  `?release=<version>`; project analytics return `releases`.
+- Audit: `create`, `update` and `archive` on `Release`; release changes of a run
+  are in its `update` entry.
+- Web: Releases list and create form, release detail (health, runs,
+  traceability, transitions), run creation and filter by release.
+- Tests: `releases.int-spec.ts`, `release.contracts.test.ts`,
+  `ReleasesPage.test.tsx`, `releases.e2e.spec.ts`.
+
 ## Related
 
 - [`stage-2-roadmap.md`](stage-2-roadmap.md) — the stage this one builds on

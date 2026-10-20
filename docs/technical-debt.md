@@ -1093,3 +1093,17 @@ caller's own tenant, never of another one.
   retention job.
 - **Visibility.** Keys are bound to one project, so debt 39 does not widen:
   the project check happens in `IngestionService`, under organization RLS.
+
+## 41. Releases: what S3-F4 leaves (S3-F4)
+
+- **No reopen.** `released` and `archived` cannot go back to `in_progress`; a
+  hotfix is a new version.
+- **Version is immutable.** It is the key CI sends; renaming means a new release.
+- **One release per run.** A run that verifies two versions has to be duplicated.
+- **Defects are counted through runs only.** A defect without a run is not in
+  the release summary; there is no "fixed in release" field.
+- **Summary is computed on read** with aggregate SQL; there is no snapshot of a
+  release at the moment it was marked released.
+- **Release traceability lists every requirement of the project**, not only the
+  ones in scope of the release; there is no release scope selection yet.
+- **Visibility.** Releases are project-scoped, so debt 39 does not widen.

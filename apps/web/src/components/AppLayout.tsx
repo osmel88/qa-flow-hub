@@ -9,6 +9,7 @@ const NAV = [
   { to: '/requirements', label: 'Requirements' },
   { to: '/test-cases', label: 'Test cases' },
   { to: '/imports', label: 'Import' },
+  { to: '/releases', label: 'Releases' },
   { to: '/test-runs', label: 'Test runs' },
   { to: '/defects', label: 'Defects' },
   { to: '/traceability', label: 'Traceability' },

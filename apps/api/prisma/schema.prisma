@@ -123,6 +123,14 @@ enum AutomationStatus {
   automated
 }
 
+/// S3-F4. planned → in_progress → released → archived; archived is terminal.
+enum ReleaseStatus {
+  planned
+  in_progress
+  released
+  archived
+}
+
 enum TestRunStatus {
   planned
   in_progress
@@ -308,6 +316,7 @@ model User {
   notificationPreference NotificationPreference?
   importJobs             ImportJob[]
   createdApiKeys         ApiKey[]                    @relation("ApiKeyCreatedBy")
+  createdReleases        Release[]                   @relation("ReleaseCreatedBy")
   revokedApiKeys         ApiKey[]                    @relation("ApiKeyRevokedBy")
 
   @@index([deletedAt])
@@ -388,6 +397,7 @@ model Organization {
   importJobs          ImportJob[]
   apiKeys             ApiKey[]
   ingestionReports    IngestionReport[]
+  releases            Release[]
 
   @@index([deletedAt])
   @@map("organizations")
@@ -492,6 +502,7 @@ model Project {
   importJobs          ImportJob[]
   apiKeys             ApiKey[]
   ingestionReports    IngestionReport[]
+  releases            Release[]
 
   @@unique([organizationId, key])
   @@index([organizationId, status])
@@ -731,11 +742,16 @@ model TestRun {
 
   name        String
   description String?
-  /// Free-form release or build identifier; deliberately not a foreign key,
-  /// because releases live in the customer's own tooling.
+  /// Free-form build or sprint label. A release the team tracks here is
+  /// `releaseId` (S3-F4); `milestone` stays for labels that are not releases.
   milestone   String?
   environment String?
   status      TestRunStatus @default(planned)
+
+  /// Same project as the run: the composite key makes a cross-project link
+  /// impossible in the database, not only in the service.
+  releaseId String?
+  release   Release? @relation(fields: [releaseId, projectId], references: [id, projectId], onDelete: NoAction, onUpdate: NoAction)
 
   startedAt   DateTime?
   completedAt DateTime?
@@ -752,6 +768,7 @@ model TestRun {
 
   @@index([organizationId, projectId, status])
   @@index([organizationId, projectId, deletedAt])
+  @@index([releaseId])
   @@map("test_runs")
 }
 
@@ -1309,4 +1326,36 @@ model IngestionReport {
   @@unique([projectId, idempotencyKey])
   @@index([organizationId, projectId, createdAt])
   @@map("ingestion_reports")
+}
+
+/// S3-F4. A version of the product a project ships. Runs point at it; it is
+/// never deleted, and archiving it leaves every run and result in place.
+model Release {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  name        String
+  version     String
+  tag         String?
+  description String?
+  status      ReleaseStatus @default(planned)
+  startDate   DateTime?     @db.Date
+  targetDate  DateTime?     @db.Date
+  releasedAt  DateTime?
+  archivedAt  DateTime?
+
+  createdById String?
+  createdBy   User?    @relation("ReleaseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  runs TestRun[]
+
+  @@unique([projectId, version])
+  @@unique([id, projectId])
+  @@index([organizationId, projectId, status])
+  @@map("releases")
 }

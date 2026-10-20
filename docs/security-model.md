@@ -149,6 +149,16 @@ and chapter 10 of the backend course. Summary:
 - Ingestion is atomic and idempotent (ADR 0018); a failure leaves no run, run
   case, result, report, audit entry or `lastUsedAt` change.
 
+## Releases
+
+- `test_runs.releaseId` references `releases (id, projectId)`: a run cannot point
+  at a release of another project even through SQL. RLS isolates organizations.
+- A release of another project, another organization or a hidden project
+  answers the same 404 as an unknown id, on reads, on run create/update and on
+  `?release=` ingestion.
+- `qaflow_app` has no `DELETE` on `releases`; archiving keeps every run, result
+  and defect. Transitions take `FOR UPDATE`, attaching a run `FOR SHARE`.
+
 ## Transport and headers
 
 - Helmet: `X-Content-Type-Options`, `X-Frame-Options`, HSTS in production.

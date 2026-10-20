@@ -50,13 +50,13 @@ sells, that document says _what_ each phase delivers and where it stops.
 
 ## Stage 2 — Team of teams
 
-| #   | Item                                             | Why                                                                                                                                                     | Cost                                                    |
-| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| 2.1 | **Project-scoped visibility** — done in S3-F2    | Per-project roles changed what you could _do_, not what you could _see_ (debt 22, resolved). A customer with two client teams asks for this in week one | Medium, and it touches tenancy: needs its own tests     |
-| 2.2 | **Automated result ingestion** — done in S3-F3   | JUnit/Playwright reports from CI, so coverage includes automation. `AutomatedTest` already models the link                                              | Medium: an ingestion endpoint, API keys, matching rules |
-| 2.3 | **API keys for machine clients** — done in S3-F3 | CI needs a credential that is not a session refresh token (debt 20)                                                                                     | Small-medium: scopes, rotation, audit                   |
-| 2.4 | **Release as a first-class entity**              | "What was verified before 2.3" is answered through runs today; auditors ask by release                                                                  | Medium: a new entity plus report changes                |
-| 2.5 | **Notifications**                                | A failed run or a reopened defect should reach Slack or email without polling                                                                           | Medium: needs the job runner (debt 3)                   |
+| #   | Item                                                | Why                                                                                                                                                     | Cost                                                    |
+| --- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 2.1 | **Project-scoped visibility** — done in S3-F2       | Per-project roles changed what you could _do_, not what you could _see_ (debt 22, resolved). A customer with two client teams asks for this in week one | Medium, and it touches tenancy: needs its own tests     |
+| 2.2 | **Automated result ingestion** — done in S3-F3      | JUnit/Playwright reports from CI, so coverage includes automation. `AutomatedTest` already models the link                                              | Medium: an ingestion endpoint, API keys, matching rules |
+| 2.3 | **API keys for machine clients** — done in S3-F3    | CI needs a credential that is not a session refresh token (debt 20)                                                                                     | Small-medium: scopes, rotation, audit                   |
+| 2.4 | **Release as a first-class entity** — done in S3-F4 | "What was verified before 2.3" is answered through runs today; auditors ask by release                                                                  | Medium: a new entity plus report changes                |
+| 2.5 | **Notifications**                                   | A failed run or a reopened defect should reach Slack or email without polling                                                                           | Medium: needs the job runner (debt 3)                   |
 
 ## Stage 3 — Enterprise
 

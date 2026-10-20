@@ -23,3 +23,4 @@ export * from './imports/import.contracts.js';
 export * from './imports/export.contracts.js';
 export * from './automation/api-key.contracts.js';
 export * from './automation/ingestion.contracts.js';
+export * from './releases/release.contracts.js';

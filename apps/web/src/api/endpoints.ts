@@ -1,4 +1,10 @@
 import type {
+  CreateReleaseInput,
+  ListReleasesQuery,
+  ReleaseSummaryView,
+  ReleaseTraceabilityView,
+  ReleaseView,
+  UpdateReleaseInput,
   ApiKeyView,
   CreateApiKeyInput,
   CreatedApiKeyView,
@@ -269,7 +275,7 @@ export const testDesignApi = {
 };
 
 export const testRunsApi = {
-  list: (params: { projectId: string; status?: string }) =>
+  list: (params: { projectId: string; status?: string; releaseId?: string }) =>
     apiFetch<Paginated<TestRunView>>(`/test-runs${query({ ...params, pageSize: 100 })}`),
   get: (id: string) => apiFetch<TestRunView>(`/test-runs/${id}`),
   create: (body: CreateTestRunInput) =>
@@ -507,4 +513,18 @@ export const automationApi = {
     apiFetch<ApiKeyView>(`/projects/${projectId}/api-keys/${id}/revoke`, { method: 'POST' }),
   reports: (projectId: string) =>
     apiFetch<IngestionReportView[]>(`/projects/${projectId}/ingestion-reports`),
+};
+
+export const releasesApi = {
+  list: (params: Omit<ListReleasesQuery, 'page' | 'pageSize'>) =>
+    apiFetch<Paginated<ReleaseView>>(`/releases${query({ ...params, pageSize: 100 })}`),
+  get: (id: string) => apiFetch<ReleaseView>(`/releases/${id}`),
+  create: (body: CreateReleaseInput) =>
+    apiFetch<ReleaseView>('/releases', { method: 'POST', body }),
+  update: (id: string, body: UpdateReleaseInput) =>
+    apiFetch<ReleaseView>(`/releases/${id}`, { method: 'PATCH', body }),
+  transition: (id: string, action: 'start' | 'release' | 'archive') =>
+    apiFetch<ReleaseView>(`/releases/${id}/${action}`, { method: 'POST' }),
+  summary: (id: string) => apiFetch<ReleaseSummaryView>(`/releases/${id}/summary`),
+  traceability: (id: string) => apiFetch<ReleaseTraceabilityView>(`/releases/${id}/traceability`),
 };

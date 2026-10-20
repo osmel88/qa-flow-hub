@@ -34,6 +34,7 @@ import { AuditService } from '../audit/audit.service';
 import { OrganizationMembersRepository } from '../organizations/organization-members.repository';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
+import { ReleasesService } from '../releases/releases.service';
 import { TraceabilityLinksRepository } from '../traceability/traceability-links.repository';
 import { TestRunsRepository } from './test-runs.repository';
 
@@ -56,6 +57,7 @@ export class TestRunsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly events: DomainEventsPublisher,
+    private readonly releases: ReleasesService,
   ) {}
 
   // --- Runs ----------------------------------------------------------------
@@ -68,9 +70,14 @@ export class TestRunsService {
     await this.access.assertRouteAccess(project.id);
 
     const run = await this.prisma.runInTransaction(async (tx) => {
+      const releaseId = input.releaseId ?? null;
+      if (releaseId !== null) {
+        await this.releases.assertAttachable(releaseId, project.id, tx);
+      }
       const created = await this.runs.create(
         {
           projectId: project.id,
+          releaseId,
           name: input.name,
           ...nullableText('description', input.description),
           ...nullableText('milestone', input.milestone),
@@ -109,6 +116,7 @@ export class TestRunsService {
       projectId,
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.milestone === undefined ? {} : { milestone: query.milestone }),
+      ...(query.releaseId === undefined ? {} : { releaseId: query.releaseId }),
       ...(query.search === undefined ? {} : { search: query.search }),
     });
 
@@ -126,21 +134,52 @@ export class TestRunsService {
     const run = await this.require(id);
     this.assertOpen(run);
 
-    const updated = await this.runs.update(id, {
-      ...(input.name === undefined ? {} : { name: input.name }),
-      ...(input.description === undefined ? {} : { description: input.description }),
-      ...(input.milestone === undefined ? {} : { milestone: input.milestone }),
-      ...(input.environment === undefined ? {} : { environment: input.environment }),
-    });
-    if (updated === null) {
-      throw new NotFoundError('Test run');
-    }
+    const updated = await this.prisma.runInTransaction(async (tx) => {
+      if (input.releaseId !== undefined && input.releaseId !== null) {
+        await this.releases.assertAttachable(input.releaseId, run.projectId, tx);
+      }
+      if (
+        input.releaseId !== undefined &&
+        run.releaseId !== null &&
+        run.releaseId !== input.releaseId
+      ) {
+        // Moving a run out of a release rewrites that release's history.
+        await this.releases.assertAttachable(run.releaseId, run.projectId, tx);
+      }
+      const locked = await this.runs.findById(id, tx);
+      if (locked === null) {
+        throw new NotFoundError('Test run');
+      }
+      this.assertOpen(locked);
 
-    await this.audit.record({
-      action: AuditAction.update,
-      entityType: 'TestRun',
-      entityId: id,
-      summary: `Updated run ${updated.name}`,
+      const result = await this.runs.update(
+        id,
+        {
+          ...(input.name === undefined ? {} : { name: input.name }),
+          ...(input.description === undefined ? {} : { description: input.description }),
+          ...(input.milestone === undefined ? {} : { milestone: input.milestone }),
+          ...(input.environment === undefined ? {} : { environment: input.environment }),
+          ...(input.releaseId === undefined ? {} : { releaseId: input.releaseId }),
+        },
+        tx,
+      );
+      if (result === null) {
+        throw new NotFoundError('Test run');
+      }
+
+      await this.audit.record(
+        {
+          action: AuditAction.update,
+          entityType: 'TestRun',
+          entityId: id,
+          summary: `Updated run ${result.name}`,
+          ...(input.releaseId === undefined || input.releaseId === run.releaseId
+            ? {}
+            : { changes: { releaseId: { from: run.releaseId, to: input.releaseId } } }),
+        },
+        tx,
+      );
+      return result;
     });
 
     return this.view(updated);
@@ -551,6 +590,7 @@ function toTestRunView(run: TestRun, progress: RunProgress): TestRunView {
     description: run.description,
     milestone: run.milestone,
     environment: run.environment,
+    releaseId: run.releaseId,
     status: run.status,
     startedAt: run.startedAt?.toISOString() ?? null,
     completedAt: run.completedAt?.toISOString() ?? null,

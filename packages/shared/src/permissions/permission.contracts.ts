@@ -36,6 +36,7 @@ export const PERMISSION_MODULES = [
   'analytics',
   'exports',
   'automation',
+  'releases',
 ] as const;
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
 
@@ -68,6 +69,8 @@ export const PERMISSIONS = [
   'analytics.read',
   'data.export',
   'api_keys.manage',
+  'releases.read',
+  'releases.manage',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -244,6 +247,18 @@ export const PERMISSION_CATALOG: readonly PermissionDescriptor[] = [
     label: 'Manage API keys',
     description: 'Create and revoke the API keys CI uses to upload automated results',
   },
+  {
+    permission: 'releases.read',
+    module: 'releases',
+    label: 'Read',
+    description: 'View releases, their runs, dashboard and traceability',
+  },
+  {
+    permission: 'releases.manage',
+    module: 'releases',
+    label: 'Manage',
+    description: 'Create, edit, start, release and archive releases',
+  },
 ];
 
 export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
@@ -260,6 +275,7 @@ export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
   analytics: 'Analytics',
   exports: 'Exports',
   automation: 'Automation',
+  releases: 'Releases',
 };
 
 const READ_ONLY: readonly Permission[] = [
@@ -273,6 +289,7 @@ const READ_ONLY: readonly Permission[] = [
   'members.read',
   'analytics.read',
   'data.export',
+  'releases.read',
 ];
 
 const TESTER: readonly Permission[] = [
@@ -301,6 +318,7 @@ const PROJECT_MANAGER: readonly Permission[] = [
   'members.manage',
   'project.manage',
   'api_keys.manage',
+  'releases.manage',
 ];
 
 const ORGANIZATION_ADMIN: readonly Permission[] = [

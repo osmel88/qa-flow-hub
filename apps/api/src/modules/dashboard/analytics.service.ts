@@ -114,6 +114,7 @@ export class AnalyticsService {
       execution: await this.analytics.executionByProject(tx, [id], period),
       runs: await this.analytics.executionByRun(tx, id, period, RUN_ROWS_LIMIT),
       milestones: await this.analytics.executionByMilestone(tx, id, period),
+      releases: await this.analytics.executionByRelease(tx, id, period),
     }));
 
     return {
@@ -126,6 +127,7 @@ export class AnalyticsService {
           id: run.id,
           name: run.name,
           milestone: run.milestone,
+          releaseId: run.releaseId,
           status: run.status,
           createdAt: run.createdAt.toISOString(),
           completedAt: run.completedAt?.toISOString() ?? null,
@@ -136,6 +138,13 @@ export class AnalyticsService {
       }),
       milestones: data.milestones.map((row) => ({
         milestone: row.milestone,
+        runs: row.runs,
+        execution: executionKpis(row.counts),
+      })),
+      releases: data.releases.map((row) => ({
+        releaseId: row.releaseId,
+        version: row.version,
+        name: row.name,
         runs: row.runs,
         execution: executionKpis(row.counts),
       })),

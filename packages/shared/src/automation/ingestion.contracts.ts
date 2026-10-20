@@ -19,6 +19,8 @@ export const ingestReportQuerySchema = z
     runName: z.string().trim().min(1).max(200).optional(),
     environment: z.string().trim().min(1).max(100).optional(),
     milestone: z.string().trim().min(1).max(100).optional(),
+    /** Version of an open release of the key's project, e.g. `2.4.0`. */
+    release: z.string().trim().min(1).max(64).optional(),
   })
   .refine((query) => query.runId === undefined || query.runName === undefined, {
     message: 'Send either runId or runName, not both',

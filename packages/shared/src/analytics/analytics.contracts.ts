@@ -261,6 +261,7 @@ export interface RunExecutionRow {
   id: string;
   name: string;
   milestone: string | null;
+  releaseId: string | null;
   status: string;
   createdAt: string;
   completedAt: string | null;
@@ -278,12 +279,22 @@ export interface MilestoneExecutionRow {
   execution: ExecutionKpis;
 }
 
+export interface ReleaseExecutionRow {
+  /** `null` groups runs without a release. */
+  releaseId: string | null;
+  version: string | null;
+  name: string | null;
+  runs: number;
+  execution: ExecutionKpis;
+}
+
 export interface ProjectTestResultsView extends AnalyticsEnvelope {
   projectId: string;
   execution: ExecutionKpis;
   /** Most recent runs in scope first, at most `RUN_ROWS_LIMIT`. */
   runs: RunExecutionRow[];
   milestones: MilestoneExecutionRow[];
+  releases: ReleaseExecutionRow[];
 }
 
 export const RUN_ROWS_LIMIT = 20;

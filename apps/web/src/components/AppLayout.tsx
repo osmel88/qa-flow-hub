@@ -15,6 +15,7 @@ const NAV = [
   { to: '/external-traceability', label: 'External references' },
   { to: '/members', label: 'Members' },
   { to: '/project-access', label: 'Project access' },
+  { to: '/api-keys', label: 'API keys' },
   { to: '/settings/integrations', label: 'Integrations' },
   { to: '/billing', label: 'Billing' },
   { to: '/notifications', label: 'Notifications' },

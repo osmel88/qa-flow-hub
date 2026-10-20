@@ -223,6 +223,7 @@ enum AuditAction {
   role_change
   execute
   export
+  revoke
 }
 
 enum NotificationType {
@@ -306,6 +307,8 @@ model User {
   notifications          Notification[]              @relation("NotificationRecipient")
   notificationPreference NotificationPreference?
   importJobs             ImportJob[]
+  createdApiKeys         ApiKey[]                    @relation("ApiKeyCreatedBy")
+  revokedApiKeys         ApiKey[]                    @relation("ApiKeyRevokedBy")
 
   @@index([deletedAt])
   @@map("users")
@@ -383,6 +386,8 @@ model Organization {
   subscription        Subscription?
   invoices            Invoice[]
   importJobs          ImportJob[]
+  apiKeys             ApiKey[]
+  ingestionReports    IngestionReport[]
 
   @@index([deletedAt])
   @@map("organizations")
@@ -485,6 +490,8 @@ model Project {
   testRuns            TestRun[]
   defects             Defect[]
   importJobs          ImportJob[]
+  apiKeys             ApiKey[]
+  ingestionReports    IngestionReport[]
 
   @@unique([organizationId, key])
   @@index([organizationId, status])
@@ -738,9 +745,10 @@ model TestRun {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  runCases TestRunCase[]
-  results  TestResult[]
-  defects  Defect[]
+  runCases         TestRunCase[]
+  results          TestResult[]
+  defects          Defect[]
+  ingestionReports IngestionReport[]
 
   @@index([organizationId, projectId, status])
   @@index([organizationId, projectId, deletedAt])
@@ -1234,4 +1242,71 @@ model ImportJob {
   @@index([organizationId, projectId, createdAt])
   @@index([projectId, status])
   @@map("import_jobs")
+}
+
+// ---------------------------------------------------------------------------
+// Automation: API keys and result ingestion
+// ---------------------------------------------------------------------------
+
+enum ApiKeyScope {
+  results_ingest
+}
+
+enum IngestionFormat {
+  junit_xml
+  playwright_json
+}
+
+/// A machine credential scoped to one project. Only the SHA-256 of the secret
+/// is stored; the token is shown once. Keys are revoked, never deleted.
+model ApiKey {
+  id             String        @id @default(cuid())
+  organizationId String
+  projectId      String
+  name           String
+  /// Public, random, unique: finds the row without revealing the secret.
+  prefix         String        @unique
+  secretHash     String
+  scopes         ApiKeyScope[]
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  revokedById    String?
+  createdById    String?
+  createdAt      DateTime      @default(now())
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy    User?             @relation("ApiKeyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  revokedBy    User?             @relation("ApiKeyRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+  reports      IngestionReport[]
+
+  @@index([organizationId, projectId, createdAt])
+  @@map("api_keys")
+}
+
+/// One accepted report. Unique per (project, idempotency key): a resubmission
+/// of the same report finds this row and changes nothing.
+model IngestionReport {
+  id             String          @id @default(cuid())
+  organizationId String
+  projectId      String
+  apiKeyId       String?
+  format         IngestionFormat
+  idempotencyKey String
+  checksum       String
+  fileName       String
+  fileSizeBytes  Int
+  testRunId      String?
+  summary        Json
+  createdAt      DateTime        @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apiKey       ApiKey?      @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  testRun      TestRun?     @relation(fields: [testRunId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, idempotencyKey])
+  @@index([organizationId, projectId, createdAt])
+  @@map("ingestion_reports")
 }

@@ -142,6 +142,19 @@ export const envSchema = z
     IMPORT_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
     EXPORT_MAX_ROWS: z.coerce.number().int().min(1).max(1_000_000).default(100_000),
 
+    // Automated result ingestion (S3-F3). Reports are held in memory while
+    // parsed, like imports, so the byte limit is separate and small.
+    INGEST_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1024)
+      .max(50 * 1024 * 1024)
+      .default(5 * 1024 * 1024),
+    INGEST_MAX_TESTS: z.coerce.number().int().min(1).max(100_000).default(10_000),
+    INGEST_TX_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(600_000).default(60_000),
+    INGEST_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(30),
+    API_KEYS_MAX_ACTIVE_PER_PROJECT: z.coerce.number().int().min(1).max(1_000).default(25),
+
     /**
      * Interactive documentation. Left unset it follows the environment: on in
      * development, off in production, because `/docs` publishes the entire API

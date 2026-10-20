@@ -35,6 +35,7 @@ export const PERMISSION_MODULES = [
   'notifications',
   'analytics',
   'exports',
+  'automation',
 ] as const;
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
 
@@ -66,6 +67,7 @@ export const PERMISSIONS = [
   'notifications.manage',
   'analytics.read',
   'data.export',
+  'api_keys.manage',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -236,6 +238,12 @@ export const PERMISSION_CATALOG: readonly PermissionDescriptor[] = [
     label: 'Export',
     description: 'Download cases, runs and the traceability matrix as CSV or a printable report',
   },
+  {
+    permission: 'api_keys.manage',
+    module: 'automation',
+    label: 'Manage API keys',
+    description: 'Create and revoke the API keys CI uses to upload automated results',
+  },
 ];
 
 export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
@@ -251,6 +259,7 @@ export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
   notifications: 'Notifications',
   analytics: 'Analytics',
   exports: 'Exports',
+  automation: 'Automation',
 };
 
 const READ_ONLY: readonly Permission[] = [
@@ -291,6 +300,7 @@ const PROJECT_MANAGER: readonly Permission[] = [
   'defects.manage',
   'members.manage',
   'project.manage',
+  'api_keys.manage',
 ];
 
 const ORGANIZATION_ADMIN: readonly Permission[] = [

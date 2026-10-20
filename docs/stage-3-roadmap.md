@@ -88,9 +88,30 @@ Commercial roadmap item 2.1, closes debt 22: a member below
   read for a hidden project with a made-up id, for each role below admin, after
   revocation, reinvitation, archiving, a tenant switch and from another tenant.
 
+## S3-F3 — API keys and report ingestion
+
+Commercial roadmap items 2.2 and 2.3 (ADR 0018, debt 40). No plan round, by
+request; debt 39 stays as it is.
+
+**Status: implemented.**
+
+- Migration `20261101100000_api_keys_ingestion`: enums `ApiKeyScope`,
+  `IngestionFormat`; tables `api_keys` and `ingestion_reports` with RLS, no
+  `DELETE` for the runtime role; `api_key_organization_for_prefix()`.
+- `GET|POST /projects/:id/api-keys`, `POST /projects/:id/api-keys/:keyId/revoke`,
+  `GET /projects/:id/ingestion-reports` (`api_keys.manage`).
+- `POST /ingest/junit` and `POST /ingest/playwright` (multipart `file`, key in
+  `Authorization: Bearer` or `X-Api-Key`, optional `runId`, `runName`,
+  `environment`, `milestone`, `Idempotency-Key`).
+- Audit: `create` and `revoke` on `ApiKey`, `execute` on `IngestionReport`.
+- Web: API keys page with the token shown once, revocation and history.
+- Tests: `ingestion.int-spec.ts`, `ingestion-limits.int-spec.ts`, parser and
+  token unit tests, `api-keys-ingestion.e2e.spec.ts`.
+
 ## Related
 
 - [`stage-2-roadmap.md`](stage-2-roadmap.md) — the stage this one builds on
 - [`technical-debt.md`](technical-debt.md) — entry 38 for this phase
 - [`adr/0016-printable-html-instead-of-server-pdf.md`](adr/0016-printable-html-instead-of-server-pdf.md)
 - [`adr/0017-project-visibility-through-grants.md`](adr/0017-project-visibility-through-grants.md)
+- [`adr/0018-api-keys-and-report-ingestion.md`](adr/0018-api-keys-and-report-ingestion.md)

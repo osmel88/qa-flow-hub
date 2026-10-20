@@ -162,6 +162,22 @@ export class AppConfigService {
     };
   }
 
+  get ingestion(): {
+    maxBytes: number;
+    maxTests: number;
+    transactionTimeoutMs: number;
+    rateLimitMax: number;
+    maxActiveKeysPerProject: number;
+  } {
+    return {
+      maxBytes: this.get('INGEST_MAX_BYTES'),
+      maxTests: this.get('INGEST_MAX_TESTS'),
+      transactionTimeoutMs: this.get('INGEST_TX_TIMEOUT_MS'),
+      rateLimitMax: this.get('INGEST_RATE_LIMIT_MAX'),
+      maxActiveKeysPerProject: this.get('API_KEYS_MAX_ACTIVE_PER_PROJECT'),
+    };
+  }
+
   get exportMaxRows(): number {
     return this.get('EXPORT_MAX_ROWS');
   }

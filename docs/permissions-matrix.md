@@ -175,6 +175,7 @@ Rules that hold even for an owner:
 | `analytics.read`       |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
 | `test_design.import`   |   ✓   |   ✓   |       ✓       |    ✓    |   —    |   —    |
 | `data.export`          |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `api_keys.manage`      |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
 
 The table is `ROLE_PERMISSIONS` in `packages/shared`; it was derived from the
 `@Roles` lists the routes carried before, so an installation without overrides
@@ -194,6 +195,14 @@ archived projects are read-only; every change is an audited `role_change`.
   exports (`test_design.read`, `testruns.read` or `traceability.read`). Revoking
   `data.export` for one member in one project keeps their read access and
   removes only the downloads; the web client hides the export and print links.
+
+### API keys and ingestion (S3-F3)
+
+- `api_keys.manage` covers listing, creating and revoking the keys of a project
+  and reading its ingestion history; it needs the project to be visible.
+- A key is not a member: its only capability is the scope `results:ingest` on
+  its own project. `POST /ingest/junit` and `/ingest/playwright` ignore user
+  sessions and organization headers.
 
 ## Project visibility (S3-F2)
 

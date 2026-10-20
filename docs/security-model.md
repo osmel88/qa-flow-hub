@@ -131,6 +131,24 @@ and chapter 10 of the backend course. Summary:
   `Content-Disposition` built from a sanitized name. Every export is audited
   with its row count.
 
+## API keys and ingested reports
+
+- Tokens are `qfh_<prefix12>_<secret43>`; only SHA-256 of the whole token is
+  stored and compared with `timingSafeEqual`. The token is returned once at
+  creation; lists, audit entries and logs only ever show `qfh_<prefix>`.
+- An unknown, malformed, tampered, revoked or expired token, or a key whose
+  organization was deleted, answers the same 401. The prefix-to-organization
+  lookup is the only `SECURITY DEFINER` path; everything else runs under RLS.
+- A key writes only into its project. `runId` must belong to that project and
+  be open; foreign or closed runs answer 404/409 without writes.
+- Reports are untrusted: the multipart limit is checked before reading, the
+  body must be strict UTF-8, any `<!DOCTYPE`, `<!ENTITY`, `<!ELEMENT`,
+  `<!ATTLIST` or `<!NOTATION` is refused before parsing (no DTD, no external or
+  internal entities), XML is parsed by a streaming SAX parser with depth 32 and
+  a test limit, names and errors are truncated, ANSI escapes and NULs removed.
+- Ingestion is atomic and idempotent (ADR 0018); a failure leaves no run, run
+  case, result, report, audit entry or `lastUsedAt` change.
+
 ## Transport and headers
 
 - Helmet: `X-Content-Type-Options`, `X-Frame-Options`, HSTS in production.

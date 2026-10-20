@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from '@qa-flow-hub/shared';
+import type { ApiErrorCode, IngestionIssueCode } from '@qa-flow-hub/shared';
 
 /**
  * Base class for every error the domain raises on purpose.
@@ -281,5 +281,33 @@ export class ExportTooLargeError extends DomainError {
 
   constructor(rows: number, max: number) {
     super(`The export would contain ${rows} rows; the limit is ${max}. Narrow it with filters`);
+  }
+}
+
+/**
+ * An uploaded test report could not be read: empty, not UTF-8, a DTD, broken
+ * XML or JSON, or a shape that is neither JUnit nor Playwright. `reason` is one
+ * of INGESTION_ISSUE_CODES so a CI script can branch on it. Nothing was written.
+ */
+export class InvalidReportError extends DomainError {
+  readonly code = 'INVALID_REPORT' as const;
+  readonly httpStatus = 400;
+
+  constructor(
+    readonly reason: IngestionIssueCode,
+    message: string,
+  ) {
+    super(message, { reason, details: [{ path: 'file', message: `${reason}: ${message}` }] });
+  }
+}
+
+export class ReportTooLargeError extends DomainError {
+  readonly code = 'REPORT_TOO_LARGE' as const;
+  readonly httpStatus = 413;
+
+  constructor(limit: string, max: number) {
+    super(`The report exceeds the limit of ${max} ${limit}`, {
+      details: [{ path: limit, message: `max ${max}` }],
+    });
   }
 }

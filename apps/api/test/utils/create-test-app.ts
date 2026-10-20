@@ -16,6 +16,7 @@ export interface TestAppOptions {
   trustProxyHops?: number;
   billingWebhookRateLimitMax?: number;
   importRateLimitMax?: number;
+  ingestion?: Partial<AppConfigService['ingestion']>;
   /** Receives the application's log lines; silent by default. */
   logger?: LoggerService;
 }
@@ -51,6 +52,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<NestF
       return options.importRateLimitMax === undefined
         ? imports
         : { ...imports, rateLimitMax: options.importRateLimitMax };
+    }
+    override get ingestion(): AppConfigService['ingestion'] {
+      return { ...super.ingestion, ...options.ingestion };
     }
     override get billing(): AppConfigService['billing'] {
       const billing = super.billing;

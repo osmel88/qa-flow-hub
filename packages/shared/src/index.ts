@@ -21,3 +21,5 @@ export * from './analytics/analytics.contracts.js';
 export * from './billing/billing.contracts.js';
 export * from './imports/import.contracts.js';
 export * from './imports/export.contracts.js';
+export * from './automation/api-key.contracts.js';
+export * from './automation/ingestion.contracts.js';

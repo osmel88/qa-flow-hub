@@ -371,6 +371,20 @@ which is a deployment decision disguised as a developer convenience.
 | `IMPORT_RATE_LIMIT_MAX` | `10` per window   | Per client IP, on dry runs and commits; per instance like every limit. |
 | `EXPORT_MAX_ROWS`       | `100000`          | A larger export is refused with 422; the body is built in memory.      |
 
+## API keys and report ingestion
+
+| Variable                          | Default           | Notes                                                      |
+| --------------------------------- | ----------------- | ---------------------------------------------------------- |
+| `INGEST_MAX_BYTES`                | `5242880` (5 MiB) | Multipart limit for `POST /api/v1/ingest/*`; 413 above it. |
+| `INGEST_MAX_TESTS`                | `10000`           | Test entries per report; 413 above it.                     |
+| `INGEST_TX_TIMEOUT_MS`            | `60000`           | Upper bound of the transaction that records one report.    |
+| `INGEST_RATE_LIMIT_MAX`           | `30` per window   | Per API key prefix (per IP without a well-formed key).     |
+| `API_KEYS_MAX_ACTIVE_PER_PROJECT` | `25`              | Creating one more active key answers 409.                  |
+
+CI uploads with `curl -H "Authorization: Bearer $QAFLOW_API_KEY" -F
+file=@junit.xml "$API/api/v1/ingest/junit?runName=CI%20$BUILD"`; add
+`-H "Idempotency-Key: $BUILD_ID"` to make retries safe.
+
 Size the reverse proxy's `client_max_body_size` to at least `IMPORT_MAX_BYTES`
 plus multipart overhead, or the proxy answers 413 before the API can explain.
 

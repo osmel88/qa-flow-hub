@@ -344,6 +344,8 @@ old behaviour with `X-Refresh-Transport: body`.
 - **Trigger to fix:** the first machine-to-machine consumer. The right answer for
   it is a scoped API key with its own lifecycle, not a session refresh token;
   once that exists, the header and the body transport can both go.
+- **Status (S3-F3):** project API keys exist for result ingestion (ADR 0018);
+  the body transport stays until the remaining scripts move to them.
 
 ## 21. Project-scoped roles are not enforced — resolved
 
@@ -1071,3 +1073,23 @@ caller's own tenant, never of another one.
 - **Also:** notifications already delivered keep the project name they were
   sent with after the recipient loses access; owners and admins see the whole
   organization's notification ledger by design.
+
+## 40. API keys and report ingestion: what S3-F3 leaves (S3-F3)
+
+- **One scope.** `results:ingest` is the only scope; reading results or
+  creating cases with a key is not possible yet.
+- **No rotation helper.** Rotating means creating a second key, switching CI and
+  revoking the first; at most `API_KEYS_MAX_ACTIVE_PER_PROJECT` (25) are active.
+- **Per-instance rate limit.** `INGEST_RATE_LIMIT_MAX` is counted per key prefix
+  in each API instance, like every limit (debt 36).
+- **In-request processing.** A report is parsed in memory and recorded in the
+  request (5 MiB, 10 000 tests); there is no job runner or async callback.
+- **Matching by case key only.** A test without `WEB-C-<n>` in its name, class
+  name, tags, annotations or properties is reported as unmatched; there is no
+  mapping table and `AutomatedTest` is not populated yet.
+- **Results have no human executor.** `executedById` is null; the run and the
+  audit entry name the key prefix instead.
+- **Reports are kept forever** (summary only, never the file); there is no
+  retention job.
+- **Visibility.** Keys are bound to one project, so debt 39 does not widen:
+  the project check happens in `IngestionService`, under organization RLS.

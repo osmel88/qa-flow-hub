@@ -500,7 +500,7 @@ function nullableText<K extends string>(
   return value === undefined || value === null ? {} : ({ [key]: value } as Record<K, string>);
 }
 
-function snapshotOf(testCase: TestCase & { steps: TestStep[] }): RunCaseSnapshot {
+export function snapshotOf(testCase: TestCase & { steps: TestStep[] }): RunCaseSnapshot {
   return {
     key: testCase.key,
     title: testCase.title,

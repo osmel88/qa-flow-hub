@@ -2,13 +2,13 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 /**
- * The browser talks to `/api` and `/health` on its own origin and Vite forwards
+ * The browser talks to `/api/` and `/health` on its own origin and Vite forwards
  * them to the API. This keeps CORS out of the picture during development and
  * mirrors the reverse-proxy layout used in deployment. `preview` needs the same
  * rules because the end-to-end suite runs against the production build.
  */
 const apiProxy = {
-  '/api': {
+  '/api/': {
     target: process.env['VITE_API_PROXY_TARGET'] ?? 'http://localhost:3000',
     changeOrigin: true,
   },

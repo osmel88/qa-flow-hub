@@ -1,4 +1,8 @@
 import type {
+  ApiKeyView,
+  CreateApiKeyInput,
+  CreatedApiKeyView,
+  IngestionReportView,
   AttachableEntity,
   AttachmentLimitsView,
   AttachmentView,
@@ -489,4 +493,18 @@ export const exportsApi = {
     apiFetchBlob(
       `/traceability/matrix/export.csv${query({ projectId, uncoveredOnly: String(uncoveredOnly) })}`,
     ),
+};
+
+export const automationApi = {
+  keys: (projectId: string) => apiFetch<ApiKeyView[]>(`/projects/${projectId}/api-keys`),
+  /** The answer carries the full token; it is never returned again. */
+  createKey: (projectId: string, input: CreateApiKeyInput) =>
+    apiFetch<CreatedApiKeyView>(`/projects/${projectId}/api-keys`, {
+      method: 'POST',
+      body: input,
+    }),
+  revokeKey: (projectId: string, id: string) =>
+    apiFetch<ApiKeyView>(`/projects/${projectId}/api-keys/${id}/revoke`, { method: 'POST' }),
+  reports: (projectId: string) =>
+    apiFetch<IngestionReportView[]>(`/projects/${projectId}/ingestion-reports`),
 };

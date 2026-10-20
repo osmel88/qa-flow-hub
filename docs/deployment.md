@@ -371,6 +371,18 @@ which is a deployment decision disguised as a developer convenience.
 | `IMPORT_RATE_LIMIT_MAX` | `10` per window   | Per client IP, on dry runs and commits; per instance like every limit. |
 | `EXPORT_MAX_ROWS`       | `100000`          | A larger export is refused with 422; the body is built in memory.      |
 
+## Notification outbox
+
+| Variable                           | Default   | Notes                                                              |
+| ---------------------------------- | --------- | ------------------------------------------------------------------ |
+| `NOTIFICATIONS_WORKER_ENABLED`     | `true`    | Disable on replicas that must not run background work.             |
+| `NOTIFICATIONS_WORKER_INTERVAL_MS` | `30000`   | One pass per interval per replica; passes never overlap.           |
+| `NOTIFICATIONS_WORKER_BATCH`       | `50`      | Rows leased per pass.                                              |
+| `NOTIFICATIONS_MAX_ATTEMPTS`       | `5`       | Including the first, in-request attempt.                           |
+| `NOTIFICATIONS_RETRY_BASE_MS`      | `60000`   | Backoff `base · 2^(n-1)`, capped by `NOTIFICATIONS_RETRY_MAX_MS`.  |
+| `NOTIFICATIONS_RETRY_MAX_MS`       | `3600000` | Upper bound of a single backoff.                                   |
+| `NOTIFICATIONS_LEASE_SECONDS`      | `120`     | Must exceed the slowest provider call; expired leases are retried. |
+
 ## API keys and report ingestion
 
 | Variable                          | Default           | Notes                                                      |

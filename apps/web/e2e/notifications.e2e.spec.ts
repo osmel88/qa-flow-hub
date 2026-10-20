@@ -67,6 +67,27 @@ test('an owner sees the invitation mail in the mock outbox and tunes preferences
     await expect(page.locator('body')).not.toContainText(token);
   });
 
+  await test.step('a transient provider failure is scheduled and can be retried by hand', async () => {
+    const deferred = `deferred-${unique}+defer@example.com`;
+    await page.getByRole('link', { name: 'Members' }).click();
+    await page.getByLabel('Email').fill(deferred);
+    await page.getByRole('button', { name: 'Send invitation' }).click();
+    await expect(page.getByRole('status').locator('code')).toBeVisible();
+
+    await page.getByRole('link', { name: 'Notifications' }).click();
+    await page.getByLabel('Scope').selectOption('organization');
+    const row = page.getByRole('row', { name: new RegExp(deferred.replace('+', '\\+')) });
+    await expect(row.locator('.ui-badge')).toHaveText('failed');
+    await expect(row).toContainText(/provider unavailable — retry/);
+    const retried = page.waitForResponse(
+      (response) => response.url().endsWith('/retry') && response.request().method() === 'POST',
+    );
+    await row.getByRole('button', { name: /^Retry / }).click();
+    expect((await retried).status()).toBe(200);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(row.locator('.ui-badge')).toHaveText('failed');
+  });
+
   await test.step('addressed to me is empty: the invitation went to somebody else', async () => {
     await page.getByLabel('Scope').selectOption('mine');
     await expect(page.getByText('No notifications yet.')).toBeVisible();

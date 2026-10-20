@@ -84,9 +84,14 @@ that are **not** blocked on a product decision or a third party — 14, 16, 17, 
   `StorageProvider` port with a local-disk implementation. What remains — no
   object storage, no signed URLs, no quotas — is entry 33.
 
-## 3. No background job runner
+## 3. No background job runner — partially resolved (S3-F5)
 
-Everything happens inside the request.
+S3-F5 added the first background loop: `NotificationOutboxWorker`, an
+in-process interval that drains the notification outbox (ADR 0020). It is not
+a general job runner: imports and syncs still run inside the request, and there
+is no scheduling, priority or dead-letter queue beyond what the outbox needs.
+
+Originally: everything happens inside the request.
 
 - **Why acceptable now:** no operation in the MVP is slow enough to need
   deferring.
@@ -735,6 +740,10 @@ Decisions to revisit later rather than design now:
 
 ## 32. Email is mock-only, delivered in the request, with no retry (S2-F6)
 
+> **S3-F5 update:** retries, backoff, crash recovery of `pending` rows and a
+> manual retry now exist (ADR 0020, debt 42). The provider is still mock-only;
+> the rest of this entry stands.
+
 S2-F6 built the whole notification path — typed domain events, recipients,
 preferences, templates, a persistent `Notification` ledger and the
 `EmailAdapter` port — but the only provider is `MockEmailAdapter` and
@@ -1107,3 +1116,22 @@ caller's own tenant, never of another one.
 - **Release traceability lists every requirement of the project**, not only the
   ones in scope of the release; there is no release scope selection yet.
 - **Visibility.** Releases are project-scoped, so debt 39 does not widen.
+
+## 42. Notification outbox: what S3-F5 leaves (S3-F5)
+
+- **At-least-once.** A process that dies after the provider accepted a message
+  and before `markSent` sends it again when the lease expires. The row id is
+  the idempotency key a real provider would need.
+- **In-process interval per replica.** No leader election; replicas coordinate
+  through `SKIP LOCKED` only. A replica with `NOTIFICATIONS_WORKER_ENABLED=false`
+  still makes first attempts in requests.
+- **Rows created before the migration have no payload** and are never retried.
+- **No dead-letter view.** An exhausted row is a `failed` row with
+  `nextAttemptAt = null`; the ledger filter is the only tool.
+- **Payload holds an invitation token while a retry is pending**, in the same
+  table the API reads (never returned). Cleared on send or skip.
+- **Only email.** Slack and other channels from roadmap item 2.5 need a real
+  provider and stay out of scope; `channel` is already in the model.
+- **`test_run_failed` is sent once per run completion**; a reopened defect does
+  not have its own type (the existing `defect_status_changed` covers it).
+- **Metrics.** Outbox counters are logged, not exported to `/metrics`.

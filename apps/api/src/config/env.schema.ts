@@ -155,6 +155,27 @@ export const envSchema = z
     INGEST_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(30),
     API_KEYS_MAX_ACTIVE_PER_PROJECT: z.coerce.number().int().min(1).max(1_000).default(25),
 
+    // Notification outbox (S3-F5). The first attempt happens in the request
+    // that raised the event; the worker retries failures with exponential
+    // backoff and recovers rows a crash left pending.
+    NOTIFICATIONS_WORKER_ENABLED: z.enum(['true', 'false']).default('true'),
+    NOTIFICATIONS_WORKER_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(3_600_000)
+      .default(30_000),
+    NOTIFICATIONS_WORKER_BATCH: z.coerce.number().int().min(1).max(500).default(50),
+    NOTIFICATIONS_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(5),
+    NOTIFICATIONS_RETRY_BASE_MS: z.coerce.number().int().min(1_000).max(3_600_000).default(60_000),
+    NOTIFICATIONS_RETRY_MAX_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(24 * 3_600_000)
+      .default(3_600_000),
+    NOTIFICATIONS_LEASE_SECONDS: z.coerce.number().int().min(10).max(3_600).default(120),
+
     /**
      * Interactive documentation. Left unset it follows the environment: on in
      * development, off in production, because `/docs` publishes the entire API
@@ -169,6 +190,7 @@ export const envSchema = z
       (env.SWAGGER_ENABLED ?? (env.NODE_ENV === 'production' ? 'false' : 'true')) === 'true',
     LOG_FORMAT: env.LOG_FORMAT ?? (env.NODE_ENV === 'production' ? 'json' : 'pretty'),
     METRICS_ENABLED: env.METRICS_ENABLED === 'true',
+    NOTIFICATIONS_WORKER_ENABLED: env.NOTIFICATIONS_WORKER_ENABLED === 'true',
   }))
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') {

@@ -130,6 +130,27 @@ debt 39 stays as it is.
 - Tests: `releases.int-spec.ts`, `release.contracts.test.ts`,
   `ReleasesPage.test.tsx`, `releases.e2e.spec.ts`.
 
+## S3-F5 — Notification outbox and retries
+
+Commercial roadmap item 2.5, local part (ADR 0020, debt 42). Email stays on
+the mock provider; Slack and real providers are out of scope.
+
+**Status: implemented.**
+
+- Migration `20261122100000_notification_outbox`: enum value `test_run_failed`,
+  columns `payload`, `leaseUntil`, `nextAttemptAt`, index
+  `(status, nextAttemptAt)`, function `claim_notification_deliveries()`.
+- `NotificationOutboxWorker` (interval, batch, lease, backoff and attempt budget
+  from `NOTIFICATIONS_*`); access and preferences re-checked at send time.
+- `POST /notifications/:id/retry` (owners/admins, audited, 409 while leased or
+  not failed); `nextAttemptAt` in `NotificationView`.
+- Event `test_run.completed` → `test_run_failed` to the run creator and failed
+  case assignees.
+- Web: next retry time and "Retry now" in the organization ledger.
+- Tests: `notification-outbox.int-spec.ts`, `template-payload.test.ts`,
+  `notification-outbox.worker.test.ts`, `NotificationsPage.test.tsx`,
+  `notifications.e2e.spec.ts`.
+
 ## Related
 
 - [`stage-2-roadmap.md`](stage-2-roadmap.md) — the stage this one builds on
@@ -137,3 +158,4 @@ debt 39 stays as it is.
 - [`adr/0016-printable-html-instead-of-server-pdf.md`](adr/0016-printable-html-instead-of-server-pdf.md)
 - [`adr/0017-project-visibility-through-grants.md`](adr/0017-project-visibility-through-grants.md)
 - [`adr/0018-api-keys-and-report-ingestion.md`](adr/0018-api-keys-and-report-ingestion.md)
+- [`adr/0020-notification-outbox.md`](adr/0020-notification-outbox.md)

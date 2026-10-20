@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   ListNotificationsQuery,
@@ -74,5 +74,14 @@ export class NotificationsController {
     @Query(zodQuery(listNotificationsQuerySchema)) query: ListNotificationsQuery,
   ) {
     return this.notifications.outbox({ role: user.role }, query);
+  }
+
+  @ApiHeader({ name: 'X-Organization-Id', required: true })
+  @RequirePermission('notifications.manage')
+  @Post(':id/retry')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Retry delivery of a failed notification now (owners/admins)' })
+  retry(@CurrentUser() user: CurrentUserContext, @Param('id') id: string) {
+    return this.notifications.retry({ role: user.role }, id);
   }
 }

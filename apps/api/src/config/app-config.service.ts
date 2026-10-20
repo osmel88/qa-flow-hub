@@ -162,6 +162,26 @@ export class AppConfigService {
     };
   }
 
+  get notifications(): {
+    workerEnabled: boolean;
+    workerIntervalMs: number;
+    workerBatch: number;
+    maxAttempts: number;
+    retryBaseMs: number;
+    retryMaxMs: number;
+    leaseSeconds: number;
+  } {
+    return {
+      workerEnabled: this.get('NOTIFICATIONS_WORKER_ENABLED'),
+      workerIntervalMs: this.get('NOTIFICATIONS_WORKER_INTERVAL_MS'),
+      workerBatch: this.get('NOTIFICATIONS_WORKER_BATCH'),
+      maxAttempts: this.get('NOTIFICATIONS_MAX_ATTEMPTS'),
+      retryBaseMs: this.get('NOTIFICATIONS_RETRY_BASE_MS'),
+      retryMaxMs: this.get('NOTIFICATIONS_RETRY_MAX_MS'),
+      leaseSeconds: this.get('NOTIFICATIONS_LEASE_SECONDS'),
+    };
+  }
+
   get ingestion(): {
     maxBytes: number;
     maxTests: number;

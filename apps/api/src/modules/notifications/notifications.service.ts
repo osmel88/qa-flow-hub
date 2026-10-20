@@ -19,19 +19,21 @@ import {
 } from '@qa-flow-hub/shared';
 import { AppConfigService } from '../../config/app-config.service';
 import { TenantContextService } from '../../database/tenant-context.service';
-import { ForbiddenError } from '../../errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '../../errors';
 import {
   DefectAssignedEvent,
   DefectStatusChangedEvent,
   InvitationIssuedEvent,
   PasswordChangedEvent,
   TestRunCasesAssignedEvent,
+  TestRunCompletedEvent,
 } from '../../events/domain-events';
 import { EmailAdapter } from '../../integrations/adapter.contracts';
 import { EMAIL_ADAPTER } from '../../integrations/adapter.tokens';
 import { MockEmailAdapter } from '../../integrations/email-mock/email-mock.adapter';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsRepository } from './notifications.repository';
+import { fromPayload, toPayload } from './templates/template-payload';
 import {
   EmailTemplateVars,
   RenderedEmail,
@@ -65,6 +67,18 @@ interface Plan<T extends NotificationType> {
   vars: EmailTemplateVars[T];
   /** Ids and labels only. No bodies, no links, no tokens. */
   metadata: Record<string, string>;
+}
+
+/** Rejections a retry cannot fix: the address itself is undeliverable. */
+const PERMANENT_FAILURES = new Set(['mailbox_unavailable']);
+
+/** Template variables that are dates; JSON brings them back as strings. */
+
+export interface OutboxDrainResult {
+  claimed: number;
+  sent: number;
+  failed: number;
+  skipped: number;
 }
 
 const PREFERENCE_FIELD: Record<OptionalNotificationCategory, keyof NotificationPreference> = {
@@ -112,6 +126,13 @@ export class NotificationsService {
   onTestRunCasesAssigned(event: TestRunCasesAssignedEvent): Promise<void> {
     return this.tenant.runForOrganization(event.organizationId, () =>
       this.handleTestRunCasesAssigned(event),
+    );
+  }
+
+  @OnEvent('test_run.completed', { promisify: true })
+  onTestRunCompleted(event: TestRunCompletedEvent): Promise<void> {
+    return this.tenant.runForOrganization(event.organizationId, () =>
+      this.handleTestRunCompleted(event),
     );
   }
 
@@ -297,12 +318,61 @@ export class NotificationsService {
     }
   }
 
+  private async handleTestRunCompleted(event: TestRunCompletedEvent): Promise<void> {
+    const summary = await this.notifications.findRunFailureSummary(
+      event.organizationId,
+      event.testRunId,
+    );
+    if (summary === null || summary.failedCases === 0) return;
+    const [actor, organization, project] = await Promise.all([
+      this.notifications.findUser(event.actorUserId),
+      this.notifications.findOrganizationName(event.organizationId),
+      this.notifications.findProjectName(event.organizationId, event.projectId),
+    ]);
+
+    // Whoever opened the run and whoever owns a failed case. Not the project.
+    const interested = new Set(
+      [summary.createdById, ...summary.failedAssigneeIds].filter(
+        (id): id is string => id !== null && id !== event.actorUserId,
+      ),
+    );
+    for (const userId of interested) {
+      const recipient = await this.notifications.findUser(userId);
+      if (recipient === null) continue;
+      await this.deliver({
+        type: 'test_run_failed',
+        organizationId: event.organizationId,
+        recipient: asRecipient(recipient),
+        dedupeKey: `test_run_failed:${event.testRunId}:${userId}`,
+        vars: {
+          recipientName: recipient.fullName,
+          completedByName: actor?.fullName ?? 'A teammate',
+          organizationName: organization?.name ?? '',
+          projectName: project?.name ?? '',
+          runName: summary.name,
+          failedCases: summary.failedCases,
+          blockedCases: summary.blockedCases,
+          totalCases: summary.totalCases,
+          runUrl: `${this.config.webBaseUrl}/test-runs/${event.testRunId}`,
+        },
+        metadata: {
+          entityType: 'test_run',
+          entityId: event.testRunId,
+          projectId: event.projectId,
+          failedCases: String(summary.failedCases),
+          actorUserId: event.actorUserId,
+        },
+      });
+    }
+  }
+
   // --- Pipeline --------------------------------------------------------------
 
   /**
-   * Records the fact first, then tries to deliver it. Order matters: a row
-   * that says `pending` and never moves is a visible failure; a mail that was
-   * sent with no row is an invisible one.
+   * Records the fact first, then makes the first attempt in this request. The
+   * row keeps its template variables until it is delivered or skipped, so a
+   * failed attempt — or a crash between insert and send — is picked up by the
+   * outbox worker instead of being lost.
    *
    * Skips are recorded too. "Why did I not get that email?" is a support
    * question, and the answer should be in the ledger, not in a log line.
@@ -318,69 +388,175 @@ export class NotificationsService {
       subject: rendered.subject,
       dedupeKey: plan.dedupeKey,
       metadata: plan.metadata,
+      payload: toPayload(plan.type, plan.vars),
+      leaseUntil: this.leaseDeadline(),
     });
     if (row === null) {
       this.logger.debug(`Duplicate suppressed: ${plan.dedupeKey}`);
       return;
     }
+    await this.attempt(row, rendered);
+  }
 
-    const skip = await this.decideSkip(plan);
+  /**
+   * One delivery attempt for a row whose lease the caller holds. Skip rules
+   * are evaluated now, not when the row was created: a recipient who lost the
+   * project, left the organization or muted the category in the meantime does
+   * not get the message on a retry.
+   */
+  private async attempt(row: Notification, rendered: RenderedEmail): Promise<Notification> {
+    const skip = await this.decideSkip(row);
     if (skip !== null) {
-      await this.notifications.markSkipped(row.id, skip);
-      return;
+      return this.notifications.markSkipped(row.id, skip);
     }
 
     try {
       const outcome = await this.email.send({
-        to: plan.recipient.email,
+        to: row.recipientEmail,
         from: this.config.email.from,
         subject: rendered.subject,
         text: rendered.text,
         html: rendered.html,
         reference: row.id,
         tags: {
-          type: plan.type,
-          ...(plan.organizationId === null ? {} : { organizationId: plan.organizationId }),
+          type: row.type,
+          ...(row.organizationId === null ? {} : { organizationId: row.organizationId }),
         },
       });
       if (outcome.accepted) {
-        await this.notifications.markSent(row.id, this.email.provider, outcome.messageId);
-      } else {
-        await this.notifications.markFailed(
-          row.id,
-          this.email.provider,
-          outcome.reason ?? 'rejected',
-        );
+        return await this.notifications.markSent(row.id, this.email.provider, outcome.messageId);
       }
+      return await this.fail(row, outcome.reason ?? 'rejected');
     } catch (error: unknown) {
-      await this.notifications.markFailed(
-        row.id,
-        this.email.provider,
-        error instanceof Error ? error.message : 'provider_error',
-      );
+      return this.fail(row, error instanceof Error ? error.message : 'provider_error');
     }
   }
 
-  private async decideSkip<T extends NotificationType>(
-    plan: Plan<T>,
-  ): Promise<NotificationSkipReason | null> {
-    const category = NOTIFICATION_CATEGORY_BY_TYPE[plan.type];
+  private fail(row: Notification, reason: string): Promise<Notification> {
+    const next = PERMANENT_FAILURES.has(reason) ? null : this.nextAttemptAt(row.attempts + 1);
+    return this.notifications.markFailed(row.id, this.email.provider, reason, next);
+  }
+
+  /** Exponential backoff, capped; null once the attempt budget is spent. */
+  private nextAttemptAt(attempts: number): Date | null {
+    const { maxAttempts, retryBaseMs, retryMaxMs } = this.config.notifications;
+    if (attempts >= maxAttempts) return null;
+    const delay = Math.min(retryBaseMs * 2 ** (attempts - 1), retryMaxMs);
+    return new Date(Date.now() + delay);
+  }
+
+  private leaseDeadline(): Date {
+    return new Date(Date.now() + this.config.notifications.leaseSeconds * 1000);
+  }
+
+  private async decideSkip(row: Notification): Promise<NotificationSkipReason | null> {
+    const category = NOTIFICATION_CATEGORY_BY_TYPE[row.type];
     const optional = (OPTIONAL_NOTIFICATION_CATEGORIES as readonly string[]).includes(category);
     // Security and onboarding mail is not opt-out: a user who disabled email
     // still has to learn their password changed, and an invitee has no
     // preferences yet.
-    if (!optional || plan.recipient.userId === null) return null;
+    if (!optional || row.recipientUserId === null) return null;
 
-    const user = await this.notifications.findUser(plan.recipient.userId);
+    const user = await this.notifications.findUser(row.recipientUserId);
     if (user === null || !user.isActive) return 'recipient_inactive';
 
-    const preference = await this.notifications.findPreference(plan.recipient.userId);
+    // A message about a project is only for someone who can still see it;
+    // otherwise the subject alone would reveal the project's name.
+    const projectId = metadataOf(row)['projectId'];
+    if (
+      row.organizationId !== null &&
+      projectId !== undefined &&
+      !(await this.notifications.recipientCanSeeProject(
+        row.organizationId,
+        row.recipientUserId,
+        projectId,
+      ))
+    ) {
+      return 'recipient_no_access';
+    }
+
+    const preference = await this.notifications.findPreference(row.recipientUserId);
     if (preference === null) return null; // defaults: everything on
     if (!preference.emailEnabled) return 'email_disabled';
     if (!preference[PREFERENCE_FIELD[category as OptionalNotificationCategory]]) {
       return 'category_disabled';
     }
     return null;
+  }
+
+  // --- Outbox ----------------------------------------------------------------
+
+  /**
+   * One pass of the outbox worker: lease due rows across organizations, then
+   * attempt each one inside its own tenant, so every read and write after the
+   * lease goes through RLS exactly as a request would.
+   */
+  async drainOutbox(): Promise<OutboxDrainResult> {
+    const { workerBatch, leaseSeconds } = this.config.notifications;
+    const claimed = await this.tenant.runForOrganization(null, () =>
+      this.notifications.claimDue(workerBatch, leaseSeconds),
+    );
+    const result: OutboxDrainResult = { claimed: claimed.length, sent: 0, failed: 0, skipped: 0 };
+    for (const item of claimed) {
+      try {
+        const outcome = await this.tenant.runForOrganization(item.organizationId, async () => {
+          const row = await this.notifications.findById(item.id);
+          if (row === null || row.payload === null) return null;
+          const rendered = renderStored(row);
+          if (rendered === null) {
+            return this.notifications.markFailed(
+              row.id,
+              this.email.provider,
+              'payload_unreadable',
+              null,
+            );
+          }
+          return this.attempt(row, rendered);
+        });
+        if (outcome?.status === 'sent') result.sent += 1;
+        else if (outcome?.status === 'failed') result.failed += 1;
+        else if (outcome?.status === 'skipped') result.skipped += 1;
+      } catch (error: unknown) {
+        this.logger.error(
+          `Outbox attempt failed for ${item.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Manual retry by an operator: one more attempt now, even past the budget.
+   * Only for a failed row of the active organization that still holds its
+   * content and that no worker is delivering at this moment.
+   */
+  async retry(caller: { role: string }, id: string): Promise<NotificationView> {
+    if (!OPERATOR_ROLES.has(caller.role)) {
+      throw new ForbiddenError('Only owners and admins can retry a notification');
+    }
+    const organizationId = this.tenant.get()?.organizationId ?? null;
+    const row = await this.notifications.findById(id);
+    if (row === null || organizationId === null || row.organizationId !== organizationId) {
+      throw new NotFoundError('Notification');
+    }
+    const rendered = row.status === 'failed' ? renderStored(row) : null;
+    if (rendered === null) {
+      throw new ConflictError(
+        'Only a failed notification that still has its content can be retried',
+      );
+    }
+    if (!(await this.notifications.leaseFailed(row.id, this.leaseDeadline()))) {
+      throw new ConflictError('This notification is already being delivered');
+    }
+    const updated = await this.attempt(row, rendered);
+    await this.audit.record({
+      action: AuditAction.update,
+      entityType: 'notification',
+      entityId: row.id,
+      summary: `Retried delivery of a ${row.type} notification: ${updated.status}`,
+      changes: { status: { from: row.status, to: updated.status } },
+    });
+    return toView(updated);
   }
 
   // --- Reads and preferences -------------------------------------------------
@@ -475,6 +651,19 @@ function asRecipient(user: { id: string; email: string; fullName: string }): Rec
   return { userId: user.id, email: user.email, fullName: user.fullName };
 }
 
+/**
+ * Re-renders a stored row from its payload, or null when there is nothing
+ * usable to render (already delivered, or not a payload of this template).
+ */
+function renderStored(row: Notification): RenderedEmail | null {
+  const vars = fromPayload(row.type, row.payload);
+  return vars === null ? null : renderEmail(row.type, vars);
+}
+
+function metadataOf(row: Notification): Record<string, string> {
+  return isStringRecord(row.metadata) ? row.metadata : {};
+}
+
 function fingerprint(ids: readonly string[]): string {
   return createHash('sha256')
     .update([...ids].sort().join(','))
@@ -502,6 +691,7 @@ function toView(row: Notification): NotificationView {
     attempts: row.attempts,
     createdAt: row.createdAt.toISOString(),
     attemptedAt: row.attemptedAt?.toISOString() ?? null,
+    nextAttemptAt: row.nextAttemptAt?.toISOString() ?? null,
     deliveredAt: row.deliveredAt?.toISOString() ?? null,
     failureReason: row.failureReason,
     skipReason: row.skipReason,

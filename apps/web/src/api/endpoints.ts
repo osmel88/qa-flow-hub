@@ -338,6 +338,10 @@ export const notificationsApi = {
     apiFetch<Paginated<NotificationView>>(`/notifications${query(params)}`),
   outbox: (params: Partial<ListNotificationsQuery>) =>
     apiFetch<Paginated<MockEmailPreview>>(`/notifications/outbox${query(params)}`),
+  retry: (id: string) =>
+    apiFetch<NotificationView>(`/notifications/${encodeURIComponent(id)}/retry`, {
+      method: 'POST',
+    }),
 };
 
 export const attachmentsApi = {

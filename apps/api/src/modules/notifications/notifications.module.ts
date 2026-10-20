@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { IntegrationsModule } from '../../integrations/integrations.module';
 import { AuditModule } from '../audit/audit.module';
+import { NotificationOutboxWorker } from './notification-outbox.worker';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsRepository } from './notifications.repository';
 import { NotificationsService } from './notifications.service';
@@ -14,6 +15,7 @@ import { NotificationsService } from './notifications.service';
 @Module({
   imports: [IntegrationsModule, AuditModule],
   controllers: [NotificationsController],
-  providers: [NotificationsRepository, NotificationsService],
+  providers: [NotificationsRepository, NotificationsService, NotificationOutboxWorker],
+  exports: [NotificationsService, NotificationOutboxWorker],
 })
 export class NotificationsModule {}

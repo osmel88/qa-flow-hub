@@ -240,6 +240,7 @@ enum NotificationType {
   test_run_assignment
   defect_assignment
   defect_status_changed
+  test_run_failed
 }
 
 /// S2-F11. Mirrors the provider's subscription lifecycle (Stripe's names).
@@ -1005,6 +1006,13 @@ model Notification {
   providerMessageId String?
   attempts          Int       @default(0)
   attemptedAt       DateTime?
+  /// S3-F5. Template variables to re-render a retry from. Cleared once the
+  /// row is sent or skipped; may hold an invitation link until then.
+  payload           Json?
+  /// While in the future, a request or a worker owns the delivery attempt.
+  leaseUntil        DateTime?
+  /// When the outbox worker retries a `failed` row; null means it gave up.
+  nextAttemptAt     DateTime?
   deliveredAt       DateTime?
   failureReason     String?
   /// Why a `skipped` row was not sent: a preference, a disabled address, the
@@ -1020,6 +1028,7 @@ model Notification {
   @@index([organizationId, createdAt])
   @@index([organizationId, recipientUserId, createdAt])
   @@index([organizationId, type, status])
+  @@index([status, nextAttemptAt])
   @@map("notifications")
 }
 

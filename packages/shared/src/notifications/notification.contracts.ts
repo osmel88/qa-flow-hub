@@ -7,6 +7,7 @@ export const NOTIFICATION_TYPES = [
   'test_run_assignment',
   'defect_assignment',
   'defect_status_changed',
+  'test_run_failed',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -33,6 +34,7 @@ export const NOTIFICATION_CATEGORY_BY_TYPE: Record<NotificationType, Notificatio
   test_run_assignment: 'test_run_assignments',
   defect_assignment: 'defect_assignments',
   defect_status_changed: 'status_changes',
+  test_run_failed: 'status_changes',
 };
 
 export const OPTIONAL_NOTIFICATION_CATEGORIES = [
@@ -46,6 +48,7 @@ export const NOTIFICATION_SKIP_REASONS = [
   'email_disabled',
   'category_disabled',
   'recipient_inactive',
+  'recipient_no_access',
   'duplicate',
 ] as const;
 export type NotificationSkipReason = (typeof NOTIFICATION_SKIP_REASONS)[number];
@@ -100,6 +103,8 @@ export interface NotificationView {
   attempts: number;
   createdAt: string;
   attemptedAt: string | null;
+  /** When the outbox worker will try again; null once delivered, skipped or given up. */
+  nextAttemptAt: string | null;
   deliveredAt: string | null;
   failureReason: string | null;
   skipReason: string | null;

@@ -12,6 +12,8 @@ process.env['JWT_REFRESH_SECRET'] ??= 'test-refresh-secret-value-with-enough-len
 process.env['DATABASE_URL'] ??=
   'postgresql://qaflow:qaflow@localhost:5433/qa_flow_hub_test?schema=public';
 process.env['SWAGGER_ENABLED'] ??= 'false';
+// The outbox worker is driven by hand (drainOutbox) so timing never decides a test.
+process.env['NOTIFICATIONS_WORKER_ENABLED'] ??= 'false';
 // Rate limiting is exercised by its own test; elsewhere it would make suites flaky.
 process.env['RATE_LIMIT_MAX'] ??= '100000';
 process.env['AUTH_RATE_LIMIT_MAX'] ??= '100000';

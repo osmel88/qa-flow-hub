@@ -218,6 +218,16 @@ export class TestRunsService {
       changes: { status: { from: run.status, to: target } },
     });
 
+    if (target === 'completed') {
+      await this.events.publish('test_run.completed', {
+        organizationId: updated.organizationId,
+        projectId: updated.projectId,
+        testRunId: id,
+        actorUserId: this.tenant.requireUserId(),
+        completedAt: updated.completedAt ?? new Date(),
+      });
+    }
+
     return this.view(updated);
   }
 

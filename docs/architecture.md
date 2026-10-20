@@ -138,8 +138,9 @@ makes it possible to enable later without a data model change.
 Business modules publish facts, never mail. `DomainEventsPublisher` (over
 `@nestjs/event-emitter`, in-process, `emitAsync`, listener errors logged and
 swallowed so a notification failure cannot fail the business write) carries
-five typed events: `organization.invitation.issued`, `user.password.changed`,
-`test_run.cases.assigned`, `defect.assigned`, `defect.status.changed`.
+typed events: `organization.invitation.issued`, `user.password.changed`,
+`test_run.cases.assigned`, `defect.assigned`, `defect.status.changed` and
+(S3-F5) `test_run.completed`.
 
 `NotificationsService` listens and runs each pipeline **inside the event's
 organization context** (`TenantContextService.runForOrganization`), not the
@@ -160,9 +161,14 @@ event → recipients → type/category + preference decision → typed template
 - `NotificationPreference` is per user, global (not per organization):
   `emailEnabled`, `testRunAssignments`, `defectAssignments`, `statusChanges`,
   all default on. Security mail (invitation, password changed) ignores them.
-- Delivery is synchronous and in-process. There is no retry, no durable
-  queue and no worker (see technical debt 32); the ledger is what a future
-  outbox worker would drain.
+- The first attempt is synchronous and in-process. Since S3-F5 the ledger is
+  also the outbox (ADR 0020): rows keep their template variables in `payload`
+  until sent or skipped, a transient failure schedules `nextAttemptAt` with
+  exponential backoff, and `NotificationOutboxWorker` (one interval per
+  replica) leases due rows through `claim_notification_deliveries()`
+  (`FOR UPDATE SKIP LOCKED`, returns only id + organization) and re-sends them
+  under each row's tenant, re-checking preferences, membership and project
+  visibility. A sixth event, `test_run.completed`, produces `test_run_failed`.
 - `EMAIL_PROVIDER` accepts only `mock`. A real provider is one class
   implementing `EmailAdapter`, registered in `IntegrationsModule`, plus a
   credential resolved through the `SecretResolver` port (ADR 0014; the real

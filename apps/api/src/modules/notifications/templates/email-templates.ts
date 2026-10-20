@@ -67,12 +67,25 @@ export interface DefectStatusChangedVars {
   defectUrl: string;
 }
 
+export interface TestRunFailedVars {
+  recipientName: string;
+  completedByName: string;
+  organizationName: string;
+  projectName: string;
+  runName: string;
+  failedCases: number;
+  blockedCases: number;
+  totalCases: number;
+  runUrl: string;
+}
+
 export interface EmailTemplateVars {
   organization_invitation: OrganizationInvitationVars;
   password_changed: PasswordChangedVars;
   test_run_assignment: TestRunAssignmentVars;
   defect_assignment: DefectAssignmentVars;
   defect_status_changed: DefectStatusChangedVars;
+  test_run_failed: TestRunFailedVars;
 }
 
 /**
@@ -85,6 +98,7 @@ export const TEMPLATE_KEYS: Record<NotificationType, string> = {
   test_run_assignment: 'test_run_assignment.v1',
   defect_assignment: 'defect_assignment.v1',
   defect_status_changed: 'defect_status_changed.v1',
+  test_run_failed: 'test_run_failed.v1',
 };
 
 const PRODUCT = 'qa-flow-hub';
@@ -235,6 +249,24 @@ export const emailTemplates: {
           `${vars.changedByName} moved the defect "${vars.defectTitle}" from ${humanize(vars.fromStatus)} to ${humanize(vars.toStatus)} in ${vars.organizationName} / ${vars.projectName}.`,
         ],
         action: { label: 'Open defect', url: vars.defectUrl },
+        footer: NO_REPLY,
+      }),
+    };
+  },
+
+  test_run_failed: (vars) => {
+    const failed = vars.failedCases === 1 ? '1 failed case' : `${vars.failedCases} failed cases`;
+    const subject = `[${vars.projectName}] Test run "${vars.runName}" completed with ${failed}`;
+    const blocked = vars.blockedCases === 0 ? '' : `, ${vars.blockedCases} blocked`;
+    return {
+      subject,
+      ...layout({
+        title: 'Test run completed with failures',
+        greeting: `Hello ${vars.recipientName},`,
+        paragraphs: [
+          `${vars.completedByName} completed the test run "${vars.runName}" in ${vars.organizationName} / ${vars.projectName}: ${vars.failedCases} of ${vars.totalCases} cases failed${blocked}.`,
+        ],
+        action: { label: 'Open test run', url: vars.runUrl },
         footer: NO_REPLY,
       }),
     };

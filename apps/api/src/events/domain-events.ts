@@ -41,6 +41,14 @@ export interface TestRunCasesAssignedEvent {
   runCaseIds: readonly string[];
 }
 
+export interface TestRunCompletedEvent {
+  organizationId: string;
+  projectId: string;
+  testRunId: string;
+  actorUserId: string;
+  completedAt: Date;
+}
+
 export interface DefectAssignedEvent {
   organizationId: string;
   projectId: string;
@@ -64,6 +72,7 @@ export interface DomainEventMap {
   'organization.invitation.issued': InvitationIssuedEvent;
   'user.password.changed': PasswordChangedEvent;
   'test_run.cases.assigned': TestRunCasesAssignedEvent;
+  'test_run.completed': TestRunCompletedEvent;
   'defect.assigned': DefectAssignedEvent;
   'defect.status.changed': DefectStatusChangedEvent;
 }

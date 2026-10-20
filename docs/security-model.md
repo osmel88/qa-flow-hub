@@ -159,6 +159,18 @@ and chapter 10 of the backend course. Summary:
 - `qaflow_app` has no `DELETE` on `releases`; archiving keeps every run, result
   and defect. Transitions take `FOR UPDATE`, attaching a run `FOR SHARE`.
 
+## Notification outbox
+
+- The worker claims rows through `claim_notification_deliveries()`, a
+  `SECURITY DEFINER` function that returns only `id` and `organizationId`;
+  content is read under the row's tenant with RLS in force (ADR 0020).
+- Preferences, membership and project visibility are re-checked on every
+  attempt; a recipient who lost access is skipped (`recipient_no_access`).
+- `payload` (which may hold an invitation token) is cleared on send or skip and
+  is never part of an API response.
+- Manual retry is owner/admin only, audited, and answers 404 for another
+  tenant's id exactly as for an unknown one.
+
 ## Transport and headers
 
 - Helmet: `X-Content-Type-Options`, `X-Frame-Options`, HSTS in production.

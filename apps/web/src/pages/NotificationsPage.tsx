@@ -5,8 +5,8 @@ import {
   type NotificationType,
   type NotificationView,
 } from '@qa-flow-hub/shared';
-import { Badge, type BadgeTone, DataState } from '@qa-flow-hub/ui';
-import { useQuery } from '@tanstack/react-query';
+import { Badge, type BadgeTone, Button, DataState } from '@qa-flow-hub/ui';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { notificationsApi } from '../api/endpoints';
@@ -29,7 +29,10 @@ function formatMoment(value: string | null): string {
 
 function outcomeOf(row: NotificationView): string {
   if (row.status === 'failed') {
-    return humanize(row.failureReason ?? 'rejected');
+    const reason = humanize(row.failureReason ?? 'rejected');
+    return row.nextAttemptAt === null
+      ? `${reason} — no more automatic retries`
+      : `${reason} — retry ${formatMoment(row.nextAttemptAt)}`;
   }
   if (row.status === 'skipped') {
     return humanize(row.skipReason ?? 'skipped');
@@ -91,6 +94,12 @@ export function NotificationsPage(): React.JSX.Element {
   const [scope, setScope] = useState<Scope>('mine');
   const [type, setType] = useState<NotificationType | ''>('');
   const [status, setStatus] = useState<NotificationStatus | ''>('');
+  const queryClient = useQueryClient();
+  const retry = useMutation({
+    mutationFn: (id: string) => notificationsApi.retry(id),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+  const canRetry = canInspect && scope === 'organization';
 
   const provider = useQuery({
     queryKey: ['notifications', activeOrganization?.id, 'provider'],
@@ -183,6 +192,11 @@ export function NotificationsPage(): React.JSX.Element {
           isEmpty={ledger.data?.data.length === 0}
           emptyMessage="No notifications yet."
         >
+          {retry.error !== null && (
+            <p className="ui-field__error" role="alert">
+              {retry.error instanceof Error ? retry.error.message : 'Retry failed'}
+            </p>
+          )}
           <table className="table">
             <thead>
               <tr>
@@ -193,6 +207,7 @@ export function NotificationsPage(): React.JSX.Element {
                 <th>Status</th>
                 <th>Outcome</th>
                 <th>Delivered</th>
+                {canRetry && <th aria-label="Actions" />}
               </tr>
             </thead>
             <tbody>
@@ -207,6 +222,22 @@ export function NotificationsPage(): React.JSX.Element {
                   </td>
                   <td>{outcomeOf(row)}</td>
                   <td>{formatMoment(row.deliveredAt)}</td>
+                  {canRetry && (
+                    <td>
+                      {row.status === 'failed' && (
+                        <Button
+                          variant="secondary"
+                          aria-label={`Retry ${row.subject}`}
+                          disabled={retry.isPending}
+                          onClick={() => {
+                            retry.mutate(row.id);
+                          }}
+                        >
+                          Retry now
+                        </Button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -19,6 +19,16 @@ export interface NotificationDraft {
   subject: string;
   dedupeKey: string;
   metadata: Record<string, string>;
+  /** Template variables a retry re-renders from. */
+  payload: Prisma.InputJsonValue;
+  /** The request that inserts the row owns the first attempt until then. */
+  leaseUntil: Date;
+}
+
+/** A row the outbox worker leased, before it is read under its own tenant. */
+export interface ClaimedNotification {
+  id: string;
+  organizationId: string | null;
 }
 
 /**
@@ -58,6 +68,8 @@ export class NotificationsRepository {
           subject: draft.subject,
           dedupeKey: draft.dedupeKey,
           metadata: draft.metadata,
+          payload: draft.payload,
+          leaseUntil: draft.leaseUntil,
           status: NotificationStatus.pending,
         },
       });
@@ -81,11 +93,20 @@ export class NotificationsRepository {
         attemptedAt: now,
         deliveredAt: now,
         failureReason: null,
+        payload: Prisma.DbNull,
+        leaseUntil: null,
+        nextAttemptAt: null,
       },
     });
   }
 
-  markFailed(id: string, provider: string, failureReason: string): Promise<Notification> {
+  /** `nextAttemptAt` null means the retry budget is spent. */
+  markFailed(
+    id: string,
+    provider: string,
+    failureReason: string,
+    nextAttemptAt: Date | null,
+  ): Promise<Notification> {
     return this.prisma.notification.update({
       where: { id },
       data: {
@@ -94,6 +115,8 @@ export class NotificationsRepository {
         attempts: { increment: 1 },
         attemptedAt: new Date(),
         failureReason,
+        leaseUntil: null,
+        nextAttemptAt,
       },
     });
   }
@@ -101,8 +124,77 @@ export class NotificationsRepository {
   markSkipped(id: string, skipReason: string): Promise<Notification> {
     return this.prisma.notification.update({
       where: { id },
-      data: { status: NotificationStatus.skipped, skipReason },
+      data: {
+        status: NotificationStatus.skipped,
+        skipReason,
+        payload: Prisma.DbNull,
+        leaseUntil: null,
+        nextAttemptAt: null,
+      },
     });
+  }
+
+  // --- Outbox ---------------------------------------------------------------
+
+  /**
+   * Leases due rows across every organization through the one SECURITY
+   * DEFINER function that may see them all; only ids and organizations come
+   * back. `SKIP LOCKED` plus the lease give each row to exactly one worker.
+   */
+  claimDue(batch: number, leaseSeconds: number): Promise<ClaimedNotification[]> {
+    return this.prismaService.scoped.$queryRaw<ClaimedNotification[]>`
+      SELECT id, "organizationId" FROM claim_notification_deliveries(${batch}::int, ${leaseSeconds}::int)`;
+  }
+
+  findById(id: string): Promise<Notification | null> {
+    return this.prisma.notification.findFirst({ where: { id } });
+  }
+
+  /**
+   * Takes the lease of a failed row for a manual retry. Returns false when
+   * the row is not failed or a worker holds it, so a retry never races a
+   * delivery already in flight.
+   */
+  async leaseFailed(id: string, leaseUntil: Date): Promise<boolean> {
+    const { count } = await this.prisma.notification.updateMany({
+      where: {
+        id,
+        status: NotificationStatus.failed,
+        payload: { not: Prisma.DbNull },
+        OR: [{ leaseUntil: null }, { leaseUntil: { lt: new Date() } }],
+      },
+      data: { leaseUntil },
+    });
+    return count === 1;
+  }
+
+  /**
+   * Whether the recipient can still see the project the message talks about:
+   * an active member of the organization who is owner/admin or holds a grant,
+   * and a project that still exists. Checked at send time, not at enqueue.
+   */
+  async recipientCanSeeProject(
+    organizationId: string,
+    userId: string,
+    projectId: string,
+  ): Promise<boolean> {
+    const [member, project] = await Promise.all([
+      this.prisma.organizationMember.findFirst({
+        where: { organizationId, userId, status: 'active', deletedAt: null },
+        select: { role: true },
+      }),
+      this.prisma.project.findFirst({
+        where: { id: projectId, organizationId, deletedAt: null },
+        select: { id: true },
+      }),
+    ]);
+    if (member === null || project === null) return false;
+    if (member.role === 'organization_owner' || member.role === 'organization_admin') return true;
+    const grant = await this.prisma.projectMember.findFirst({
+      where: { organizationId, projectId, userId },
+      select: { id: true },
+    });
+    return grant !== null;
   }
 
   /** What was addressed to one user inside the active organization. */
@@ -179,6 +271,42 @@ export class NotificationsRepository {
 
   findTestRunName(organizationId: string, id: string): Promise<{ name: string } | null> {
     return this.prisma.testRun.findFirst({ where: { id, organizationId }, select: { name: true } });
+  }
+
+  /** Totals of a completed run and who owns its failed cases. */
+  async findRunFailureSummary(
+    organizationId: string,
+    testRunId: string,
+  ): Promise<{
+    name: string;
+    createdById: string | null;
+    totalCases: number;
+    failedCases: number;
+    blockedCases: number;
+    failedAssigneeIds: string[];
+  } | null> {
+    const run = await this.prisma.testRun.findFirst({
+      where: { id: testRunId, organizationId, deletedAt: null },
+      select: { name: true, createdById: true },
+    });
+    if (run === null) return null;
+    const cases = await this.prisma.testRunCase.findMany({
+      where: { organizationId, testRunId },
+      select: { latestStatus: true, assignedToId: true },
+    });
+    const failed = cases.filter((item) => item.latestStatus === 'failed');
+    return {
+      name: run.name,
+      createdById: run.createdById,
+      totalCases: cases.length,
+      failedCases: failed.length,
+      blockedCases: cases.filter((item) => item.latestStatus === 'blocked').length,
+      failedAssigneeIds: [
+        ...new Set(
+          failed.map((item) => item.assignedToId).filter((id): id is string => id !== null),
+        ),
+      ],
+    };
   }
 
   findDefect(

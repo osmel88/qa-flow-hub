@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from '../common/pagination.js';
 import { PRIORITIES } from '../requirements/requirement.contracts.js';
+import {
+  CustomFieldValues,
+  customFieldFilterQuerySchema,
+  customFieldValuesInputSchema,
+} from '../customization/custom-field.contracts.js';
 
 export const DEFECT_SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'trivial'] as const;
 export type DefectSeverity = (typeof DEFECT_SEVERITIES)[number];
@@ -34,6 +39,7 @@ export const createDefectSchema = z.object({
    */
   testResultId: z.string().min(1).nullish(),
   requirementIds: z.array(z.string().min(1)).max(20).default([]),
+  customFields: customFieldValuesInputSchema.default({}),
 });
 export type CreateDefectInput = z.infer<typeof createDefectSchema>;
 
@@ -46,6 +52,8 @@ export const updateDefectSchema = z
     priority: z.enum(PRIORITIES).optional(),
     environment: z.string().trim().max(120).nullish(),
     assigneeId: z.string().min(1).nullish(),
+    /** Patch semantics: only the listed fields change, `null` clears one. */
+    customFields: customFieldValuesInputSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'Provide at least one field to update',
@@ -58,16 +66,18 @@ export const changeDefectStatusSchema = z.object({
 });
 export type ChangeDefectStatusInput = z.infer<typeof changeDefectStatusSchema>;
 
-export const listDefectsQuerySchema = paginationQuerySchema.extend({
-  projectId: z.string().min(1),
-  status: z.enum(DEFECT_STATUSES).optional(),
-  severity: z.enum(DEFECT_SEVERITIES).optional(),
-  priority: z.enum(PRIORITIES).optional(),
-  assigneeId: z.string().min(1).optional(),
-  testRunId: z.string().min(1).optional(),
-  open: z.enum(['true', 'false']).optional(),
-  search: z.string().trim().min(1).max(120).optional(),
-});
+export const listDefectsQuerySchema = paginationQuerySchema
+  .extend({
+    projectId: z.string().min(1),
+    status: z.enum(DEFECT_STATUSES).optional(),
+    severity: z.enum(DEFECT_SEVERITIES).optional(),
+    priority: z.enum(PRIORITIES).optional(),
+    assigneeId: z.string().min(1).optional(),
+    testRunId: z.string().min(1).optional(),
+    open: z.enum(['true', 'false']).optional(),
+    search: z.string().trim().min(1).max(120).optional(),
+  })
+  .merge(customFieldFilterQuerySchema);
 export type ListDefectsQuery = z.infer<typeof listDefectsQuerySchema>;
 
 export interface DefectView {
@@ -88,6 +98,7 @@ export interface DefectView {
   assigneeId: string | null;
   resolvedAt: string | null;
   closedAt: string | null;
+  customFields: CustomFieldValues;
   createdAt: string;
   updatedAt: string;
 }

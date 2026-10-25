@@ -6,6 +6,8 @@ import { testDesignApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { CoverageLinks } from '../components/CoverageLinks';
 import { PageHeader } from '../components/PageHeader';
+import { CustomFieldInputs, useCustomFields } from '../components/CustomFieldInputs';
+import type { CustomFieldDraft } from '../components/CustomFieldInputs';
 
 interface DraftStep {
   action: string;
@@ -31,14 +33,18 @@ export function TestCaseEditorPage(): React.JSX.Element {
   // query may not have refetched yet, and a stale number here is exactly how a
   // display bug hides a real one.
   const [savedVersion, setSavedVersion] = useState<number | null>(null);
+  const [customDraft, setCustomDraft] = useState<CustomFieldDraft>({});
 
   const detail = useQuery({
     queryKey: ['case', caseId],
     queryFn: () => testDesignApi.case(caseId),
   });
 
+  const customFields = useCustomFields(detail.data?.projectId ?? null, 'test_case');
+
   useEffect(() => {
     if (detail.data !== undefined) {
+      setCustomDraft({});
       setTitle(detail.data.title);
       setSteps(
         detail.data.steps.map((step) => ({
@@ -59,6 +65,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
           action: step.action,
           expectedResult: step.expectedResult === '' ? null : step.expectedResult,
         })),
+        ...(Object.keys(customDraft).length === 0 ? {} : { customFields: customDraft }),
       }),
     onSuccess: async (updated) => {
       setError(null);
@@ -145,6 +152,16 @@ export function TestCaseEditorPage(): React.JSX.Element {
               </li>
             ))}
           </ol>
+
+          <CustomFieldInputs
+            fields={customFields}
+            values={detail.data?.customFields ?? {}}
+            draft={customDraft}
+            onChange={(draft) => {
+              setCustomDraft(draft);
+              setSavedVersion(null);
+            }}
+          />
 
           <div className="row-actions">
             <Button

@@ -122,6 +122,7 @@ export function TestCasesPage(): React.JSX.Element {
         automationStatus: 'manual',
         tags: [],
         steps: [],
+        customFields: {},
       }),
     onSuccess: async () => {
       setCaseTitle('');

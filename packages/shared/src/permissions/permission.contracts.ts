@@ -37,6 +37,7 @@ export const PERMISSION_MODULES = [
   'exports',
   'automation',
   'releases',
+  'customization',
 ] as const;
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
 
@@ -71,6 +72,7 @@ export const PERMISSIONS = [
   'api_keys.manage',
   'releases.read',
   'releases.manage',
+  'customization.manage',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -259,6 +261,12 @@ export const PERMISSION_CATALOG: readonly PermissionDescriptor[] = [
     label: 'Manage',
     description: 'Create, edit, start, release and archive releases',
   },
+  {
+    permission: 'customization.manage',
+    module: 'customization',
+    label: 'Manage',
+    description: 'Define custom fields and configure the defect workflow of the project',
+  },
 ];
 
 export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
@@ -276,6 +284,7 @@ export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
   exports: 'Exports',
   automation: 'Automation',
   releases: 'Releases',
+  customization: 'Customization',
 };
 
 const READ_ONLY: readonly Permission[] = [
@@ -319,6 +328,7 @@ const PROJECT_MANAGER: readonly Permission[] = [
   'project.manage',
   'api_keys.manage',
   'releases.manage',
+  'customization.manage',
 ];
 
 const ORGANIZATION_ADMIN: readonly Permission[] = [

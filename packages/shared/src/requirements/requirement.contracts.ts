@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from '../common/pagination.js';
+import {
+  CustomFieldValues,
+  customFieldFilterQuerySchema,
+  customFieldValuesInputSchema,
+} from '../customization/custom-field.contracts.js';
 
 export const REQUIREMENT_TYPES = [
   'user_story',
@@ -40,6 +45,7 @@ export const createRequirementSchema = z.object({
   type: z.enum(REQUIREMENT_TYPES).default('user_story'),
   priority: z.enum(PRIORITIES).default('medium'),
   tags: tagsSchema.default([]),
+  customFields: customFieldValuesInputSchema.default({}),
 });
 export type CreateRequirementInput = z.infer<typeof createRequirementSchema>;
 
@@ -57,6 +63,8 @@ export const updateRequirementSchema = z
     type: z.enum(REQUIREMENT_TYPES).optional(),
     priority: z.enum(PRIORITIES).optional(),
     tags: tagsSchema.optional(),
+    /** Patch semantics: only the listed fields change, `null` clears one. */
+    customFields: customFieldValuesInputSchema.optional(),
   })
   // Unknown keys are stripped, so a body of only `status` would arrive empty.
   // Rejecting that is more honest than silently doing nothing and appending a
@@ -71,14 +79,16 @@ export const changeRequirementStatusSchema = z.object({
 });
 export type ChangeRequirementStatusInput = z.infer<typeof changeRequirementStatusSchema>;
 
-export const listRequirementsQuerySchema = paginationQuerySchema.extend({
-  projectId: z.string().min(1),
-  status: z.enum(REQUIREMENT_STATUSES).optional(),
-  type: z.enum(REQUIREMENT_TYPES).optional(),
-  priority: z.enum(PRIORITIES).optional(),
-  tag: z.string().trim().toLowerCase().min(1).max(32).optional(),
-  search: z.string().trim().min(1).max(120).optional(),
-});
+export const listRequirementsQuerySchema = paginationQuerySchema
+  .extend({
+    projectId: z.string().min(1),
+    status: z.enum(REQUIREMENT_STATUSES).optional(),
+    type: z.enum(REQUIREMENT_TYPES).optional(),
+    priority: z.enum(PRIORITIES).optional(),
+    tag: z.string().trim().toLowerCase().min(1).max(32).optional(),
+    search: z.string().trim().min(1).max(120).optional(),
+  })
+  .merge(customFieldFilterQuerySchema);
 export type ListRequirementsQuery = z.infer<typeof listRequirementsQuerySchema>;
 
 export interface RequirementView {
@@ -92,6 +102,7 @@ export interface RequirementView {
   priority: PriorityValue;
   status: RequirementStatus;
   tags: string[];
+  customFields: CustomFieldValues;
   createdById: string | null;
   createdAt: string;
   updatedAt: string;

@@ -195,6 +195,22 @@ and chapter 10 of the backend course. Summary:
 - MFA tables have no `organizationId` and no RLS, like `users` and `sessions`;
   audit entries for MFA are written with `organizationId = null`.
 
+## Custom fields and defect workflow
+
+- Definitions and workflows carry `organizationId` and are under RLS like
+  every tenant table; the app role has no `DELETE` on them (archive only).
+- Values are keyed by definition id and validated in the same transaction
+  against definitions locked `FOR SHARE`. An id from another project or tenant
+  is refused as unknown, so values can never reference a foreign definition
+  and the error does not reveal whether that id exists elsewhere.
+- Filters by a field that is not in the project return an empty page, not an
+  error, so ids cannot be probed through listings.
+- Definitions and workflows of a hidden project answer like a missing one
+  (ADR 0017). Defining them needs `customization.manage`.
+- A configured transition can demand `defects.manage`; the check runs after
+  the defect is locked, so a role change or workflow save mid-request never
+  lets a stale rule through.
+
 ## Transport and headers
 
 - Helmet: `X-Content-Type-Options`, `X-Frame-Options`, HSTS in production.

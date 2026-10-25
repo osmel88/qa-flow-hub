@@ -1157,3 +1157,23 @@ caller's own tenant, never of another one.
   the account out for `AUTH_LOCKOUT_MINUTES` (same trade-off as debt on login).
 - **SSO/SAML/SCIM (3.1)** remain out of scope: they need a real identity
   provider.
+
+## 44. Custom fields and workflows: what S3-F7 leaves (S3-F7)
+
+- **Validation is in the service.** The database only checks that
+  `customFields` is a JSON object; a raw SQL writer could store an invalid or
+  foreign value. A trigger per entity would close it at a performance cost.
+- **One filter at a time.** Lists accept a single `customField` /
+  `customFieldValue` pair with exact match (containment for multi-select); no
+  ranges for numbers or dates, no sorting by a custom field.
+- **Not in imports, exports or analytics.** CSV import/export (S3-F1),
+  ingestion and dashboards ignore custom fields.
+- **Only defects have a configurable workflow.** Requirements, test cases and
+  runs keep their fixed statuses.
+- **Transition rules are coarse.** A transition can require
+  `defects.create` or `defects.manage` and filled fields; no per-role lists,
+  no conditions on values, no automatic actions on transition.
+- **Required fields apply on write, not retroactively.** Making a field
+  required does not flag existing entities that lack it until they are edited.
+- **Field order has no UI.** Definitions carry a `position` (new fields go
+  last, `PATCH` can change it), but the web has no reordering control.

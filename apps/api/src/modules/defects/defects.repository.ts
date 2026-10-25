@@ -14,6 +14,8 @@ export interface DefectFilters {
   testRunId?: string;
   open?: boolean;
   search?: string;
+  customFields?: Prisma.DefectWhereInput['customFields'];
+  none?: boolean;
 }
 
 /** Anything not closed or rejected still costs the team something. */
@@ -35,6 +37,15 @@ export class DefectsRepository extends TenantAwareRepository {
     return (tx ?? this.prisma).defect.findFirst({ where: this.active({ id }) });
   }
 
+  /** Serialises status moves and custom field patches of one defect. */
+  async lock(id: string, tx: PrismaTransaction): Promise<Defect | null> {
+    await tx.$queryRaw`
+      SELECT "id" FROM "defects"
+      WHERE "id" = ${id} AND "organizationId" = ${this.organizationId}
+      FOR UPDATE`;
+    return this.findById(id, tx);
+  }
+
   async liveRequirementIds(projectId: string, ids: readonly string[]): Promise<string[]> {
     const rows = await this.prisma.requirement.findMany({
       where: this.active({ projectId, id: { in: [...ids] } }),
@@ -54,6 +65,8 @@ export class DefectsRepository extends TenantAwareRepository {
   async list(query: PaginationQuery, filters: DefectFilters): Promise<Paginated<Defect>> {
     const where: Prisma.DefectWhereInput = this.active({
       projectId: filters.projectId,
+      ...(filters.none === true ? { id: { in: [] } } : {}),
+      ...(filters.customFields === undefined ? {} : { customFields: filters.customFields }),
       ...(filters.status === undefined ? {} : { status: filters.status }),
       ...(filters.severity === undefined ? {} : { severity: filters.severity }),
       ...(filters.priority === undefined ? {} : { priority: filters.priority }),

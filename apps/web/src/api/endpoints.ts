@@ -1,4 +1,10 @@
 import type {
+  CreateCustomFieldInput,
+  CustomFieldEntity,
+  CustomFieldView,
+  DefectWorkflowView,
+  UpdateCustomFieldInput,
+  UpdateDefectWorkflowInput,
   CreateReleaseInput,
   ListReleasesQuery,
   ReleaseSummaryView,
@@ -576,4 +582,30 @@ export const releasesApi = {
     apiFetch<ReleaseView>(`/releases/${id}/${action}`, { method: 'POST' }),
   summary: (id: string) => apiFetch<ReleaseSummaryView>(`/releases/${id}/summary`),
   traceability: (id: string) => apiFetch<ReleaseTraceabilityView>(`/releases/${id}/traceability`),
+};
+
+export const customFieldsApi = {
+  list: (projectId: string, entityType?: CustomFieldEntity, includeArchived = false) =>
+    apiFetch<CustomFieldView[]>(
+      `/custom-fields${query({
+        projectId,
+        ...(entityType === undefined ? {} : { entityType }),
+        includeArchived: String(includeArchived),
+      })}`,
+    ),
+  create: (body: CreateCustomFieldInput) =>
+    apiFetch<CustomFieldView>('/custom-fields', { method: 'POST', body }),
+  update: (id: string, body: UpdateCustomFieldInput) =>
+    apiFetch<CustomFieldView>(`/custom-fields/${id}`, { method: 'PATCH', body }),
+  archive: (id: string) =>
+    apiFetch<CustomFieldView>(`/custom-fields/${id}/archive`, { method: 'POST' }),
+  restore: (id: string) =>
+    apiFetch<CustomFieldView>(`/custom-fields/${id}/restore`, { method: 'POST' }),
+};
+
+export const defectWorkflowApi = {
+  get: (projectId: string) =>
+    apiFetch<DefectWorkflowView>(`/defect-workflow${query({ projectId })}`),
+  update: (body: UpdateDefectWorkflowInput) =>
+    apiFetch<DefectWorkflowView>('/defect-workflow', { method: 'PUT', body }),
 };

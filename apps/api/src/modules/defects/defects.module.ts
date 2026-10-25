@@ -1,3 +1,4 @@
+import { CustomizationModule } from '../customization/customization.module';
 import { Module } from '@nestjs/common';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { ProjectsModule } from '../projects/projects.module';
@@ -7,7 +8,7 @@ import { DefectsRepository } from './defects.repository';
 import { DefectsService } from './defects.service';
 
 @Module({
-  imports: [ProjectsModule, OrganizationsModule, TraceabilityLinksModule],
+  imports: [CustomizationModule, ProjectsModule, OrganizationsModule, TraceabilityLinksModule],
   controllers: [DefectsController],
   providers: [DefectsService, DefectsRepository],
   exports: [DefectsService, DefectsRepository],

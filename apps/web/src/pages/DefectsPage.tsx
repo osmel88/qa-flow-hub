@@ -1,13 +1,25 @@
 import { DEFECT_SEVERITIES, DEFECT_STATUSES } from '@qa-flow-hub/shared';
-import type { DefectView, ExternalReferenceView } from '@qa-flow-hub/shared';
+import type {
+  CustomFieldView,
+  DefectView,
+  ExternalReferenceView,
+  WorkflowTransition,
+} from '@qa-flow-hub/shared';
 import { Badge, Button, DataState, SelectField, TextAreaField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { defectsApi } from '../api/endpoints';
+import { defectWorkflowApi, defectsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { AttachmentsPanel } from '../components/AttachmentsPanel';
 import { JiraSyncCell, useJiraReferences } from '../components/JiraSyncCell';
 import { PageHeader } from '../components/PageHeader';
+import {
+  CustomFieldInputs,
+  CustomFieldSummary,
+  draftForCreate,
+  useCustomFields,
+} from '../components/CustomFieldInputs';
+import type { CustomFieldDraft } from '../components/CustomFieldInputs';
 import { humanize, toneFor } from '../components/status';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
@@ -21,6 +33,13 @@ export function DefectsPage(): React.JSX.Element {
   const [severity, setSeverity] = useState('major');
   const [error, setError] = useState<string | null>(null);
   const [evidenceFor, setEvidenceFor] = useState<string | null>(null);
+  const [customDraft, setCustomDraft] = useState<CustomFieldDraft>({});
+  const customFields = useCustomFields(activeProjectId, 'defect');
+  const workflow = useQuery({
+    queryKey: ['defect-workflow', activeProjectId],
+    queryFn: () => defectWorkflowApi.get(activeProjectId ?? ''),
+    enabled: activeProjectId !== null,
+  });
 
   const list = useQuery({
     queryKey: ['defects', activeProjectId, status],
@@ -42,8 +61,10 @@ export function DefectsPage(): React.JSX.Element {
         severity: severity as 'major',
         priority: 'medium',
         requirementIds: [],
+        customFields: draftForCreate(customDraft),
       }),
     onSuccess: async () => {
+      setCustomDraft({});
       setTitle('');
       setDescription('');
       setError(null);
@@ -62,8 +83,8 @@ export function DefectsPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['defects'] });
     },
     onError: (cause) => {
-      // Only the API knows which transitions are legal; repeating the state
-      // machine here would be a second source of truth that drifts.
+      // The menu offers the project's workflow, but the API decides: the
+      // workflow may have changed, or the move may need a field or a role.
       setError(cause instanceof ApiError ? cause.message : 'Could not change the status.');
     },
   });
@@ -108,6 +129,12 @@ export function DefectsPage(): React.JSX.Element {
           onChange={(event) => {
             setSeverity(event.target.value);
           }}
+        />
+        <CustomFieldInputs
+          fields={customFields}
+          values={{}}
+          draft={customDraft}
+          onChange={setCustomDraft}
         />
         <Button
           loading={create.isPending}
@@ -166,6 +193,8 @@ export function DefectsPage(): React.JSX.Element {
                   changeStatus.mutate({ id: defect.id, status: value });
                 }}
                 jiraReference={jiraReferences.data?.get(defect.id)}
+                transitions={workflow.data?.transitions}
+                customFields={customFields}
               />
             ))}
           </tbody>
@@ -181,6 +210,8 @@ interface DefectRowProps {
   onToggleEvidence: () => void;
   onChangeStatus: (status: string) => void;
   jiraReference: ExternalReferenceView | undefined;
+  transitions: WorkflowTransition[] | undefined;
+  customFields: CustomFieldView[];
 }
 
 function DefectRow({
@@ -189,14 +220,24 @@ function DefectRow({
   onToggleEvidence,
   onChangeStatus,
   jiraReference,
+  transitions,
+  customFields,
 }: DefectRowProps): React.JSX.Element {
+  const targets =
+    transitions === undefined
+      ? DEFECT_STATUSES.filter((value) => value !== defect.status)
+      : transitions.filter((item) => item.from === defect.status).map((item) => item.to);
   return (
     <>
       <tr>
         <td>
           <code>{defect.key}</code>
         </td>
-        <td>{defect.title}</td>
+        <td>
+          {defect.title}
+          <br />
+          <CustomFieldSummary fields={customFields} values={defect.customFields} />
+        </td>
         <td>
           <Badge tone={toneFor(defect.severity)}>{humanize(defect.severity)}</Badge>
         </td>
@@ -216,7 +257,7 @@ function DefectRow({
             }}
           >
             <option value="">Choose…</option>
-            {DEFECT_STATUSES.filter((value) => value !== defect.status).map((value) => (
+            {targets.map((value) => (
               <option key={value} value={value}>
                 {humanize(value)}
               </option>

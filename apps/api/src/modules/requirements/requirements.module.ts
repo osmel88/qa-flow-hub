@@ -1,3 +1,4 @@
+import { CustomizationModule } from '../customization/customization.module';
 import { Module } from '@nestjs/common';
 import { ProjectsModule } from '../projects/projects.module';
 import { TraceabilityLinksModule } from '../traceability/traceability-links.module';
@@ -8,7 +9,7 @@ import { RequirementsService } from './requirements.service';
 @Module({
   // Imported for `ProjectsRepository.nextKey`, which reserves the readable key
   // inside this module's transaction.
-  imports: [ProjectsModule, TraceabilityLinksModule],
+  imports: [CustomizationModule, ProjectsModule, TraceabilityLinksModule],
   controllers: [RequirementsController],
   providers: [RequirementsService, RequirementsRepository],
   exports: [RequirementsService, RequirementsRepository],

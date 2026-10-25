@@ -19,6 +19,11 @@ import {
 import { PrismaService } from '../../database/prisma.service';
 import { ConflictError, NotFoundError } from '../../errors';
 import { AuditService } from '../audit/audit.service';
+import {
+  CustomFieldValuesService,
+  customFieldWhere,
+  storedValues,
+} from '../customization/custom-field-values.service';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { TraceabilityLinksRepository } from '../traceability/traceability-links.repository';
@@ -49,6 +54,7 @@ export class RequirementsService {
     private readonly links: TraceabilityLinksRepository,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly customValues: CustomFieldValuesService,
   ) {}
 
   async create(input: CreateRequirementInput, userId: string): Promise<RequirementView> {
@@ -62,6 +68,13 @@ export class RequirementsService {
     // back with the requirement it was reserved for. Otherwise a failed create
     // leaves a permanent hole in the numbering.
     const requirement = await this.prisma.runInTransaction(async (tx) => {
+      const customFields = await this.customValues.resolve(
+        project.id,
+        'requirement',
+        input.customFields,
+        null,
+        tx,
+      );
       const key = await this.projects.nextKey(project.id, 'requirementCounter', 'R', tx);
 
       const created = await this.requirements.create(
@@ -78,6 +91,7 @@ export class RequirementsService {
           type: input.type,
           priority: input.priority,
           tags: input.tags,
+          customFields: customFields,
           createdById: userId,
         },
         tx,
@@ -105,8 +119,12 @@ export class RequirementsService {
     if (projectId === null) {
       return { data: [], meta: buildPaginationMeta(query, 0) };
     }
+    const customFilter = customFieldWhere(
+      await this.customValues.filter(projectId, 'requirement', query),
+    );
     const page = await this.requirements.list(query, {
       projectId,
+      ...customFilter,
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.type === undefined ? {} : { type: query.type }),
       ...(query.priority === undefined ? {} : { priority: query.priority }),
@@ -129,9 +147,25 @@ export class RequirementsService {
     const existing = await this.require(id);
 
     const updated = await this.prisma.runInTransaction(async (tx) => {
+      const before = await this.requirements.lockCustomFields(id, tx);
+      const customFields =
+        input.customFields === undefined
+          ? undefined
+          : await this.customValues.resolve(
+              existing.projectId,
+              'requirement',
+              input.customFields,
+              before,
+              tx,
+            );
+      const customChanges =
+        customFields === undefined ? {} : CustomFieldValuesService.diff(before, customFields);
       const row = await this.requirements.update(
         id,
         {
+          ...(customFields === undefined
+            ? {}
+            : { customFields: customFields }),
           ...(input.title === undefined ? {} : { title: input.title }),
           ...(input.description === undefined ? {} : { description: input.description }),
           ...(input.acceptanceCriteria === undefined
@@ -157,7 +191,12 @@ export class RequirementsService {
           entityType: 'Requirement',
           entityId: id,
           summary: `Updated ${row.key}`,
-          changes: changedFields(existing, row),
+          changes: {
+            ...(changedFields(existing, row) as Record<string, Prisma.InputJsonValue>),
+            ...(Object.keys(customChanges).length === 0
+              ? {}
+              : { customFields: customChanges as unknown as Prisma.InputJsonValue }),
+          },
         },
         tx,
       );
@@ -297,6 +336,7 @@ export function toRequirementView(requirement: Requirement): RequirementView {
     priority: requirement.priority,
     status: requirement.status,
     tags: requirement.tags,
+    customFields: storedValues(requirement.customFields),
     createdById: requirement.createdById,
     createdAt: requirement.createdAt.toISOString(),
     updatedAt: requirement.updatedAt.toISOString(),

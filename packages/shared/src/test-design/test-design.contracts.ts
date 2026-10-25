@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from '../common/pagination.js';
 import { PRIORITIES, tagsSchema } from '../requirements/requirement.contracts.js';
+import {
+  CustomFieldValues,
+  customFieldFilterQuerySchema,
+  customFieldValuesInputSchema,
+} from '../customization/custom-field.contracts.js';
 
 export const TEST_CASE_TYPES = [
   'functional',
@@ -130,6 +135,7 @@ export const createTestCaseSchema = z.object({
   estimateMinutes: z.number().int().min(1).max(10_000).nullish(),
   tags: tagsSchema.default([]),
   steps: z.array(testStepSchema).max(100).default([]),
+  customFields: customFieldValuesInputSchema.default({}),
 });
 export type CreateTestCaseInput = z.infer<typeof createTestCaseSchema>;
 
@@ -151,6 +157,8 @@ export const updateTestCaseSchema = z
      * save is one version. Omitted, the steps are left alone.
      */
     steps: z.array(testStepSchema).max(100).optional(),
+    /** Patch semantics: only the listed fields change, `null` clears one. */
+    customFields: customFieldValuesInputSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'Provide at least one field to update',
@@ -163,23 +171,25 @@ export const duplicateTestCaseSchema = z.object({
 });
 export type DuplicateTestCaseInput = z.infer<typeof duplicateTestCaseSchema>;
 
-export const listTestCasesQuerySchema = paginationQuerySchema.extend({
-  projectId: z.string().min(1),
-  suiteId: z.string().min(1).optional(),
-  sectionId: z.string().min(1).optional(),
-  status: z.enum(TEST_CASE_STATUSES).optional(),
-  type: z.enum(TEST_CASE_TYPES).optional(),
-  priority: z.enum(PRIORITIES).optional(),
-  automationStatus: z.enum(AUTOMATION_STATUSES).optional(),
-  tag: z.string().trim().toLowerCase().min(1).max(32).optional(),
-  search: z.string().trim().min(1).max(120).optional(),
-  /**
-   * Query strings have no booleans. Kept as a literal union instead of a
-   * transform so the schema's input and output types stay identical, which is
-   * what lets the same schema be reused on the client.
-   */
-  includeArchived: z.enum(['true', 'false']).default('false'),
-});
+export const listTestCasesQuerySchema = paginationQuerySchema
+  .extend({
+    projectId: z.string().min(1),
+    suiteId: z.string().min(1).optional(),
+    sectionId: z.string().min(1).optional(),
+    status: z.enum(TEST_CASE_STATUSES).optional(),
+    type: z.enum(TEST_CASE_TYPES).optional(),
+    priority: z.enum(PRIORITIES).optional(),
+    automationStatus: z.enum(AUTOMATION_STATUSES).optional(),
+    tag: z.string().trim().toLowerCase().min(1).max(32).optional(),
+    search: z.string().trim().min(1).max(120).optional(),
+    /**
+     * Query strings have no booleans. Kept as a literal union instead of a
+     * transform so the schema's input and output types stay identical, which is
+     * what lets the same schema be reused on the client.
+     */
+    includeArchived: z.enum(['true', 'false']).default('false'),
+  })
+  .merge(customFieldFilterQuerySchema);
 export type ListTestCasesQuery = z.infer<typeof listTestCasesQuerySchema>;
 
 export interface TestCaseView {
@@ -199,6 +209,7 @@ export interface TestCaseView {
   estimateMinutes: number | null;
   tags: string[];
   version: number;
+  customFields: CustomFieldValues;
   archivedAt: string | null;
   createdById: string | null;
   createdAt: string;

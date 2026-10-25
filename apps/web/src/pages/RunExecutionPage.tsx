@@ -102,6 +102,7 @@ export function RunExecutionPage(): React.JSX.Element {
         priority: 'high',
         testResultId: input.resultId,
         requirementIds: [],
+        customFields: {},
       }),
     onSuccess: () => {
       setDefectFor(null);

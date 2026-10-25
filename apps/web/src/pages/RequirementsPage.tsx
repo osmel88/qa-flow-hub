@@ -7,6 +7,12 @@ import { ApiError } from '../api/http-client';
 import { CoverageLinks } from '../components/CoverageLinks';
 import { JiraSyncCell, useJiraReferences } from '../components/JiraSyncCell';
 import { PageHeader } from '../components/PageHeader';
+import {
+  CustomFieldInputs,
+  draftForCreate,
+  useCustomFields,
+} from '../components/CustomFieldInputs';
+import type { CustomFieldDraft } from '../components/CustomFieldInputs';
 import { humanize, toneFor } from '../components/status';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
@@ -24,6 +30,8 @@ export function RequirementsPage(): React.JSX.Element {
   const [type, setType] = useState<string>('functional');
   const [priority, setPriority] = useState<string>('medium');
   const [error, setError] = useState<string | null>(null);
+  const [customDraft, setCustomDraft] = useState<CustomFieldDraft>({});
+  const customFields = useCustomFields(activeProjectId, 'requirement');
   // One requirement at a time: the panel is an editor, and two open at once
   // invites linking a case to the requirement the user was not looking at.
   const [coverageFor, setCoverageFor] = useState<string | null>(null);
@@ -49,8 +57,10 @@ export function RequirementsPage(): React.JSX.Element {
         type: type as 'functional',
         priority: priority as 'medium',
         tags: [],
+        customFields: draftForCreate(customDraft),
       }),
     onSuccess: async () => {
+      setCustomDraft({});
       setTitle('');
       setDescription('');
       setError(null);
@@ -121,6 +131,12 @@ export function RequirementsPage(): React.JSX.Element {
             }}
           />
         </div>
+        <CustomFieldInputs
+          fields={customFields}
+          values={{}}
+          draft={customDraft}
+          onChange={setCustomDraft}
+        />
         <Button
           loading={create.isPending}
           disabled={title.trim().length < 3}

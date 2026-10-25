@@ -1,3 +1,4 @@
+import { CustomizationModule } from '../customization/customization.module';
 import { Module } from '@nestjs/common';
 import { ProjectsModule } from '../projects/projects.module';
 import { TraceabilityLinksModule } from '../traceability/traceability-links.module';
@@ -6,7 +7,7 @@ import { TestDesignRepository } from './test-design.repository';
 import { TestDesignService } from './test-design.service';
 
 @Module({
-  imports: [ProjectsModule, TraceabilityLinksModule],
+  imports: [CustomizationModule, ProjectsModule, TraceabilityLinksModule],
   controllers: [TestDesignController],
   providers: [TestDesignService, TestDesignRepository],
   exports: [TestDesignService, TestDesignRepository],

@@ -426,33 +426,35 @@ model Organization {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  members             OrganizationMember[]
-  invitations         OrganizationInvitation[]
-  projects            Project[]
-  requirements        Requirement[]
-  testSuites          TestSuite[]
-  testSections        TestSection[]
-  testCases           TestCase[]
-  testSteps           TestStep[]
-  testRuns            TestRun[]
-  testRunCases        TestRunCase[]
-  testResults         TestResult[]
-  defects             Defect[]
-  attachments         AttachmentMetadata[]
-  traceabilityLinks   TraceabilityLink[]
-  auditLogs           AuditLog[]
-  integrations        IntegrationConnection[]
-  externalReferences  ExternalReference[]
-  projectMemberships  ProjectMember[]
-  permissionOverrides ProjectPermissionOverride[]
-  notifications       Notification[]
-  billingCustomer     BillingCustomer?
-  subscription        Subscription?
-  invoices            Invoice[]
-  importJobs          ImportJob[]
-  apiKeys             ApiKey[]
-  ingestionReports    IngestionReport[]
-  releases            Release[]
+  members                OrganizationMember[]
+  invitations            OrganizationInvitation[]
+  projects               Project[]
+  requirements           Requirement[]
+  testSuites             TestSuite[]
+  testSections           TestSection[]
+  testCases              TestCase[]
+  testSteps              TestStep[]
+  testRuns               TestRun[]
+  testRunCases           TestRunCase[]
+  testResults            TestResult[]
+  defects                Defect[]
+  attachments            AttachmentMetadata[]
+  traceabilityLinks      TraceabilityLink[]
+  auditLogs              AuditLog[]
+  integrations           IntegrationConnection[]
+  externalReferences     ExternalReference[]
+  projectMemberships     ProjectMember[]
+  permissionOverrides    ProjectPermissionOverride[]
+  notifications          Notification[]
+  billingCustomer        BillingCustomer?
+  subscription           Subscription?
+  invoices               Invoice[]
+  importJobs             ImportJob[]
+  apiKeys                ApiKey[]
+  ingestionReports       IngestionReport[]
+  releases               Release[]
+  customFieldDefinitions CustomFieldDefinition[]
+  defectWorkflows        DefectWorkflow[]
 
   @@index([deletedAt])
   @@map("organizations")
@@ -547,17 +549,19 @@ model Project {
   archivedAt DateTime?
   deletedAt  DateTime?
 
-  members             ProjectMember[]
-  permissionOverrides ProjectPermissionOverride[]
-  requirements        Requirement[]
-  testSuites          TestSuite[]
-  testCases           TestCase[]
-  testRuns            TestRun[]
-  defects             Defect[]
-  importJobs          ImportJob[]
-  apiKeys             ApiKey[]
-  ingestionReports    IngestionReport[]
-  releases            Release[]
+  members                ProjectMember[]
+  permissionOverrides    ProjectPermissionOverride[]
+  requirements           Requirement[]
+  testSuites             TestSuite[]
+  testCases              TestCase[]
+  testRuns               TestRun[]
+  defects                Defect[]
+  importJobs             ImportJob[]
+  apiKeys                ApiKey[]
+  ingestionReports       IngestionReport[]
+  releases               Release[]
+  customFieldDefinitions CustomFieldDefinition[]
+  defectWorkflow         DefectWorkflow?
 
   @@unique([organizationId, key])
   @@index([organizationId, status])
@@ -633,6 +637,8 @@ model Requirement {
   priority           Priority          @default(medium)
   status             RequirementStatus @default(draft)
   tags               String[]          @default([])
+  /// Custom field values keyed by definition id (S3-F7).
+  customFields       Json              @default("{}")
 
   createdById String?
   createdAt   DateTime  @default(now())
@@ -746,6 +752,8 @@ model TestCase {
   /// Incremented on every edit. Copied into the run snapshot so a report can
   /// state which version of the case was executed.
   version          Int              @default(1)
+  /// Custom field values keyed by definition id (S3-F7).
+  customFields     Json             @default("{}")
 
   createdById String?
   createdAt   DateTime  @default(now())
@@ -924,8 +932,10 @@ model Defect {
   assigneeId   String?
   assignee     User?   @relation("DefectAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
 
-  resolvedAt DateTime?
-  closedAt   DateTime?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  /// Custom field values keyed by definition id (S3-F7).
+  customFields Json      @default("{}")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1421,4 +1431,68 @@ model Release {
   @@unique([id, projectId])
   @@index([organizationId, projectId, status])
   @@map("releases")
+}
+
+// ---------------------------------------------------------------------------
+// Custom fields and defect workflow (S3-F7)
+// ---------------------------------------------------------------------------
+
+enum CustomFieldEntity {
+  requirement
+  test_case
+  defect
+}
+
+enum CustomFieldType {
+  text
+  number
+  boolean
+  date
+  select
+  multi_select
+}
+
+/// A field a project adds to one entity type. Archived, never deleted: values
+/// stored under it keep their meaning.
+model CustomFieldDefinition {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String
+  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  entityType     CustomFieldEntity
+  key            String
+  label          String
+  description    String?
+  type           CustomFieldType
+  required       Boolean           @default(false)
+  /// [{ id, label, archived }] for select types, [] otherwise.
+  options        Json              @default("[]")
+  position       Int               @default(0)
+  archivedAt     DateTime?
+  createdById    String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([projectId, entityType, key])
+  @@index([organizationId, projectId, entityType])
+  @@map("custom_field_definitions")
+}
+
+/// The defect transitions of one project. Absent: the built-in workflow.
+model DefectWorkflow {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String       @unique
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// [{ from, to, permission, requiredFieldIds }]
+  transitions    Json
+  version        Int          @default(1)
+  updatedById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@map("defect_workflows")
 }

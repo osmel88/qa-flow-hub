@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AuditAction, TestCase, TestSection, TestStep, TestSuite } from '@prisma/client';
+import { AuditAction, Prisma, TestCase, TestSection, TestStep, TestSuite } from '@prisma/client';
 import {
   CreateSectionInput,
   CreateSuiteInput,
@@ -26,6 +26,11 @@ import {
   ValidationError,
 } from '../../errors';
 import { AuditService } from '../audit/audit.service';
+import {
+  CustomFieldValuesService,
+  customFieldWhere,
+  storedValues,
+} from '../customization/custom-field-values.service';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { TraceabilityLinksRepository } from '../traceability/traceability-links.repository';
@@ -46,6 +51,7 @@ export class TestDesignService {
     private readonly links: TraceabilityLinksRepository,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly customValues: CustomFieldValuesService,
   ) {}
 
   // --- Suites --------------------------------------------------------------
@@ -257,6 +263,13 @@ export class TestDesignService {
     const sectionId = await this.resolveSectionId(suite.id, input.sectionId);
 
     const created = await this.prisma.runInTransaction(async (tx) => {
+      const customFields = await this.customValues.resolve(
+        suite.projectId,
+        'test_case',
+        input.customFields,
+        null,
+        tx,
+      );
       const key = await this.projects.nextKey(suite.projectId, 'testCaseCounter', 'C', tx);
 
       const testCase = await this.repository.createCase(
@@ -276,6 +289,7 @@ export class TestDesignService {
             ? {}
             : { estimateMinutes: input.estimateMinutes }),
           tags: input.tags,
+          customFields: customFields,
           createdById: userId,
         },
         tx,
@@ -304,8 +318,12 @@ export class TestDesignService {
     if (projectId === null) {
       return { data: [], meta: buildPaginationMeta(query, 0) };
     }
+    const customFilter = customFieldWhere(
+      await this.customValues.filter(projectId, 'test_case', query),
+    );
     const page = await this.repository.listCases(query, {
       projectId,
+      ...customFilter,
       includeArchived: query.includeArchived === 'true',
       ...(query.suiteId === undefined ? {} : { suiteId: query.suiteId }),
       ...(query.sectionId === undefined ? {} : { sectionId: query.sectionId }),
@@ -338,9 +356,22 @@ export class TestDesignService {
     // run snapshots, so two bumps per edit would make a report cite a version
     // nobody ever saw.
     await this.prisma.runInTransaction(async (tx) => {
+      const customFields =
+        input.customFields === undefined
+          ? undefined
+          : await this.customValues.resolve(
+              testCase.projectId,
+              'test_case',
+              input.customFields,
+              await this.repository.lockCustomFields(id, tx),
+              tx,
+            );
       const testCaseAfter = await this.repository.updateCase(
         id,
         {
+          ...(customFields === undefined
+            ? {}
+            : { customFields: customFields }),
           ...(input.title === undefined ? {} : { title: input.title }),
           ...(input.description === undefined ? {} : { description: input.description }),
           ...(input.preconditions === undefined ? {} : { preconditions: input.preconditions }),
@@ -444,6 +475,7 @@ export class TestDesignService {
           automationStatus: source.automationStatus,
           estimateMinutes: source.estimateMinutes,
           tags: source.tags,
+          customFields: source.customFields as Prisma.InputJsonValue,
           createdById: userId,
         },
         tx,
@@ -690,6 +722,7 @@ export function toTestCaseView(testCase: TestCase): TestCaseView {
     estimateMinutes: testCase.estimateMinutes,
     tags: testCase.tags,
     version: testCase.version,
+    customFields: storedValues(testCase.customFields),
     archivedAt: testCase.archivedAt?.toISOString() ?? null,
     createdById: testCase.createdById,
     createdAt: testCase.createdAt.toISOString(),

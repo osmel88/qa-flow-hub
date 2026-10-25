@@ -178,6 +178,7 @@ Rules that hold even for an owner:
 | `api_keys.manage`      |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
 | `releases.read`        |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
 | `releases.manage`      |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| `customization.manage` |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
 
 The table is `ROLE_PERMISSIONS` in `packages/shared`; it was derived from the
 `@Roles` lists the routes carried before, so an installation without overrides
@@ -200,6 +201,9 @@ archived projects are read-only; every change is an audited `role_change`.
 
 ### API keys and ingestion (S3-F3)
 
+- `customization.manage` covers creating, editing, archiving and restoring
+  custom field definitions and saving the defect workflow of a project.
+  Reading them needs only project visibility.
 - `api_keys.manage` covers listing, creating and revoking the keys of a project
   and reading its ingestion history; it needs the project to be visible.
 - A key is not a member: its only capability is the scope `results:ingest` on

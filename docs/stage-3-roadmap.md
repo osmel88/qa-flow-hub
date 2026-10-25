@@ -171,6 +171,30 @@ identity provider and stay out of scope.
 - Tests: `totp.test.ts`, `env.schema.test.ts`, `mfa.int-spec.ts`, `mfa-app-role.int-spec.ts`,
   `LoginPage.test.tsx`, `mfa.e2e.spec.ts`.
 
+## S3-F7 — Custom fields and defect workflow
+
+Stage 3 item 3.3 (ADR 0022, debt 44).
+
+**Status: implemented.**
+
+- Migration `20261206100000_custom_fields_workflows`: enums
+  `CustomFieldEntity`, `CustomFieldType`; tables `custom_field_definitions`
+  and `defect_workflows` (RLS by organization, no `DELETE` for the app role);
+  JSONB `customFields` with an object CHECK on `requirements`,
+  `test_cases` and `defects`.
+- `/custom-fields` (create, list, detail, patch, archive, restore) and
+  `/defect-workflow` (get, put with `version`); permission
+  `customization.manage`.
+- `customFields` on create/update/view of requirements, test cases and
+  defects, and the `customField` / `customFieldValue` list filter.
+- Defect status changes follow the project's workflow (built-in graph when
+  none is saved), with per-transition permission and required fields.
+- Web: Customization page (fields and workflow editor), custom field inputs
+  and summaries on Requirements, Test case editor and Defects; the Defects
+  status menu offers only the project's transitions.
+- Tests: `custom-field.contracts.test.ts`, `custom-fields.int-spec.ts`,
+  `customization.e2e.spec.ts`.
+
 ## Related
 
 - [`stage-2-roadmap.md`](stage-2-roadmap.md) — the stage this one builds on
@@ -180,3 +204,4 @@ identity provider and stay out of scope.
 - [`adr/0018-api-keys-and-report-ingestion.md`](adr/0018-api-keys-and-report-ingestion.md)
 - [`adr/0020-notification-outbox.md`](adr/0020-notification-outbox.md)
 - [`adr/0021-totp-multi-factor-authentication.md`](adr/0021-totp-multi-factor-authentication.md)
+- [`adr/0022-custom-fields-and-defect-workflow.md`](adr/0022-custom-fields-and-defect-workflow.md)

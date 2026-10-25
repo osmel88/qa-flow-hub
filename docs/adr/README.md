@@ -47,3 +47,4 @@ Date: YYYY-MM-DD
 | [0019](0019-release-as-an-entity.md)                    | Release as a project entity linked to runs                 | accepted                  |
 | [0020](0020-notification-outbox.md)                     | The notification ledger is also the outbox                 | accepted                  |
 | [0021](0021-totp-multi-factor-authentication.md)        | Account-level TOTP MFA with an organization policy         | accepted                  |
+| [0022](0022-custom-fields-and-defect-workflow.md)       | Custom fields as JSONB values and a per-project workflow   | accepted                  |

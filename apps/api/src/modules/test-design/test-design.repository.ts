@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, TestCase, TestSection, TestStep, TestSuite } from '@prisma/client';
-import { Paginated, PaginationQuery, buildPaginationMeta } from '@qa-flow-hub/shared';
+import {
+  CustomFieldValues,
+  Paginated,
+  PaginationQuery,
+  buildPaginationMeta,
+} from '@qa-flow-hub/shared';
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import { TenantAwareRepository } from '../../database/tenant-aware.repository';
 import { TenantContextService } from '../../database/tenant-context.service';
@@ -16,6 +21,8 @@ export interface TestCaseFilters {
   tag?: string;
   search?: string;
   includeArchived: boolean;
+  customFields?: Prisma.JsonFilter;
+  id?: { in: string[] };
 }
 
 @Injectable()
@@ -153,6 +160,18 @@ export class TestDesignRepository extends TenantAwareRepository {
 
   // --- Cases ---------------------------------------------------------------
 
+  /** Row lock for a custom field patch, so two concurrent patches merge. */
+  async lockCustomFields(id: string, tx: PrismaTransaction): Promise<CustomFieldValues> {
+    const rows = await tx.$queryRaw<Array<{ customFields: unknown }>>`
+      SELECT "customFields" FROM "test_cases"
+      WHERE "id" = ${id} AND "organizationId" = ${this.organizationId} AND "deletedAt" IS NULL
+      FOR UPDATE`;
+    const value = rows[0]?.customFields;
+    return value !== null && typeof value === 'object' && !Array.isArray(value)
+      ? (value as CustomFieldValues)
+      : {};
+  }
+
   findCaseById(id: string, tx?: PrismaTransaction): Promise<TestCase | null> {
     return (tx ?? this.prisma).testCase.findFirst({ where: this.active({ id }) });
   }
@@ -167,6 +186,8 @@ export class TestDesignRepository extends TenantAwareRepository {
   async listCases(query: PaginationQuery, filters: TestCaseFilters): Promise<Paginated<TestCase>> {
     const where: Prisma.TestCaseWhereInput = this.active({
       projectId: filters.projectId,
+      ...(filters.id === undefined ? {} : { id: filters.id }),
+      ...(filters.customFields === undefined ? {} : { customFields: filters.customFields }),
       ...(filters.includeArchived ? {} : { archivedAt: null }),
       ...(filters.suiteId === undefined ? {} : { suiteId: filters.suiteId }),
       ...(filters.sectionId === undefined ? {} : { sectionId: filters.sectionId }),

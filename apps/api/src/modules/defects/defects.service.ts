@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AuditAction, Defect, DefectStatus } from '@prisma/client';
+import { AuditAction, Defect } from '@prisma/client';
 import {
   ChangeDefectStatusInput,
   CreateDefectInput,
@@ -14,6 +14,12 @@ import { TenantContextService } from '../../database/tenant-context.service';
 import { ConflictError, NotFoundError, ValidationError } from '../../errors';
 import { DomainEventsPublisher } from '../../events/domain-events';
 import { AuditService } from '../audit/audit.service';
+import {
+  CustomFieldValuesService,
+  customFieldWhere,
+  storedValues,
+} from '../customization/custom-field-values.service';
+import { DefectWorkflowService } from '../customization/defect-workflow.service';
 import { OrganizationMembersRepository } from '../organizations/organization-members.repository';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
@@ -22,19 +28,10 @@ import { DefectsRepository } from './defects.repository';
 
 /**
  * A defect moves through triage, work and verification. `reopened` exists so
- * that "this came back" is distinguishable from "this was never fixed", which
- * is the difference between a regression and an open bug in any report.
+ * that "this came back" is distinguishable from "this was never fixed". Which
+ * moves are allowed is the project's workflow (S3-F7), the built-in graph
+ * unless somebody configured one.
  */
-const ALLOWED_TRANSITIONS: Record<DefectStatus, DefectStatus[]> = {
-  open: ['triaged', 'in_progress', 'rejected'],
-  triaged: ['in_progress', 'rejected', 'open'],
-  in_progress: ['resolved', 'triaged', 'rejected'],
-  resolved: ['closed', 'reopened'],
-  closed: ['reopened'],
-  rejected: ['reopened'],
-  reopened: ['triaged', 'in_progress', 'rejected'],
-};
-
 @Injectable()
 export class DefectsService {
   constructor(
@@ -47,6 +44,8 @@ export class DefectsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly events: DomainEventsPublisher,
+    private readonly customValues: CustomFieldValuesService,
+    private readonly workflow: DefectWorkflowService,
   ) {}
 
   async create(input: CreateDefectInput, userId: string): Promise<DefectView> {
@@ -88,6 +87,13 @@ export class DefectsService {
     }
 
     const defect = await this.prisma.runInTransaction(async (tx) => {
+      const customFields = await this.customValues.resolve(
+        project.id,
+        'defect',
+        input.customFields,
+        null,
+        tx,
+      );
       const key = await this.projects.nextKey(project.id, 'defectCounter', 'D', tx);
 
       const created = await this.defects.create(
@@ -105,6 +111,7 @@ export class DefectsService {
             : { assigneeId: input.assigneeId }),
           ...(origin === null ? {} : origin),
           reportedById: userId,
+          customFields: customFields,
         },
         tx,
       );
@@ -164,8 +171,15 @@ export class DefectsService {
     if (projectId === null) {
       return { data: [], meta: buildPaginationMeta(query, 0) };
     }
+    const customFilter = customFieldWhere(
+      await this.customValues.filter(projectId, 'defect', query),
+    );
     const page = await this.defects.list(query, {
       projectId,
+      ...(customFilter.customFields === undefined
+        ? {}
+        : { customFields: customFilter.customFields }),
+      ...(customFilter.id === undefined ? {} : { none: true }),
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.severity === undefined ? {} : { severity: query.severity }),
       ...(query.priority === undefined ? {} : { priority: query.priority }),
@@ -186,24 +200,56 @@ export class DefectsService {
     const defect = await this.require(id);
     await this.assertAssignee(defect.projectId, input.assigneeId);
 
-    const updated = await this.defects.update(id, {
-      ...(input.title === undefined ? {} : { title: input.title }),
-      ...(input.description === undefined ? {} : { description: input.description }),
-      ...(input.stepsToReproduce === undefined ? {} : { stepsToReproduce: input.stepsToReproduce }),
-      ...(input.severity === undefined ? {} : { severity: input.severity }),
-      ...(input.priority === undefined ? {} : { priority: input.priority }),
-      ...(input.environment === undefined ? {} : { environment: input.environment }),
-      ...(input.assigneeId === undefined ? {} : { assigneeId: input.assigneeId }),
-    });
-    if (updated === null) {
-      throw new NotFoundError('Defect');
-    }
-
-    await this.audit.record({
-      action: AuditAction.update,
-      entityType: 'Defect',
-      entityId: id,
-      summary: `Updated defect ${defect.key}`,
+    const updated = await this.prisma.runInTransaction(async (tx) => {
+      const current = await this.defects.lock(id, tx);
+      if (current === null) {
+        throw new NotFoundError('Defect');
+      }
+      const before = storedValues(current.customFields);
+      const customFields =
+        input.customFields === undefined
+          ? undefined
+          : await this.customValues.resolve(
+              current.projectId,
+              'defect',
+              input.customFields,
+              before,
+              tx,
+            );
+      const row = await this.defects.update(
+        id,
+        {
+          ...(input.title === undefined ? {} : { title: input.title }),
+          ...(input.description === undefined ? {} : { description: input.description }),
+          ...(input.stepsToReproduce === undefined
+            ? {}
+            : { stepsToReproduce: input.stepsToReproduce }),
+          ...(input.severity === undefined ? {} : { severity: input.severity }),
+          ...(input.priority === undefined ? {} : { priority: input.priority }),
+          ...(input.environment === undefined ? {} : { environment: input.environment }),
+          ...(input.assigneeId === undefined ? {} : { assigneeId: input.assigneeId }),
+          ...(customFields === undefined
+            ? {}
+            : { customFields: customFields }),
+        },
+        tx,
+      );
+      if (row === null) {
+        throw new NotFoundError('Defect');
+      }
+      const changed =
+        customFields === undefined ? {} : CustomFieldValuesService.diff(before, customFields);
+      await this.audit.record(
+        {
+          action: AuditAction.update,
+          entityType: 'Defect',
+          entityId: id,
+          summary: `Updated defect ${defect.key}`,
+          ...(Object.keys(changed).length === 0 ? {} : { changes: { customFields: changed } }),
+        },
+        tx,
+      );
+      return row;
     });
 
     // Only a change of hands is news; editing the title of a defect somebody
@@ -237,40 +283,60 @@ export class DefectsService {
   }
 
   async changeStatus(id: string, input: ChangeDefectStatusInput): Promise<DefectView> {
-    const defect = await this.require(id);
+    await this.require(id);
 
-    if (defect.status === input.status) {
-      throw new ConflictError(`Defect ${defect.key} is already ${input.status}`);
-    }
-    if (!ALLOWED_TRANSITIONS[defect.status].includes(input.status)) {
-      throw new ConflictError(`A defect cannot move from ${defect.status} to ${input.status}`, {
-        allowed: ALLOWED_TRANSITIONS[defect.status],
-      });
-    }
+    // Read, check and write under the row lock: two concurrent moves from the
+    // same status cannot both pass the check against the status they read.
+    const { defect, updated } = await this.prisma.runInTransaction(async (tx) => {
+      const current = await this.defects.lock(id, tx);
+      if (current === null) {
+        throw new NotFoundError('Defect');
+      }
+      if (current.status === input.status) {
+        throw new ConflictError(`Defect ${current.key} is already ${input.status}`);
+      }
+      await this.workflow.assertTransition(
+        current.projectId,
+        current.status,
+        input.status,
+        storedValues(current.customFields),
+        tx,
+      );
 
-    const updated = await this.defects.update(id, {
-      status: input.status,
-      // Timestamps are set once and cleared on reopen, so "time to resolution"
-      // measures the current life of the defect, not the first one.
-      ...(input.status === 'resolved' ? { resolvedAt: new Date() } : {}),
-      ...(input.status === 'closed' || input.status === 'rejected' ? { closedAt: new Date() } : {}),
-      ...(input.status === 'reopened' ? { resolvedAt: null, closedAt: null } : {}),
-    });
-    if (updated === null) {
-      throw new NotFoundError('Defect');
-    }
+      const row = await this.defects.update(
+        id,
+        {
+          status: input.status,
+          // Timestamps are set once and cleared on reopen, so "time to
+          // resolution" measures the current life of the defect.
+          ...(input.status === 'resolved' ? { resolvedAt: new Date() } : {}),
+          ...(input.status === 'closed' || input.status === 'rejected'
+            ? { closedAt: new Date() }
+            : {}),
+          ...(input.status === 'reopened' ? { resolvedAt: null, closedAt: null } : {}),
+        },
+        tx,
+      );
+      if (row === null) {
+        throw new NotFoundError('Defect');
+      }
 
-    await this.audit.record({
-      action: AuditAction.update,
-      entityType: 'Defect',
-      entityId: id,
-      summary: `Moved defect ${defect.key} from ${defect.status} to ${input.status}`,
-      changes: {
-        status: { from: defect.status, to: input.status },
-        ...(input.comment === undefined || input.comment === null
-          ? {}
-          : { comment: input.comment }),
-      },
+      await this.audit.record(
+        {
+          action: AuditAction.update,
+          entityType: 'Defect',
+          entityId: id,
+          summary: `Moved defect ${current.key} from ${current.status} to ${input.status}`,
+          changes: {
+            status: { from: current.status, to: input.status },
+            ...(input.comment === undefined || input.comment === null
+              ? {}
+              : { comment: input.comment }),
+          },
+        },
+        tx,
+      );
+      return { defect: current, updated: row };
     });
 
     await this.events.publish('defect.status.changed', {
@@ -372,6 +438,7 @@ export function toDefectView(defect: Defect): DefectView {
     assigneeId: defect.assigneeId,
     resolvedAt: defect.resolvedAt?.toISOString() ?? null,
     closedAt: defect.closedAt?.toISOString() ?? null,
+    customFields: storedValues(defect.customFields),
     createdAt: defect.createdAt.toISOString(),
     updatedAt: defect.updatedAt.toISOString(),
   };

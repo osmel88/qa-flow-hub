@@ -11,6 +11,7 @@ import { DefectsPage } from '../pages/DefectsPage';
 import { ApiKeysPage } from '../pages/ApiKeysPage';
 import { ReleaseDetailPage } from '../pages/ReleaseDetailPage';
 import { ReleasesPage } from '../pages/ReleasesPage';
+import { CustomizationPage } from '../pages/CustomizationPage';
 import { ImportPage } from '../pages/ImportPage';
 import { PrintableMatrixPage } from '../pages/PrintableMatrixPage';
 import { PrintableRunPage } from '../pages/PrintableRunPage';
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
           { path: '/imports', element: <ImportPage /> },
           { path: '/api-keys', element: <ApiKeysPage /> },
           { path: '/releases', element: <ReleasesPage /> },
+          { path: '/customization', element: <CustomizationPage /> },
           { path: '/releases/:releaseId', element: <ReleaseDetailPage /> },
           { path: '/test-runs', element: <TestRunsPage /> },
           { path: '/test-runs/:runId', element: <RunExecutionPage /> },

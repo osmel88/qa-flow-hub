@@ -14,6 +14,7 @@ const NAV = [
   { to: '/test-runs', label: 'Test runs' },
   { to: '/defects', label: 'Defects' },
   { to: '/traceability', label: 'Traceability' },
+  { to: '/customization', label: 'Customization' },
   { to: '/external-traceability', label: 'External references' },
   { to: '/members', label: 'Members' },
   { to: '/project-access', label: 'Project access' },

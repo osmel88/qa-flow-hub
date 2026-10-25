@@ -6,7 +6,12 @@ import {
   RequirementType,
   RequirementVersion,
 } from '@prisma/client';
-import { Paginated, PaginationQuery, buildPaginationMeta } from '@qa-flow-hub/shared';
+import {
+  CustomFieldValues,
+  Paginated,
+  PaginationQuery,
+  buildPaginationMeta,
+} from '@qa-flow-hub/shared';
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import { TenantAwareRepository } from '../../database/tenant-aware.repository';
 import { TenantContextService } from '../../database/tenant-context.service';
@@ -18,12 +23,26 @@ export interface RequirementFilters {
   priority?: Prisma.RequirementWhereInput['priority'];
   tag?: string;
   search?: string;
+  customFields?: Prisma.JsonFilter;
+  id?: { in: string[] };
 }
 
 @Injectable()
 export class RequirementsRepository extends TenantAwareRepository {
   constructor(prisma: PrismaService, tenant: TenantContextService) {
     super(prisma, tenant);
+  }
+
+  /** Row lock for a custom field patch, so two concurrent patches merge. */
+  async lockCustomFields(id: string, tx: PrismaTransaction): Promise<CustomFieldValues> {
+    const rows = await tx.$queryRaw<Array<{ customFields: unknown }>>`
+      SELECT "customFields" FROM "requirements"
+      WHERE "id" = ${id} AND "organizationId" = ${this.organizationId} AND "deletedAt" IS NULL
+      FOR UPDATE`;
+    const value = rows[0]?.customFields;
+    return value !== null && typeof value === 'object' && !Array.isArray(value)
+      ? (value as CustomFieldValues)
+      : {};
   }
 
   findById(id: string): Promise<Requirement | null> {
@@ -38,12 +57,11 @@ export class RequirementsRepository extends TenantAwareRepository {
     return rows.map((row) => row.id);
   }
 
-  async list(
-    query: PaginationQuery,
-    filters: RequirementFilters,
-  ): Promise<Paginated<Requirement>> {
+  async list(query: PaginationQuery, filters: RequirementFilters): Promise<Paginated<Requirement>> {
     const where: Prisma.RequirementWhereInput = this.active({
       projectId: filters.projectId,
+      ...(filters.id === undefined ? {} : { id: filters.id }),
+      ...(filters.customFields === undefined ? {} : { customFields: filters.customFields }),
       ...(filters.status === undefined ? {} : { status: filters.status }),
       ...(filters.type === undefined ? {} : { type: filters.type }),
       ...(filters.priority === undefined ? {} : { priority: filters.priority }),

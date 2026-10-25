@@ -6,6 +6,8 @@ import {
   AuthenticatedUser,
   ChangePasswordInput,
   LoginInput,
+  MfaChallengeView,
+  MfaVerifyInput,
   RegisterInput,
   UpdateProfileInput,
 } from '@qa-flow-hub/shared';
@@ -20,6 +22,7 @@ import {
 } from '../../errors';
 import { DomainEventsPublisher } from '../../events/domain-events';
 import { InvitationsService } from '../organizations/invitations.service';
+import { MfaService } from './mfa/mfa.service';
 import { PasswordService } from './password.service';
 import { SessionsRepository } from './sessions.repository';
 import { TokenService } from './token.service';
@@ -38,6 +41,7 @@ export class AuthService {
     private readonly context: TenantContextService,
     private readonly invitations: InvitationsService,
     private readonly events: DomainEventsPublisher,
+    private readonly mfa: MfaService,
   ) {}
 
   async register(input: RegisterInput): Promise<AuthSession> {
@@ -67,7 +71,11 @@ export class AuthService {
     return this.startSession(user);
   }
 
-  async login(input: LoginInput): Promise<AuthSession> {
+  /**
+   * With a confirmed second factor the password alone opens no session: the
+   * caller gets a short-lived challenge and must finish with `verifyMfa`.
+   */
+  async login(input: LoginInput): Promise<AuthSession | MfaChallengeView> {
     const user = await this.users.findByEmail(input.email);
 
     if (user === null) {
@@ -110,7 +118,26 @@ export class AuthService {
       : undefined;
     await this.users.registerSuccessfulLogin(user.id, rehashed);
 
+    if (await this.mfa.isEnabled(user.id)) {
+      return this.mfa.createChallenge(user.id);
+    }
     return this.startSession(user);
+  }
+
+  /** Second login step: a valid challenge plus a TOTP or recovery code. */
+  async verifyMfa(input: MfaVerifyInput): Promise<AuthSession> {
+    const userId = await this.mfa.verifyChallenge(input);
+    const user = await this.users.findById(userId);
+    if (user === null || !user.isActive) {
+      throw new UnauthenticatedError('The account is no longer active');
+    }
+    if (user.lockedUntil !== null && user.lockedUntil > new Date()) {
+      throw new RateLimitedError(
+        'Too many failed attempts. Try again later.',
+        Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000),
+      );
+    }
+    return this.startSession(user, true);
   }
 
   /**
@@ -246,7 +273,7 @@ export class AuthService {
     }
   }
 
-  private async startSession(user: User): Promise<AuthSession> {
+  private async startSession(user: User, mfaAuthenticated = false): Promise<AuthSession> {
     const issued = this.tokens.issueRefreshToken();
     const context = this.context.get();
 
@@ -256,6 +283,7 @@ export class AuthService {
       expiresAt: new Date(Date.now() + this.tokens.refreshTokenTtlSeconds * 1000),
       ipAddress: context?.ipAddress,
       userAgent: context?.userAgent,
+      mfaAuthenticated,
     });
 
     return {

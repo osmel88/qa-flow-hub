@@ -319,6 +319,9 @@ model User {
   createdApiKeys         ApiKey[]                    @relation("ApiKeyCreatedBy")
   createdReleases        Release[]                   @relation("ReleaseCreatedBy")
   revokedApiKeys         ApiKey[]                    @relation("ApiKeyRevokedBy")
+  mfaTotpFactor          MfaTotpFactor?
+  mfaRecoveryCodes       MfaRecoveryCode[]
+  mfaChallenges          MfaChallenge[]
 
   @@index([deletedAt])
   @@map("users")
@@ -343,6 +346,9 @@ model Session {
   expiresAt        DateTime
   revokedAt        DateTime?
   revokedReason    String?
+  /// S3-F6. True when the session was opened (or upgraded) with a second
+  /// factor. Organizations with `requireMfa` refuse sessions without it.
+  mfaAuthenticated Boolean   @default(false)
 
   ipAddress String?
   userAgent String?
@@ -359,14 +365,62 @@ model Session {
 // Tenancy
 // ---------------------------------------------------------------------------
 
+/// S3-F6. One TOTP authenticator per user. Account level, like `sessions`:
+/// no organization, therefore no RLS. The secret is AES-256-GCM ciphertext.
+model MfaTotpFactor {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secretCiphertext String
+  /// Null while enrolment waits for the first valid code.
+  confirmedAt      DateTime?
+  /// Highest TOTP time step accepted, so a code is never accepted twice.
+  lastUsedStep     Int?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("mfa_totp_factors")
+}
+
+/// S3-F6. Single-use recovery codes, stored as HMAC-SHA256 only.
+model MfaRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
+  @@map("mfa_recovery_codes")
+}
+
+/// S3-F6. The state between "password accepted" and "second factor accepted".
+model MfaChallenge {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("mfa_challenges")
+}
+
 model Organization {
-  id   String           @id @default(cuid())
-  name String
+  id         String           @id @default(cuid())
+  name       String
   /// URL-safe identifier, unique across the installation.
-  slug String           @unique
+  slug       String           @unique
   /// Cache of the effective plan. Written only by the billing module (S2-F11);
   /// the authority is `resolveEffectivePlan(subscription, now)`.
-  plan OrganizationPlan @default(free)
+  plan       OrganizationPlan @default(free)
+  /// S3-F6. Members must act through an MFA-verified session.
+  requireMfa Boolean          @default(false)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

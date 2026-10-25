@@ -1,8 +1,15 @@
-import type { AuthSession, LoginInput, OrganizationSummary, RegisterInput } from '@qa-flow-hub/shared';
+import type {
+  AuthSession,
+  LoginInput,
+  MfaChallengeView,
+  MfaVerifyInput,
+  OrganizationSummary,
+  RegisterInput,
+} from '@qa-flow-hub/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { authApi } from '../api/endpoints';
+import { authApi, mfaApi } from '../api/endpoints';
 import { refreshSession, setSessionLostHandler } from '../api/http-client';
 import {
   clearSession,
@@ -20,7 +27,9 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   activeOrganization: OrganizationSummary | null;
-  login: (input: LoginInput) => Promise<void>;
+  /** Resolves to the challenge when the account needs a second factor. */
+  login: (input: LoginInput) => Promise<MfaChallengeView | null>;
+  verifyMfa: (input: MfaVerifyInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   selectOrganization: (organizationId: string) => void;
@@ -131,7 +140,15 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
           (organization) => organization.id === state.activeOrganizationId,
         ) ?? null,
       login: async (input) => {
-        applySession(await authApi.login(input));
+        const result = await authApi.login(input);
+        if ('mfaRequired' in result) {
+          return result;
+        }
+        applySession(result);
+        return null;
+      },
+      verifyMfa: async (input) => {
+        applySession(await mfaApi.verify(input));
       },
       register: async (input) => {
         applySession(await authApi.register(input));

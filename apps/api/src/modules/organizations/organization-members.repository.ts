@@ -9,7 +9,13 @@ import {
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 
 export interface MemberWithUser extends OrganizationMember {
-  user: { id: string; email: string; fullName: string; avatarUrl: string | null };
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    avatarUrl: string | null;
+    mfaTotpFactor: { confirmedAt: Date | null } | null;
+  };
 }
 
 /**
@@ -26,7 +32,7 @@ export class OrganizationMembersRepository {
   findActiveMembership(
     userId: string,
     organizationId: string,
-  ): Promise<OrganizationMember | null> {
+  ): Promise<(OrganizationMember & { organization: { requireMfa: boolean } }) | null> {
     return this.prisma.organizationMember.findFirst({
       where: {
         userId,
@@ -35,6 +41,7 @@ export class OrganizationMembersRepository {
         deletedAt: null,
         organization: { deletedAt: null },
       },
+      include: { organization: { select: { requireMfa: true } } },
     });
   }
 
@@ -59,7 +66,7 @@ export class OrganizationMembersRepository {
   findWithUser(organizationId: string, userId: string): Promise<MemberWithUser | null> {
     return this.prisma.organizationMember.findFirst({
       where: { organizationId, userId, deletedAt: null },
-      include: { user: { select: { id: true, email: true, fullName: true, avatarUrl: true } } },
+      include: { user: { select: { id: true, email: true, fullName: true, avatarUrl: true, mfaTotpFactor: { select: { confirmedAt: true } } } } },
     });
   }
 
@@ -98,7 +105,7 @@ export class OrganizationMembersRepository {
       this.prisma.organizationMember.findMany({
         where,
         include: {
-          user: { select: { id: true, email: true, fullName: true, avatarUrl: true } },
+          user: { select: { id: true, email: true, fullName: true, avatarUrl: true, mfaTotpFactor: { select: { confirmedAt: true } } } },
         },
         orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
         ...toSkipTake(query),

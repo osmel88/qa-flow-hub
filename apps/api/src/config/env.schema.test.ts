@@ -7,7 +7,11 @@ const validEnv = {
   JWT_REFRESH_SECRET: 'Wq4eT8yU1iO6pA3sD9fG2hJ7kL5zX0cV',
 };
 
-const production = { ...validEnv, NODE_ENV: 'production' };
+const production = {
+  ...validEnv,
+  NODE_ENV: 'production',
+  MFA_ENCRYPTION_KEY: 'Pq3vT8xLm2Rz7Wk4Nd9Fh6Js1Bc5Yg0Ua',
+};
 
 describe('validateEnv', () => {
   it('fills defaults so a minimal environment still boots', () => {
@@ -19,9 +23,9 @@ describe('validateEnv', () => {
   });
 
   it('serves the documentation in development and hides it in production', () => {
-    expect(validateEnv({ ...validEnv, NODE_ENV: 'production' }).SWAGGER_ENABLED).toBe(false);
+    expect(validateEnv(production).SWAGGER_ENABLED).toBe(false);
     expect(
-      validateEnv({ ...validEnv, NODE_ENV: 'production', SWAGGER_ENABLED: 'true' }).SWAGGER_ENABLED,
+      validateEnv({ ...production, SWAGGER_ENABLED: 'true' }).SWAGGER_ENABLED,
     ).toBe(true);
   });
 
@@ -69,6 +73,15 @@ describe('validateEnv', () => {
     it('logs for a human outside production unless told otherwise', () => {
       expect(validateEnv(validEnv).LOG_FORMAT).toBe('pretty');
       expect(validateEnv({ ...validEnv, LOG_FORMAT: 'json' }).LOG_FORMAT).toBe('json');
+    });
+
+    it('refuses the development MFA key and weak MFA keys in production', () => {
+      expect(() =>
+        validateEnv({ ...production, MFA_ENCRYPTION_KEY: undefined }),
+      ).toThrow(/MFA_ENCRYPTION_KEY/);
+      expect(() =>
+        validateEnv({ ...production, MFA_ENCRYPTION_KEY: 'a'.repeat(40) }),
+      ).toThrow(/MFA_ENCRYPTION_KEY/);
     });
 
     it('refuses the same secret for access and refresh tokens', () => {

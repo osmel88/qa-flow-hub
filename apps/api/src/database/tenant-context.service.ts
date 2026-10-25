@@ -22,6 +22,9 @@ export interface RequestContext {
   userId?: string;
   /** The authenticated address, carried so audit lines read without a join. */
   email?: string;
+  /** The session behind the access token, and whether it passed MFA. */
+  sessionId?: string;
+  mfaAuthenticated?: boolean;
   /** Filled in by the active-organization guard. */
   organizationId?: string;
   role?: OrganizationRole;
@@ -101,6 +104,23 @@ export class TenantContextService {
       store.userId = userId;
       store.email = email;
     }
+  }
+
+  /** Called by the authentication guard with the verified session row. */
+  setSession(sessionId: string, mfaAuthenticated: boolean): void {
+    const store = this.storage.getStore();
+    if (store !== undefined) {
+      store.sessionId = sessionId;
+      store.mfaAuthenticated = mfaAuthenticated;
+    }
+  }
+
+  get sessionId(): string | undefined {
+    return this.storage.getStore()?.sessionId;
+  }
+
+  get mfaAuthenticated(): boolean {
+    return this.storage.getStore()?.mfaAuthenticated === true;
   }
 
   /** Called by the active-organization guard once membership is verified. */

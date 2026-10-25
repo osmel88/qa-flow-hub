@@ -42,7 +42,7 @@ export class UsersRepository {
         deletedAt: null,
         organization: { deletedAt: null },
       },
-      include: { organization: { select: { id: true, name: true, slug: true } } },
+      include: { organization: { select: { id: true, name: true, slug: true, requireMfa: true } } },
       orderBy: { organization: { name: 'asc' } },
     });
 
@@ -51,6 +51,7 @@ export class UsersRepository {
       name: membership.organization.name,
       slug: membership.organization.slug,
       role: membership.role,
+      requireMfa: membership.organization.requireMfa,
     }));
   }
 

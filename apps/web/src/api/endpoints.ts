@@ -13,6 +13,13 @@ import type {
   AttachmentLimitsView,
   AttachmentView,
   AuthSession,
+  MfaChallengeView,
+  MfaRecoveryCodesView,
+  MfaSetupView,
+  MfaStatusView,
+  MfaVerifyInput,
+  OrganizationView,
+  UpdateOrganizationInput,
   BillingOverviewView,
   ChangePlanInput,
   CheckoutSessionView,
@@ -118,8 +125,9 @@ export const authApi = {
       withoutOrganization: true,
       skipRefresh: true,
     }),
+  /** With MFA enabled the password alone yields a challenge, not a session. */
   login: (body: LoginInput) =>
-    apiFetch<AuthSession>('/auth/login', {
+    apiFetch<AuthSession | MfaChallengeView>('/auth/login', {
       method: 'POST',
       body,
       withoutOrganization: true,
@@ -141,7 +149,44 @@ export const authApi = {
     apiFetch<void>('/auth/change-password', { method: 'POST', body, withoutOrganization: true }),
 };
 
+export const mfaApi = {
+  verify: (body: MfaVerifyInput) =>
+    apiFetch<AuthSession>('/auth/mfa/verify', {
+      method: 'POST',
+      body,
+      withoutOrganization: true,
+      skipRefresh: true,
+    }),
+  status: () => apiFetch<MfaStatusView>('/auth/mfa', { withoutOrganization: true }),
+  setup: (password: string) =>
+    apiFetch<MfaSetupView>('/auth/mfa/setup', {
+      method: 'POST',
+      body: { password },
+      withoutOrganization: true,
+    }),
+  confirm: (code: string) =>
+    apiFetch<MfaRecoveryCodesView>('/auth/mfa/confirm', {
+      method: 'POST',
+      body: { code },
+      withoutOrganization: true,
+    }),
+  disable: (password: string, code: string) =>
+    apiFetch<void>('/auth/mfa/disable', {
+      method: 'POST',
+      body: { password, code },
+      withoutOrganization: true,
+    }),
+  regenerateRecoveryCodes: (code: string) =>
+    apiFetch<MfaRecoveryCodesView>('/auth/mfa/recovery-codes', {
+      method: 'POST',
+      body: { code },
+      withoutOrganization: true,
+    }),
+};
+
 export const organizationsApi = {
+  update: (body: UpdateOrganizationInput) =>
+    apiFetch<OrganizationView>('/organizations/current', { method: 'PATCH', body }),
   list: () => apiFetch<OrganizationSummary[]>('/organizations', { withoutOrganization: true }),
   create: (body: CreateOrganizationInput) =>
     apiFetch<OrganizationSummary>('/organizations', {

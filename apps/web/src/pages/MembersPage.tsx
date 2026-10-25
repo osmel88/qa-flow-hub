@@ -77,6 +77,51 @@ function RoleCell({
   );
 }
 
+/**
+ * Owner-only switch. Turning it on from a session without MFA is refused by
+ * the API, because the owner would be locked out on the next request.
+ */
+function MfaPolicy(): React.JSX.Element {
+  const { activeOrganization, refreshOrganizations } = useAuth();
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const update = useMutation({
+    mutationFn: (requireMfa: boolean) => organizationsApi.update({ requireMfa }),
+    onSuccess: async () => {
+      setError(null);
+      await refreshOrganizations();
+      await queryClient.invalidateQueries({ queryKey: ['members'] });
+    },
+    onError: (cause) => {
+      setError(cause instanceof ApiError ? cause.message : 'Could not change the policy.');
+    },
+  });
+
+  return (
+    <section className="card" aria-labelledby="mfa-policy-heading">
+      <h2 id="mfa-policy-heading">Security</h2>
+      {error !== null && (
+        <p className="ui-field__error" role="alert">
+          {error}
+        </p>
+      )}
+      <label className="checkbox">
+        <input
+          type="checkbox"
+          checked={activeOrganization?.requireMfa === true}
+          disabled={update.isPending}
+          onChange={(event) => update.mutate(event.target.checked)}
+        />
+        Require multi-factor authentication
+      </label>
+      <p className="muted">
+        Members whose session did not pass MFA lose access to this organization until they set it
+        up and sign in again. The column below shows who already has it.
+      </p>
+    </section>
+  );
+}
+
 export function MembersPage(): React.JSX.Element {
   const { user, activeOrganization } = useAuth();
   const queryClient = useQueryClient();
@@ -153,6 +198,8 @@ export function MembersPage(): React.JSX.Element {
         </p>
       )}
 
+      {actorRole === 'organization_owner' && <MfaPolicy />}
+
       {canManage && (
         <section className="card" aria-labelledby="invite-heading">
           <h2 id="invite-heading">Invite someone</h2>
@@ -209,6 +256,7 @@ export function MembersPage(): React.JSX.Element {
               <th scope="col">Member</th>
               <th scope="col">Role</th>
               <th scope="col">Status</th>
+              <th scope="col">MFA</th>
               {canManage && <th scope="col">Change role</th>}
             </tr>
           </thead>
@@ -223,6 +271,7 @@ export function MembersPage(): React.JSX.Element {
                 <td>
                   <Badge tone={toneFor(member.status)}>{humanize(member.status)}</Badge>
                 </td>
+                <td>{member.mfaEnabled ? 'Enabled' : 'Off'}</td>
                 {canManage && actorRole !== null && (
                   <td>
                     <RoleCell

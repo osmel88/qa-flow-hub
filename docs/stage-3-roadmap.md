@@ -151,6 +151,26 @@ the mock provider; Slack and real providers are out of scope.
   `notification-outbox.worker.test.ts`, `NotificationsPage.test.tsx`,
   `notifications.e2e.spec.ts`.
 
+## S3-F6 — Multi-factor authentication (TOTP)
+
+Stage 3 item 3.2 (ADR 0021, debt 43). SSO/SAML and SCIM (3.1) need an external
+identity provider and stay out of scope.
+
+**Status: implemented.**
+
+- Migration `20261129100000_mfa_totp`: tables `mfa_totp_factors`,
+  `mfa_recovery_codes`, `mfa_challenges`; columns `sessions.mfaAuthenticated`
+  and `organizations.requireMfa`. No RLS: account-level tables.
+- `/auth/mfa` (status), `setup`, `confirm`, `disable`, `recovery-codes`, and the
+  public `verify` (auth rate-limit bucket); `POST /auth/login` returns a
+  challenge for MFA accounts.
+- `PATCH /organizations/current { requireMfa }` (owner, only from an MFA
+  session); enforced by `ActiveOrganizationGuard` after membership.
+- Web: two-step login with recovery-code fallback, Profile → MFA enrolment,
+  Members → Security policy and MFA column, banner for blocked members.
+- Tests: `totp.test.ts`, `env.schema.test.ts`, `mfa.int-spec.ts`, `mfa-app-role.int-spec.ts`,
+  `LoginPage.test.tsx`, `mfa.e2e.spec.ts`.
+
 ## Related
 
 - [`stage-2-roadmap.md`](stage-2-roadmap.md) — the stage this one builds on
@@ -159,3 +179,4 @@ the mock provider; Slack and real providers are out of scope.
 - [`adr/0017-project-visibility-through-grants.md`](adr/0017-project-visibility-through-grants.md)
 - [`adr/0018-api-keys-and-report-ingestion.md`](adr/0018-api-keys-and-report-ingestion.md)
 - [`adr/0020-notification-outbox.md`](adr/0020-notification-outbox.md)
+- [`adr/0021-totp-multi-factor-authentication.md`](adr/0021-totp-multi-factor-authentication.md)

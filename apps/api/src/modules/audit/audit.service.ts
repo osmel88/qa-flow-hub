@@ -13,6 +13,8 @@ export interface AuditEntry {
   changes?: Prisma.InputJsonValue;
   /** Overrides the organization from the context (e.g. login, which has none). */
   organizationId?: string | null;
+  /** Overrides the actor from the context (e.g. the MFA step, which is public). */
+  userId?: string;
 }
 
 @Injectable()
@@ -43,10 +45,13 @@ export class AuditService {
       // Level Security, and the scoped client is the one that tells PostgreSQL
       // which organization is writing. Login has none, and the policy allows a
       // null organization precisely for it.
-      await (tx ?? this.prisma.scoped).auditLog.create({
+      // `createMany` because it issues no `RETURNING`: PostgreSQL checks
+      // returned rows against the policy's USING clause, which an entry
+      // without an organization never satisfies, so `create` fails for it.
+      await (tx ?? this.prisma.scoped).auditLog.createMany({
         data: {
           organizationId,
-          userId: request?.userId ?? null,
+          userId: entry.userId ?? request?.userId ?? null,
           action: entry.action,
           entityType: entry.entityType,
           entityId: entry.entityId,

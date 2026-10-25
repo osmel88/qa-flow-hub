@@ -6,6 +6,7 @@ import {
   AuthTokens,
   ChangePasswordInput,
   LoginInput,
+  MfaChallengeView,
   RefreshInput,
   RegisterInput,
   UpdateProfileInput,
@@ -57,9 +58,14 @@ export class AuthController {
     @Body(zodBody(loginSchema)) body: LoginInput,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<AuthSession> {
-    const session = await this.auth.login(body);
-    return this.refreshCookie.handOver(session, request, reply);
+  ): Promise<AuthSession | MfaChallengeView> {
+    const result = await this.auth.login(body);
+    // A challenge carries no refresh token, so no cookie is set until the
+    // second factor has been verified.
+    if ('mfaRequired' in result) {
+      return result;
+    }
+    return this.refreshCookie.handOver(result, request, reply);
   }
 
   /**

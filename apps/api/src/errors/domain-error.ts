@@ -72,6 +72,31 @@ export class ForbiddenError extends DomainError {
   }
 }
 
+/**
+ * The organization requires a second factor and this session was not opened
+ * with one. 403, not 401: the identity is fine, the assurance level is not.
+ */
+export class MfaRequiredError extends DomainError {
+  readonly code = 'MFA_REQUIRED' as const;
+  readonly httpStatus = 403;
+
+  constructor(
+    message = 'This organization requires multi-factor authentication: enable it in your profile and sign in again',
+  ) {
+    super(message);
+  }
+}
+
+/** A wrong, expired or replayed second-factor code. Never says which. */
+export class MfaInvalidCodeError extends DomainError {
+  readonly code = 'MFA_INVALID_CODE' as const;
+  readonly httpStatus = 401;
+
+  constructor() {
+    super('The verification code is not valid');
+  }
+}
+
 export class UnauthenticatedError extends DomainError {
   readonly code = 'UNAUTHENTICATED' as const;
   readonly httpStatus = 401;

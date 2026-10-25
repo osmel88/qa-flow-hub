@@ -127,6 +127,8 @@ export interface OrganizationSummary {
   name: string;
   slug: string;
   role: OrganizationRoleName;
+  /** S3-F6: members need an MFA-verified session to act in it. */
+  requireMfa: boolean;
 }
 
 export interface AuthTokens {

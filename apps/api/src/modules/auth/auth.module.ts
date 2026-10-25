@@ -11,6 +11,8 @@ import { ActiveOrganizationGuard } from './guards/active-organization.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { ProjectScopeContractInterceptor } from './interceptors/project-scope-contract.interceptor';
+import { MfaController } from './mfa/mfa.controller';
+import { MfaService } from './mfa/mfa.service';
 import { PasswordService } from './password.service';
 import { RefreshCookieService } from './refresh-cookie.service';
 import { SessionsRepository } from './sessions.repository';
@@ -29,9 +31,10 @@ import { UsersRepository } from './users.repository';
   // consults on project-scoped routes. The dependency stays one-directional:
   // projects know nothing about auth.
   imports: [JwtModule.register({}), OrganizationsModule, ProjectsModule],
-  controllers: [AuthController],
+  controllers: [AuthController, MfaController],
   providers: [
     AuthService,
+    MfaService,
     PasswordService,
     RefreshCookieService,
     TokenService,

@@ -11,6 +11,8 @@ export interface CreateSessionInput {
   familyId?: string;
   ipAddress?: string | undefined;
   userAgent?: string | undefined;
+  /** Opened with a second factor; carried over when rotating. */
+  mfaAuthenticated?: boolean;
 }
 
 /**
@@ -34,6 +36,7 @@ export class SessionsRepository {
         expiresAt: input.expiresAt,
         ipAddress: input.ipAddress ?? null,
         userAgent: input.userAgent ?? null,
+        mfaAuthenticated: input.mfaAuthenticated ?? false,
       },
     });
   }
@@ -85,6 +88,7 @@ export class SessionsRepository {
           expiresAt: next.expiresAt,
           ipAddress: next.ipAddress,
           userAgent: next.userAgent,
+          mfaAuthenticated: previous.mfaAuthenticated,
         },
         tx,
       );

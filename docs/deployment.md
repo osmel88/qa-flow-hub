@@ -383,6 +383,21 @@ which is a deployment decision disguised as a developer convenience.
 | `NOTIFICATIONS_RETRY_MAX_MS`       | `3600000` | Upper bound of a single backoff.                                   |
 | `NOTIFICATIONS_LEASE_SECONDS`      | `120`     | Must exceed the slowest provider call; expired leases are retried. |
 
+## Multi-factor authentication
+
+| Variable                     | Default            | Notes                                                                                   |
+| ---------------------------- | ------------------ | --------------------------------------------------------------------------------------- |
+| `MFA_ENCRYPTION_KEY`         | development value  | **Required in production** (≥ 32 characters, not the default, not low-entropy).         |
+| `MFA_ISSUER`                 | `qa-flow-hub`      | Label authenticator apps show next to the account.                                      |
+| `MFA_CHALLENGE_TTL_SECONDS`  | `300`              | Lifetime of the second login step.                                                      |
+| `MFA_CHALLENGE_MAX_ATTEMPTS` | `5`                | Wrong codes per challenge; each also counts towards `AUTH_MAX_FAILED_ATTEMPTS`.         |
+
+`MFA_ENCRYPTION_KEY` encrypts TOTP secrets and keys the recovery-code and
+challenge digests. Rotating it invalidates every enrolled factor and every
+recovery code: users must enrol again. Keep it in the secret manager next to
+the JWT secrets and include it in the disaster-recovery inventory — a restored
+database without the key cannot verify any MFA login.
+
 ## API keys and report ingestion
 
 | Variable                          | Default           | Notes                                                      |

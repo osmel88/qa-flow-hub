@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { BillingBanner } from './BillingBanner';
+import { MfaBanner } from './MfaBanner';
 import { useProject } from '../project/project-context';
 
 const NAV = [
@@ -108,6 +109,7 @@ export function AppLayout(): React.JSX.Element {
         </nav>
 
         <main className="shell__main" id="main">
+          <MfaBanner />
           <BillingBanner />
           <Outlet key={activeOrganizationId ?? 'none'} />
         </main>

@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import { authApi, notificationsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
+import { MfaSettings } from '../components/MfaSettings';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 
@@ -166,6 +167,8 @@ export function ProfilePage(): React.JSX.Element {
           ))}
         </ul>
       </section>
+
+      <MfaSettings />
 
       <NotificationPreferences />
 

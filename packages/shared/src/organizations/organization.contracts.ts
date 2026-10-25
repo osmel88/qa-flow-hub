@@ -40,6 +40,8 @@ export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 export const updateOrganizationSchema = z
   .object({
     name: z.string().trim().min(2).max(120).optional(),
+    /** Members must sign in with a second factor to act in this organization. */
+    requireMfa: z.boolean().optional(),
   })
   .strict();
 export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
@@ -83,6 +85,7 @@ export interface OrganizationView {
   name: string;
   slug: string;
   plan: (typeof ORGANIZATION_PLANS)[number];
+  requireMfa: boolean;
   createdAt: string;
 }
 
@@ -93,6 +96,7 @@ export interface MemberView {
   avatarUrl: string | null;
   role: (typeof ORGANIZATION_ROLES_INPUT)[number];
   status: 'active' | 'suspended';
+  mfaEnabled: boolean;
   joinedAt: string;
 }
 

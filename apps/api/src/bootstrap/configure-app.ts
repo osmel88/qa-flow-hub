@@ -26,7 +26,7 @@ export class ProxyTrust {
 }
 
 /** Credential endpoints that get their own, stricter rate-limit budget. */
-const AUTH_LIMITED_ROUTES = ['auth/login', 'auth/register', 'auth/refresh'] as const;
+const AUTH_LIMITED_ROUTES = ['auth/login', 'auth/register', 'auth/refresh', 'auth/mfa/verify'] as const;
 const AUTH_BUCKET = 'auth:';
 const WEBHOOK_BUCKET = 'billing-webhook:';
 const IMPORT_BUCKET = 'import:';

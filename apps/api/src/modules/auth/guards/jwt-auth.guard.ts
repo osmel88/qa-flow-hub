@@ -55,6 +55,7 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     this.context.setUser(payload.sub, payload.email);
+    this.context.setSession(session.id, session.mfaAuthenticated);
     return true;
   }
 }

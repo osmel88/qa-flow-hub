@@ -177,6 +177,19 @@ export const envSchema = z
     NOTIFICATIONS_LEASE_SECONDS: z.coerce.number().int().min(10).max(3_600).default(120),
 
     /**
+     * Multi-factor authentication (S3-F6, ADR 0021). The key encrypts TOTP
+     * secrets at rest (AES-256-GCM, key derived with SHA-256) and peppers the
+     * recovery-code and challenge hashes. Production refuses the default.
+     */
+    MFA_ENCRYPTION_KEY: z
+      .string()
+      .min(32, 'MFA_ENCRYPTION_KEY must be at least 32 characters')
+      .default('development-only-mfa-encryption-key-not-for-production'),
+    MFA_ISSUER: z.string().trim().min(1).max(60).default('qa-flow-hub'),
+    MFA_CHALLENGE_TTL_SECONDS: z.coerce.number().int().min(60).max(1_800).default(300),
+    MFA_CHALLENGE_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(5),
+
+    /**
      * Interactive documentation. Left unset it follows the environment: on in
      * development, off in production, because `/docs` publishes the entire API
      * surface to anonymous callers. Setting it explicitly wins either way, so a
@@ -221,6 +234,13 @@ export const envSchema = z
         'JWT_REFRESH_SECRET',
         'JWT_REFRESH_SECRET must differ from JWT_ACCESS_SECRET: one leaked secret must not mint both token kinds',
       );
+    }
+
+    const mfaProblem = env.MFA_ENCRYPTION_KEY.startsWith('development-only')
+      ? 'must be set: the development default is public'
+      : weakSecretReason(env.MFA_ENCRYPTION_KEY);
+    if (mfaProblem !== null) {
+      fail('MFA_ENCRYPTION_KEY', `MFA_ENCRYPTION_KEY ${mfaProblem}`);
     }
 
     if (env.STORAGE_PROVIDER === 'memory') {

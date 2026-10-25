@@ -1135,3 +1135,25 @@ caller's own tenant, never of another one.
 - **`test_run_failed` is sent once per run completion**; a reopened defect does
   not have its own type (the existing `defect_status_changed` covers it).
 - **Metrics.** Outbox counters are logged, not exported to `/metrics`.
+
+## 43. Multi-factor authentication: what S3-F6 leaves (S3-F6)
+
+- **TOTP only.** No WebAuthn/passkeys and no SMS. A second factor type needs a
+  `type` column on the factor table; today a user has at most one TOTP factor.
+- **No QR code.** The web shows the setup key and an `otpauth://` link; drawing
+  a QR needs a dependency that was not approved.
+- **Key rotation is destructive.** Secrets are sealed under one
+  `MFA_ENCRYPTION_KEY` (format `v1.`); there is no re-encryption job, so
+  rotating the key forces everyone to enrol again.
+- **No admin reset.** A member who loses both the authenticator and the
+  recovery codes needs an operator to delete their `mfa_totp_factors` row; an
+  audited support flow is missing.
+- **Policy is all-or-nothing per organization.** No grace period, no per-role
+  requirement, and members are not notified when the owner turns it on.
+- **Challenge cleanup is opportunistic.** Expired challenges are deleted when
+  the same user starts a new login; abandoned ones stay until then.
+- **Lockout is shared with the password.** Wrong codes increment the same
+  counter as wrong passwords, so an attacker who knows the password can lock
+  the account out for `AUTH_LOCKOUT_MINUTES` (same trade-off as debt on login).
+- **SSO/SAML/SCIM (3.1)** remain out of scope: they need a real identity
+  provider.

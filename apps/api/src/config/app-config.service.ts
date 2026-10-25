@@ -182,6 +182,20 @@ export class AppConfigService {
     };
   }
 
+  get mfa(): {
+    encryptionKey: string;
+    issuer: string;
+    challengeTtlSeconds: number;
+    challengeMaxAttempts: number;
+  } {
+    return {
+      encryptionKey: this.get('MFA_ENCRYPTION_KEY'),
+      issuer: this.get('MFA_ISSUER'),
+      challengeTtlSeconds: this.get('MFA_CHALLENGE_TTL_SECONDS'),
+      challengeMaxAttempts: this.get('MFA_CHALLENGE_MAX_ATTEMPTS'),
+    };
+  }
+
   get ingestion(): {
     maxBytes: number;
     maxTests: number;

@@ -171,6 +171,30 @@ and chapter 10 of the backend course. Summary:
 - Manual retry is owner/admin only, audited, and answers 404 for another
   tenant's id exactly as for an unknown one.
 
+## Multi-factor authentication
+
+- TOTP (RFC 6238, SHA-1, 6 digits, 30 s, ±1 step) per **account**, not per
+  organization (ADR 0021). The secret is sealed with AES-256-GCM under
+  `MFA_ENCRYPTION_KEY`, with the user id as additional authenticated data, so
+  a ciphertext copied to another user's row does not open.
+- Recovery codes (10, single-use) and login challenges are stored only as
+  HMAC-SHA256 digests; the plaintext is shown once and never returned again.
+- Replay: a factor keeps `lastUsedStep` and accepts only a newer step, through
+  a conditional update, so two concurrent requests with one code have one
+  winner. Recovery codes are consumed with `usedAt IS NULL` in the same way.
+- A password-correct login of an MFA account yields a 5-minute, single-use
+  challenge and **no** session or cookie. Wrong codes count against the
+  challenge (5 attempts) and against the account lockout. `/auth/mfa/verify`
+  shares the auth rate-limit bucket.
+- Sessions carry `mfaAuthenticated`. Turning MFA on revokes every other session;
+  turning it off (password + code) downgrades every session.
+- `Organization.requireMfa` (owner only, refused from a session without MFA) is
+  checked by `ActiveOrganizationGuard` on every request **after** membership,
+  so a non-member gets the plain membership refusal and learns nothing about
+  the policy. `/auth/mfa/*` skips the organization guard so members can comply.
+- MFA tables have no `organizationId` and no RLS, like `users` and `sessions`;
+  audit entries for MFA are written with `organizationId = null`.
+
 ## Transport and headers
 
 - Helmet: `X-Content-Type-Options`, `X-Frame-Options`, HSTS in production.

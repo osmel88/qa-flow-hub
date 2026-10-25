@@ -9,7 +9,13 @@ import {
   ROLE_RANK,
   UpdateOrganizationInput,
 } from '@qa-flow-hub/shared';
-import { ConflictError, DuplicateResourceError, ForbiddenError, NotFoundError } from '../../errors';
+import {
+  ConflictError,
+  DuplicateResourceError,
+  ForbiddenError,
+  MfaRequiredError,
+  NotFoundError,
+} from '../../errors';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../audit/audit.service';
@@ -85,8 +91,16 @@ export class OrganizationsService {
   }
 
   async update(organizationId: string, input: UpdateOrganizationInput): Promise<OrganizationView> {
+    // Requiring MFA from a session that has none would lock the owner out on
+    // the very next request.
+    if (input.requireMfa === true && !this.tenant.mfaAuthenticated) {
+      throw new MfaRequiredError(
+        'Sign in with multi-factor authentication before requiring it for the organization',
+      );
+    }
     const organization = await this.organizations.update(organizationId, {
       ...(input.name === undefined ? {} : { name: input.name }),
+      ...(input.requireMfa === undefined ? {} : { requireMfa: input.requireMfa }),
     });
     if (organization === null) {
       throw new NotFoundError('Organization');
@@ -225,6 +239,7 @@ export function toOrganizationView(organization: Organization): OrganizationView
     name: organization.name,
     slug: organization.slug,
     plan: organization.plan,
+    requireMfa: organization.requireMfa,
     createdAt: organization.createdAt.toISOString(),
   };
 }
@@ -237,6 +252,7 @@ function toMemberView(member: MemberWithUser): MemberView {
     avatarUrl: member.user.avatarUrl,
     role: member.role,
     status: member.status,
+    mfaEnabled: member.user.mfaTotpFactor?.confirmedAt != null,
     joinedAt: member.joinedAt.toISOString(),
   };
 }

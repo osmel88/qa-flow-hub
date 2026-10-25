@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { FastifyRequest } from 'fastify';
 import { IS_PUBLIC_KEY } from '../../../common/decorators/public.decorator';
 import { TenantContextService } from '../../../database/tenant-context.service';
-import { ForbiddenError, UnauthenticatedError } from '../../../errors';
+import { ForbiddenError, MfaRequiredError, UnauthenticatedError } from '../../../errors';
 import { OrganizationMembersRepository } from '../../organizations/organization-members.repository';
 import { SKIP_ORGANIZATION_KEY } from '../decorators/skip-organization.decorator';
 
@@ -64,6 +64,13 @@ export class ActiveOrganizationGuard implements CanActivate {
       // Same answer whether the organization does not exist or the caller is
       // simply not a member: the difference would confirm that a tenant exists.
       throw new ForbiddenError('You are not a member of this organization');
+    }
+
+    // Checked after membership, so a non-member learns nothing about the
+    // organization's policy. Evaluated per request: turning the policy on, or
+    // a member disabling their factor, takes effect on the next call.
+    if (membership.organization.requireMfa && !this.context.mfaAuthenticated) {
+      throw new MfaRequiredError();
     }
 
     this.context.setOrganization(membership.organizationId, membership.role);

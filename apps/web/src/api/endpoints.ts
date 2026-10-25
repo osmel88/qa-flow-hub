@@ -1,4 +1,9 @@
 import type {
+  CreateWorkItemInput,
+  ListWorkItemsQuery,
+  UpdateWorkItemInput,
+  WorkItemDetailView,
+  WorkItemView,
   CreateCustomFieldInput,
   CustomFieldEntity,
   CustomFieldView,
@@ -608,4 +613,15 @@ export const defectWorkflowApi = {
     apiFetch<DefectWorkflowView>(`/defect-workflow${query({ projectId })}`),
   update: (body: UpdateDefectWorkflowInput) =>
     apiFetch<DefectWorkflowView>('/defect-workflow', { method: 'PUT', body }),
+};
+
+export const workItemsApi = {
+  list: (params: Omit<ListWorkItemsQuery, 'page' | 'pageSize'>) =>
+    apiFetch<Paginated<WorkItemView>>(`/work-items${query({ ...params, pageSize: 100 })}`),
+  get: (id: string) => apiFetch<WorkItemDetailView>(`/work-items/${id}`),
+  create: (body: CreateWorkItemInput) =>
+    apiFetch<WorkItemView>('/work-items', { method: 'POST', body }),
+  update: (id: string, body: UpdateWorkItemInput) =>
+    apiFetch<WorkItemView>(`/work-items/${id}`, { method: 'PATCH', body }),
+  remove: (id: string) => apiFetch<void>(`/work-items/${id}`, { method: 'DELETE' }),
 };

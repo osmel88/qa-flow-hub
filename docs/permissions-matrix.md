@@ -179,6 +179,9 @@ Rules that hold even for an owner:
 | `releases.read`        |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
 | `releases.manage`      |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
 | `customization.manage` |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| `work_items.read`      |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
+| `work_items.write`     |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   —    |
+| `work_items.manage`    |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
 
 The table is `ROLE_PERMISSIONS` in `packages/shared`; it was derived from the
 `@Roles` lists the routes carried before, so an installation without overrides
@@ -201,6 +204,9 @@ archived projects are read-only; every change is an audited `role_change`.
 
 ### API keys and ingestion (S3-F3)
 
+- `work_items.write` covers creating and editing work items, moving them
+  between statuses, in the hierarchy and into open releases;
+  `work_items.manage` adds soft deletion.
 - `customization.manage` covers creating, editing, archiving and restoring
   custom field definitions and saving the defect workflow of a project.
   Reading them needs only project visibility.

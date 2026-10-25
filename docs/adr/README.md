@@ -24,27 +24,28 @@ Date: YYYY-MM-DD
 
 ## Index
 
-| ADR                                                     | Decision                                                   | Status                    |
-| ------------------------------------------------------- | ---------------------------------------------------------- | ------------------------- |
-| [0001](0001-use-nestjs.md)                              | NestJS as the backend framework                            | accepted                  |
-| [0002](0002-fastify-adapter.md)                         | Fastify adapter instead of Express                         | accepted                  |
-| [0003](0003-postgresql.md)                              | PostgreSQL as the database                                 | accepted                  |
-| [0004](0004-prisma-orm.md)                              | Prisma as the ORM                                          | accepted                  |
-| [0005](0005-monorepo-npm-workspaces.md)                 | Monorepo with npm workspaces                               | accepted                  |
-| [0006](0006-multi-tenancy-strategy.md)                  | Row-level multi-tenancy with a shared schema               | accepted                  |
-| [0007](0007-modular-monolith.md)                        | Modular monolith, not microservices                        | accepted                  |
-| [0008](0008-jwt-and-refresh-tokens.md)                  | JWT access tokens with rotating refresh tokens             | accepted, amended by 0012 |
-| [0009](0009-test-case-snapshots-in-runs.md)             | A test case is snapshotted when it enters a run            | accepted                  |
-| [0010](0010-polymorphic-traceability-links.md)          | One polymorphic table for traceability links               | accepted                  |
-| [0011](0011-shared-zod-contracts.md)                    | Zod contracts shared between API and web client            | accepted                  |
-| [0012](0012-refresh-token-cookie-transport.md)          | Refresh tokens travel as an `HttpOnly` cookie              | accepted                  |
-| [0013](0013-row-level-security-with-non-owning-role.md) | Row Level Security through a non-owning role               | accepted                  |
-| [0014](0014-external-secret-manager.md)                 | Integration credentials live in an external secret manager | accepted                  |
-| [0015](0015-billing-provider.md)                        | Billing behind a `BillingProvider` port, mock first        | accepted                  |
-| [0016](0016-printable-html-instead-of-server-pdf.md)    | PDF export through a printable HTML view                   | accepted                  |
-| [0017](0017-project-visibility-through-grants.md)       | Project visibility through grants, enforced in services    | accepted                  |
-| [0018](0018-api-keys-and-report-ingestion.md)           | Project API keys and atomic report ingestion               | accepted                  |
-| [0019](0019-release-as-an-entity.md)                    | Release as a project entity linked to runs                 | accepted                  |
-| [0020](0020-notification-outbox.md)                     | The notification ledger is also the outbox                 | accepted                  |
-| [0021](0021-totp-multi-factor-authentication.md)        | Account-level TOTP MFA with an organization policy         | accepted                  |
-| [0022](0022-custom-fields-and-defect-workflow.md)       | Custom fields as JSONB values and a per-project workflow   | accepted                  |
+| ADR                                                     | Decision                                                    | Status                    |
+| ------------------------------------------------------- | ----------------------------------------------------------- | ------------------------- |
+| [0001](0001-use-nestjs.md)                              | NestJS as the backend framework                             | accepted                  |
+| [0002](0002-fastify-adapter.md)                         | Fastify adapter instead of Express                          | accepted                  |
+| [0003](0003-postgresql.md)                              | PostgreSQL as the database                                  | accepted                  |
+| [0004](0004-prisma-orm.md)                              | Prisma as the ORM                                           | accepted                  |
+| [0005](0005-monorepo-npm-workspaces.md)                 | Monorepo with npm workspaces                                | accepted                  |
+| [0006](0006-multi-tenancy-strategy.md)                  | Row-level multi-tenancy with a shared schema                | accepted                  |
+| [0007](0007-modular-monolith.md)                        | Modular monolith, not microservices                         | accepted                  |
+| [0008](0008-jwt-and-refresh-tokens.md)                  | JWT access tokens with rotating refresh tokens              | accepted, amended by 0012 |
+| [0009](0009-test-case-snapshots-in-runs.md)             | A test case is snapshotted when it enters a run             | accepted                  |
+| [0010](0010-polymorphic-traceability-links.md)          | One polymorphic table for traceability links                | accepted                  |
+| [0011](0011-shared-zod-contracts.md)                    | Zod contracts shared between API and web client             | accepted                  |
+| [0012](0012-refresh-token-cookie-transport.md)          | Refresh tokens travel as an `HttpOnly` cookie               | accepted                  |
+| [0013](0013-row-level-security-with-non-owning-role.md) | Row Level Security through a non-owning role                | accepted                  |
+| [0014](0014-external-secret-manager.md)                 | Integration credentials live in an external secret manager  | accepted                  |
+| [0015](0015-billing-provider.md)                        | Billing behind a `BillingProvider` port, mock first         | accepted                  |
+| [0016](0016-printable-html-instead-of-server-pdf.md)    | PDF export through a printable HTML view                    | accepted                  |
+| [0017](0017-project-visibility-through-grants.md)       | Project visibility through grants, enforced in services     | accepted                  |
+| [0018](0018-api-keys-and-report-ingestion.md)           | Project API keys and atomic report ingestion                | accepted                  |
+| [0019](0019-release-as-an-entity.md)                    | Release as a project entity linked to runs                  | accepted                  |
+| [0020](0020-notification-outbox.md)                     | The notification ledger is also the outbox                  | accepted                  |
+| [0021](0021-totp-multi-factor-authentication.md)        | Account-level TOTP MFA with an organization policy          | accepted                  |
+| [0022](0022-custom-fields-and-defect-workflow.md)       | Custom fields as JSONB values and a per-project workflow    | accepted                  |
+| [0023](0023-work-items-ranked-hierarchy.md)             | Work items with a ranked hierarchy and composite references | accepted                  |

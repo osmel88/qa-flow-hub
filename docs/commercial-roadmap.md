@@ -1,5 +1,11 @@
 # Commercial roadmap
 
+> **Scope update (Stage 4).** qa-flow-hub now targets the whole software
+> delivery lifecycle — Requirements → Planning → Work Items/Backlog → Sprints →
+> Development → CI → QA → Defects → Releases → Analytics — with optional
+> external integrations and a fully local/mock mode. The sequencing from Stage
+> 4 on lives in [`stage-4-roadmap.md`](stage-4-roadmap.md).
+
 [`product-vision.md`](product-vision.md) lists what would make qa-flow-hub sellable.
 This document sequences it: what to build in what order, why that order, and what
 each step costs. It is a product document with engineering constraints in it, not a

@@ -73,6 +73,7 @@ apps/api/src/
 ├─ modules/integrations/   Settings → Integrations (S2-F1) + Jira sync (S2-F2) + TestRail sync (S2-F3) + GitHub sync (S2-F4) + external traceability (S2-F5)
 ├─ modules/notifications/  domain event → recipients → preferences → template → ledger → EmailAdapter (S2-F6)
 ├─ modules/customization/  custom field definitions, value validation, per-project defect workflow (S3-F7)
+├─ modules/work-items/     backlog: ranked hierarchy, releases, optimistic versioning (S4-F1)
 ├─ storage/                StorageProvider port, LocalStorageProvider, MemoryStorageProvider, StorageModule (S2-F7)
 ├─ modules/attachments/    multipart upload → inspection → provider → AttachmentMetadata; authenticated download (S2-F7)
 └─ modules/<area>/         controller, service, repository, dto, domain, policies

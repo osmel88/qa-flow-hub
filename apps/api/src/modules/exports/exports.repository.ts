@@ -63,8 +63,8 @@ export class ExportsRepository extends TenantAwareRepository {
     }
     const links = await this.prisma.traceabilityLink.findMany({
       where: this.scope({
-        sourceType: 'requirement',
-        targetType: 'test_case',
+        sourceType: 'requirement' as const,
+        targetType: 'test_case' as const,
         targetId: { in: caseIds },
       }),
       select: { sourceId: true, targetId: true },

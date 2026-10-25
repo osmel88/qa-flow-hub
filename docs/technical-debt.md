@@ -1177,3 +1177,18 @@ caller's own tenant, never of another one.
   required does not flag existing entities that lack it until they are edited.
 - **Field order has no UI.** Definitions carry a `position` (new fields go
   last, `PATCH` can change it), but the web has no reordering control.
+
+## 45. Work items: what S4-F1 leaves (S4-F1)
+
+- **Fixed hierarchy.** The rank (epic → feature → story/bug/improvement/spike
+  → task) is not configurable; a story cannot contain another story.
+- **Free status moves.** Any status can follow any other; there is no
+  configurable workflow like the defect one (ADR 0022).
+- **No links yet.** Work items are not linked to requirements, test cases,
+  defects or commits; traceability and the release dashboard ignore them.
+- **No ordering or ranking of the backlog**, no sprints, no bulk edits and no
+  notifications on assignment.
+- **Not in imports, exports, custom fields or analytics.**
+- **Deleted parents need empty children.** Deleting an item with live
+  children is refused; there is no cascade or re-parenting helper.
+- **`version` is optional.** Clients that omit it still overwrite each other.

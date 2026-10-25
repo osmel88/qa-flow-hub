@@ -195,6 +195,21 @@ and chapter 10 of the backend course. Summary:
 - MFA tables have no `organizationId` and no RLS, like `users` and `sessions`;
   audit entries for MFA are written with `organizationId = null`.
 
+## Work items
+
+- `work_items` carries `organizationId`, is under RLS and has no `DELETE` for
+  the app role (soft delete only).
+- `parentId` and `releaseId` are composite foreign keys with `projectId`, so
+  the database itself refuses a parent or release of another project or
+  tenant. The service answers such ids exactly like missing ones (same status,
+  code and message).
+- Items of a hidden project answer like missing ones; listing a hidden project
+  returns an empty page with `total: 0`. The assignee must be a member who can
+  see the project.
+- Hierarchy changes are serialised per project (advisory lock) and edits carry
+  an optional `version` (409 when stale), so concurrent requests cannot build
+  an invalid tree or silently overwrite each other.
+
 ## Custom fields and defect workflow
 
 - Definitions and workflows carry `organizationId` and are under RLS like

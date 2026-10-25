@@ -1,5 +1,5 @@
 import { PaginationQuery, toSkipTake } from '@qa-flow-hub/shared';
-import { PrismaService, RlsPrismaClient } from './prisma.service';
+import { PrismaService, PrismaTransaction, RlsPrismaClient } from './prisma.service';
 import { TenantContextService } from './tenant-context.service';
 
 /**
@@ -35,8 +35,19 @@ export abstract class TenantAwareRepository {
    * The tenant-scoped client. Deliberately the same shape as `PrismaService`,
    * so subclasses read the same as before and cannot accidentally choose the
    * unguarded client.
+   *
+   * Typed as `PrismaTransaction`: the RLS extension only hooks queries and
+   * changes no model signature, and repositories write `(tx ?? this.prisma)`
+   * everywhere. With the extended type that union makes TypeScript compare two
+   * client types model by model, which exceeds its stack depth as the schema
+   * grows (it did when S4-F1 added `work_items`) and breaks every such call.
    */
-  protected get prisma(): RlsPrismaClient {
+  protected get prisma(): PrismaTransaction {
+    return this.prismaService.scoped as unknown as PrismaTransaction;
+  }
+
+  /** The same client with `$transaction`, for the few repositories that open their own. */
+  protected get rlsClient(): RlsPrismaClient {
     return this.prismaService.scoped;
   }
 

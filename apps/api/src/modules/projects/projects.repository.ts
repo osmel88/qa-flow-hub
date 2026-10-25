@@ -94,14 +94,20 @@ export class ProjectsRepository extends TenantAwareRepository {
    */
   async nextKey(
     projectId: string,
-    counter: 'requirementCounter' | 'testCaseCounter' | 'defectCounter',
-    infix: 'R' | 'C' | 'D',
+    counter: 'requirementCounter' | 'testCaseCounter' | 'defectCounter' | 'workItemCounter',
+    infix: 'R' | 'C' | 'D' | 'W',
     tx: PrismaTransaction,
   ): Promise<string> {
     const project = await tx.project.update({
       where: { id: projectId, organizationId: this.organizationId },
       data: { [counter]: { increment: 1 } },
-      select: { key: true, requirementCounter: true, testCaseCounter: true, defectCounter: true },
+      select: {
+        key: true,
+        requirementCounter: true,
+        testCaseCounter: true,
+        defectCounter: true,
+        workItemCounter: true,
+      },
     });
 
     return `${project.key}-${infix}-${project[counter]}`;

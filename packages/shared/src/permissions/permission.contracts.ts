@@ -38,6 +38,7 @@ export const PERMISSION_MODULES = [
   'automation',
   'releases',
   'customization',
+  'work_items',
 ] as const;
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
 
@@ -73,6 +74,9 @@ export const PERMISSIONS = [
   'releases.read',
   'releases.manage',
   'customization.manage',
+  'work_items.read',
+  'work_items.write',
+  'work_items.manage',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -267,6 +271,24 @@ export const PERMISSION_CATALOG: readonly PermissionDescriptor[] = [
     label: 'Manage',
     description: 'Define custom fields and configure the defect workflow of the project',
   },
+  {
+    permission: 'work_items.read',
+    module: 'work_items',
+    label: 'Read',
+    description: 'View the backlog: epics, features, stories, tasks, bugs, improvements and spikes',
+  },
+  {
+    permission: 'work_items.write',
+    module: 'work_items',
+    label: 'Write',
+    description: 'Create and edit work items, move them between statuses and plan them in releases',
+  },
+  {
+    permission: 'work_items.manage',
+    module: 'work_items',
+    label: 'Manage',
+    description: 'Delete work items',
+  },
 ];
 
 export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
@@ -285,6 +307,7 @@ export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
   automation: 'Automation',
   releases: 'Releases',
   customization: 'Customization',
+  work_items: 'Work items',
 };
 
 const READ_ONLY: readonly Permission[] = [
@@ -299,6 +322,7 @@ const READ_ONLY: readonly Permission[] = [
   'analytics.read',
   'data.export',
   'releases.read',
+  'work_items.read',
 ];
 
 const TESTER: readonly Permission[] = [
@@ -308,6 +332,7 @@ const TESTER: readonly Permission[] = [
   'traceability.manage',
   'attachments.upload',
   'attachments.delete',
+  'work_items.write',
 ];
 
 const QA_LEAD: readonly Permission[] = [
@@ -329,6 +354,7 @@ const PROJECT_MANAGER: readonly Permission[] = [
   'api_keys.manage',
   'releases.manage',
   'customization.manage',
+  'work_items.manage',
 ];
 
 const ORGANIZATION_ADMIN: readonly Permission[] = [

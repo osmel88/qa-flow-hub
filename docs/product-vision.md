@@ -23,6 +23,12 @@ sold to the enterprise rather than to the team doing the work.
 
 ## What qa-flow-hub is
 
+> **Scope update (Stage 4).** The product grows from QA management into a
+> multi-tenant platform for the software development lifecycle: requirements
+> and planning, work items and sprints, development and CI, QA, defects,
+> releases and metrics. External integrations are optional; every feature
+> works in local/mock mode. See [`stage-4-roadmap.md`](stage-4-roadmap.md).
+
 A multi-tenant SaaS that keeps the QA chain intact and queryable:
 
 ```

@@ -57,7 +57,7 @@ export class PermissionOverridesRepository extends TenantAwareRepository {
   ): Promise<ProjectPermissionOverride[]> {
     const organizationId = this.organizationId;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.rlsClient.$transaction(async (tx) => {
       await tx.projectPermissionOverride.deleteMany({
         where: {
           organizationId,

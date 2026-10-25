@@ -318,6 +318,8 @@ model User {
   importJobs             ImportJob[]
   createdApiKeys         ApiKey[]                    @relation("ApiKeyCreatedBy")
   createdReleases        Release[]                   @relation("ReleaseCreatedBy")
+  assignedWorkItems      WorkItem[]                  @relation("WorkItemAssignee")
+  reportedWorkItems      WorkItem[]                  @relation("WorkItemReporter")
   revokedApiKeys         ApiKey[]                    @relation("ApiKeyRevokedBy")
   mfaTotpFactor          MfaTotpFactor?
   mfaRecoveryCodes       MfaRecoveryCode[]
@@ -454,6 +456,7 @@ model Organization {
   ingestionReports       IngestionReport[]
   releases               Release[]
   customFieldDefinitions CustomFieldDefinition[]
+  workItems              WorkItem[]
   defectWorkflows        DefectWorkflow[]
 
   @@index([deletedAt])
@@ -543,6 +546,7 @@ model Project {
   requirementCounter Int @default(0)
   testCaseCounter    Int @default(0)
   defectCounter      Int @default(0)
+  workItemCounter    Int @default(0)
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -561,6 +565,7 @@ model Project {
   ingestionReports       IngestionReport[]
   releases               Release[]
   customFieldDefinitions CustomFieldDefinition[]
+  workItems              WorkItem[]
   defectWorkflow         DefectWorkflow?
 
   @@unique([organizationId, key])
@@ -1425,7 +1430,8 @@ model Release {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  runs TestRun[]
+  runs      TestRun[]
+  workItems WorkItem[]
 
   @@unique([projectId, version])
   @@unique([id, projectId])
@@ -1495,4 +1501,78 @@ model DefectWorkflow {
 
   @@index([organizationId])
   @@map("defect_workflows")
+}
+
+// ---------------------------------------------------------------------------
+// Work items (S4-F1)
+// ---------------------------------------------------------------------------
+
+enum WorkItemType {
+  epic
+  feature
+  story
+  task
+  bug
+  improvement
+  spike
+}
+
+enum WorkItemStatus {
+  backlog
+  ready
+  in_progress
+  blocked
+  in_review
+  done
+  cancelled
+}
+
+/// The backlog of a project. `parentId` and `releaseId` reference rows of the
+/// same project through composite foreign keys, so neither can cross a
+/// project (or a tenant) whatever the API does.
+model WorkItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// Human-readable and stable: WEB-W-12.
+  key         String
+  title       String
+  description String?
+  type        WorkItemType   @default(story)
+  status      WorkItemStatus @default(backlog)
+  priority    Priority       @default(medium)
+  estimate    Float?
+  labels      String[]       @default([])
+
+  parentId String?
+  parent   WorkItem?  @relation("WorkItemHierarchy", fields: [parentId, projectId], references: [id, projectId], onDelete: NoAction, onUpdate: NoAction)
+  children WorkItem[] @relation("WorkItemHierarchy")
+
+  releaseId String?
+  release   Release? @relation(fields: [releaseId, projectId], references: [id, projectId], onDelete: NoAction, onUpdate: NoAction)
+
+  assigneeId String?
+  assignee   User?   @relation("WorkItemAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporterId String?
+  reporter   User?   @relation("WorkItemReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+
+  /// Optimistic concurrency: bumped by every update.
+  version     Int       @default(1)
+  completedAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([organizationId, projectId, key])
+  @@unique([id, projectId])
+  @@index([organizationId, projectId, status])
+  @@index([organizationId, assigneeId, status])
+  @@index([parentId])
+  @@index([releaseId])
+  @@index([labels], type: Gin)
+  @@map("work_items")
 }

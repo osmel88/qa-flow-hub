@@ -11,6 +11,8 @@ import { DefectsPage } from '../pages/DefectsPage';
 import { ApiKeysPage } from '../pages/ApiKeysPage';
 import { ReleaseDetailPage } from '../pages/ReleaseDetailPage';
 import { ReleasesPage } from '../pages/ReleasesPage';
+import { WorkItemDetailPage } from '../pages/WorkItemDetailPage';
+import { WorkItemsPage } from '../pages/WorkItemsPage';
 import { CustomizationPage } from '../pages/CustomizationPage';
 import { ImportPage } from '../pages/ImportPage';
 import { PrintableMatrixPage } from '../pages/PrintableMatrixPage';
@@ -50,6 +52,8 @@ const router = createBrowserRouter([
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/projects', element: <ProjectsPage /> },
           { path: '/requirements', element: <RequirementsPage /> },
+          { path: '/work-items', element: <WorkItemsPage /> },
+          { path: '/work-items/:workItemId', element: <WorkItemDetailPage /> },
           { path: '/test-cases', element: <TestCasesPage /> },
           { path: '/test-cases/:caseId', element: <TestCaseEditorPage /> },
           { path: '/imports', element: <ImportPage /> },

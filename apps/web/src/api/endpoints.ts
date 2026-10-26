@@ -1,4 +1,12 @@
 import type {
+  CloseSprintInput,
+  CloseSprintResult,
+  CreateSprintInput,
+  ListSprintsQuery,
+  SprintDetailView,
+  SprintListView,
+  SprintView,
+  UpdateSprintInput,
   ReparentWorkItemInput,
   WorkItemTreeQuery,
   WorkItemTreeView,
@@ -663,6 +671,25 @@ export const workItemsApi = {
     apiFetch<WorkItemView>(`/work-items/${id}/reparent`, { method: 'POST', body }),
   bulk: (body: BulkUpdateWorkItemsInput) =>
     apiFetch<BulkUpdateWorkItemsResult>('/work-items/bulk', { method: 'POST', body }),
+};
+
+export const sprintsApi = {
+  list: (params: Omit<ListSprintsQuery, 'page' | 'pageSize'>) =>
+    apiFetch<SprintListView>(`/sprints${query({ ...params, pageSize: 100 })}`),
+  get: (id: string) => apiFetch<SprintDetailView>(`/sprints/${id}`),
+  create: (body: CreateSprintInput) => apiFetch<SprintView>('/sprints', { method: 'POST', body }),
+  update: (id: string, body: UpdateSprintInput) =>
+    apiFetch<SprintView>(`/sprints/${id}`, { method: 'PATCH', body }),
+  start: (id: string) => apiFetch<SprintView>(`/sprints/${id}/start`, { method: 'POST' }),
+  close: (id: string, action: 'complete' | 'cancel', body: CloseSprintInput) =>
+    apiFetch<CloseSprintResult>(`/sprints/${id}/${action}`, { method: 'POST', body }),
+  addItems: (id: string, workItemIds: string[]) =>
+    apiFetch<SprintDetailView>(`/sprints/${id}/items`, { method: 'POST', body: { workItemIds } }),
+  removeItems: (id: string, workItemIds: string[]) =>
+    apiFetch<SprintDetailView>(`/sprints/${id}/items/remove`, {
+      method: 'POST',
+      body: { workItemIds },
+    }),
 };
 
 export const backlogApi = {

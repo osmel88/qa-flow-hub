@@ -1229,3 +1229,17 @@ caller's own tenant, never of another one.
   restore (not implemented yet) would bring them back.
 - **The requirement status is not derived**: `implemented` as a requirement
   status is still set by hand and can disagree with the computed state.
+
+## 49. Sprints: what S4-F5 leaves (S4-F5)
+
+- **No Scrum Board or Kanban** yet (S4-F6, S4-F7): the sprint backlog is a
+  table in backlog order, with no per-sprint ordering or swimlanes.
+- **Velocity is estimate-based only** and fixed to the last 3 completed
+  sprints; no burndown, no per-person capacity, no working-day calendar.
+- **Metrics are computed on read** from the live items; completed/committed
+  are snapshots, but a later edit of a done item's estimate is not reflected
+  in a closed sprint's per-status counts (they read live items).
+- **No sprint history per item**: carry-over is audited, but an item only
+  remembers its current sprint.
+- **Planning is per call** (up to 100 ids); there is no drag and drop between
+  the backlog and a sprint.

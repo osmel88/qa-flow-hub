@@ -120,9 +120,50 @@ requirements); no new ADR; debt 48.
 - Tests: `requirement-links.int-spec.ts`, `requirement-links.contracts.test.ts`,
   `ImplementationBadge.test.tsx`, `requirement-links.e2e.spec.ts`.
 
+## S4-F5 — Sprint
+
+One migration (`sprints`, `work_items.sprintId`); no new ADR; debt 49.
+
+**Status: implemented.**
+
+- `Sprint` belongs to a project: name, goal, start/end date (`DATE`, start
+  ≤ end checked by the API and a `CHECK`), capacity (points), status
+  `planned → active → completed`, or `planned|active → cancelled`.
+  Completed and cancelled sprints are frozen: no edit, no item in or out, no
+  transition (409). Sprints are never deleted.
+- At most one active sprint per project: `start` takes a per-project advisory
+  lock and checks, and a partial unique index (`WHERE status = 'active'`) is
+  the database backstop (a race answers 409).
+- `work_items.sprintId` has a composite foreign key `(sprintId, projectId)`
+  → `sprints(id, projectId)`, so an item can only be planned into a sprint of
+  its own project and tenant.
+- `POST /sprints/:id/items` plans items (from the backlog or another open
+  sprint, never done/cancelled ones) and `POST /sprints/:id/items/remove`
+  sends them back to the backlog; up to 100 ids, all or nothing, foreign or
+  missing ids answer one 404.
+- `POST /sprints/:id/complete|cancel` with `carryOverTo` (`backlog` or a
+  planned sprint of the same project) moves every unfinished item; done and
+  cancelled items stay with the closed sprint as its history.
+- Metrics (`computeSprintMetrics`): count and progress by status, scope,
+  committed estimate (frozen at start), completed estimate (frozen at close),
+  unestimated items, capacity and load (scope / capacity). Velocity is the
+  average completed estimate of the last 3 completed sprints
+  (`computeVelocity`), returned with `GET /sprints`.
+- Lock order: activation advisory lock → sprint rows (id order, `FOR UPDATE`
+  for transitions, `FOR SHARE` for planning) → work item rows (id order).
+  Edits carry an optional `version` (409 when stale).
+- `sprintId` filter (`<id>` or `none`) on `GET /work-items` and `GET /backlog`.
+- Permissions: read `work_items.read`; plan items `work_items.write`; create,
+  edit, start, complete, cancel `work_items.manage`. Every change is audited.
+- Web: Sprints page (create, list, status filter, velocity), Sprint detail
+  (metrics, progress by status, edit, start/complete/cancel with carry-over
+  target, sprint backlog, plan from the backlog), Sprint filter on Backlog.
+- Tests: `sprints.int-spec.ts`, `sprint.contracts.test.ts`,
+  `sprints.e2e.spec.ts`.
+
 ## Next candidates
 
-- Sprints / iterations and capacity planning over work items.
+- S4-F6 Scrum Board and S4-F7 Kanban over sprints and work items.
 - Links between work items and test cases or defects.
 - Development and CI views on top of the existing GitHub mock and ingestion.
 

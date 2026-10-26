@@ -207,6 +207,9 @@ archived projects are read-only; every change is an audited `role_change`.
 - Requirement ↔ work item links (S4-F4) need `work_items.write` plus
   `requirements.read` on the project to link or unlink, and read on both
   sides to list; no new permission.
+- Sprints (S4-F5): reading needs `work_items.read`, planning items into or
+  out of a sprint `work_items.write`, and creating, editing, starting,
+  completing or cancelling a sprint `work_items.manage`; no new permission.
 - `work_items.write` covers creating and editing work items, moving them
   between statuses, in the hierarchy and into open releases;
   `work_items.manage` adds soft deletion. Reordering the backlog and bulk

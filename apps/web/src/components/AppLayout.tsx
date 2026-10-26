@@ -10,6 +10,7 @@ const NAV = [
   { to: '/requirements', label: 'Requirements' },
   { to: '/backlog', label: 'Backlog' },
   { to: '/hierarchy', label: 'Hierarchy' },
+  { to: '/sprints', label: 'Sprints' },
   { to: '/work-items', label: 'Work items' },
   { to: '/test-cases', label: 'Test cases' },
   { to: '/imports', label: 'Import' },

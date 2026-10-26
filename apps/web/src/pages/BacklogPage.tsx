@@ -15,7 +15,7 @@ import { Badge, Button, DataState, SelectField, TextField } from '@qa-flow-hub/u
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { backlogApi, projectsApi, releasesApi, workItemsApi } from '../api/endpoints';
+import { backlogApi, projectsApi, releasesApi, workItemsApi, sprintsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
@@ -50,6 +50,7 @@ export function BacklogPage(): React.JSX.Element {
   const { can } = useProjectPermissions(activeProjectId);
   const [groupBy, setGroupBy] = useState<BacklogGrouping>('none');
   const [releaseId, setReleaseId] = useState('');
+  const [sprintId, setSprintId] = useState('');
   const [type, setType] = useState<WorkItemType | ''>('');
   const [mine, setMine] = useState(false);
   const [includeClosed, setIncludeClosed] = useState(false);
@@ -74,6 +75,7 @@ export function BacklogPage(): React.JSX.Element {
       activeProjectId,
       groupBy,
       releaseId,
+      sprintId,
       type,
       mine,
       includeClosed,
@@ -85,10 +87,16 @@ export function BacklogPage(): React.JSX.Element {
         groupBy,
         includeClosed: includeClosed ? 'true' : 'false',
         ...(releaseId === '' ? {} : { releaseId }),
+        ...(sprintId === '' ? {} : { sprintId }),
         ...(type === '' ? {} : { type }),
         ...(mine ? { assigneeId: 'me' } : {}),
         ...(trimmedSearch === '' ? {} : { search: trimmedSearch }),
       }),
+    enabled: activeProjectId !== null,
+  });
+  const sprints = useQuery({
+    queryKey: ['sprints', activeProjectId, 'filter'],
+    queryFn: () => sprintsApi.list({ projectId }),
     enabled: activeProjectId !== null,
   });
   const releases = useQuery({
@@ -215,6 +223,21 @@ export function BacklogPage(): React.JSX.Element {
           ]}
           onChange={(event) => {
             setReleaseId(event.target.value);
+          }}
+        />
+        <SelectField
+          label="Sprint filter"
+          value={sprintId}
+          options={[
+            { value: '', label: 'Any sprint' },
+            { value: 'none', label: 'Not in a sprint' },
+            ...(sprints.data?.data ?? []).map((sprint) => ({
+              value: sprint.id,
+              label: `${sprint.name} (${humanize(sprint.status)})`,
+            })),
+          ]}
+          onChange={(event) => {
+            setSprintId(event.target.value);
           }}
         />
         <SelectField

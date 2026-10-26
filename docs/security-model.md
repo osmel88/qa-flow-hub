@@ -216,6 +216,12 @@ and chapter 10 of the backend course. Summary:
   ends are share-locked and must be live, foreign/hidden/deleted ids answer
   like missing ones, and writing needs `work_items.write` plus
   `requirements.read`.
+- Sprints (S4-F5) are under RLS by organization and the app role cannot
+  delete them. `work_items.sprintId` has a composite foreign key with
+  `projectId`, so an item cannot be planned into a sprint of another project
+  or tenant; a partial unique index keeps one active sprint per project.
+  Sprints of hidden or foreign projects answer like missing ones, and
+  completed or cancelled sprints are frozen.
 
 ## Custom fields and defect workflow
 

@@ -15,6 +15,7 @@ export interface WorkItemFilters {
   reporterId?: string;
   parentId?: string | null;
   releaseId?: string | null;
+  sprintId?: string | null;
   label?: string;
   open?: boolean;
   search?: string;
@@ -171,6 +172,7 @@ export class WorkItemsRepository extends TenantAwareRepository {
       ...(filters.reporterId === undefined ? {} : { reporterId: filters.reporterId }),
       ...(filters.parentId === undefined ? {} : { parentId: filters.parentId }),
       ...(filters.releaseId === undefined ? {} : { releaseId: filters.releaseId }),
+      ...(filters.sprintId === undefined ? {} : { sprintId: filters.sprintId }),
       ...(filters.label === undefined ? {} : { labels: { has: filters.label } }),
       ...(filters.status !== undefined
         ? { status: filters.status }

@@ -24,6 +24,7 @@ const item: WorkItemView = {
   labels: ['payments'],
   parentId: null,
   releaseId: null,
+  sprintId: null,
   rank: 1024,
   version: 1,
   completedAt: null,

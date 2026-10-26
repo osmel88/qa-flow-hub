@@ -12,6 +12,8 @@ import { ApiKeysPage } from '../pages/ApiKeysPage';
 import { ReleaseDetailPage } from '../pages/ReleaseDetailPage';
 import { ReleasesPage } from '../pages/ReleasesPage';
 import { WorkItemDetailPage } from '../pages/WorkItemDetailPage';
+import { SprintDetailPage } from '../pages/SprintDetailPage';
+import { SprintsPage } from '../pages/SprintsPage';
 import { WorkItemsPage } from '../pages/WorkItemsPage';
 import { BacklogPage } from '../pages/BacklogPage';
 import { HierarchyPage } from '../pages/HierarchyPage';
@@ -58,6 +60,8 @@ const router = createBrowserRouter([
           { path: '/requirements/:requirementId', element: <RequirementDetailPage /> },
           { path: '/backlog', element: <BacklogPage /> },
           { path: '/hierarchy', element: <HierarchyPage /> },
+          { path: '/sprints', element: <SprintsPage /> },
+          { path: '/sprints/:sprintId', element: <SprintDetailPage /> },
           { path: '/work-items', element: <WorkItemsPage /> },
           { path: '/work-items/:workItemId', element: <WorkItemDetailPage /> },
           { path: '/test-cases', element: <TestCasesPage /> },

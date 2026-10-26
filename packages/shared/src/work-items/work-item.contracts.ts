@@ -152,6 +152,8 @@ export const listWorkItemsQuerySchema = paginationQuerySchema.extend({
   reporterId: idSchema.optional(),
   parentId: refFilter.optional(),
   releaseId: refFilter.optional(),
+  /** `none` filters items outside any sprint (S4-F5). */
+  sprintId: refFilter.optional(),
   label: labelSchema.transform((label) => normalizeLabels([label])[0] ?? label).optional(),
   open: z.enum(['true', 'false']).optional(),
   search: z.string().trim().min(1).max(120).optional(),
@@ -174,6 +176,8 @@ export interface WorkItemView {
   labels: string[];
   parentId: string | null;
   releaseId: string | null;
+  /** The sprint the item is planned in (S4-F5). */
+  sprintId: string | null;
   /** Position in the project backlog, ascending. */
   rank: number;
   /** Bumped by every change; send it back to update without overwriting others. */
@@ -211,6 +215,8 @@ export const backlogQuerySchema = z.object({
   /** `me` is the personal backlog of the caller. */
   assigneeId: z.union([z.literal('me'), z.literal('none'), idSchema]).optional(),
   releaseId: refFilter.optional(),
+  /** `none` is the backlog outside any sprint (S4-F5). */
+  sprintId: refFilter.optional(),
   type: z.enum(WORK_ITEM_TYPES).optional(),
   status: z.enum(WORK_ITEM_STATUSES).optional(),
   priority: z.enum(PRIORITIES).optional(),

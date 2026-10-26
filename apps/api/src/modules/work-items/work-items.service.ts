@@ -141,6 +141,7 @@ export class WorkItemsService {
     const assigneeId = ref(query.assigneeId);
     const parentId = ref(query.parentId);
     const releaseId = ref(query.releaseId);
+    const sprintId = ref(query.sprintId);
     const page = await this.items.list(query, {
       projectId,
       ...(query.type === undefined ? {} : { type: query.type }),
@@ -150,6 +151,7 @@ export class WorkItemsService {
       ...(query.reporterId === undefined ? {} : { reporterId: query.reporterId }),
       ...(parentId === undefined ? {} : { parentId }),
       ...(releaseId === undefined ? {} : { releaseId }),
+      ...(sprintId === undefined ? {} : { sprintId }),
       ...(query.label === undefined ? {} : { label: query.label }),
       ...(query.open === undefined ? {} : { open: query.open === 'true' }),
       ...(query.search === undefined ? {} : { search: query.search }),
@@ -443,12 +445,14 @@ export class WorkItemsService {
       value === undefined ? undefined : value === 'none' ? null : value;
     const assigneeId = query.assigneeId === 'me' ? userId : ref(query.assigneeId);
     const releaseId = ref(query.releaseId);
+    const sprintId = ref(query.sprintId);
     const where: Prisma.WorkItemWhereInput = {
       projectId,
       ...(query.type === undefined ? {} : { type: query.type }),
       ...(query.priority === undefined ? {} : { priority: query.priority }),
       ...(assigneeId === undefined ? {} : { assigneeId }),
       ...(releaseId === undefined ? {} : { releaseId }),
+      ...(sprintId === undefined ? {} : { sprintId }),
       ...(query.label === undefined ? {} : { labels: { has: query.label } }),
       ...(query.status !== undefined
         ? { status: query.status }
@@ -753,6 +757,7 @@ export function toWorkItemView(item: WorkItem): WorkItemView {
     labels: item.labels,
     parentId: item.parentId,
     releaseId: item.releaseId,
+    sprintId: item.sprintId,
     rank: item.rank,
     version: item.version,
     completedAt: item.completedAt?.toISOString() ?? null,

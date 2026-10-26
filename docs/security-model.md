@@ -206,6 +206,8 @@ and chapter 10 of the backend course. Summary:
 - Items of a hidden project answer like missing ones; listing a hidden project
   returns an empty page with `total: 0`. The assignee must be a member who can
   see the project.
+- Backlog moves and bulk edits check every anchor and id against the item's
+  project: a foreign or missing id refuses the whole request with the same 404. Bulk edits are all or nothing.
 - Hierarchy changes are serialised per project (advisory lock) and edits carry
   an optional `version` (409 when stale), so concurrent requests cannot build
   an invalid tree or silently overwrite each other.

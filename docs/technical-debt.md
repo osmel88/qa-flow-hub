@@ -1192,3 +1192,18 @@ caller's own tenant, never of another one.
 - **Deleted parents need empty children.** Deleting an item with live
   children is refused; there is no cascade or re-parenting helper.
 - **`version` is optional.** Clients that omit it still overwrite each other.
+
+## 46. Backlog: what S4-F2 leaves (S4-F2)
+
+- **One order per project.** No separate ranking per release, sprint or
+  person; filtered views reorder relative to visible neighbours.
+- **Moves are serialised per project** by one advisory lock; very large teams
+  reordering constantly would queue.
+- **500 items per view.** The backlog is not paginated; longer backlogs are
+  truncated (flagged in the response).
+- **Bulk edits cover status, priority, assignee, release, estimate and
+  labels**, not type or parent, and are capped at 100 items.
+- **No live updates.** Other people's moves appear on the next refetch, not
+  pushed.
+- **Drag and drop is row-level** (native HTML5) with arrow buttons as the
+  keyboard alternative; no multi-row drag.

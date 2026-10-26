@@ -206,7 +206,8 @@ archived projects are read-only; every change is an audited `role_change`.
 
 - `work_items.write` covers creating and editing work items, moving them
   between statuses, in the hierarchy and into open releases;
-  `work_items.manage` adds soft deletion.
+  `work_items.manage` adds soft deletion. Reordering the backlog and bulk
+  edits need `work_items.write`.
 - `customization.manage` covers creating, editing, archiving and restoring
   custom field definitions and saving the defect workflow of a project.
   Reading them needs only project visibility.

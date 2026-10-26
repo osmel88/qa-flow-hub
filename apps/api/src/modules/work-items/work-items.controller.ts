@@ -1,6 +1,12 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  BacklogQuery,
+  BulkUpdateWorkItemsInput,
+  MoveWorkItemInput,
+  backlogQuerySchema,
+  bulkUpdateWorkItemsSchema,
+  moveWorkItemSchema,
   CreateWorkItemInput,
   ListWorkItemsQuery,
   UpdateWorkItemInput,
@@ -32,6 +38,22 @@ export class WorkItemsController {
     return this.items.create(body, user.userId);
   }
 
+  @RequirePermission('work_items.write')
+  @Post('bulk')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Apply the same change to up to 100 work items, all or nothing' })
+  bulk(@Body(zodBody(bulkUpdateWorkItemsSchema)) body: BulkUpdateWorkItemsInput) {
+    return this.items.bulkUpdate(body);
+  }
+
+  @RequirePermission('work_items.write')
+  @Post(':id/move')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Reorder the backlog: place an item before or after another' })
+  move(@Param('id') id: string, @Body(zodBody(moveWorkItemSchema)) body: MoveWorkItemInput) {
+    return this.items.move(id, body);
+  }
+
   @RequirePermission('work_items.read')
   @Get()
   @ApiOperation({ summary: 'List and search the work items of a project' })
@@ -59,5 +81,24 @@ export class WorkItemsController {
   @ApiOperation({ summary: 'Soft delete a work item without children' })
   async remove(@Param('id') id: string): Promise<void> {
     await this.items.remove(id);
+  }
+}
+
+@ApiTags('work-items')
+@ApiBearerAuth()
+@ApiHeader({ name: 'X-Organization-Id', required: true })
+@ProjectScoped()
+@Controller('backlog')
+export class BacklogController {
+  constructor(private readonly items: WorkItemsService) {}
+
+  @RequirePermission('work_items.read')
+  @Get()
+  @ApiOperation({ summary: 'The ordered backlog of a project, optionally grouped and personal' })
+  get(
+    @Query(zodQuery(backlogQuerySchema)) query: BacklogQuery,
+    @CurrentUser() user: CurrentUserContext,
+  ) {
+    return this.items.backlog(query, user.userId);
   }
 }

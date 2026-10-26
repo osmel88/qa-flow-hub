@@ -1559,6 +1559,10 @@ model WorkItem {
   reporterId String?
   reporter   User?   @relation("WorkItemReporter", fields: [reporterId], references: [id], onDelete: SetNull)
 
+  /// Position in the project backlog, ascending. Gapped (steps of 1024) so a
+  /// move rewrites one row; renumbered under the backlog lock when a gap runs out.
+  rank Int @default(0)
+
   /// Optimistic concurrency: bumped by every update.
   version     Int       @default(1)
   completedAt DateTime?
@@ -1574,5 +1578,6 @@ model WorkItem {
   @@index([parentId])
   @@index([releaseId])
   @@index([labels], type: Gin)
+  @@index([organizationId, projectId, rank])
   @@map("work_items")
 }

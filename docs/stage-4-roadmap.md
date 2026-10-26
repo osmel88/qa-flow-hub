@@ -42,6 +42,26 @@ ADR 0023, debt 45.
 - Tests: `work-item.contracts.test.ts`, `work-items.int-spec.ts`,
   `WorkItemsPage.test.tsx`, `work-items.e2e.spec.ts`.
 
+## S4-F2 — Backlog
+
+ADR 0024, debt 46.
+
+**Status: implemented.**
+
+- Migration `20261220100000_work_item_backlog_rank`: `work_items.rank` (gapped,
+  backfilled by creation order) and an index on `(organizationId, projectId,
+rank)`.
+- `GET /backlog` (ordered, open items by default, grouping by epic or feature,
+  release and personal `assigneeId=me` views, filters, search, estimate
+  totals), `POST /work-items/:id/move` (before/after an item) and
+  `POST /work-items/bulk` (status, priority, assignee, release, estimate,
+  labels; up to 100 items, all or nothing).
+- Concurrency: project backlog advisory lock for creation and moves, rows
+  locked in id order for bulk edits; every move and bulk change audited.
+- Web: Backlog page with drag and drop and arrow buttons, filters, grouping,
+  totals, selection and a bulk action bar.
+- Tests: `backlog.int-spec.ts`, `BacklogPage.test.tsx`, `backlog.e2e.spec.ts`.
+
 ## Next candidates
 
 - Sprints / iterations and capacity planning over work items.
@@ -52,3 +72,4 @@ ADR 0023, debt 45.
 
 - [`stage-3-roadmap.md`](stage-3-roadmap.md) — the stage this one builds on
 - [`adr/0023-work-items-ranked-hierarchy.md`](adr/0023-work-items-ranked-hierarchy.md)
+- [`adr/0024-backlog-gapped-ranks.md`](adr/0024-backlog-gapped-ranks.md)

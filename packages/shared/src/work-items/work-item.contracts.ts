@@ -173,6 +173,8 @@ export interface WorkItemView {
   labels: string[];
   parentId: string | null;
   releaseId: string | null;
+  /** Position in the project backlog, ascending. */
+  rank: number;
   /** Bumped by every change; send it back to update without overwriting others. */
   version: number;
   completedAt: string | null;
@@ -184,4 +186,115 @@ export interface WorkItemView {
 export interface WorkItemDetailView extends WorkItemView {
   ancestors: Array<Pick<WorkItemView, 'id' | 'key' | 'title' | 'type'>>;
   children: Array<Pick<WorkItemView, 'id' | 'key' | 'title' | 'type' | 'status'>>;
+}
+
+// ---------------------------------------------------------------------------
+// Backlog (S4-F2)
+// ---------------------------------------------------------------------------
+
+/** Ranks are gapped so that a move rewrites one row. */
+export const BACKLOG_RANK_STEP = 1024;
+/** The backlog is one ordered list; past this size it is truncated. */
+export const BACKLOG_MAX_ITEMS = 500;
+export const BULK_MAX_ITEMS = 100;
+
+export const BACKLOG_GROUPINGS = ['none', 'epic', 'feature'] as const;
+export type BacklogGrouping = (typeof BACKLOG_GROUPINGS)[number];
+
+export const backlogQuerySchema = z.object({
+  projectId: idSchema,
+  /** `me` is the personal backlog of the caller. */
+  assigneeId: z.union([z.literal('me'), z.literal('none'), idSchema]).optional(),
+  releaseId: refFilter.optional(),
+  type: z.enum(WORK_ITEM_TYPES).optional(),
+  status: z.enum(WORK_ITEM_STATUSES).optional(),
+  priority: z.enum(PRIORITIES).optional(),
+  label: labelSchema.transform((label) => normalizeLabels([label])[0] ?? label).optional(),
+  search: z.string().trim().min(1).max(120).optional(),
+  /** Done and cancelled items are hidden unless asked for. */
+  includeClosed: z.enum(['true', 'false']).default('false'),
+  groupBy: z.enum(BACKLOG_GROUPINGS).default('none'),
+});
+export type BacklogQuery = z.infer<typeof backlogQuerySchema>;
+
+export interface BacklogTotals {
+  count: number;
+  /** Sum of the estimates that exist. */
+  estimate: number;
+  unestimated: number;
+}
+
+export interface BacklogGroup {
+  /** The epic or feature, or `null` for items outside any. */
+  id: string | null;
+  key: string | null;
+  title: string;
+  itemIds: string[];
+  totals: BacklogTotals;
+}
+
+export interface BacklogView {
+  projectId: string;
+  groupBy: BacklogGrouping;
+  /** Ordered by rank. */
+  items: WorkItemView[];
+  /** In order of their first item; empty when `groupBy` is `none`. */
+  groups: BacklogGroup[];
+  totals: BacklogTotals;
+  truncated: boolean;
+}
+
+/**
+ * Drag and drop: place the item right before `beforeId` or right after
+ * `afterId` (exactly one), both items of the same project.
+ */
+export const moveWorkItemSchema = z
+  .object({
+    beforeId: idSchema.optional(),
+    afterId: idSchema.optional(),
+  })
+  .refine((value) => (value.beforeId === undefined) !== (value.afterId === undefined), {
+    message: 'Give exactly one of beforeId or afterId',
+  });
+export type MoveWorkItemInput = z.infer<typeof moveWorkItemSchema>;
+
+export const bulkUpdateWorkItemsSchema = z.object({
+  projectId: idSchema,
+  ids: z
+    .array(idSchema)
+    .min(1)
+    .max(BULK_MAX_ITEMS)
+    .refine((ids) => new Set(ids).size === ids.length, { message: 'Ids must be unique' }),
+  changes: z
+    .object({
+      status: z.enum(WORK_ITEM_STATUSES).optional(),
+      priority: z.enum(PRIORITIES).optional(),
+      assigneeId: idSchema.nullish(),
+      releaseId: idSchema.nullish(),
+      estimate: estimateSchema.nullish(),
+      addLabels: labelsSchema.optional(),
+      removeLabels: labelsSchema.optional(),
+    })
+    .refine((value) => Object.keys(value).length > 0, {
+      message: 'Provide at least one change',
+    }),
+});
+export type BulkUpdateWorkItemsInput = z.infer<typeof bulkUpdateWorkItemsSchema>;
+
+export interface BulkUpdateWorkItemsResult {
+  updated: WorkItemView[];
+}
+
+/** Totals of a set of items, shared by the API and the web. */
+export function backlogTotals(items: ReadonlyArray<Pick<WorkItemView, 'estimate'>>): BacklogTotals {
+  let estimate = 0;
+  let unestimated = 0;
+  for (const item of items) {
+    if (item.estimate === null) {
+      unestimated += 1;
+    } else {
+      estimate += item.estimate;
+    }
+  }
+  return { count: items.length, estimate: Math.round(estimate * 100) / 100, unestimated };
 }

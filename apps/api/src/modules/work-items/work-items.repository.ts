@@ -59,6 +59,100 @@ export class WorkItemsRepository extends TenantAwareRepository {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`work-item-tree:${projectId}`}, 0))`;
   }
 
+  /**
+   * Serialises every change to the order of a project's backlog (creation,
+   * moves, renumbering). Taken after the tree lock and before row locks.
+   */
+  async lockBacklog(projectId: string, tx: PrismaTransaction): Promise<void> {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`work-item-backlog:${projectId}`}, 0))`;
+  }
+
+  async maxRank(projectId: string, tx: PrismaTransaction): Promise<number | null> {
+    const row = await tx.workItem.aggregate({
+      where: this.active({ projectId }),
+      _max: { rank: true },
+    });
+    return row._max.rank;
+  }
+
+  /** The live neighbour just above (`below = false`) or below a rank, skipping one item. */
+  neighbour(
+    projectId: string,
+    rank: number,
+    direction: 'above' | 'below',
+    excludeId: string,
+    tx: PrismaTransaction,
+  ): Promise<WorkItem | null> {
+    return tx.workItem.findFirst({
+      where: this.active({
+        projectId,
+        id: { not: excludeId },
+        rank: direction === 'above' ? { lt: rank } : { gt: rank },
+      }),
+      orderBy: [{ rank: direction === 'above' ? 'desc' : 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  /** Position only: a move is not an edit of the item, so `version` stays. */
+  async setRank(id: string, rank: number, tx: PrismaTransaction): Promise<void> {
+    await tx.workItem.updateMany({ where: this.active({ id }), data: { rank } });
+  }
+
+  /** Spreads the live items of a project back to steps of `step`, keeping their order. */
+  async renumber(projectId: string, step: number, tx: PrismaTransaction): Promise<void> {
+    await tx.$executeRaw`
+      UPDATE "work_items" AS w
+      SET "rank" = ranked.position * ${step}
+      FROM (
+        SELECT "id", ROW_NUMBER() OVER (ORDER BY "rank", "createdAt", "id") AS position
+        FROM "work_items"
+        WHERE "organizationId" = ${this.organizationId}
+          AND "projectId" = ${projectId}
+          AND "deletedAt" IS NULL
+      ) AS ranked
+      WHERE w."id" = ranked."id"`;
+  }
+
+  /**
+   * Locks a set of live items of one project in id order (so two bulk edits
+   * never deadlock) and returns them; missing, deleted or foreign ids are
+   * simply absent from the result.
+   */
+  async lockMany(
+    projectId: string,
+    ids: readonly string[],
+    tx: PrismaTransaction,
+  ): Promise<WorkItem[]> {
+    await tx.$queryRaw`
+      SELECT "id" FROM "work_items"
+      WHERE "id" IN (${Prisma.join([...ids])})
+        AND "organizationId" = ${this.organizationId}
+        AND "projectId" = ${projectId}
+        AND "deletedAt" IS NULL
+      ORDER BY "id"
+      FOR UPDATE`;
+    return tx.workItem.findMany({
+      where: this.active({ projectId, id: { in: [...ids] } }),
+      orderBy: [{ rank: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  backlog(where: Prisma.WorkItemWhereInput, take: number): Promise<WorkItem[]> {
+    return this.prisma.workItem.findMany({
+      where: this.active(where),
+      orderBy: [{ rank: 'asc' }, { id: 'asc' }],
+      take,
+    });
+  }
+
+  /** Every live item of a project, reduced to what grouping needs. */
+  hierarchy(projectId: string): Promise<WorkItemSummary[]> {
+    return this.prisma.workItem.findMany({
+      where: this.active({ projectId }),
+      select: { id: true, key: true, title: true, type: true, status: true, parentId: true },
+    });
+  }
+
   async list(query: PaginationQuery, filters: WorkItemFilters): Promise<Paginated<WorkItem>> {
     const where: Prisma.WorkItemWhereInput = this.active({
       projectId: filters.projectId,

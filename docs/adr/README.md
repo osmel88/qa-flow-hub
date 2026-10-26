@@ -49,3 +49,4 @@ Date: YYYY-MM-DD
 | [0021](0021-totp-multi-factor-authentication.md)        | Account-level TOTP MFA with an organization policy          | accepted                  |
 | [0022](0022-custom-fields-and-defect-workflow.md)       | Custom fields as JSONB values and a per-project workflow    | accepted                  |
 | [0023](0023-work-items-ranked-hierarchy.md)             | Work items with a ranked hierarchy and composite references | accepted                  |
+| [0024](0024-backlog-gapped-ranks.md)                    | Backlog order as gapped integer ranks under a project lock  | accepted                  |

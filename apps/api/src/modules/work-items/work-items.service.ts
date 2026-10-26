@@ -1,6 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { AuditAction, Prisma, ProjectStatus, WorkItem } from '@prisma/client';
 import {
+  BACKLOG_MAX_ITEMS,
+  BACKLOG_RANK_STEP,
+  BacklogGroup,
+  BacklogQuery,
+  BacklogView,
+  BulkUpdateWorkItemsInput,
+  BulkUpdateWorkItemsResult,
+  MoveWorkItemInput,
+  backlogTotals,
+  normalizeLabels,
   CreateWorkItemInput,
   ListWorkItemsQuery,
   Paginated,
@@ -73,6 +83,8 @@ export class WorkItemsService {
       if (releaseId !== null) {
         await this.releases.assertAttachable(releaseId, project.id, tx);
       }
+      await this.items.lockBacklog(project.id, tx);
+      const rank = ((await this.items.maxRank(project.id, tx)) ?? 0) + BACKLOG_RANK_STEP;
       const key = await this.projects.nextKey(project.id, 'workItemCounter', 'W', tx);
       const item = await this.items.create(
         {
@@ -89,6 +101,7 @@ export class WorkItemsService {
           releaseId,
           assigneeId: input.assigneeId ?? null,
           reporterId: userId,
+          rank,
           completedAt: isClosedWorkItemStatus(input.status) ? new Date() : null,
         },
         tx,
@@ -290,6 +303,251 @@ export class WorkItemsService {
     });
   }
 
+  // --- Backlog (S4-F2) ------------------------------------------------------
+
+  async backlog(query: BacklogQuery, userId: string): Promise<BacklogView> {
+    const empty: BacklogView = {
+      projectId: query.projectId,
+      groupBy: query.groupBy,
+      items: [],
+      groups: [],
+      totals: backlogTotals([]),
+      truncated: false,
+    };
+    const projectId = await this.access.authorizeProjectScope(query.projectId);
+    if (projectId === null) {
+      return empty;
+    }
+    const ref = (value: string | undefined): string | null | undefined =>
+      value === undefined ? undefined : value === 'none' ? null : value;
+    const assigneeId = query.assigneeId === 'me' ? userId : ref(query.assigneeId);
+    const releaseId = ref(query.releaseId);
+    const where: Prisma.WorkItemWhereInput = {
+      projectId,
+      ...(query.type === undefined ? {} : { type: query.type }),
+      ...(query.priority === undefined ? {} : { priority: query.priority }),
+      ...(assigneeId === undefined ? {} : { assigneeId }),
+      ...(releaseId === undefined ? {} : { releaseId }),
+      ...(query.label === undefined ? {} : { labels: { has: query.label } }),
+      ...(query.status !== undefined
+        ? { status: query.status }
+        : query.includeClosed === 'true'
+          ? {}
+          : { status: { notIn: ['done', 'cancelled'] } }),
+      ...(query.search === undefined
+        ? {}
+        : {
+            OR: [
+              { title: { contains: query.search, mode: Prisma.QueryMode.insensitive } },
+              { key: { contains: query.search.toUpperCase() } },
+            ],
+          }),
+    };
+    const rows = await this.items.backlog(where, BACKLOG_MAX_ITEMS + 1);
+    const truncated = rows.length > BACKLOG_MAX_ITEMS;
+    const items = rows.slice(0, BACKLOG_MAX_ITEMS).map(toWorkItemView);
+
+    return {
+      projectId,
+      groupBy: query.groupBy,
+      items,
+      groups: query.groupBy === 'none' ? [] : await this.group(projectId, items, query.groupBy),
+      totals: backlogTotals(items),
+      truncated,
+    };
+  }
+
+  /** Groups items under their nearest epic or feature (the item itself counts). */
+  private async group(
+    projectId: string,
+    items: WorkItemView[],
+    by: 'epic' | 'feature',
+  ): Promise<BacklogGroup[]> {
+    const index = new Map((await this.items.hierarchy(projectId)).map((row) => [row.id, row]));
+    const groups = new Map<string | null, BacklogGroup & { members: WorkItemView[] }>();
+    for (const item of items) {
+      let cursor = index.get(item.id) ?? null;
+      let depth = 0;
+      while (cursor !== null && cursor.type !== by && depth < 8) {
+        cursor = cursor.parentId === null ? null : (index.get(cursor.parentId) ?? null);
+        depth += 1;
+      }
+      const owner = cursor !== null && cursor.type === by ? cursor : null;
+      const groupId = owner?.id ?? null;
+      let group = groups.get(groupId);
+      if (group === undefined) {
+        group = {
+          id: groupId,
+          key: owner?.key ?? null,
+          title: owner?.title ?? (by === 'epic' ? 'No epic' : 'No feature'),
+          itemIds: [],
+          totals: backlogTotals([]),
+          members: [],
+        };
+        groups.set(groupId, group);
+      }
+      group.itemIds.push(item.id);
+      group.members.push(item);
+    }
+    return [...groups.values()].map(({ members, ...group }) => ({
+      ...group,
+      totals: backlogTotals(members),
+    }));
+  }
+
+  /** Drag and drop: places the item right before or right after another one. */
+  async move(id: string, input: MoveWorkItemInput): Promise<WorkItemView> {
+    const item = await this.require(id);
+    const anchorId = input.beforeId ?? input.afterId ?? '';
+    if (anchorId === id) {
+      throw new ValidationError('A work item cannot be placed relative to itself');
+    }
+
+    const moved = await this.prisma.runInTransaction(async (tx) => {
+      await this.items.lockBacklog(item.projectId, tx);
+      const current = await this.items.lock(id, tx);
+      const anchor = await this.items.findById(anchorId, tx);
+      if (current === null || anchor === null || anchor.projectId !== current.projectId) {
+        throw new NotFoundError('Work item');
+      }
+      const direction = input.beforeId === undefined ? 'below' : 'above';
+      let rank = await this.slot(current, anchor, direction, tx);
+      if (rank === null) {
+        await this.items.renumber(current.projectId, BACKLOG_RANK_STEP, tx);
+        const refreshed = await this.items.findById(anchor.id, tx);
+        rank = refreshed === null ? null : await this.slot(current, refreshed, direction, tx);
+        if (rank === null) {
+          throw new ConflictError('The backlog could not be reordered; try again');
+        }
+      }
+      await this.items.setRank(id, rank, tx);
+      await this.audit.record(
+        {
+          action: AuditAction.update,
+          entityType: 'WorkItem',
+          entityId: id,
+          summary: `Moved ${current.key} ${direction === 'above' ? 'before' : 'after'} ${anchor.key} in the backlog`,
+          changes: { rank: { from: current.rank, to: rank } },
+        },
+        tx,
+      );
+      const row = await this.items.findById(id, tx);
+      if (row === null) {
+        throw new NotFoundError('Work item');
+      }
+      return row;
+    });
+    return toWorkItemView(moved);
+  }
+
+  /** A free rank between the anchor and its neighbour, or `null` when the gap is exhausted. */
+  private async slot(
+    item: WorkItem,
+    anchor: WorkItem,
+    direction: 'above' | 'below',
+    tx: PrismaTransaction,
+  ): Promise<number | null> {
+    const neighbour = await this.items.neighbour(
+      item.projectId,
+      anchor.rank,
+      direction,
+      item.id,
+      tx,
+    );
+    if (neighbour === null) {
+      return direction === 'above'
+        ? anchor.rank - BACKLOG_RANK_STEP
+        : anchor.rank + BACKLOG_RANK_STEP;
+    }
+    const low = Math.min(neighbour.rank, anchor.rank);
+    const high = Math.max(neighbour.rank, anchor.rank);
+    const middle = Math.floor((low + high) / 2);
+    return middle > low && middle < high ? middle : null;
+  }
+
+  /** All or nothing: one missing or foreign id refuses the whole batch. */
+  async bulkUpdate(input: BulkUpdateWorkItemsInput): Promise<BulkUpdateWorkItemsResult> {
+    const project = await this.projects.findById(input.projectId);
+    if (project === null) {
+      throw new NotFoundError('Project');
+    }
+    await this.access.assertRouteAccess(project.id);
+    const changes = input.changes;
+    await this.assertAssignee(project.id, changes.assigneeId);
+
+    const updated = await this.prisma.runInTransaction(async (tx) => {
+      const rows = await this.items.lockMany(project.id, input.ids, tx);
+      if (rows.length !== input.ids.length) {
+        throw new NotFoundError('Work item');
+      }
+      if (changes.releaseId !== undefined) {
+        if (changes.releaseId !== null) {
+          await this.releases.assertAttachable(changes.releaseId, project.id, tx);
+        }
+        const leaving = new Set(
+          rows
+            .map((row) => row.releaseId)
+            .filter((releaseId): releaseId is string => releaseId !== null)
+            .filter((releaseId) => releaseId !== changes.releaseId),
+        );
+        for (const releaseId of leaving) {
+          await this.releases.assertAttachable(releaseId, project.id, tx);
+        }
+      }
+
+      const removed = new Set(changes.removeLabels ?? []);
+      const results: WorkItem[] = [];
+      for (const current of rows) {
+        const labels =
+          changes.addLabels === undefined && changes.removeLabels === undefined
+            ? undefined
+            : normalizeLabels([...current.labels, ...(changes.addLabels ?? [])]).filter(
+                (label) => !removed.has(label),
+              );
+        if (labels !== undefined && labels.length > 20) {
+          throw new ValidationError(`${current.key} would have more than 20 labels`);
+        }
+        const completedAt =
+          changes.status === undefined || changes.status === current.status
+            ? undefined
+            : isClosedWorkItemStatus(changes.status)
+              ? new Date()
+              : null;
+        const row = await this.items.update(
+          current.id,
+          {
+            ...(changes.status === undefined ? {} : { status: changes.status }),
+            ...(changes.priority === undefined ? {} : { priority: changes.priority }),
+            ...(changes.assigneeId === undefined ? {} : { assigneeId: changes.assigneeId }),
+            ...(changes.releaseId === undefined ? {} : { releaseId: changes.releaseId }),
+            ...(changes.estimate === undefined ? {} : { estimate: changes.estimate }),
+            ...(labels === undefined ? {} : { labels }),
+            ...(completedAt === undefined ? {} : { completedAt }),
+          },
+          tx,
+        );
+        if (row === null) {
+          throw new NotFoundError('Work item');
+        }
+        const diffed = diff(current, row);
+        await this.audit.record(
+          {
+            action: AuditAction.update,
+            entityType: 'WorkItem',
+            entityId: row.id,
+            summary: `Bulk updated ${row.key}`,
+            ...(Object.keys(diffed).length === 0 ? {} : { changes: diffed }),
+          },
+          tx,
+        );
+        results.push(row);
+      }
+      return results;
+    });
+
+    return { updated: updated.map(toWorkItemView) };
+  }
+
   /** The parent must be a live item of the same project and rank above the child. */
   private async assertParent(
     projectId: string,
@@ -369,6 +627,7 @@ export function toWorkItemView(item: WorkItem): WorkItemView {
     labels: item.labels,
     parentId: item.parentId,
     releaseId: item.releaseId,
+    rank: item.rank,
     version: item.version,
     completedAt: item.completedAt?.toISOString() ?? null,
     createdAt: item.createdAt.toISOString(),

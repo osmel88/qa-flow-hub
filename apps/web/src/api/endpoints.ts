@@ -1,4 +1,9 @@
 import type {
+  BacklogQuery,
+  BacklogView,
+  BulkUpdateWorkItemsInput,
+  BulkUpdateWorkItemsResult,
+  MoveWorkItemInput,
   CreateWorkItemInput,
   ListWorkItemsQuery,
   UpdateWorkItemInput,
@@ -624,4 +629,13 @@ export const workItemsApi = {
   update: (id: string, body: UpdateWorkItemInput) =>
     apiFetch<WorkItemView>(`/work-items/${id}`, { method: 'PATCH', body }),
   remove: (id: string) => apiFetch<void>(`/work-items/${id}`, { method: 'DELETE' }),
+  move: (id: string, body: MoveWorkItemInput) =>
+    apiFetch<WorkItemView>(`/work-items/${id}/move`, { method: 'POST', body }),
+  bulk: (body: BulkUpdateWorkItemsInput) =>
+    apiFetch<BulkUpdateWorkItemsResult>('/work-items/bulk', { method: 'POST', body }),
+};
+
+export const backlogApi = {
+  get: (params: Partial<BacklogQuery> & { projectId: string }) =>
+    apiFetch<BacklogView>(`/backlog${query(params)}`),
 };

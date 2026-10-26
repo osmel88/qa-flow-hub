@@ -1,3 +1,4 @@
+import { RequirementLinksService } from '../requirement-links/requirement-links.service';
 import { Injectable } from '@nestjs/common';
 import { AuditAction, Prisma, ProjectStatus, Release, ReleaseStatus } from '@prisma/client';
 import {
@@ -14,6 +15,7 @@ import {
   UpdateReleaseInput,
   buildPaginationMeta,
   isOpenRelease,
+  computeImplementation,
 } from '@qa-flow-hub/shared';
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import { ConflictError, NotFoundError, ValidationError } from '../../errors';
@@ -37,6 +39,7 @@ export class ReleasesService {
     private readonly access: ProjectAccessService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly implementations: RequirementLinksService,
   ) {}
 
   async create(input: CreateReleaseInput, userId: string): Promise<ReleaseView> {
@@ -256,6 +259,8 @@ export class ReleasesService {
         key: row.requirementKey,
         title: row.requirementTitle,
         status: row.requirementStatus,
+        workItems: [],
+        implementation: computeImplementation([]),
         cases: [],
       };
       if (row.testCaseId !== null && row.testCaseKey !== null && row.testCaseTitle !== null) {
@@ -270,6 +275,20 @@ export class ReleasesService {
         });
       }
       rows.set(row.requirementId, entry);
+    }
+
+    // Requirement → work item: only the implementing items planned in this release.
+    if (await this.access.hasPermission(release.projectId, 'work_items.read')) {
+      const implementation = await this.implementations.implementationOf(
+        [...rows.keys()].map((requirementId) => ({ id: requirementId })),
+      );
+      for (const row of rows.values()) {
+        const planned = (implementation.get(row.requirementId)?.workItems ?? []).filter(
+          (item) => item.releaseId === id,
+        );
+        row.workItems = planned;
+        row.implementation = computeImplementation(planned.map((item) => item.status));
+      }
     }
 
     return { releaseId: id, rows: [...rows.values()] };

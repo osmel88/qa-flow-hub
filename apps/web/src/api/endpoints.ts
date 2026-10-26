@@ -105,7 +105,9 @@ import type {
   ProjectView,
   RegisterInput,
   RecordResultInput,
+  RequirementLinkResult,
   RequirementView,
+  RequirementWorkItemsView,
   RunCaseView,
   SectionView,
   SuiteView,
@@ -294,8 +296,22 @@ export async function allPages<T>(
 }
 
 export const requirementsApi = {
-  list: (params: { projectId: string; status?: string; priority?: string; search?: string }) =>
-    apiFetch<Paginated<RequirementView>>(`/requirements${query({ ...params, pageSize: 100 })}`),
+  list: (params: {
+    projectId: string;
+    status?: string;
+    priority?: string;
+    search?: string;
+    implementation?: string;
+  }) => apiFetch<Paginated<RequirementView>>(`/requirements${query({ ...params, pageSize: 100 })}`),
+  get: (id: string) => apiFetch<RequirementView>(`/requirements/${id}`),
+  workItems: (id: string) => apiFetch<RequirementWorkItemsView>(`/requirements/${id}/work-items`),
+  linkWorkItem: (id: string, workItemId: string) =>
+    apiFetch<RequirementLinkResult>(`/requirements/${id}/work-items`, {
+      method: 'POST',
+      body: { workItemId },
+    }),
+  unlinkWorkItem: (id: string, workItemId: string) =>
+    apiFetch<void>(`/requirements/${id}/work-items/${workItemId}`, { method: 'DELETE' }),
   listAll: (params: { projectId: string }) =>
     allPages((page) =>
       apiFetch<Paginated<RequirementView>>(
@@ -627,6 +643,13 @@ export const workItemsApi = {
   list: (params: Omit<ListWorkItemsQuery, 'page' | 'pageSize'>) =>
     apiFetch<Paginated<WorkItemView>>(`/work-items${query({ ...params, pageSize: 100 })}`),
   get: (id: string) => apiFetch<WorkItemDetailView>(`/work-items/${id}`),
+  linkRequirement: (id: string, requirementId: string) =>
+    apiFetch<RequirementLinkResult>(`/work-items/${id}/requirements`, {
+      method: 'POST',
+      body: { requirementId },
+    }),
+  unlinkRequirement: (id: string, requirementId: string) =>
+    apiFetch<void>(`/work-items/${id}/requirements/${requirementId}`, { method: 'DELETE' }),
   create: (body: CreateWorkItemInput) =>
     apiFetch<WorkItemView>('/work-items', { method: 'POST', body }),
   update: (id: string, body: UpdateWorkItemInput) =>

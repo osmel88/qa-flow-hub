@@ -25,6 +25,8 @@ export interface RequirementFilters {
   search?: string;
   customFields?: Prisma.JsonFilter;
   id?: { in: string[] };
+  /** Implementation state filter (S4-F4). */
+  implementation?: { in: string[] } | { notIn: string[] };
 }
 
 @Injectable()
@@ -61,6 +63,7 @@ export class RequirementsRepository extends TenantAwareRepository {
     const where: Prisma.RequirementWhereInput = this.active({
       projectId: filters.projectId,
       ...(filters.id === undefined ? {} : { id: filters.id }),
+      ...(filters.implementation === undefined ? {} : { AND: [{ id: filters.implementation }] }),
       ...(filters.customFields === undefined ? {} : { customFields: filters.customFields }),
       ...(filters.status === undefined ? {} : { status: filters.status }),
       ...(filters.type === undefined ? {} : { type: filters.type }),

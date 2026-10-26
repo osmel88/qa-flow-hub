@@ -2,6 +2,7 @@ import { Badge, DataState } from '@qa-flow-hub/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ImplementationBadge } from '../components/ImplementationBadge';
 import { exportsApi, traceabilityApi } from '../api/endpoints';
 import { ExportButton } from '../components/ExportButton';
 import { PageHeader } from '../components/PageHeader';
@@ -89,6 +90,7 @@ export function TraceabilityPage(): React.JSX.Element {
           <thead>
             <tr>
               <th scope="col">Requirement</th>
+              <th scope="col">Work items</th>
               <th scope="col">Cases</th>
               <th scope="col">Covered</th>
               <th scope="col">Verified</th>
@@ -99,7 +101,20 @@ export function TraceabilityPage(): React.JSX.Element {
             {matrix.data?.rows.map((row) => (
               <tr key={row.requirementId}>
                 <td>
-                  <code>{row.key}</code> {row.title}
+                  <Link to={`/requirements/${row.requirementId}`}>
+                    <code>{row.key}</code> {row.title}
+                  </Link>
+                </td>
+                <td>
+                  <ImplementationBadge implementation={row.implementation} />
+                  {row.workItems.map((item) => (
+                    <div key={item.linkId}>
+                      <Link to={`/work-items/${item.workItemId}`}>
+                        <code>{item.key}</code>
+                      </Link>{' '}
+                      {humanize(item.status)}
+                    </div>
+                  ))}
                 </td>
                 <td>
                   {row.cases.length === 0 ? (

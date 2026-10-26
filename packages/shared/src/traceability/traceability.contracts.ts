@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import type {
+  LinkedWorkItemView,
+  RequirementImplementation,
+} from '../requirements/requirement-links.contracts.js';
 
 export const LINKABLE_ENTITIES = [
   'requirement',
@@ -84,6 +88,9 @@ export interface MatrixRow {
   priority: string;
   cases: MatrixCase[];
   defectIds: string[];
+  /** Work items implementing the requirement (S4-F4). */
+  workItems: LinkedWorkItemView[];
+  implementation: RequirementImplementation;
   /** At least one linked case that is not archived. */
   covered: boolean;
   verified: boolean;
@@ -96,6 +103,8 @@ export interface TraceabilityMatrix {
     requirements: number;
     covered: number;
     verified: number;
+    /** Requirements whose implementing work items are all done. */
+    implemented: number;
     /** Percentage of requirements with at least one linked case. */
     coverage: number;
     uncovered: number;

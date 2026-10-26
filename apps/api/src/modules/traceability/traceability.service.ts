@@ -8,12 +8,14 @@ import {
   TraceLinkView,
   TraceabilityMatrix,
   TraceabilityMatrixQuery,
+  computeImplementation,
 } from '@qa-flow-hub/shared';
 import { ConflictError, NotFoundError, ValidationError } from '../../errors';
 import { AuditService } from '../audit/audit.service';
 import { DefectsRepository, OUTSTANDING_STATUSES } from '../defects/defects.repository';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
+import { RequirementLinksService } from '../requirement-links/requirement-links.service';
 import { TraceabilityRepository } from './traceability.repository';
 
 @Injectable()
@@ -24,6 +26,7 @@ export class TraceabilityService {
     private readonly projects: ProjectsRepository,
     private readonly access: ProjectAccessService,
     private readonly audit: AuditService,
+    private readonly implementations: RequirementLinksService,
   ) {}
 
   async createLink(input: CreateTraceLinkInput, userId: string): Promise<TraceLinkView> {
@@ -148,6 +151,9 @@ export class TraceabilityService {
     await this.access.assertRouteAccess(project.id);
 
     const requirements = await this.reads.listRequirements(project.id);
+    const implementation = (await this.access.hasPermission(project.id, 'work_items.read'))
+      ? await this.implementations.implementationOf(requirements)
+      : new Map<string, never>();
     const requirementIds = requirements.map((requirement) => requirement.id);
 
     const caseLinks = await this.links.linksBetweenTypes(
@@ -213,6 +219,9 @@ export class TraceabilityService {
         priority: requirement.priority,
         cases: linked,
         defectIds: defectsByRequirement.get(requirement.id) ?? [],
+        workItems: implementation.get(requirement.id)?.workItems ?? [],
+        implementation:
+          implementation.get(requirement.id)?.implementation ?? computeImplementation([]),
         covered: active.length > 0,
         // Covered means somebody wrote a test. Verified means it ran and
         // passed, and nothing linked to it is currently broken.
@@ -226,6 +235,7 @@ export class TraceabilityService {
     const visible = query.uncoveredOnly === 'true' ? rows.filter((row) => !row.covered) : rows;
     const covered = rows.filter((row) => row.covered).length;
     const verified = rows.filter((row) => row.verified).length;
+    const implemented = rows.filter((row) => row.implementation.state === 'implemented').length;
 
     return {
       projectId: project.id,
@@ -234,6 +244,7 @@ export class TraceabilityService {
         requirements: rows.length,
         covered,
         verified,
+        implemented,
         coverage: rows.length === 0 ? 0 : Math.round((covered / rows.length) * 1000) / 10,
         uncovered: rows.length - covered,
         openDefects: openDefectIds.size,

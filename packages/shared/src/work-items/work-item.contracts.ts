@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from '../common/pagination.js';
 import { PRIORITIES } from '../requirements/requirement.contracts.js';
+import type { LinkedRequirementView } from '../requirements/requirement-links.contracts.js';
 
 /**
  * Work items (S4-F1): the backlog of a project, from epics down to tasks.
@@ -186,6 +187,8 @@ export interface WorkItemView {
 export interface WorkItemDetailView extends WorkItemView {
   /** Aggregates over every descendant (S4-F3). */
   rollup: WorkItemRollup;
+  /** Requirements this item implements (S4-F4). */
+  requirements: LinkedRequirementView[];
   ancestors: Array<Pick<WorkItemView, 'id' | 'key' | 'title' | 'type'>>;
   children: Array<Pick<WorkItemView, 'id' | 'key' | 'title' | 'type' | 'status'>>;
 }

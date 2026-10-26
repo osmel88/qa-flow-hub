@@ -84,10 +84,46 @@ No migration and no new ADR (it builds on ADR 0023); debt 47.
 - Tests: `hierarchy.int-spec.ts`, `HierarchyPage.test.tsx`,
   `hierarchy.e2e.spec.ts`, rollup unit tests in the shared contracts.
 
+## S4-F4 — Requirement ↔ Work Item
+
+One migration (`requirement_work_items` + the `(id, projectId)` key on
+requirements); no new ADR; debt 48.
+
+**Status: implemented.**
+
+- A work item `implements` one or more requirements and a requirement is
+  implemented by one or more work items. Both composite foreign keys carry
+  `projectId`, so the database refuses a link across projects or tenants;
+  RLS by organization.
+- `GET|POST /requirements/:id/work-items`, `DELETE
+/requirements/:id/work-items/:workItemId` and the mirror routes under
+  `/work-items/:id/requirements`. Linking is idempotent (`created: false`
+  for an existing link), unlinking a missing link answers 204 and records
+  nothing; link and unlink are audited.
+- Both ends are share-locked (requirement first, then work item) and must be
+  live: a concurrent soft delete either waits for the link or makes it 404.
+  Links to deleted ends are hidden everywhere.
+- Writing needs `work_items.write` plus `requirements.read` on the project;
+  reading needs read on both sides. Foreign, hidden or deleted ids answer
+  like missing ones.
+- Implementation state from the linked items' statuses
+  (`computeImplementation`): not implemented (nothing done), partially
+  implemented, implemented (every non-cancelled item done). `RequirementView`
+  carries `implementation`; `GET /requirements?implementation=…` filters.
+- Traceability: matrix rows add `workItems` and `implementation` (summary
+  `implemented`), and the release traceability lists the implementing items
+  planned in that release, so the chain reads Requirement → Work item → Test
+  case → Run → Result → Defect → Release.
+- Web: Requirement detail page (implemented-by list, link/unlink, badge),
+  "Implements" section in the work item detail, implementation column and
+  filter on Requirements, work items column in Traceability.
+- Tests: `requirement-links.int-spec.ts`, `requirement-links.contracts.test.ts`,
+  `ImplementationBadge.test.tsx`, `requirement-links.e2e.spec.ts`.
+
 ## Next candidates
 
 - Sprints / iterations and capacity planning over work items.
-- Links between work items, requirements, test cases and defects.
+- Links between work items and test cases or defects.
 - Development and CI views on top of the existing GitHub mock and ingestion.
 
 ## Related

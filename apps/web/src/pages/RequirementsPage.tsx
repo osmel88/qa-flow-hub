@@ -1,10 +1,17 @@
-import { REQUIREMENT_STATUSES, REQUIREMENT_TYPES, PRIORITIES } from '@qa-flow-hub/shared';
+import {
+  IMPLEMENTATION_STATES,
+  REQUIREMENT_STATUSES,
+  REQUIREMENT_TYPES,
+  PRIORITIES,
+} from '@qa-flow-hub/shared';
 import { Badge, Button, DataState, SelectField, TextAreaField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
 import { requirementsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { Link } from 'react-router-dom';
 import { CoverageLinks } from '../components/CoverageLinks';
+import { ImplementationBadge } from '../components/ImplementationBadge';
 import { JiraSyncCell, useJiraReferences } from '../components/JiraSyncCell';
 import { PageHeader } from '../components/PageHeader';
 import {
@@ -25,6 +32,7 @@ export function RequirementsPage(): React.JSX.Element {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [implementation, setImplementation] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<string>('functional');
@@ -37,12 +45,13 @@ export function RequirementsPage(): React.JSX.Element {
   const [coverageFor, setCoverageFor] = useState<string | null>(null);
 
   const list = useQuery({
-    queryKey: ['requirements', activeProjectId, status, search],
+    queryKey: ['requirements', activeProjectId, status, search, implementation],
     queryFn: () =>
       requirementsApi.list({
         projectId: activeProjectId ?? '',
         ...(status === '' ? {} : { status }),
         ...(search === '' ? {} : { search }),
+        ...(implementation === '' ? {} : { implementation }),
       }),
     enabled: activeProjectId !== null,
   });
@@ -164,6 +173,14 @@ export function RequirementsPage(): React.JSX.Element {
             setStatus(event.target.value);
           }}
         />
+        <SelectField
+          label="Implementation"
+          options={[{ value: '', label: 'Any implementation' }, ...options(IMPLEMENTATION_STATES)]}
+          value={implementation}
+          onChange={(event) => {
+            setImplementation(event.target.value);
+          }}
+        />
       </section>
 
       <DataState
@@ -179,6 +196,7 @@ export function RequirementsPage(): React.JSX.Element {
               <th scope="col">Title</th>
               <th scope="col">Priority</th>
               <th scope="col">Status</th>
+              <th scope="col">Implementation</th>
               <th scope="col">Move to</th>
               <th scope="col">Coverage</th>
               <th scope="col">Jira</th>
@@ -189,12 +207,19 @@ export function RequirementsPage(): React.JSX.Element {
               <Fragment key={requirement.id}>
                 <tr>
                   <td>
-                    <code>{requirement.key}</code>
+                    <Link to={`/requirements/${requirement.id}`}>
+                      <code>{requirement.key}</code>
+                    </Link>
                   </td>
-                  <td>{requirement.title}</td>
+                  <td>
+                    <Link to={`/requirements/${requirement.id}`}>{requirement.title}</Link>
+                  </td>
                   <td>{humanize(requirement.priority)}</td>
                   <td>
                     <Badge tone={toneFor(requirement.status)}>{humanize(requirement.status)}</Badge>
+                  </td>
+                  <td>
+                    <ImplementationBadge implementation={requirement.implementation} />
                   </td>
                   <td>
                     <select
@@ -238,7 +263,7 @@ export function RequirementsPage(): React.JSX.Element {
                 </tr>
                 {coverageFor === requirement.id && (
                   <tr>
-                    <td colSpan={7}>
+                    <td colSpan={8}>
                       <CoverageLinks
                         side="requirement"
                         entityId={requirement.id}

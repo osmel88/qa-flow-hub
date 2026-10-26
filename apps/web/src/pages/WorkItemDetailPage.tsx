@@ -10,7 +10,7 @@ import { Badge, Button, DataState, SelectField, TextField } from '@qa-flow-hub/u
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { projectsApi, releasesApi, workItemsApi } from '../api/endpoints';
+import { projectsApi, releasesApi, requirementsApi, workItemsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
@@ -318,6 +318,8 @@ function WorkItemEditor({
         )}
       </section>
 
+      <ImplementsSection item={item} editable={editable} />
+
       <section className="card" aria-labelledby="work-item-children">
         <h2 id="work-item-children">Children</h2>
         {item.children.length === 0 ? (
@@ -338,5 +340,111 @@ function WorkItemEditor({
         )}
       </section>
     </>
+  );
+}
+
+/** Requirements this work item implements (S4-F4). */
+function ImplementsSection({
+  item,
+  editable,
+}: {
+  item: WorkItemDetailView;
+  editable: boolean;
+}): React.JSX.Element {
+  const queryClient = useQueryClient();
+  const [choice, setChoice] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const candidates = useQuery({
+    queryKey: ['requirements', item.projectId, 'link-candidates'],
+    queryFn: () => requirementsApi.listAll({ projectId: item.projectId }),
+    enabled: editable,
+  });
+  const refresh = async () => {
+    setError(null);
+    await queryClient.invalidateQueries({ queryKey: ['work-items', 'detail', item.id] });
+    await queryClient.invalidateQueries({ queryKey: ['requirements'] });
+  };
+  const onError = (cause: unknown) => {
+    setError(cause instanceof ApiError ? cause.message : 'Could not update the link.');
+  };
+  const link = useMutation({
+    mutationFn: (requirementId: string) => workItemsApi.linkRequirement(item.id, requirementId),
+    onSuccess: async () => {
+      setChoice('');
+      await refresh();
+    },
+    onError,
+  });
+  const unlink = useMutation({
+    mutationFn: (requirementId: string) => workItemsApi.unlinkRequirement(item.id, requirementId),
+    onSuccess: refresh,
+    onError,
+  });
+  const linked = new Set(item.requirements.map((requirement) => requirement.requirementId));
+  const options = (candidates.data ?? []).filter((requirement) => !linked.has(requirement.id));
+
+  return (
+    <section className="card" aria-labelledby="work-item-requirements">
+      <h2 id="work-item-requirements">Implements</h2>
+      {item.requirements.length === 0 ? (
+        <p className="muted">This item does not implement any requirement yet.</p>
+      ) : (
+        <ul className="link-list">
+          {item.requirements.map((requirement) => (
+            <li key={requirement.linkId}>
+              <Link to={`/requirements/${requirement.requirementId}`}>
+                <Badge tone="info">{requirement.key}</Badge> {requirement.title}
+              </Link>{' '}
+              {editable && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  aria-label={`Unlink ${requirement.key}`}
+                  onClick={() => {
+                    unlink.mutate(requirement.requirementId);
+                  }}
+                >
+                  Unlink
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {editable && (
+        <form
+          className="inline-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (choice !== '') {
+              link.mutate(choice);
+            }
+          }}
+        >
+          <SelectField
+            label="Link requirement"
+            value={choice}
+            options={[
+              { value: '', label: 'Choose a requirement…' },
+              ...options.map((requirement) => ({
+                value: requirement.id,
+                label: `${requirement.key} · ${requirement.title}`,
+              })),
+            ]}
+            onChange={(event) => {
+              setChoice(event.target.value);
+            }}
+          />
+          <Button type="submit" disabled={choice === '' || link.isPending}>
+            Link requirement
+          </Button>
+        </form>
+      )}
+      {error !== null && (
+        <p className="ui-field__error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
   );
 }

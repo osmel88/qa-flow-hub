@@ -29,6 +29,7 @@ import { ProfilePage } from '../pages/ProfilePage';
 import { ProjectsPage } from '../pages/ProjectsPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { RequirementsPage } from '../pages/RequirementsPage';
+import { RequirementDetailPage } from '../pages/RequirementDetailPage';
 import { RunExecutionPage } from '../pages/RunExecutionPage';
 import { TestCaseEditorPage } from '../pages/TestCaseEditorPage';
 import { TestCasesPage } from '../pages/TestCasesPage';
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/projects', element: <ProjectsPage /> },
           { path: '/requirements', element: <RequirementsPage /> },
+          { path: '/requirements/:requirementId', element: <RequirementDetailPage /> },
           { path: '/backlog', element: <BacklogPage /> },
           { path: '/hierarchy', element: <HierarchyPage /> },
           { path: '/work-items', element: <WorkItemsPage /> },

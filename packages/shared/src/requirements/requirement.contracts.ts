@@ -25,6 +25,24 @@ export const REQUIREMENT_STATUSES = [
 export type RequirementStatus = (typeof REQUIREMENT_STATUSES)[number];
 
 export const PRIORITIES = ['critical', 'high', 'medium', 'low'] as const;
+
+/** Derived from the work items that implement a requirement (S4-F4). */
+export const IMPLEMENTATION_STATES = [
+  'not_implemented',
+  'partially_implemented',
+  'implemented',
+] as const;
+export type ImplementationState = (typeof IMPLEMENTATION_STATES)[number];
+
+export interface RequirementImplementation {
+  state: ImplementationState;
+  /** Live work items linked as `implements`. */
+  workItems: number;
+  done: number;
+  cancelled: number;
+  /** done / (workItems − cancelled), one decimal; null when nothing countable. */
+  progress: number | null;
+}
 export type PriorityValue = (typeof PRIORITIES)[number];
 
 /**
@@ -87,6 +105,7 @@ export const listRequirementsQuerySchema = paginationQuerySchema
     priority: z.enum(PRIORITIES).optional(),
     tag: z.string().trim().toLowerCase().min(1).max(32).optional(),
     search: z.string().trim().min(1).max(120).optional(),
+    implementation: z.enum(IMPLEMENTATION_STATES).optional(),
   })
   .merge(customFieldFilterQuerySchema);
 export type ListRequirementsQuery = z.infer<typeof listRequirementsQuerySchema>;
@@ -106,6 +125,8 @@ export interface RequirementView {
   createdById: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Present on list and detail responses (S4-F4). */
+  implementation?: RequirementImplementation;
 }
 
 export interface RequirementVersionView {

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from '../common/pagination.js';
 import type { TestResultStatus } from '../test-runs/test-run.contracts.js';
+import type {
+  LinkedWorkItemView,
+  RequirementImplementation,
+} from '../requirements/requirement-links.contracts.js';
 
 /**
  * planned → in_progress → released → archived; planned and in_progress can also
@@ -164,6 +168,10 @@ export interface ReleaseTraceabilityRow {
   key: string;
   title: string;
   status: string;
+  /** Implementing work items planned in this release (S4-F4). */
+  workItems: LinkedWorkItemView[];
+  /** Over those work items only. */
+  implementation: RequirementImplementation;
   cases: ReleaseTraceabilityCase[];
 }
 

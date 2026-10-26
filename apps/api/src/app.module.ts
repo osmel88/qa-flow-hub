@@ -24,6 +24,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { RequirementsModule } from './modules/requirements/requirements.module';
+import { RequirementLinksModule } from './modules/requirement-links/requirement-links.module';
 import { TestDesignModule } from './modules/test-design/test-design.module';
 import { TestRunsModule } from './modules/test-runs/test-runs.module';
 import { TraceabilityModule } from './modules/traceability/traceability.module';
@@ -51,6 +52,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     OrganizationsModule,
     ProjectsModule,
     RequirementsModule,
+    RequirementLinksModule,
     TestDesignModule,
     TestRunsModule,
     DefectsModule,

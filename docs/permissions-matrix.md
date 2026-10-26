@@ -204,6 +204,9 @@ archived projects are read-only; every change is an audited `role_change`.
 
 ### API keys and ingestion (S3-F3)
 
+- Requirement ↔ work item links (S4-F4) need `work_items.write` plus
+  `requirements.read` on the project to link or unlink, and read on both
+  sides to list; no new permission.
 - `work_items.write` covers creating and editing work items, moving them
   between statuses, in the hierarchy and into open releases;
   `work_items.manage` adds soft deletion. Reordering the backlog and bulk

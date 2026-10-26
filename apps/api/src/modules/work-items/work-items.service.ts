@@ -37,6 +37,7 @@ import { OrganizationMembersRepository } from '../organizations/organization-mem
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { ReleasesService } from '../releases/releases.service';
+import { RequirementLinksService } from '../requirement-links/requirement-links.service';
 import { WorkItemsRepository } from './work-items.repository';
 
 const AUDITED_FIELDS = [
@@ -68,6 +69,7 @@ export class WorkItemsService {
     private readonly tenant: TenantContextService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly requirementLinks: RequirementLinksService,
   ) {}
 
   async create(input: CreateWorkItemInput, userId: string): Promise<WorkItemView> {
@@ -164,6 +166,9 @@ export class WorkItemsService {
     return {
       ...toWorkItemView(item),
       rollup: await this.rollupOf(item),
+      requirements: (await this.access.hasPermission(item.projectId, 'requirements.read'))
+        ? await this.requirementLinks.requirementsOf(item.id)
+        : [],
       ancestors: ancestors.map(({ id: ancestorId, key, title, type }) => ({
         id: ancestorId,
         key,

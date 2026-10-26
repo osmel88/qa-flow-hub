@@ -74,6 +74,7 @@ apps/api/src/
 ├─ modules/notifications/  domain event → recipients → preferences → template → ledger → EmailAdapter (S2-F6)
 ├─ modules/customization/  custom field definitions, value validation, per-project defect workflow (S3-F7)
 ├─ modules/work-items/     backlog: ranked hierarchy, releases, optimistic versioning (S4-F1); order, moves, bulk edits (S4-F2); tree, rollups, reparent (S4-F3)
+├─ modules/requirement-links/ requirement ↔ work item `implements` links and implementation rollup (S4-F4)
 ├─ storage/                StorageProvider port, LocalStorageProvider, MemoryStorageProvider, StorageModule (S2-F7)
 ├─ modules/attachments/    multipart upload → inspection → provider → AttachmentMetadata; authenticated download (S2-F7)
 └─ modules/<area>/         controller, service, repository, dto, domain, policies

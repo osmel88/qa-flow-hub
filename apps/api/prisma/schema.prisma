@@ -181,6 +181,10 @@ enum LinkableEntity {
   automated_test
 }
 
+enum RequirementLinkType {
+  implements
+}
+
 enum TraceLinkType {
   verifies
   covers
@@ -650,9 +654,12 @@ model Requirement {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  versions RequirementVersion[]
+  versions      RequirementVersion[]
+  workItemLinks RequirementWorkItemLink[]
 
   @@unique([organizationId, projectId, key])
+  /// Target of composite foreign keys that keep links inside one project.
+  @@unique([id, projectId])
   @@index([organizationId, projectId, status])
   @@index([organizationId, projectId, deletedAt])
   @@map("requirements")
@@ -1563,6 +1570,8 @@ model WorkItem {
   /// move rewrites one row; renumbered under the backlog lock when a gap runs out.
   rank Int @default(0)
 
+  requirementLinks RequirementWorkItemLink[]
+
   /// Optimistic concurrency: bumped by every update.
   version     Int       @default(1)
   completedAt DateTime?
@@ -1580,4 +1589,25 @@ model WorkItem {
   @@index([labels], type: Gin)
   @@index([organizationId, projectId, rank])
   @@map("work_items")
+}
+
+/// A work item implements a requirement (S4-F4). Both foreign keys include
+/// projectId, so the database refuses a link across projects or tenants.
+model RequirementWorkItemLink {
+  id             String              @id @default(cuid())
+  organizationId String
+  projectId      String
+  requirementId  String
+  requirement    Requirement         @relation(fields: [requirementId, projectId], references: [id, projectId], onDelete: Cascade)
+  workItemId     String
+  workItem       WorkItem            @relation(fields: [workItemId, projectId], references: [id, projectId], onDelete: Cascade)
+  linkType       RequirementLinkType @default(implements)
+
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@unique([requirementId, workItemId, linkType])
+  @@index([organizationId, projectId])
+  @@index([workItemId])
+  @@map("requirement_work_items")
 }

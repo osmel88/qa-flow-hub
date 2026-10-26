@@ -28,4 +28,4 @@ export * from './releases/release.contracts.js';
 export * from './customization/custom-field.contracts.js';
 export * from './customization/defect-workflow.contracts.js';
 export * from './work-items/work-item.contracts.js';
-export * from './work-items/work-item.contracts.js';
+export * from './requirements/requirement-links.contracts.js';

@@ -27,6 +27,7 @@ import {
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { TraceabilityLinksRepository } from '../traceability/traceability-links.repository';
+import { RequirementLinksService } from '../requirement-links/requirement-links.service';
 import { RequirementsRepository } from './requirements.repository';
 
 /**
@@ -55,6 +56,7 @@ export class RequirementsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly customValues: CustomFieldValuesService,
+    private readonly implementations: RequirementLinksService,
   ) {}
 
   async create(input: CreateRequirementInput, userId: string): Promise<RequirementView> {
@@ -130,13 +132,30 @@ export class RequirementsService {
       ...(query.priority === undefined ? {} : { priority: query.priority }),
       ...(query.tag === undefined ? {} : { tag: query.tag }),
       ...(query.search === undefined ? {} : { search: query.search }),
+      ...(query.implementation === undefined
+        ? {}
+        : {
+            implementation: await this.implementations.filterFor(projectId, query.implementation),
+          }),
     });
 
-    return { data: page.data.map(toRequirementView), meta: page.meta };
+    const implementation = await this.implementations.implementationOf(page.data);
+    return {
+      data: page.data.map((row) => ({
+        ...toRequirementView(row),
+        ...withImplementation(implementation.get(row.id)),
+      })),
+      meta: page.meta,
+    };
   }
 
   async get(id: string): Promise<RequirementView> {
-    return toRequirementView(await this.require(id));
+    const requirement = await this.require(id);
+    const implementation = await this.implementations.implementationOf([requirement]);
+    return {
+      ...toRequirementView(requirement),
+      ...withImplementation(implementation.get(requirement.id)),
+    };
   }
 
   async update(
@@ -163,9 +182,7 @@ export class RequirementsService {
       const row = await this.requirements.update(
         id,
         {
-          ...(customFields === undefined
-            ? {}
-            : { customFields: customFields }),
+          ...(customFields === undefined ? {} : { customFields: customFields }),
           ...(input.title === undefined ? {} : { title: input.title }),
           ...(input.description === undefined ? {} : { description: input.description }),
           ...(input.acceptanceCriteria === undefined
@@ -350,4 +367,10 @@ function toVersionView(version: RequirementVersion): RequirementVersionView {
     changedAt: version.changedAt.toISOString(),
     snapshot: version.snapshot as Record<string, unknown>,
   };
+}
+
+function withImplementation(
+  entry: { implementation: NonNullable<RequirementView['implementation']> } | undefined,
+): Pick<RequirementView, 'implementation'> {
+  return entry === undefined ? {} : { implementation: entry.implementation };
 }

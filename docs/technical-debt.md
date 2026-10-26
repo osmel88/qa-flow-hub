@@ -1217,3 +1217,15 @@ caller's own tenant, never of another one.
 - **No keyboard tree navigation** (arrow keys); expand/collapse uses buttons.
 - **Progress counts items, not estimates**: a done 1-point task weighs as much
   as an open 13-point story.
+
+## 48. Requirement ↔ work item: what S4-F4 leaves (S4-F4)
+
+- **Only `implements`**: no other semantic between requirements and work
+  items, and no direct work item ↔ test case link; the chain to tests goes
+  through the requirement.
+- **Implementation is computed on read** from the live linked items; the
+  implementation filter loads every link of the project once per request.
+- **Links of a soft-deleted end are kept, hidden** rather than purged, so a
+  restore (not implemented yet) would bring them back.
+- **The requirement status is not derived**: `implemented` as a requirement
+  status is still set by hand and can disagree with the computed state.

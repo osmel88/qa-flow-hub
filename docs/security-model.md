@@ -211,6 +211,11 @@ and chapter 10 of the backend course. Summary:
 - Hierarchy changes are serialised per project (advisory lock) and edits carry
   an optional `version` (409 when stale), so concurrent requests cannot build
   an invalid tree or silently overwrite each other.
+- Requirement ↔ work item links (S4-F4) carry composite foreign keys with
+  `projectId`, so a cross-project or cross-tenant link cannot be stored; both
+  ends are share-locked and must be live, foreign/hidden/deleted ids answer
+  like missing ones, and writing needs `work_items.write` plus
+  `requirements.read`.
 
 ## Custom fields and defect workflow
 

@@ -1,3 +1,4 @@
+import { RequirementLinksModule } from '../requirement-links/requirement-links.module';
 import { Module } from '@nestjs/common';
 import { DefectsModule } from '../defects/defects.module';
 import { ProjectsModule } from '../projects/projects.module';
@@ -11,7 +12,7 @@ import { TraceabilityService } from './traceability.service';
  * modules that own the things being linked.
  */
 @Module({
-  imports: [DefectsModule, ProjectsModule],
+  imports: [DefectsModule, ProjectsModule, RequirementLinksModule],
   controllers: [TraceabilityController],
   providers: [TraceabilityService, TraceabilityRepository],
   exports: [TraceabilityService, TraceabilityRepository],

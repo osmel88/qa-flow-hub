@@ -184,6 +184,8 @@ export interface WorkItemView {
 
 /** A work item with its direct children and its ancestors (root first). */
 export interface WorkItemDetailView extends WorkItemView {
+  /** Aggregates over every descendant (S4-F3). */
+  rollup: WorkItemRollup;
   ancestors: Array<Pick<WorkItemView, 'id' | 'key' | 'title' | 'type'>>;
   children: Array<Pick<WorkItemView, 'id' | 'key' | 'title' | 'type' | 'status'>>;
 }
@@ -298,3 +300,91 @@ export function backlogTotals(items: ReadonlyArray<Pick<WorkItemView, 'estimate'
   }
   return { count: items.length, estimate: Math.round(estimate * 100) / 100, unestimated };
 }
+
+// ---------------------------------------------------------------------------
+// Hierarchy (S4-F3)
+// ---------------------------------------------------------------------------
+
+/** Implied by the ranks (epic → feature → story… → task), also checked explicitly. */
+export const WORK_ITEM_MAX_DEPTH = 4;
+/** The tree is built from every live item of the project, up to this many. */
+export const WORK_ITEM_TREE_MAX_ITEMS = 2000;
+
+export interface WorkItemRollup {
+  /** Descendants, not counting the item itself. */
+  count: number;
+  byStatus: Record<WorkItemStatus, number>;
+  /** Sum of the descendants' estimates that exist. */
+  estimate: number;
+  unestimated: number;
+  /** done / (count − cancelled), one decimal; null without countable descendants. */
+  progress: number | null;
+}
+
+export function emptyStatusCounts(): Record<WorkItemStatus, number> {
+  return Object.fromEntries(WORK_ITEM_STATUSES.map((status) => [status, 0])) as Record<
+    WorkItemStatus,
+    number
+  >;
+}
+
+/** Aggregates a flat list of descendants. */
+export function computeRollup(
+  descendants: ReadonlyArray<Pick<WorkItemView, 'status' | 'estimate'>>,
+): WorkItemRollup {
+  const byStatus = emptyStatusCounts();
+  let estimate = 0;
+  let unestimated = 0;
+  for (const item of descendants) {
+    byStatus[item.status] += 1;
+    if (item.estimate === null) {
+      unestimated += 1;
+    } else {
+      estimate += item.estimate;
+    }
+  }
+  const countable = descendants.length - byStatus.cancelled;
+  return {
+    count: descendants.length,
+    byStatus,
+    estimate: Math.round(estimate * 100) / 100,
+    unestimated,
+    progress: countable === 0 ? null : Math.round((byStatus.done / countable) * 1000) / 10,
+  };
+}
+
+export const workItemTreeQuerySchema = z.object({
+  projectId: idSchema,
+  /** Only this item's subtree. */
+  rootId: idSchema.optional(),
+  type: z.enum(WORK_ITEM_TYPES).optional(),
+  status: z.enum(WORK_ITEM_STATUSES).optional(),
+  assigneeId: z.union([z.literal('me'), z.literal('none'), idSchema]).optional(),
+  search: z.string().trim().min(1).max(120).optional(),
+});
+export type WorkItemTreeQuery = z.infer<typeof workItemTreeQuerySchema>;
+
+export interface WorkItemTreeNode {
+  item: WorkItemView;
+  rollup: WorkItemRollup;
+  /** False for ancestors kept only to give a matching descendant its context. */
+  matched: boolean;
+  children: WorkItemTreeNode[];
+}
+
+export interface WorkItemTreeView {
+  projectId: string;
+  /** Ordered by backlog rank at every level. */
+  roots: WorkItemTreeNode[];
+  /** Over every node of the (filtered) tree. */
+  totals: WorkItemRollup;
+  filtered: boolean;
+  truncated: boolean;
+}
+
+/** Move an item in the hierarchy; `null` makes it top level. */
+export const reparentWorkItemSchema = z.object({
+  parentId: idSchema.nullable(),
+  version: z.number().int().min(1).optional(),
+});
+export type ReparentWorkItemInput = z.infer<typeof reparentWorkItemSchema>;

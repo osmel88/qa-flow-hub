@@ -15,6 +15,7 @@ import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
+import { rollupText } from './HierarchyPage';
 import { WORK_ITEM_TONE, parseLabels } from './WorkItemsPage';
 
 interface Draft {
@@ -170,6 +171,7 @@ function WorkItemEditor({
         <span className="muted">
           Priority {humanize(item.priority)} · Estimate {item.estimate ?? 'none'} · Version{' '}
           {item.version}
+          {item.rollup.count > 0 && <> · Children {rollupText(item.rollup)}</>}
         </span>
       </p>
       {error !== null && (

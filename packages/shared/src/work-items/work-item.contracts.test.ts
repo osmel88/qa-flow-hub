@@ -93,3 +93,26 @@ describe('work item contracts', () => {
     expect(normalizeLabels(['A', 'a'])).toEqual(['a']);
   });
 });
+
+describe('hierarchy rollups', () => {
+  it('aggregates statuses, estimates and progress without cancelled items', async () => {
+    const { computeRollup } = await import('./work-item.contracts.js');
+    const rollup = computeRollup([
+      { status: 'done', estimate: 3 },
+      { status: 'done', estimate: null },
+      { status: 'in_progress', estimate: 2.5 },
+      { status: 'cancelled', estimate: 8 },
+    ]);
+    expect(rollup).toMatchObject({ count: 4, estimate: 13.5, unestimated: 1, progress: 66.7 });
+    expect(rollup.byStatus).toMatchObject({ done: 2, in_progress: 1, cancelled: 1, backlog: 0 });
+    expect(computeRollup([]).progress).toBeNull();
+    expect(computeRollup([{ status: 'cancelled', estimate: null }]).progress).toBeNull();
+  });
+
+  it('accepts top level or a parent when reparenting', async () => {
+    const { reparentWorkItemSchema } = await import('./work-item.contracts.js');
+    expect(reparentWorkItemSchema.safeParse({ parentId: null }).success).toBe(true);
+    expect(reparentWorkItemSchema.safeParse({ parentId: 'wi_1', version: 2 }).success).toBe(true);
+    expect(reparentWorkItemSchema.safeParse({}).success).toBe(false);
+  });
+});

@@ -1207,3 +1207,13 @@ caller's own tenant, never of another one.
   pushed.
 - **Drag and drop is row-level** (native HTML5) with arrow buttons as the
   keyboard alternative; no multi-row drag.
+
+## 47. Hierarchy: what S4-F3 leaves (S4-F3)
+
+- **Rollups are computed on read** from every live item of the project (up to
+  2000 per tree); nothing is cached, and bigger projects get a truncated tree.
+- **Reparenting is one item at a time**; there is no drag and drop between
+  tree levels and no bulk reparent.
+- **No keyboard tree navigation** (arrow keys); expand/collapse uses buttons.
+- **Progress counts items, not estimates**: a done 1-point task weighs as much
+  as an open 13-point story.

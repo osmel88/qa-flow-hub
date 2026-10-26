@@ -14,6 +14,7 @@ import { ReleasesPage } from '../pages/ReleasesPage';
 import { WorkItemDetailPage } from '../pages/WorkItemDetailPage';
 import { WorkItemsPage } from '../pages/WorkItemsPage';
 import { BacklogPage } from '../pages/BacklogPage';
+import { HierarchyPage } from '../pages/HierarchyPage';
 import { CustomizationPage } from '../pages/CustomizationPage';
 import { ImportPage } from '../pages/ImportPage';
 import { PrintableMatrixPage } from '../pages/PrintableMatrixPage';
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
           { path: '/projects', element: <ProjectsPage /> },
           { path: '/requirements', element: <RequirementsPage /> },
           { path: '/backlog', element: <BacklogPage /> },
+          { path: '/hierarchy', element: <HierarchyPage /> },
           { path: '/work-items', element: <WorkItemsPage /> },
           { path: '/work-items/:workItemId', element: <WorkItemDetailPage /> },
           { path: '/test-cases', element: <TestCasesPage /> },

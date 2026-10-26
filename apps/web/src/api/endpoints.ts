@@ -1,4 +1,7 @@
 import type {
+  ReparentWorkItemInput,
+  WorkItemTreeQuery,
+  WorkItemTreeView,
   BacklogQuery,
   BacklogView,
   BulkUpdateWorkItemsInput,
@@ -631,6 +634,10 @@ export const workItemsApi = {
   remove: (id: string) => apiFetch<void>(`/work-items/${id}`, { method: 'DELETE' }),
   move: (id: string, body: MoveWorkItemInput) =>
     apiFetch<WorkItemView>(`/work-items/${id}/move`, { method: 'POST', body }),
+  tree: (params: Partial<WorkItemTreeQuery> & { projectId: string }) =>
+    apiFetch<WorkItemTreeView>(`/work-items/tree${query(params)}`),
+  reparent: (id: string, body: ReparentWorkItemInput) =>
+    apiFetch<WorkItemView>(`/work-items/${id}/reparent`, { method: 'POST', body }),
   bulk: (body: BulkUpdateWorkItemsInput) =>
     apiFetch<BulkUpdateWorkItemsResult>('/work-items/bulk', { method: 'POST', body }),
 };

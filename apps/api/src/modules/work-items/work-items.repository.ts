@@ -145,6 +145,15 @@ export class WorkItemsRepository extends TenantAwareRepository {
     });
   }
 
+  /** Every live item of a project in backlog order, for trees and rollups. */
+  treeItems(projectId: string, take: number): Promise<WorkItem[]> {
+    return this.prisma.workItem.findMany({
+      where: this.active({ projectId }),
+      orderBy: [{ rank: 'asc' }, { id: 'asc' }],
+      take,
+    });
+  }
+
   /** Every live item of a project, reduced to what grouping needs. */
   hierarchy(projectId: string): Promise<WorkItemSummary[]> {
     return this.prisma.workItem.findMany({

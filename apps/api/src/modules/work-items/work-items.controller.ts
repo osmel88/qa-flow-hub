@@ -1,6 +1,10 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  ReparentWorkItemInput,
+  WorkItemTreeQuery,
+  reparentWorkItemSchema,
+  workItemTreeQuerySchema,
   BacklogQuery,
   BulkUpdateWorkItemsInput,
   MoveWorkItemInput,
@@ -44,6 +48,27 @@ export class WorkItemsController {
   @ApiOperation({ summary: 'Apply the same change to up to 100 work items, all or nothing' })
   bulk(@Body(zodBody(bulkUpdateWorkItemsSchema)) body: BulkUpdateWorkItemsInput) {
     return this.items.bulkUpdate(body);
+  }
+
+  @RequirePermission('work_items.write')
+  @Post(':id/reparent')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Move an item in the hierarchy (null parent = top level)' })
+  reparent(
+    @Param('id') id: string,
+    @Body(zodBody(reparentWorkItemSchema)) body: ReparentWorkItemInput,
+  ) {
+    return this.items.reparent(id, body);
+  }
+
+  @RequirePermission('work_items.read')
+  @Get('tree')
+  @ApiOperation({ summary: 'The hierarchy of a project as a tree with rollups' })
+  tree(
+    @Query(zodQuery(workItemTreeQuerySchema)) query: WorkItemTreeQuery,
+    @CurrentUser() user: CurrentUserContext,
+  ) {
+    return this.items.tree(query, user.userId);
   }
 
   @RequirePermission('work_items.write')

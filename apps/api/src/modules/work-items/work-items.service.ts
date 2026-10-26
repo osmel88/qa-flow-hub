@@ -1,6 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { AuditAction, Prisma, ProjectStatus, WorkItem } from '@prisma/client';
 import {
+  ReparentWorkItemInput,
+  WORK_ITEM_MAX_DEPTH,
+  WORK_ITEM_TREE_MAX_ITEMS,
+  WorkItemRollup,
+  WorkItemTreeNode,
+  WorkItemTreeQuery,
+  WorkItemTreeView,
+  computeRollup,
   BACKLOG_MAX_ITEMS,
   BACKLOG_RANK_STEP,
   BacklogGroup,
@@ -155,6 +163,7 @@ export class WorkItemsService {
     ]);
     return {
       ...toWorkItemView(item),
+      rollup: await this.rollupOf(item),
       ancestors: ancestors.map(({ id: ancestorId, key, title, type }) => ({
         id: ancestorId,
         key,
@@ -254,15 +263,19 @@ export class WorkItemsService {
       }
 
       const changes = diff(current, row);
+      const parentKey =
+        row.parentId === null ? null : ((await this.items.findById(row.parentId, tx))?.key ?? null);
       await this.audit.record(
         {
           action: AuditAction.update,
           entityType: 'WorkItem',
           entityId: id,
           summary:
-            changes['status'] === undefined
-              ? `Updated ${row.key}`
-              : `Moved ${row.key} from ${current.status} to ${row.status}`,
+            changes['status'] !== undefined
+              ? `Moved ${row.key} from ${current.status} to ${row.status}`
+              : changes['parentId'] !== undefined && Object.keys(changes).length === 1
+                ? `Reparented ${row.key} ${row.parentId === null ? 'to the top level' : `under ${parentKey ?? row.parentId}`}`
+                : `Updated ${row.key}`,
           ...(Object.keys(changes).length === 0 ? {} : { changes }),
         },
         tx,
@@ -300,6 +313,109 @@ export class WorkItemsService {
         },
         tx,
       );
+    });
+  }
+
+  // --- Hierarchy (S4-F3) ----------------------------------------------------
+
+  /** Aggregates over every live descendant of one item. */
+  private async rollupOf(item: WorkItem): Promise<WorkItemRollup> {
+    const rows = await this.items.treeItems(item.projectId, WORK_ITEM_TREE_MAX_ITEMS);
+    const children = childrenIndex(rows);
+    const descendants: WorkItem[] = [];
+    const stack = [...(children.get(item.id) ?? [])];
+    while (stack.length > 0) {
+      const next = stack.pop();
+      if (next === undefined) break;
+      descendants.push(next);
+      stack.push(...(children.get(next.id) ?? []));
+    }
+    return computeRollup(descendants);
+  }
+
+  /**
+   * The project's hierarchy as a tree, every level in backlog order, with
+   * rollups. With filters, matching items keep their ancestors for context.
+   */
+  async tree(query: WorkItemTreeQuery, userId: string): Promise<WorkItemTreeView> {
+    const filtered =
+      query.type !== undefined ||
+      query.status !== undefined ||
+      query.assigneeId !== undefined ||
+      query.search !== undefined;
+    const projectId = await this.access.authorizeProjectScope(query.projectId);
+    if (projectId === null) {
+      return {
+        projectId: query.projectId,
+        roots: [],
+        totals: computeRollup([]),
+        filtered,
+        truncated: false,
+      };
+    }
+    const rows = await this.items.treeItems(projectId, WORK_ITEM_TREE_MAX_ITEMS + 1);
+    const truncated = rows.length > WORK_ITEM_TREE_MAX_ITEMS;
+    const live = rows.slice(0, WORK_ITEM_TREE_MAX_ITEMS);
+    const byId = new Map(live.map((row) => [row.id, row]));
+    const children = childrenIndex(live);
+
+    if (query.rootId !== undefined && !byId.has(query.rootId)) {
+      throw new NotFoundError('Work item');
+    }
+    const assigneeId =
+      query.assigneeId === 'me' ? userId : query.assigneeId === 'none' ? null : query.assigneeId;
+    const needle = query.search?.toLowerCase();
+    const matches = (row: WorkItem): boolean =>
+      (query.type === undefined || row.type === query.type) &&
+      (query.status === undefined || row.status === query.status) &&
+      (assigneeId === undefined || row.assigneeId === assigneeId) &&
+      (needle === undefined ||
+        row.title.toLowerCase().includes(needle) ||
+        row.key.toLowerCase().includes(needle));
+
+    const build = (
+      row: WorkItem,
+      depth: number,
+    ): { node: WorkItemTreeNode; all: WorkItem[] } | null => {
+      const built =
+        depth >= WORK_ITEM_MAX_DEPTH + 2
+          ? []
+          : (children.get(row.id) ?? []).flatMap((child) => build(child, depth + 1) ?? []);
+      const descendants = built.flatMap((entry) => entry.all);
+      const matched = matches(row);
+      if (filtered && !matched && built.length === 0) {
+        return null;
+      }
+      return {
+        node: {
+          item: toWorkItemView(row),
+          rollup: computeRollup(descendants),
+          matched,
+          children: built.map((entry) => entry.node),
+        },
+        all: [row, ...descendants],
+      };
+    };
+
+    const tops =
+      query.rootId === undefined
+        ? live.filter((row) => row.parentId === null || !byId.has(row.parentId))
+        : live.filter((row) => row.id === query.rootId);
+    const built = tops.flatMap((row) => build(row, 1) ?? []);
+    return {
+      projectId,
+      roots: built.map((entry) => entry.node),
+      totals: computeRollup(built.flatMap((entry) => entry.all)),
+      filtered,
+      truncated,
+    };
+  }
+
+  /** Moves an item in the hierarchy (same checks and locks as an edit of `parentId`). */
+  async reparent(id: string, input: ReparentWorkItemInput): Promise<WorkItemView> {
+    return this.update(id, {
+      parentId: input.parentId,
+      ...(input.version === undefined ? {} : { version: input.version }),
     });
   }
 
@@ -562,6 +678,11 @@ export class WorkItemsService {
     if (!canBeParentOf(parent.type, childType)) {
       throw new ValidationError(`A ${parent.type} cannot contain a ${childType}`);
     }
+    // The ranks already bound the depth; this keeps the limit explicit if they change.
+    const depth = (await this.items.ancestors(parent)).length + 2;
+    if (depth > WORK_ITEM_MAX_DEPTH) {
+      throw new ValidationError(`The hierarchy is limited to ${WORK_ITEM_MAX_DEPTH} levels`);
+    }
   }
 
   private async assertAssignee(
@@ -633,4 +754,16 @@ export function toWorkItemView(item: WorkItem): WorkItemView {
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
   };
+}
+
+function childrenIndex(rows: readonly WorkItem[]): Map<string, WorkItem[]> {
+  const index = new Map<string, WorkItem[]>();
+  for (const row of rows) {
+    if (row.parentId !== null) {
+      const siblings = index.get(row.parentId) ?? [];
+      siblings.push(row);
+      index.set(row.parentId, siblings);
+    }
+  }
+  return index;
 }

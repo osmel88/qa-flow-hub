@@ -62,6 +62,28 @@ rank)`.
   totals, selection and a bulk action bar.
 - Tests: `backlog.int-spec.ts`, `BacklogPage.test.tsx`, `backlog.e2e.spec.ts`.
 
+## S4-F3 — Hierarchy
+
+No migration and no new ADR (it builds on ADR 0023); debt 47.
+
+**Status: implemented.**
+
+- `GET /work-items/tree`: the project hierarchy in backlog order, with
+  rollups per node (descendant counts by status, estimate sum, unestimated,
+  progress without cancelled items) and totals; filters (type, status,
+  assignee incl. `me`/`none`, search) keep ancestors of matches for context;
+  `rootId` for a subtree.
+- `POST /work-items/:id/reparent` (`parentId` or `null`, optional `version`):
+  same locks and checks as editing `parentId` — ranked types (no cycles),
+  explicit maximum depth of 4, composite FKs, foreign parents answered like
+  missing ones, audited as "Reparented … under …".
+- `GET /work-items/:id` adds `rollup`; ancestors are the breadcrumb.
+- Web: Hierarchy page with an expandable/collapsible tree, expand/collapse
+  all, filters and search, rollups and a "Move under" control per node; the
+  detail page shows the children rollup.
+- Tests: `hierarchy.int-spec.ts`, `HierarchyPage.test.tsx`,
+  `hierarchy.e2e.spec.ts`, rollup unit tests in the shared contracts.
+
 ## Next candidates
 
 - Sprints / iterations and capacity planning over work items.

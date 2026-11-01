@@ -55,6 +55,39 @@ Hard constraints, unchanged:
 - Tests: `development.int-spec.ts`, `development.contracts.test.ts`,
   `DevelopmentPage.test.tsx`, `development.e2e.spec.ts`.
 
+## S5-F2 — Development Status
+
+- Each work item has a development status derived on read from its live
+  linked artifacts (`computeDevelopmentStatus()` in the shared package),
+  never stored: `no_development`, `branch_created`, `commits`, `pr_open`,
+  `pr_approved`, `merged`, `build_running`, `build_passed`, `build_failed`,
+  `deployed`, listed from lowest to highest precedence.
+- Rules: a succeeded deployment wins; otherwise the latest build that ran
+  (by `occurredAt`, then creation, ties by id) decides failed/passed/running,
+  so a failed build shows over commits and pull requests; then a merged,
+  approved, or open/draft pull request; then commits; then a branch not
+  deleted. Closed PRs, cancelled builds and failed/pending deployments never
+  raise it. Deleted artifacts and deleted links do not count. The result is
+  the same whatever the order of the links, with the artifacts that justify
+  it (`evidence`).
+- 1 migration: pull requests may now be `approved` (the status CHECK is
+  replaced with the same rules plus `approved`).
+- Every change of a derived status caused by a link, unlink, artifact edit,
+  delete or creation is audited on the work item (`Development status of
+KEY: from → to`). Those writes lock the affected work items `FOR UPDATE`
+  (after the artifact), so concurrent changes chain consistently.
+- API: `summary` (status, evidence, counts, last activity) in
+  `GET /work-items/:id/development`; `developmentStatus` filter on
+  `/work-items`, `/backlog`, `/work-items/tree`, `/sprints/board` and
+  `/kanban`; `developmentStatuses` maps in backlog and tree views and
+  `developmentStatus` on board cards; `GET /development-artifacts/summary`
+  (work items per status, artifacts per kind).
+- Web: status and evidence links in the work item detail, badges and a
+  "Development filter" in Backlog, Hierarchy, Board and Kanban, and a summary
+  on the Development page.
+- Tests: `development-status.int-spec.ts`, `development-status.test.ts`,
+  extended `development.e2e.spec.ts`.
+
 ## Next candidates
 
 - CI views on top of builds and the existing ingestion of test results.

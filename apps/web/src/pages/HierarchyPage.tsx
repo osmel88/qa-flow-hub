@@ -1,3 +1,4 @@
+import type { DevelopmentStatus } from '@qa-flow-hub/shared';
 import { WORK_ITEM_STATUSES, WORK_ITEM_TYPES, canBeParentOf } from '@qa-flow-hub/shared';
 import type {
   WorkItemRollup,
@@ -12,6 +13,10 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { workItemsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import {
+  DEVELOPMENT_STATUS_OPTIONS,
+  DevelopmentStatusBadge,
+} from '../components/DevelopmentStatusBadge';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
@@ -46,6 +51,7 @@ export function HierarchyPage(): React.JSX.Element {
   const [type, setType] = useState<WorkItemType | ''>('');
   const [status, setStatus] = useState<WorkItemStatus | ''>('');
   const [search, setSearch] = useState('');
+  const [developmentStatus, setDevelopmentStatus] = useState('');
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const projectId = activeProjectId ?? '';
@@ -53,13 +59,16 @@ export function HierarchyPage(): React.JSX.Element {
   const editable = can('work_items.write');
 
   const tree = useQuery({
-    queryKey: ['work-items', 'tree', activeProjectId, type, status, trimmed],
+    queryKey: ['work-items', 'tree', activeProjectId, type, status, trimmed, developmentStatus],
     queryFn: () =>
       workItemsApi.tree({
         projectId,
         ...(type === '' ? {} : { type }),
         ...(status === '' ? {} : { status }),
         ...(trimmed === '' ? {} : { search: trimmed }),
+        ...(developmentStatus === ''
+          ? {}
+          : { developmentStatus: developmentStatus as DevelopmentStatus }),
       }),
     enabled: activeProjectId !== null,
   });
@@ -131,6 +140,7 @@ export function HierarchyPage(): React.JSX.Element {
           <code>{item.key}</code> <Link to={`/work-items/${item.id}`}>{item.title}</Link>{' '}
           <span className="muted">{humanize(item.type)}</span>{' '}
           <Badge tone={WORK_ITEM_TONE[item.status]}>{humanize(item.status)}</Badge>{' '}
+          <DevelopmentStatusBadge status={tree.data?.developmentStatuses[item.id]} />{' '}
           <span className="muted" data-testid={`rollup-${item.key}`}>
             {rollupText(node.rollup)}
           </span>
@@ -172,6 +182,14 @@ export function HierarchyPage(): React.JSX.Element {
         description="Epics, features, stories and tasks as a tree, with the progress and estimates of everything below each item."
       />
       <section className="card filters" aria-label="Hierarchy filters">
+        <SelectField
+          label="Development filter"
+          value={developmentStatus}
+          options={DEVELOPMENT_STATUS_OPTIONS}
+          onChange={(event) => {
+            setDevelopmentStatus(event.target.value);
+          }}
+        />
         <SelectField
           label="Type filter"
           value={type}

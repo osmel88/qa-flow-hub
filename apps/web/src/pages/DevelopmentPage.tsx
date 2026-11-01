@@ -2,6 +2,7 @@ import {
   ALL_DEVELOPMENT_STATUSES,
   DEVELOPMENT_ARTIFACT_KINDS,
   DEVELOPMENT_PROVIDERS,
+  DEVELOPMENT_STATUS_VALUES,
   artifactReference,
   statusesFor,
 } from '@qa-flow-hub/shared';
@@ -134,6 +135,13 @@ export function DevelopmentPage(): React.JSX.Element {
     staleTime: 0,
     refetchOnMount: 'always',
   });
+  const summary = useQuery({
+    queryKey: ['development', 'summary', activeProjectId],
+    queryFn: () => developmentApi.summary(projectId),
+    enabled: activeProjectId !== null,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
   const workItems = useQuery({
     queryKey: ['work-items', activeProjectId, 'development-candidates'],
     queryFn: () => workItemsApi.list({ projectId }),
@@ -198,6 +206,23 @@ export function DevelopmentPage(): React.JSX.Element {
         title="Development"
         description="Branches, commits, pull requests, builds and deployments of the project and the work items they relate to. Recorded locally; no provider is connected."
       />
+      {summary.data !== undefined && (
+        <section className="card" aria-labelledby="development-summary">
+          <h2 id="development-summary">Work items by development status</h2>
+          <dl className="kpis">
+            {DEVELOPMENT_STATUS_VALUES.filter((value) => summary.data.workItems[value] > 0).map(
+              (value) => (
+                <div key={value}>
+                  <dt>{humanize(value)}</dt>
+                  <dd data-testid={`development-summary-${value}`}>
+                    {summary.data.workItems[value]}
+                  </dd>
+                </div>
+              ),
+            )}
+          </dl>
+        </section>
+      )}
       <section className="card filters" aria-label="Development filters">
         <SelectField
           label="Filter by kind"

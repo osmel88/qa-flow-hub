@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { developmentStatusFilterSchema } from '../development/development.contracts.js';
+import type { DevelopmentStatus } from '../development/development.contracts.js';
 import { PRIORITIES } from '../requirements/requirement.contracts.js';
 import { WORK_ITEM_TYPES } from '../work-items/work-item.contracts.js';
 import type { WorkItemStatus, WorkItemView } from '../work-items/work-item.contracts.js';
@@ -60,6 +62,7 @@ export const boardQuerySchema = z.object({
   featureId: idSchema.optional(),
   search: z.string().trim().min(1).max(200).optional(),
   swimlane: z.enum(BOARD_SWIMLANES).default('none'),
+  developmentStatus: developmentStatusFilterSchema.optional(),
 });
 export type BoardQuery = z.infer<typeof boardQuerySchema>;
 
@@ -92,6 +95,8 @@ export interface BoardCard extends WorkItemView {
   assignee: { id: string; fullName: string } | null;
   /** Live requirements this item implements. */
   requirements: { count: number; keys: string[] };
+  /** Derived from its development links (S5-F2). */
+  developmentStatus: DevelopmentStatus;
 }
 
 export interface BoardColumnView {

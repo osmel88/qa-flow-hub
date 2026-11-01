@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { developmentStatusFilterSchema } from '../development/development.contracts.js';
 import { PRIORITIES } from '../requirements/requirement.contracts.js';
 import { WORK_ITEM_TYPES } from '../work-items/work-item.contracts.js';
 import type { WorkItemStatus } from '../work-items/work-item.contracts.js';
@@ -59,6 +60,7 @@ export const kanbanQuerySchema = z.object({
   releaseId: idSchema.optional(),
   search: z.string().trim().min(1).max(200).optional(),
   swimlane: z.enum(BOARD_SWIMLANES).default('none'),
+  developmentStatus: developmentStatusFilterSchema.optional(),
   /** Done column and flow metrics cover the last `windowDays` days. */
   windowDays: z.coerce.number().int().min(7).max(90).default(KANBAN_WINDOW_DAYS_DEFAULT),
 });

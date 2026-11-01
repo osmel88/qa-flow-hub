@@ -1,3 +1,5 @@
+import { developmentStatusFilterSchema } from '../development/development.contracts.js';
+import type { DevelopmentStatus } from '../development/development.contracts.js';
 import { z } from 'zod';
 import { paginationQuerySchema } from '../common/pagination.js';
 import { PRIORITIES } from '../requirements/requirement.contracts.js';
@@ -157,6 +159,8 @@ export const listWorkItemsQuerySchema = paginationQuerySchema.extend({
   label: labelSchema.transform((label) => normalizeLabels([label])[0] ?? label).optional(),
   open: z.enum(['true', 'false']).optional(),
   search: z.string().trim().min(1).max(120).optional(),
+  /** Derived from development links (S5-F2). */
+  developmentStatus: developmentStatusFilterSchema.optional(),
 });
 export type ListWorkItemsQuery = z.infer<typeof listWorkItemsQuerySchema>;
 
@@ -225,6 +229,7 @@ export const backlogQuerySchema = z.object({
   /** Done and cancelled items are hidden unless asked for. */
   includeClosed: z.enum(['true', 'false']).default('false'),
   groupBy: z.enum(BACKLOG_GROUPINGS).default('none'),
+  developmentStatus: developmentStatusFilterSchema.optional(),
 });
 export type BacklogQuery = z.infer<typeof backlogQuerySchema>;
 
@@ -253,6 +258,8 @@ export interface BacklogView {
   groups: BacklogGroup[];
   totals: BacklogTotals;
   truncated: boolean;
+  /** Derived development status of each item (S5-F2). */
+  developmentStatuses: Record<string, DevelopmentStatus>;
 }
 
 /**
@@ -370,6 +377,7 @@ export const workItemTreeQuerySchema = z.object({
   status: z.enum(WORK_ITEM_STATUSES).optional(),
   assigneeId: z.union([z.literal('me'), z.literal('none'), idSchema]).optional(),
   search: z.string().trim().min(1).max(120).optional(),
+  developmentStatus: developmentStatusFilterSchema.optional(),
 });
 export type WorkItemTreeQuery = z.infer<typeof workItemTreeQuerySchema>;
 
@@ -389,6 +397,8 @@ export interface WorkItemTreeView {
   totals: WorkItemRollup;
   filtered: boolean;
   truncated: boolean;
+  /** Derived development status of each node (S5-F2). */
+  developmentStatuses: Record<string, DevelopmentStatus>;
 }
 
 /** Move an item in the hierarchy; `null` makes it top level. */

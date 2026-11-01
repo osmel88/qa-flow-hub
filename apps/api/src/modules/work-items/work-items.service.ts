@@ -37,6 +37,7 @@ import { OrganizationMembersRepository } from '../organizations/organization-mem
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { ReleasesService } from '../releases/releases.service';
+import { DevelopmentService } from '../development/development.service';
 import { RequirementLinksService } from '../requirement-links/requirement-links.service';
 import { WorkItemsRepository } from './work-items.repository';
 
@@ -70,6 +71,7 @@ export class WorkItemsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly requirementLinks: RequirementLinksService,
+    private readonly development: DevelopmentService,
   ) {}
 
   async create(input: CreateWorkItemInput, userId: string): Promise<WorkItemView> {
@@ -155,6 +157,9 @@ export class WorkItemsService {
       ...(query.label === undefined ? {} : { label: query.label }),
       ...(query.open === undefined ? {} : { open: query.open === 'true' }),
       ...(query.search === undefined ? {} : { search: query.search }),
+      ...(query.developmentStatus === undefined
+        ? {}
+        : { ids: await this.development.filterFor(projectId, query.developmentStatus) }),
     });
     return { data: page.data.map(toWorkItemView), meta: page.meta };
   }
@@ -349,7 +354,8 @@ export class WorkItemsService {
       query.type !== undefined ||
       query.status !== undefined ||
       query.assigneeId !== undefined ||
-      query.search !== undefined;
+      query.search !== undefined ||
+      query.developmentStatus !== undefined;
     const projectId = await this.access.authorizeProjectScope(query.projectId);
     if (projectId === null) {
       return {
@@ -358,6 +364,7 @@ export class WorkItemsService {
         totals: computeRollup([]),
         filtered,
         truncated: false,
+        developmentStatuses: {},
       };
     }
     const rows = await this.items.treeItems(projectId, WORK_ITEM_TREE_MAX_ITEMS + 1);
@@ -365,6 +372,7 @@ export class WorkItemsService {
     const live = rows.slice(0, WORK_ITEM_TREE_MAX_ITEMS);
     const byId = new Map(live.map((row) => [row.id, row]));
     const children = childrenIndex(live);
+    const development = await this.development.statusesOf(live.map((row) => row.id));
 
     if (query.rootId !== undefined && !byId.has(query.rootId)) {
       throw new NotFoundError('Work item');
@@ -376,6 +384,8 @@ export class WorkItemsService {
       (query.type === undefined || row.type === query.type) &&
       (query.status === undefined || row.status === query.status) &&
       (assigneeId === undefined || row.assigneeId === assigneeId) &&
+      (query.developmentStatus === undefined ||
+        development.get(row.id)?.status === query.developmentStatus) &&
       (needle === undefined ||
         row.title.toLowerCase().includes(needle) ||
         row.key.toLowerCase().includes(needle));
@@ -409,12 +419,16 @@ export class WorkItemsService {
         ? live.filter((row) => row.parentId === null || !byId.has(row.parentId))
         : live.filter((row) => row.id === query.rootId);
     const built = tops.flatMap((row) => build(row, 1) ?? []);
+    const all = built.flatMap((entry) => entry.all);
     return {
       projectId,
       roots: built.map((entry) => entry.node),
-      totals: computeRollup(built.flatMap((entry) => entry.all)),
+      totals: computeRollup(all),
       filtered,
       truncated,
+      developmentStatuses: Object.fromEntries(
+        all.map((row) => [row.id, development.get(row.id)?.status ?? 'no_development']),
+      ),
     };
   }
 
@@ -436,6 +450,7 @@ export class WorkItemsService {
       groups: [],
       totals: backlogTotals([]),
       truncated: false,
+      developmentStatuses: {},
     };
     const projectId = await this.access.authorizeProjectScope(query.projectId);
     if (projectId === null) {
@@ -446,8 +461,13 @@ export class WorkItemsService {
     const assigneeId = query.assigneeId === 'me' ? userId : ref(query.assigneeId);
     const releaseId = ref(query.releaseId);
     const sprintId = ref(query.sprintId);
+    const developmentIds =
+      query.developmentStatus === undefined
+        ? undefined
+        : await this.development.filterFor(projectId, query.developmentStatus);
     const where: Prisma.WorkItemWhereInput = {
       projectId,
+      ...(developmentIds === undefined ? {} : { id: developmentIds }),
       ...(query.type === undefined ? {} : { type: query.type }),
       ...(query.priority === undefined ? {} : { priority: query.priority }),
       ...(assigneeId === undefined ? {} : { assigneeId }),
@@ -479,6 +499,11 @@ export class WorkItemsService {
       groups: query.groupBy === 'none' ? [] : await this.group(projectId, items, query.groupBy),
       totals: backlogTotals(items),
       truncated,
+      developmentStatuses: Object.fromEntries(
+        [...(await this.development.statusesOf(items.map((item) => item.id)))].map(
+          ([id, summary]) => [id, summary.status],
+        ),
+      ),
     };
   }
 

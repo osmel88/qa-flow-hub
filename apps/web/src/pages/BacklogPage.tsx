@@ -1,3 +1,4 @@
+import type { DevelopmentStatus } from '@qa-flow-hub/shared';
 import {
   BACKLOG_GROUPINGS,
   PRIORITIES,
@@ -17,6 +18,10 @@ import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { backlogApi, projectsApi, releasesApi, workItemsApi, sprintsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import {
+  DEVELOPMENT_STATUS_OPTIONS,
+  DevelopmentStatusBadge,
+} from '../components/DevelopmentStatusBadge';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
@@ -55,6 +60,7 @@ export function BacklogPage(): React.JSX.Element {
   const [mine, setMine] = useState(false);
   const [includeClosed, setIncludeClosed] = useState(false);
   const [search, setSearch] = useState('');
+  const [developmentStatus, setDevelopmentStatus] = useState('');
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [dragged, setDragged] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +86,7 @@ export function BacklogPage(): React.JSX.Element {
       mine,
       includeClosed,
       trimmedSearch,
+      developmentStatus,
     ],
     queryFn: () =>
       backlogApi.get({
@@ -91,6 +98,9 @@ export function BacklogPage(): React.JSX.Element {
         ...(type === '' ? {} : { type }),
         ...(mine ? { assigneeId: 'me' } : {}),
         ...(trimmedSearch === '' ? {} : { search: trimmedSearch }),
+        ...(developmentStatus === ''
+          ? {}
+          : { developmentStatus: developmentStatus as DevelopmentStatus }),
       }),
     enabled: activeProjectId !== null,
   });
@@ -238,6 +248,14 @@ export function BacklogPage(): React.JSX.Element {
           ]}
           onChange={(event) => {
             setSprintId(event.target.value);
+          }}
+        />
+        <SelectField
+          label="Development filter"
+          value={developmentStatus}
+          options={DEVELOPMENT_STATUS_OPTIONS}
+          onChange={(event) => {
+            setDevelopmentStatus(event.target.value);
           }}
         />
         <SelectField
@@ -465,7 +483,11 @@ export function BacklogPage(): React.JSX.Element {
                         </td>
                       )}
                       <td>
-                        <code>{item.key}</code>
+                        <code>{item.key}</code>{' '}
+                        <DevelopmentStatusBadge
+                          status={backlog.data?.developmentStatuses[item.id]}
+                          testId={`development-status-${item.key}`}
+                        />
                       </td>
                       <td>
                         <Link to={`/work-items/${item.id}`}>{item.title}</Link>

@@ -1,3 +1,4 @@
+import type { DevelopmentStatus } from '@qa-flow-hub/shared';
 import { BOARD_COLUMNS, BOARD_SWIMLANES, PRIORITIES, WORK_ITEM_TYPES } from '@qa-flow-hub/shared';
 import type {
   BoardCard,
@@ -13,6 +14,10 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { sprintsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import {
+  DEVELOPMENT_STATUS_OPTIONS,
+  DevelopmentStatusBadge,
+} from '../components/DevelopmentStatusBadge';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
@@ -50,6 +55,7 @@ export function BoardPage(): React.JSX.Element {
   const [epicId, setEpicId] = useState('');
   const [featureId, setFeatureId] = useState('');
   const [search, setSearch] = useState('');
+  const [developmentStatus, setDevelopmentStatus] = useState('');
   const [swimlane, setSwimlane] = useState<BoardSwimlane>('none');
   const [dragged, setDragged] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +72,9 @@ export function BoardPage(): React.JSX.Element {
     ...(epicId === '' ? {} : { epicId }),
     ...(featureId === '' ? {} : { featureId }),
     ...(trimmed === '' ? {} : { search: trimmed }),
+    ...(developmentStatus === ''
+      ? {}
+      : { developmentStatus: developmentStatus as DevelopmentStatus }),
   };
   const board = useQuery({
     queryKey: ['board', params],
@@ -211,6 +220,14 @@ export function BoardPage(): React.JSX.Element {
           }}
         />
         <SelectField
+          label="Development filter"
+          value={developmentStatus}
+          options={DEVELOPMENT_STATUS_OPTIONS}
+          onChange={(event) => {
+            setDevelopmentStatus(event.target.value);
+          }}
+        />
+        <SelectField
           label="Swimlanes"
           value={swimlane}
           options={BOARD_SWIMLANES.map((value) => ({
@@ -348,6 +365,7 @@ export function BoardPage(): React.JSX.Element {
                               </Link>
                               <div className="board-card__meta">
                                 <Badge tone="neutral">{humanize(card.type)}</Badge>
+                                <DevelopmentStatusBadge status={card.developmentStatus} />
                                 <Badge tone="info">{humanize(card.priority)}</Badge>
                                 {card.status === 'blocked' && (
                                   <Badge tone={WORK_ITEM_TONE.blocked}>Blocked</Badge>

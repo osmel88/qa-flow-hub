@@ -508,6 +508,29 @@ function DevelopmentSection({
   return (
     <section className="card" aria-labelledby="work-item-development">
       <h2 id="work-item-development">Development</h2>
+      {development.data !== undefined && (
+        <p>
+          Status:{' '}
+          <span data-testid="development-status">{humanize(development.data.summary.status)}</span>
+          {development.data.summary.evidence.length > 0 && (
+            <>
+              {' '}
+              from{' '}
+              {artifacts
+                .filter((artifact) => development.data.summary.evidence.includes(artifact.id))
+                .map((artifact) => (
+                  <Link
+                    key={artifact.id}
+                    to={`/development?workItemId=${item.id}`}
+                    data-testid="development-evidence"
+                  >
+                    {humanize(artifact.kind)} {artifactReference(artifact)}{' '}
+                  </Link>
+                ))}
+            </>
+          )}
+        </p>
+      )}
       <DataState
         isPending={development.isPending}
         error={development.error}

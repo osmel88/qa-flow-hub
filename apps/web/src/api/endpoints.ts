@@ -2,6 +2,7 @@ import type {
   CreateDevelopmentArtifactInput,
   DevelopmentArtifactView,
   DevelopmentLinkResult,
+  DevelopmentSummaryView,
   ListDevelopmentArtifactsQuery,
   UpdateDevelopmentArtifactInput,
   WorkItemDevelopmentView,
@@ -715,6 +716,8 @@ export const developmentApi = {
       `/development-artifacts${query({ pageSize: 100, ...params })}`,
     ),
   get: (id: string) => apiFetch<DevelopmentArtifactView>(`/development-artifacts/${id}`),
+  summary: (projectId: string) =>
+    apiFetch<DevelopmentSummaryView>(`/development-artifacts/summary${query({ projectId })}`),
   create: (body: Partial<CreateDevelopmentArtifactInput> & { projectId: string; kind: string }) =>
     apiFetch<DevelopmentArtifactView>('/development-artifacts', { method: 'POST', body }),
   update: (id: string, body: UpdateDevelopmentArtifactInput) =>

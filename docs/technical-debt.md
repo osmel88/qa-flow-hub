@@ -1281,3 +1281,13 @@ caller's own tenant, never of another one.
 - **No history of status changes** of an artifact beyond the audit log.
 - **The consolidated view is paginated** (100 per page in the web) and has no
   timeline grouping per work item or per release.
+
+## 53. Development status: what S5-F2 leaves (S5-F2)
+
+- **Computed per request**: filters derive the status of every linked item
+  of the project in memory; large projects will want a cached projection.
+- **One precedence for everybody**: no per-project rules (e.g. deployments
+  only to `production` count as deployed).
+- **PR approval is a status**, not reviews: no reviewer counts or required
+  approvals until a provider adapter exists.
+- **Badges hide `no_development`** to keep lists readable.

@@ -5,13 +5,18 @@ import {
   DEVELOPMENT_ARTIFACT_KINDS,
   DevelopmentArtifactKind,
   DevelopmentArtifactView,
+  DEVELOPMENT_STATUS_VALUES,
   DevelopmentLinkResult,
+  DevelopmentStatus,
+  DevelopmentStatusSummary,
+  DevelopmentSummaryView,
   DevelopmentWorkItemRef,
   ListDevelopmentArtifactsQuery,
   Paginated,
   UpdateDevelopmentArtifactInput,
   WorkItemDevelopmentView,
   artifactReference,
+  computeDevelopmentStatus,
   naturalKeyOf,
   statusesFor,
 } from '@qa-flow-hub/shared';
@@ -64,6 +69,7 @@ export class DevelopmentService {
         if (items.length !== workItemIds.length) {
           throw new NotFoundError('Work item');
         }
+        const before = await this.statusesIn(items, tx);
         const row = await this.repo.create(
           {
             projectId,
@@ -101,6 +107,7 @@ export class DevelopmentService {
         for (const item of items) {
           await this.auditLink(AuditAction.create, row, item, tx);
         }
+        await this.auditStatusChanges(items, before, tx);
         return row;
       });
     } catch (error) {
@@ -192,6 +199,8 @@ export class DevelopmentService {
         }
       }
       if (Object.keys(data).length > 0) {
+        const items = await this.repo.lockLinkedWorkItems(id, tx);
+        const before = await this.statusesIn(items, tx);
         await this.repo.update(id, data, tx);
         await this.audit.record(
           {
@@ -203,6 +212,7 @@ export class DevelopmentService {
           },
           tx,
         );
+        await this.auditStatusChanges(items, before, tx);
       }
       const row = await this.repo.findArtifact(id, tx);
       if (row === null) {
@@ -218,7 +228,12 @@ export class DevelopmentService {
     await this.requireVisible(id);
     await this.prisma.runInTransaction(async (tx) => {
       const current = await this.repo.lockArtifact(id, 'update', tx);
-      if (current === null || !(await this.repo.softDelete(id, tx))) {
+      if (current === null) {
+        throw new NotFoundError(ARTIFACT);
+      }
+      const items = await this.repo.lockLinkedWorkItems(id, tx);
+      const before = await this.statusesIn(items, tx);
+      if (!(await this.repo.softDelete(id, tx))) {
         throw new NotFoundError(ARTIFACT);
       }
       await this.audit.record(
@@ -230,12 +245,14 @@ export class DevelopmentService {
         },
         tx,
       );
+      await this.auditStatusChanges(items, before, tx);
     });
   }
 
   async link(ends: LinkEnds, userId: string): Promise<DevelopmentLinkResult> {
     return this.prisma.runInTransaction(async (tx) => {
       const { artifact, workItem } = await this.lockEnds(ends, tx);
+      const before = await this.statusesIn([workItem], tx);
       const created =
         (await this.repo.insertLinks(
           artifact.projectId,
@@ -246,6 +263,7 @@ export class DevelopmentService {
         )) === 1;
       if (created) {
         await this.auditLink(AuditAction.create, artifact, workItem, tx);
+        await this.auditStatusChanges([workItem], before, tx);
       }
       return { created, workItemId: workItem.id, artifactId: artifact.id };
     });
@@ -255,8 +273,10 @@ export class DevelopmentService {
   async unlink(ends: LinkEnds): Promise<void> {
     await this.prisma.runInTransaction(async (tx) => {
       const { artifact, workItem } = await this.lockEnds(ends, tx);
+      const before = await this.statusesIn([workItem], tx);
       if ((await this.repo.removeLink(workItem.id, artifact.id, tx)) !== null) {
         await this.auditLink(AuditAction.delete, artifact, workItem, tx);
+        await this.auditStatusChanges([workItem], before, tx);
       }
     });
   }
@@ -275,8 +295,10 @@ export class DevelopmentService {
     for (const row of rows) {
       counts[row.artifact.kind] += 1;
     }
+    const summary = (await this.statusesOf([workItem.id])).get(workItem.id);
     return {
       workItemId: workItem.id,
+      summary: summary ?? computeDevelopmentStatus([]),
       artifacts: rows.map((row) => ({
         ...toArtifactView(row.artifact, links.get(row.artifactId) ?? []),
         linkId: row.id,
@@ -284,6 +306,95 @@ export class DevelopmentService {
       })),
       counts,
     };
+  }
+
+  /**
+   * Derived development status of work items the caller has authorized.
+   * Items without live links are `no_development`.
+   */
+  async statusesOf(
+    workItemIds: readonly string[],
+    tx?: PrismaTransaction,
+  ): Promise<Map<string, DevelopmentStatusSummary>> {
+    const signals = await this.repo.signals(workItemIds, tx);
+    return new Map(
+      workItemIds.map((id) => [id, computeDevelopmentStatus(signals.get(id) ?? [])] as const),
+    );
+  }
+
+  /**
+   * Work item ids of an authorized project in a development status, as an
+   * inclusion list, or an exclusion list for `no_development` (most items).
+   */
+  async filterFor(
+    projectId: string,
+    status: DevelopmentStatus,
+  ): Promise<{ in: string[] } | { notIn: string[] }> {
+    const linked = await this.repo.linkedWorkItemIds(projectId);
+    const statuses = await this.statusesOf(linked);
+    const withStatus = (wanted: DevelopmentStatus): string[] =>
+      linked.filter((id) => statuses.get(id)?.status === wanted);
+    if (status === 'no_development') {
+      return { notIn: linked.filter((id) => statuses.get(id)?.status !== 'no_development') };
+    }
+    return { in: withStatus(status) };
+  }
+
+  async summary(projectId: string): Promise<DevelopmentSummaryView> {
+    const authorized = await this.access.authorizeProjectScope(projectId);
+    const workItems = Object.fromEntries(
+      DEVELOPMENT_STATUS_VALUES.map((status) => [status, 0]),
+    ) as Record<DevelopmentStatus, number>;
+    const artifacts = Object.fromEntries(
+      DEVELOPMENT_ARTIFACT_KINDS.map((kind) => [kind, 0]),
+    ) as Record<DevelopmentArtifactKind, number>;
+    if (authorized === null) {
+      return { projectId, workItems, artifacts };
+    }
+    const ids = await this.repo.openWorkItemIds(authorized);
+    for (const summary of (await this.statusesOf(ids)).values()) {
+      workItems[summary.status] += 1;
+    }
+    for (const [kind, count] of await this.repo.artifactCounts(authorized)) {
+      artifacts[kind] = count;
+    }
+    return { projectId: authorized, workItems, artifacts };
+  }
+
+  private async statusesIn(
+    items: ReadonlyArray<{ id: string }>,
+    tx: PrismaTransaction,
+  ): Promise<Map<string, DevelopmentStatus>> {
+    const summaries = await this.statusesOf(
+      items.map((item) => item.id),
+      tx,
+    );
+    return new Map([...summaries].map(([id, summary]) => [id, summary.status]));
+  }
+
+  /** The status is derived, but its changes are worth an audit entry each. */
+  private async auditStatusChanges(
+    items: ReadonlyArray<{ id: string; key: string }>,
+    before: ReadonlyMap<string, DevelopmentStatus>,
+    tx: PrismaTransaction,
+  ): Promise<void> {
+    const after = await this.statusesIn(items, tx);
+    for (const item of items) {
+      const from = before.get(item.id) ?? 'no_development';
+      const to = after.get(item.id) ?? 'no_development';
+      if (from !== to) {
+        await this.audit.record(
+          {
+            action: AuditAction.update,
+            entityType: 'WorkItem',
+            entityId: item.id,
+            summary: `Development status of ${item.key}: ${from} → ${to}`,
+            changes: { developmentStatus: { from, to } },
+          },
+          tx,
+        );
+      }
+    }
   }
 
   private async lockEnds(ends: LinkEnds, tx: PrismaTransaction) {

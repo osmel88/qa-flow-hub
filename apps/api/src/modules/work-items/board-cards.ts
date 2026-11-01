@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { WorkItem } from '@prisma/client';
 import type { BoardCard, BoardRef, BoardSwimlane, BoardSwimlaneView } from '@qa-flow-hub/shared';
+import { DevelopmentService } from '../development/development.service';
 import { WorkItemsRepository, WorkItemSummary } from './work-items.repository';
 import { toWorkItemView } from './work-items.service';
 
@@ -15,22 +16,27 @@ export interface CardFilters {
   featureId?: string | undefined;
   releaseId?: string | undefined;
   search?: string | undefined;
+  developmentStatus?: string | undefined;
 }
 
 /** Turns work items into board cards: epic/feature, assignee name, requirements. */
 @Injectable()
 export class BoardCardsService {
-  constructor(private readonly items: WorkItemsRepository) {}
+  constructor(
+    private readonly items: WorkItemsRepository,
+    private readonly development: DevelopmentService,
+  ) {}
 
   async cards(projectId: string, rows: readonly WorkItem[]): Promise<BoardCard[]> {
     const index = new Map(
       (await this.items.hierarchy(projectId)).map((row) => [row.id, row] as const),
     );
-    const [requirements, names] = await Promise.all([
+    const [requirements, names, development] = await Promise.all([
       this.items.requirementKeys(rows.map((row) => row.id)),
       this.items.userNames(
         [...new Set(rows.map((row) => row.assigneeId))].filter((id): id is string => id !== null),
       ),
+      this.development.statusesOf(rows.map((row) => row.id)),
     ]);
     return rows.map((row) => {
       const keys = requirements.get(row.id) ?? [];
@@ -43,6 +49,7 @@ export class BoardCardsService {
             ? null
             : { id: row.assigneeId, fullName: names.get(row.assigneeId) ?? 'Unknown user' },
         requirements: { count: keys.length, keys },
+        developmentStatus: development.get(row.id)?.status ?? 'no_development',
       };
     });
   }
@@ -80,6 +87,12 @@ export function matchesCard(card: BoardCard, filters: CardFilters, userId: strin
     value === undefined || (value === 'none' ? actual === null : actual === value);
   const assignee = filters.assigneeId === 'me' ? userId : filters.assigneeId;
   if (!ref(assignee, card.assigneeId) || !ref(filters.releaseId, card.releaseId)) {
+    return false;
+  }
+  if (
+    filters.developmentStatus !== undefined &&
+    card.developmentStatus !== filters.developmentStatus
+  ) {
     return false;
   }
   if (filters.priority !== undefined && card.priority !== filters.priority) {

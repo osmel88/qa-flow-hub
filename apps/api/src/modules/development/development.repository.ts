@@ -1,6 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { DevelopmentArtifact, Prisma, WorkItem, WorkItemDevelopmentLink } from '@prisma/client';
-import { Paginated, PaginationQuery, buildPaginationMeta } from '@qa-flow-hub/shared';
+import {
+  DevelopmentArtifact,
+  Prisma,
+  WorkItem,
+  WorkItemDevelopmentLink,
+  WorkItemStatus,
+} from '@prisma/client';
+import {
+  DevelopmentSignal,
+  Paginated,
+  PaginationQuery,
+  buildPaginationMeta,
+} from '@qa-flow-hub/shared';
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import { TenantAwareRepository } from '../../database/tenant-aware.repository';
 import { TenantContextService } from '../../database/tenant-context.service';
@@ -70,14 +81,14 @@ export class DevelopmentRepository extends TenantAwareRepository {
         AND "projectId" = ${projectId}
         AND "deletedAt" IS NULL
       ORDER BY "id"
-      FOR SHARE`;
+      FOR UPDATE`;
   }
 
   async lockWorkItem(id: string, tx: PrismaTransaction): Promise<LockedRow | null> {
     const rows = await tx.$queryRaw<LockedRow[]>`
       SELECT "id", "projectId", "key" FROM "work_items"
       WHERE "id" = ${id} AND "organizationId" = ${this.organizationId} AND "deletedAt" IS NULL
-      FOR SHARE`;
+      FOR UPDATE`;
     return rows[0] ?? null;
   }
 
@@ -232,5 +243,86 @@ export class DevelopmentRepository extends TenantAwareRepository {
       this.prisma.developmentArtifact.count({ where }),
     ]);
     return { data, meta: buildPaginationMeta(query, total) };
+  }
+
+  /** Live work items linked to an artifact, locked in id order (artifact edits). */
+  async lockLinkedWorkItems(artifactId: string, tx: PrismaTransaction): Promise<LockedRow[]> {
+    return tx.$queryRaw<LockedRow[]>`
+      SELECT w."id", w."projectId", w."key" FROM "work_items" w
+      JOIN "work_item_development_links" l ON l."workItemId" = w."id"
+      WHERE l."artifactId" = ${artifactId}
+        AND w."organizationId" = ${this.organizationId}
+        AND w."deletedAt" IS NULL
+      ORDER BY w."id"
+      FOR UPDATE OF w`;
+  }
+
+  /** Live artifacts linked to each of these work items, as derivation signals. */
+  async signals(
+    workItemIds: readonly string[],
+    tx?: PrismaTransaction,
+  ): Promise<Map<string, DevelopmentSignal[]>> {
+    const result = new Map<string, DevelopmentSignal[]>();
+    if (workItemIds.length === 0) {
+      return result;
+    }
+    const rows = await (tx ?? this.prisma).workItemDevelopmentLink.findMany({
+      where: {
+        organizationId: this.organizationId,
+        workItemId: { in: [...workItemIds] },
+        artifact: { deletedAt: null },
+      },
+      select: {
+        workItemId: true,
+        artifact: {
+          select: { id: true, kind: true, status: true, occurredAt: true, createdAt: true },
+        },
+      },
+    });
+    for (const row of rows) {
+      const list = result.get(row.workItemId) ?? [];
+      list.push({
+        id: row.artifact.id,
+        kind: row.artifact.kind,
+        status: row.artifact.status,
+        occurredAt: row.artifact.occurredAt?.toISOString() ?? null,
+        createdAt: row.artifact.createdAt.toISOString(),
+      });
+      result.set(row.workItemId, list);
+    }
+    return result;
+  }
+
+  /** Live work items of a project that have at least one live artifact. */
+  async linkedWorkItemIds(projectId: string): Promise<string[]> {
+    const rows = await this.prisma.workItemDevelopmentLink.findMany({
+      where: {
+        organizationId: this.organizationId,
+        projectId,
+        artifact: { deletedAt: null },
+        workItem: { deletedAt: null },
+      },
+      select: { workItemId: true },
+      distinct: ['workItemId'],
+    });
+    return rows.map((row) => row.workItemId);
+  }
+
+  /** Live, not cancelled work item ids of a project (development summary). */
+  async openWorkItemIds(projectId: string): Promise<string[]> {
+    const rows = await this.prisma.workItem.findMany({
+      where: this.active({ projectId, status: { not: WorkItemStatus.cancelled } }),
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
+  async artifactCounts(projectId: string): Promise<Map<DevelopmentArtifact['kind'], number>> {
+    const rows = await this.prisma.developmentArtifact.groupBy({
+      by: ['kind'],
+      where: this.active({ projectId }),
+      _count: { _all: true },
+    });
+    return new Map(rows.map((row) => [row.kind, row._count._all]));
   }
 }

@@ -63,17 +63,33 @@ test('development links between work items and local development activity', asyn
   await test.step('the story shows its activity, links the commit and unlinks the PR', async () => {
     await activity.getByRole('link', { name: 'DEV-W-1' }).click();
     await expect(section.getByRole('list').getByText('#12')).toBeVisible();
+    await expect(section.getByTestId('development-status')).toHaveText('pr open');
+    await expect(section.getByTestId('development-evidence')).toContainText('#12');
     await page.getByLabel('Link development artifact').selectOption({ label: 'commit abcdef1' });
     await page.getByRole('button', { name: 'Link artifact' }).click();
     await expect(section.getByRole('list').getByText('abcdef1')).toBeVisible();
     await section.getByRole('button', { name: 'Unlink pull_request #12' }).click();
     await expect(section.getByRole('list').getByText('#12')).toHaveCount(0);
+    await expect(section.getByTestId('development-status')).toHaveText('commits');
   });
 
   await test.step('the links persist after a reload', async () => {
     await page.reload();
     await expect(section.getByRole('list').getByText('abcdef1')).toBeVisible();
     await expect(section.getByRole('list').getByText('#12')).toHaveCount(0);
+  });
+
+  await test.step('the backlog shows the badge and filters by development status', async () => {
+    await page.getByRole('link', { name: 'Backlog', exact: true }).click();
+    await expect(page.getByTestId('development-status-DEV-W-1')).toHaveText('commits');
+    await page.getByLabel('Development filter').selectOption('deployed');
+    await expect(page.getByTestId('backlog-row-DEV-W-1')).toHaveCount(0);
+    await page.getByLabel('Development filter').selectOption('commits');
+    await expect(page.getByTestId('backlog-row-DEV-W-1')).toBeVisible();
+    await page
+      .getByTestId('backlog-row-DEV-W-1')
+      .getByRole('link', { name: 'Card payment form' })
+      .click();
   });
 
   await test.step('the consolidated view filters by work item and kind', async () => {

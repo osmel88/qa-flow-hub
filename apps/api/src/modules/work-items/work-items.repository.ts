@@ -19,6 +19,8 @@ export interface WorkItemFilters {
   label?: string;
   open?: boolean;
   search?: string;
+  /** From a derived filter (development status, S5-F2). */
+  ids?: { in: string[] } | { notIn: string[] };
 }
 
 export interface WorkItemSummary {
@@ -174,6 +176,7 @@ export class WorkItemsRepository extends TenantAwareRepository {
       ...(filters.releaseId === undefined ? {} : { releaseId: filters.releaseId }),
       ...(filters.sprintId === undefined ? {} : { sprintId: filters.sprintId }),
       ...(filters.label === undefined ? {} : { labels: { has: filters.label } }),
+      ...(filters.ids === undefined ? {} : { id: filters.ids }),
       ...(filters.status !== undefined
         ? { status: filters.status }
         : filters.open === undefined

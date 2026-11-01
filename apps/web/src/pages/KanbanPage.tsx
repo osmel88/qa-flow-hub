@@ -1,3 +1,4 @@
+import type { DevelopmentStatus } from '@qa-flow-hub/shared';
 import {
   BOARD_SWIMLANES,
   KANBAN_COLUMNS,
@@ -21,6 +22,10 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { kanbanApi, releasesApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import {
+  DEVELOPMENT_STATUS_OPTIONS,
+  DevelopmentStatusBadge,
+} from '../components/DevelopmentStatusBadge';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
@@ -51,6 +56,7 @@ export function KanbanPage(): React.JSX.Element {
   const [featureId, setFeatureId] = useState('');
   const [releaseId, setReleaseId] = useState('');
   const [search, setSearch] = useState('');
+  const [developmentStatus, setDevelopmentStatus] = useState('');
   const [swimlane, setSwimlane] = useState<BoardSwimlane>('none');
   const [windowDays, setWindowDays] = useState(14);
   const [dragged, setDragged] = useState<string | null>(null);
@@ -71,6 +77,9 @@ export function KanbanPage(): React.JSX.Element {
     ...(featureId === '' ? {} : { featureId }),
     ...(releaseId === '' ? {} : { releaseId }),
     ...(trimmed === '' ? {} : { search: trimmed }),
+    ...(developmentStatus === ''
+      ? {}
+      : { developmentStatus: developmentStatus as DevelopmentStatus }),
   };
   const board = useQuery({
     queryKey: ['kanban', params],
@@ -229,6 +238,14 @@ export function KanbanPage(): React.JSX.Element {
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
+          }}
+        />
+        <SelectField
+          label="Development filter"
+          value={developmentStatus}
+          options={DEVELOPMENT_STATUS_OPTIONS}
+          onChange={(event) => {
+            setDevelopmentStatus(event.target.value);
           }}
         />
         <SelectField
@@ -407,6 +424,7 @@ export function KanbanPage(): React.JSX.Element {
                               </Link>
                               <div className="board-card__meta">
                                 <Badge tone="neutral">{humanize(card.type)}</Badge>
+                                <DevelopmentStatusBadge status={card.developmentStatus} />
                                 <Badge tone="info">{humanize(card.priority)}</Badge>
                                 {card.status === 'blocked' && (
                                   <Badge tone={WORK_ITEM_TONE.blocked}>Blocked</Badge>

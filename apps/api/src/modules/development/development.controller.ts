@@ -7,6 +7,7 @@ import {
   ListDevelopmentArtifactsQuery,
   UpdateDevelopmentArtifactInput,
   createDevelopmentArtifactSchema,
+  developmentSummaryQuerySchema,
   linkDevelopmentArtifactSchema,
   linkDevelopmentWorkItemSchema,
   listDevelopmentArtifactsQuerySchema,
@@ -46,6 +47,13 @@ export class DevelopmentArtifactsController {
   @ApiOperation({ summary: 'Development activity of a project, newest first' })
   list(@Query(zodQuery(listDevelopmentArtifactsQuerySchema)) query: ListDevelopmentArtifactsQuery) {
     return this.development.list(query);
+  }
+
+  @RequirePermission('work_items.read')
+  @Get('summary')
+  @ApiOperation({ summary: 'Work items per development status and artifacts per kind' })
+  summary(@Query(zodQuery(developmentSummaryQuerySchema)) query: { projectId: string }) {
+    return this.development.summary(query.projectId);
   }
 
   @RequirePermission('work_items.read')

@@ -469,6 +469,7 @@ model Organization {
   customFieldDefinitions CustomFieldDefinition[]
   workItems              WorkItem[]
   sprints                Sprint[]
+  kanbanColumnSettings   KanbanColumnSetting[]
   defectWorkflows        DefectWorkflow[]
 
   @@index([deletedAt])
@@ -579,6 +580,7 @@ model Project {
   customFieldDefinitions CustomFieldDefinition[]
   workItems              WorkItem[]
   sprints                Sprint[]
+  kanbanColumnSettings   KanbanColumnSetting[]
   defectWorkflow         DefectWorkflow?
 
   @@unique([organizationId, key])
@@ -1585,8 +1587,13 @@ model WorkItem {
   requirementLinks RequirementWorkItemLink[]
 
   /// Optimistic concurrency: bumped by every update.
-  version     Int       @default(1)
-  completedAt DateTime?
+  version         Int       @default(1)
+  completedAt     DateTime?
+  /// First move out of backlog/ready (S4-F7); cleared when it goes back.
+  /// Maintained by the `work_items_track_status` trigger.
+  startedAt       DateTime?
+  /// Last status change (S4-F7), maintained by the same trigger.
+  statusChangedAt DateTime  @default(now())
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1656,4 +1663,23 @@ model RequirementWorkItemLink {
   @@index([organizationId, projectId])
   @@index([workItemId])
   @@map("requirement_work_items")
+}
+
+/// WIP limit of one status column of a project's Kanban board (S4-F7).
+/// `done` and `cancelled` never have one (CHECK in the migration).
+model KanbanColumnSetting {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status         WorkItemStatus
+  wipLimit       Int?
+  updatedById    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([projectId, status])
+  @@index([organizationId, projectId])
+  @@map("kanban_column_settings")
 }

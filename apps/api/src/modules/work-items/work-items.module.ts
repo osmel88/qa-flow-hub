@@ -3,6 +3,7 @@ import { OrganizationsModule } from '../organizations/organizations.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { ReleasesModule } from '../releases/releases.module';
 import { RequirementLinksModule } from '../requirement-links/requirement-links.module';
+import { BoardCardsService } from './board-cards';
 import { BacklogController, WorkItemsController } from './work-items.controller';
 import { WorkItemsRepository } from './work-items.repository';
 import { WorkItemsService } from './work-items.service';
@@ -11,7 +12,7 @@ import { WorkItemsService } from './work-items.service';
 @Module({
   imports: [ProjectsModule, OrganizationsModule, ReleasesModule, RequirementLinksModule],
   controllers: [WorkItemsController, BacklogController],
-  providers: [WorkItemsService, WorkItemsRepository],
-  exports: [WorkItemsService, WorkItemsRepository],
+  providers: [WorkItemsService, WorkItemsRepository, BoardCardsService],
+  exports: [WorkItemsService, WorkItemsRepository, BoardCardsService],
 })
 export class WorkItemsModule {}

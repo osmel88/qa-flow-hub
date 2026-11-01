@@ -11,6 +11,8 @@ Target flow:
 Requirements → Planning → Work Items/Backlog → Sprints → Development → CI → QA → Defects → Releases → Analytics
 ```
 
+**Status: Stage 4 — Planning & Work Management is complete** (S4-F1 … S4-F7).
+
 Hard constraints, unchanged from Stage 3:
 
 - No real external provider (GitHub, Billing, SSO/SAML/SCIM, Jira…); use the
@@ -191,9 +193,41 @@ One migration (`sprints`, `work_items.sprintId`); no new ADR; debt 49.
 - Tests: `sprint-board.int-spec.ts`, `BoardPage.test.tsx`,
   `board.e2e.spec.ts`.
 
+## S4-F7 Kanban Board
+
+- `GET /kanban?projectId=…` returns the Kanban board of a project, with no
+  sprint involved: one column per work item status (`KANBAN_COLUMNS`:
+  Backlog, Ready, In progress, Blocked, In review, Done); cancelled items stay
+  off the board and Done only shows items completed in the last `windowDays`
+  (7–90, default 14).
+- WIP limits per column in the new table `kanban_column_settings` (1
+  migration; RLS, no `DELETE` for the app role, CHECK 1–999, never on Done).
+  `PUT /kanban/wip-limits` sets or clears them with `work_items.manage`, audited.
+- `POST /kanban/move` with `projectId`, `workItemId`, `column`, optional
+  `beforeId`/`afterId` (a card of the target column) and optional `version`.
+  Under the project's backlog advisory lock it checks the version (409), the
+  anchor (409 if it moved) and the WIP limit of the target column (409 when
+  `count >= limit`); reordering inside a full column stays allowed. Foreign or
+  hidden ids answer 404 like missing ones. Every move is audited.
+- Flow data: `work_items.startedAt` (first move out of backlog/ready, cleared
+  when the item goes back) and `statusChangedAt`, kept by the
+  `work_items_track_status` trigger whatever code path changes `status`.
+  `computeFlowMetrics()` (shared) gives throughput per week, cycle time
+  (average, median, 85th percentile), aging of items in flight; each card
+  shows its age and its time in the current status.
+- Filters: assignee (`me`/`none`), priority, type, epic, feature, release
+  (`none`), search; swimlanes by assignee or epic. Column counts and metrics
+  ignore filters. Card building, filters and swimlanes are shared with the
+  Scrum board (`work-items/board-cards.ts`), which keeps requiring an active
+  sprint.
+- Web: Kanban page with drag & drop, keyboard controls (column select, ↑/↓),
+  WIP limit form for managers, WIP state per column, flow KPIs, links to the
+  work item detail; read-only without `work_items.write`.
+- Tests: `kanban.int-spec.ts`, `kanban.contracts.test.ts`,
+  `KanbanPage.test.tsx`, `kanban.e2e.spec.ts`.
+
 ## Next candidates
 
-- S4-F7 Kanban over work items, independent from sprints.
 - Links between work items and test cases or defects.
 - Development and CI views on top of the existing GitHub mock and ingestion.
 

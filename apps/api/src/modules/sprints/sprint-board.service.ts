@@ -3,11 +3,8 @@ import { AuditAction, Prisma, SprintStatus, WorkItem } from '@prisma/client';
 import {
   BOARD_COLUMNS,
   BOARD_MAX_ITEMS,
-  BoardCard,
   BoardColumnId,
   BoardQuery,
-  BoardRef,
-  BoardSwimlaneView,
   BoardView,
   MoveBoardCardInput,
   WorkItemView,
@@ -20,7 +17,14 @@ import { PrismaService } from '../../database/prisma.service';
 import { ConflictError, NotFoundError, ValidationError } from '../../errors';
 import { AuditService } from '../audit/audit.service';
 import { ProjectAccessService } from '../projects/project-access.service';
-import { WorkItemsRepository, WorkItemSummary } from '../work-items/work-items.repository';
+import {
+  BoardCardsService,
+  buildSwimlanes,
+  matchesCard,
+  roundEstimate,
+  uniqueRefs,
+} from '../work-items/board-cards';
+import { WorkItemsRepository } from '../work-items/work-items.repository';
 import { WorkItemsService, toWorkItemView } from '../work-items/work-items.service';
 import { SprintsRepository } from './sprints.repository';
 import { SprintsService, toSprintView } from './sprints.service';
@@ -40,6 +44,7 @@ export class SprintBoardService {
     private readonly access: ProjectAccessService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly cards: BoardCardsService,
   ) {}
 
   async board(query: BoardQuery, userId: string): Promise<BoardView> {
@@ -93,34 +98,11 @@ export class SprintBoardService {
     const truncated = onBoard.length > BOARD_MAX_ITEMS;
     const visible = onBoard.slice(0, BOARD_MAX_ITEMS);
 
-    const index = new Map(
-      (await this.items.hierarchy(projectId)).map((row) => [row.id, row] as const),
-    );
-    const [requirements, names] = await Promise.all([
-      this.sprints.requirementKeys(visible.map((row) => row.id)),
-      this.sprints.userNames(
-        [...new Set(visible.map((row) => row.assigneeId))].filter(
-          (id): id is string => id !== null,
-        ),
-      ),
-    ]);
-    const cards: BoardCard[] = visible.map((row) => {
-      const keys = requirements.get(row.id) ?? [];
-      return {
-        ...toWorkItemView(row),
-        epic: ancestorOf(row, 'epic', index),
-        feature: ancestorOf(row, 'feature', index),
-        assignee:
-          row.assigneeId === null
-            ? null
-            : { id: row.assigneeId, fullName: names.get(row.assigneeId) ?? 'Unknown user' },
-        requirements: { count: keys.length, keys },
-      };
-    });
+    const cards = await this.cards.cards(projectId, visible);
 
     const epics = uniqueRefs(cards.map((card) => card.epic));
     const features = uniqueRefs(cards.map((card) => card.feature));
-    const shown = cards.filter((card) => matches(card, query, userId));
+    const shown = cards.filter((card) => matchesCard(card, query, userId));
     const columns = BOARD_COLUMNS.map((column) => {
       const inColumn = shown.filter((card) => column.statuses.includes(card.status));
       return {
@@ -128,7 +110,7 @@ export class SprintBoardService {
         label: column.label,
         statuses: column.statuses,
         cardIds: inColumn.map((card) => card.id),
-        estimate: round(inColumn.reduce((sum, card) => sum + (card.estimate ?? 0), 0)),
+        estimate: roundEstimate(inColumn.reduce((sum, card) => sum + (card.estimate ?? 0), 0)),
       };
     });
 
@@ -140,7 +122,7 @@ export class SprintBoardService {
       columns,
       cards: shown,
       swimlane: query.swimlane,
-      swimlanes: swimlanes(shown, query.swimlane),
+      swimlanes: buildSwimlanes(shown, query.swimlane),
       epics,
       features,
       total: onBoard.length,
@@ -255,93 +237,4 @@ export class SprintBoardService {
 
 function columnLabel(id: BoardColumnId): string {
   return BOARD_COLUMNS.find((column) => column.id === id)?.label ?? id;
-}
-
-function round(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
-/** The nearest epic or feature above an item (the item itself counts). */
-function ancestorOf(
-  item: Pick<WorkItem, 'id'>,
-  type: 'epic' | 'feature',
-  index: ReadonlyMap<string, WorkItemSummary>,
-): BoardRef | null {
-  let cursor = index.get(item.id) ?? null;
-  let depth = 0;
-  while (cursor !== null && cursor.type !== type && depth < 8) {
-    cursor = cursor.parentId === null ? null : (index.get(cursor.parentId) ?? null);
-    depth += 1;
-  }
-  return cursor !== null && cursor.type === type
-    ? { id: cursor.id, key: cursor.key, title: cursor.title }
-    : null;
-}
-
-function uniqueRefs(refs: ReadonlyArray<BoardRef | null>): BoardRef[] {
-  const seen = new Map<string, BoardRef>();
-  for (const ref of refs) {
-    if (ref !== null && !seen.has(ref.id)) {
-      seen.set(ref.id, ref);
-    }
-  }
-  return [...seen.values()].sort((a, b) => a.key.localeCompare(b.key, 'en', { numeric: true }));
-}
-
-function matches(card: BoardCard, query: BoardQuery, userId: string): boolean {
-  const ref = (value: string | undefined, actual: string | null): boolean =>
-    value === undefined || (value === 'none' ? actual === null : actual === value);
-  const assignee = query.assigneeId === 'me' ? userId : query.assigneeId;
-  if (!ref(assignee, card.assigneeId)) {
-    return false;
-  }
-  if (query.priority !== undefined && card.priority !== query.priority) {
-    return false;
-  }
-  if (query.type !== undefined && card.type !== query.type) {
-    return false;
-  }
-  if (
-    !ref(query.epicId, card.epic?.id ?? null) ||
-    !ref(query.featureId, card.feature?.id ?? null)
-  ) {
-    return false;
-  }
-  if (query.search !== undefined) {
-    const needle = query.search.toLowerCase();
-    return card.title.toLowerCase().includes(needle) || card.key.toLowerCase().includes(needle);
-  }
-  return true;
-}
-
-function swimlanes(cards: readonly BoardCard[], by: BoardQuery['swimlane']): BoardSwimlaneView[] {
-  if (by === 'none') {
-    return [];
-  }
-  const lanes = new Map<string | null, BoardSwimlaneView>();
-  for (const card of cards) {
-    const owner =
-      by === 'assignee'
-        ? card.assignee === null
-          ? null
-          : { id: card.assignee.id, title: card.assignee.fullName }
-        : card.epic === null
-          ? null
-          : { id: card.epic.id, title: `${card.epic.key} ${card.epic.title}` };
-    const id = owner?.id ?? null;
-    let lane = lanes.get(id);
-    if (lane === undefined) {
-      lane = {
-        id,
-        title: owner?.title ?? (by === 'assignee' ? 'Unassigned' : 'No epic'),
-        cardIds: [],
-      };
-      lanes.set(id, lane);
-    }
-    lane.cardIds.push(card.id);
-  }
-  const named = [...lanes.values()].filter((lane) => lane.id !== null);
-  named.sort((a, b) => a.title.localeCompare(b.title, 'en', { numeric: true }));
-  const rest = lanes.get(null);
-  return rest === undefined ? named : [...named, rest];
 }

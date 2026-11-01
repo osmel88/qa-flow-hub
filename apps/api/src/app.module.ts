@@ -17,6 +17,7 @@ import { ReleasesModule } from './modules/releases/releases.module';
 import { CustomizationModule } from './modules/customization/customization.module';
 import { WorkItemsModule } from './modules/work-items/work-items.module';
 import { SprintsModule } from './modules/sprints/sprints.module';
+import { KanbanModule } from './modules/kanban/kanban.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { SecretsModule } from './secrets/secrets.module';
 import { IntegrationSettingsModule } from './modules/integrations/integration-settings.module';
@@ -70,6 +71,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     CustomizationModule,
     WorkItemsModule,
     SprintsModule,
+    KanbanModule,
     ExportsModule,
   ],
 })

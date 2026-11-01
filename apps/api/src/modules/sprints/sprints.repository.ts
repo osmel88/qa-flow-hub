@@ -163,38 +163,4 @@ export class SprintsRepository extends TenantAwareRepository {
       data: { sprintId, version: { increment: 1 } },
     });
   }
-
-  /** Live requirement keys each item implements. */
-  async requirementKeys(itemIds: readonly string[]): Promise<Map<string, string[]>> {
-    const result = new Map<string, string[]>();
-    if (itemIds.length === 0) {
-      return result;
-    }
-    const links = await this.prisma.requirementWorkItemLink.findMany({
-      where: {
-        organizationId: this.organizationId,
-        workItemId: { in: [...itemIds] },
-        requirement: { deletedAt: null },
-      },
-      select: { workItemId: true, requirement: { select: { key: true } } },
-      orderBy: [{ requirement: { key: 'asc' } }],
-    });
-    for (const link of links) {
-      const keys = result.get(link.workItemId) ?? [];
-      keys.push(link.requirement.key);
-      result.set(link.workItemId, keys);
-    }
-    return result;
-  }
-
-  async userNames(ids: readonly string[]): Promise<Map<string, string>> {
-    if (ids.length === 0) {
-      return new Map();
-    }
-    const users = await this.prisma.user.findMany({
-      where: { id: { in: [...ids] } },
-      select: { id: true, fullName: true },
-    });
-    return new Map(users.map((user) => [user.id, user.fullName]));
-  }
 }

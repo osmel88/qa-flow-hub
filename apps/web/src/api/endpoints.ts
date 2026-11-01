@@ -1,4 +1,8 @@
 import type {
+  KanbanQuery,
+  KanbanView,
+  MoveKanbanCardInput,
+  UpdateWipLimitsInput,
   BoardQuery,
   BoardView,
   MoveBoardCardInput,
@@ -697,6 +701,15 @@ export const sprintsApi = {
     apiFetch<BoardView>(`/sprints/board${query(params)}`),
   moveCard: (id: string, body: MoveBoardCardInput) =>
     apiFetch<WorkItemView>(`/sprints/${id}/board/move`, { method: 'POST', body }),
+};
+
+export const kanbanApi = {
+  board: (params: Partial<KanbanQuery> & { projectId: string }) =>
+    apiFetch<KanbanView>(`/kanban${query(params)}`),
+  move: (body: MoveKanbanCardInput) =>
+    apiFetch<WorkItemView>('/kanban/move', { method: 'POST', body }),
+  setWipLimits: (body: UpdateWipLimitsInput) =>
+    apiFetch<{ wipLimits: Array<number | null> }>('/kanban/wip-limits', { method: 'PUT', body }),
 };
 
 export const backlogApi = {

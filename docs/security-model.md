@@ -225,6 +225,10 @@ and chapter 10 of the backend course. Summary:
 - Scrum board moves (S4-F6) only touch items of the active sprint of the
   same project: foreign or hidden ids answer 404 like missing ones, and the
   sprint is locked `FOR SHARE` so it cannot close during a move.
+- Kanban moves and WIP limits (S4-F7) are checked against the `projectId` of
+  the request: an item, anchor or project of another project or tenant, or a
+  hidden one, answers 404 like a missing one. `kanban_column_settings` is
+  under RLS and the app role cannot delete from it.
 
 ## Custom fields and defect workflow
 

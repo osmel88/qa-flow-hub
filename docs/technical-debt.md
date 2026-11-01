@@ -1255,3 +1255,18 @@ caller's own tenant, never of another one.
 - **Filters run in memory** over at most 500 cards of the sprint.
 - **Board moves bypass custom workflows** (S3-F7 transitions are not applied
   to work item statuses).
+
+## 51. Kanban: what S4-F7 leaves (S4-F7)
+
+- **WIP limits are enforced on Kanban moves only**: editing the status in the
+  work item form, bulk actions and Scrum board moves can still exceed them.
+- **Columns are the statuses**; no custom columns, split columns or policies
+  per column, and S3-F7 workflows are not applied to work item statuses.
+- **Flow history is two timestamps**, not a status history: time spent in
+  earlier statuses, re-starts and cumulative flow diagrams are not available.
+  Items done before S4-F7 have no `startedAt` and stay out of cycle time.
+- **Metrics and filters are computed per request** in memory (board capped
+  at 500 cards); no live updates between tabs.
+- **Board order is the backlog rank**, shared with the backlog and the Scrum
+  board (debt 50).
+

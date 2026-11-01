@@ -815,3 +815,34 @@ body {
     padding: 0;
   }
 }
+
+/* --- Kanban board (S4-F7) --------------------------------------------------- */
+
+.board--kanban {
+  grid-template-columns: repeat(6, minmax(13rem, 1fr));
+}
+
+.board-column--full {
+  border-top: 3px solid var(--color-warning, #b45309);
+}
+
+.board-column--over {
+  border-top: 3px solid var(--color-danger, #b91c1c);
+}
+
+.wip-limits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.wip-limits input {
+  width: 5rem;
+}
+
+@media (max-width: 48rem) {
+  .board--kanban {
+    grid-template-columns: repeat(6, 85%);
+  }
+}

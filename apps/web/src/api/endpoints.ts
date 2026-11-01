@@ -1,4 +1,7 @@
 import type {
+  BoardQuery,
+  BoardView,
+  MoveBoardCardInput,
   CloseSprintInput,
   CloseSprintResult,
   CreateSprintInput,
@@ -690,6 +693,10 @@ export const sprintsApi = {
       method: 'POST',
       body: { workItemIds },
     }),
+  board: (params: Partial<BoardQuery> & { projectId: string }) =>
+    apiFetch<BoardView>(`/sprints/board${query(params)}`),
+  moveCard: (id: string, body: MoveBoardCardInput) =>
+    apiFetch<WorkItemView>(`/sprints/${id}/board/move`, { method: 'POST', body }),
 };
 
 export const backlogApi = {

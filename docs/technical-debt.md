@@ -1243,3 +1243,15 @@ caller's own tenant, never of another one.
   remembers its current sprint.
 - **Planning is per call** (up to 100 ids); there is no drag and drop between
   the backlog and a sprint.
+
+## 50. Scrum board: what S4-F6 leaves (S4-F6)
+
+- **Fixed columns**: the five columns and their status mapping are code
+  (`BOARD_COLUMNS`); no per-project columns, WIP limits or Kanban (S4-F7).
+- **Order is the backlog rank**: moving a card inside a column also moves it
+  in the project backlog; there is no separate per-board order.
+- **No live updates**: the board refreshes after each move and on reload, not
+  through push; a concurrent change surfaces as a 409 and a reload.
+- **Filters run in memory** over at most 500 cards of the sprint.
+- **Board moves bypass custom workflows** (S3-F7 transitions are not applied
+  to work item statuses).

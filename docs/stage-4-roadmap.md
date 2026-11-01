@@ -161,9 +161,39 @@ One migration (`sprints`, `work_items.sprintId`); no new ADR; debt 49.
 - Tests: `sprints.int-spec.ts`, `sprint.contracts.test.ts`,
   `sprints.e2e.spec.ts`.
 
+## S4-F6 Scrum Board
+
+- `GET /sprints/board?projectId=…` returns the board of the active sprint
+  (or of `sprintId`, read-only when completed/cancelled): five columns
+  (`BOARD_COLUMNS`: Backlog/Ready, In progress, Blocked, In review, Done) over
+  the work item statuses; cancelled items stay off the board.
+- Cards carry estimate, assignee, priority, type, epic/feature and the live
+  requirements they implement; blocked cards are flagged. The board includes
+  the sprint metrics (progress, committed/completed estimate, capacity) and
+  the project velocity.
+- Filters (assignee incl. `me`/`none`, priority, type, epic, feature, search)
+  and optional swimlanes by assignee or epic; computed in memory over at most
+  500 cards. Metrics ignore the filters.
+- `POST /sprints/:id/board/move` with `workItemId`, `column`, optional
+  `beforeId`/`afterId` (another card of the same sprint and column) and
+  optional `version`. A column keeps the item's status when it already maps
+  to it, otherwise sets the column's target status. Order inside a column is
+  the existing backlog `rank`, so no migration.
+- Lock order: backlog advisory lock → sprint `FOR SHARE` (must be active) →
+  work item `FOR UPDATE`. A stale `version`, an item that left the sprint or
+  an anchor that moved answer 409; ids of other projects or tenants answer
+  404 like missing ones. Every move is audited with column, status and rank.
+- Permissions: `work_items.read` to see, `work_items.write` to move; the web
+  board is read-only without it.
+- Web: Board page with drag & drop, keyboard controls on each card (column
+  select, ↑/↓), filters, swimlanes and links to the work item detail; the
+  columns scroll horizontally on small screens.
+- Tests: `sprint-board.int-spec.ts`, `BoardPage.test.tsx`,
+  `board.e2e.spec.ts`.
+
 ## Next candidates
 
-- S4-F6 Scrum Board and S4-F7 Kanban over sprints and work items.
+- S4-F7 Kanban over work items, independent from sprints.
 - Links between work items and test cases or defects.
 - Development and CI views on top of the existing GitHub mock and ingestion.
 

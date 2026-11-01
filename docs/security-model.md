@@ -222,6 +222,9 @@ and chapter 10 of the backend course. Summary:
   or tenant; a partial unique index keeps one active sprint per project.
   Sprints of hidden or foreign projects answer like missing ones, and
   completed or cancelled sprints are frozen.
+- Scrum board moves (S4-F6) only touch items of the active sprint of the
+  same project: foreign or hidden ids answer 404 like missing ones, and the
+  sprint is locked `FOR SHARE` so it cannot close during a move.
 
 ## Custom fields and defect workflow
 

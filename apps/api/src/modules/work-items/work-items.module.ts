@@ -12,6 +12,6 @@ import { WorkItemsService } from './work-items.service';
   imports: [ProjectsModule, OrganizationsModule, ReleasesModule, RequirementLinksModule],
   controllers: [WorkItemsController, BacklogController],
   providers: [WorkItemsService, WorkItemsRepository],
-  exports: [WorkItemsService],
+  exports: [WorkItemsService, WorkItemsRepository],
 })
 export class WorkItemsModule {}

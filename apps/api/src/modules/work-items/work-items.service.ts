@@ -536,15 +536,7 @@ export class WorkItemsService {
         throw new NotFoundError('Work item');
       }
       const direction = input.beforeId === undefined ? 'below' : 'above';
-      let rank = await this.slot(current, anchor, direction, tx);
-      if (rank === null) {
-        await this.items.renumber(current.projectId, BACKLOG_RANK_STEP, tx);
-        const refreshed = await this.items.findById(anchor.id, tx);
-        rank = refreshed === null ? null : await this.slot(current, refreshed, direction, tx);
-        if (rank === null) {
-          throw new ConflictError('The backlog could not be reordered; try again');
-        }
-      }
+      const rank = await this.placeRelative(current, anchor, direction, tx);
       await this.items.setRank(id, rank, tx);
       await this.audit.record(
         {
@@ -563,6 +555,32 @@ export class WorkItemsService {
       return row;
     });
     return toWorkItemView(moved);
+  }
+
+  /**
+   * The rank that puts `item` right above or below `anchor`, renumbering the
+   * project when the gap is exhausted. The caller holds the backlog lock.
+   */
+  async placeRelative(
+    item: WorkItem,
+    anchor: WorkItem,
+    direction: 'above' | 'below',
+    tx: PrismaTransaction,
+  ): Promise<number> {
+    let rank = await this.slot(item, anchor, direction, tx);
+    if (rank === null) {
+      await this.items.renumber(item.projectId, BACKLOG_RANK_STEP, tx);
+      const refreshedItem = await this.items.findById(item.id, tx);
+      const refreshed = await this.items.findById(anchor.id, tx);
+      rank =
+        refreshed === null || refreshedItem === null
+          ? null
+          : await this.slot(refreshedItem, refreshed, direction, tx);
+      if (rank === null) {
+        throw new ConflictError('The backlog could not be reordered; try again');
+      }
+    }
+    return rank;
   }
 
   /** A free rank between the anchor and its neighbour, or `null` when the gap is exhausted. */

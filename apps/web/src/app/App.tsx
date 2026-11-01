@@ -12,6 +12,7 @@ import { ApiKeysPage } from '../pages/ApiKeysPage';
 import { ReleaseDetailPage } from '../pages/ReleaseDetailPage';
 import { ReleasesPage } from '../pages/ReleasesPage';
 import { WorkItemDetailPage } from '../pages/WorkItemDetailPage';
+import { BoardPage } from '../pages/BoardPage';
 import { SprintDetailPage } from '../pages/SprintDetailPage';
 import { SprintsPage } from '../pages/SprintsPage';
 import { WorkItemsPage } from '../pages/WorkItemsPage';
@@ -61,6 +62,7 @@ const router = createBrowserRouter([
           { path: '/backlog', element: <BacklogPage /> },
           { path: '/hierarchy', element: <HierarchyPage /> },
           { path: '/sprints', element: <SprintsPage /> },
+          { path: '/board', element: <BoardPage /> },
           { path: '/sprints/:sprintId', element: <SprintDetailPage /> },
           { path: '/work-items', element: <WorkItemsPage /> },
           { path: '/work-items/:workItemId', element: <WorkItemDetailPage /> },

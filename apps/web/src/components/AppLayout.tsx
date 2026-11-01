@@ -11,6 +11,7 @@ const NAV = [
   { to: '/backlog', label: 'Backlog' },
   { to: '/hierarchy', label: 'Hierarchy' },
   { to: '/sprints', label: 'Sprints' },
+  { to: '/board', label: 'Board' },
   { to: '/work-items', label: 'Work items' },
   { to: '/test-cases', label: 'Test cases' },
   { to: '/imports', label: 'Import' },

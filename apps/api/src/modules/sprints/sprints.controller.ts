@@ -1,12 +1,16 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  BoardQuery,
   CloseSprintInput,
   CreateSprintInput,
+  MoveBoardCardInput,
   ListSprintsQuery,
   SprintItemsInput,
   UpdateSprintInput,
+  boardQuerySchema,
   closeSprintSchema,
+  moveBoardCardSchema,
   createSprintSchema,
   listSprintsQuerySchema,
   sprintItemsSchema,
@@ -16,12 +20,14 @@ import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { SprintBoardService } from './sprint-board.service';
 import { SprintsService } from './sprints.service';
 
 /**
  * Reading needs `work_items.read`; planning items into or out of a sprint
  * `work_items.write`; creating, editing and moving a sprint through its life
- * cycle `work_items.manage`.
+ * cycle `work_items.manage`. The board (S4-F6) is read with `work_items.read`
+ * and its cards move with `work_items.write`.
  */
 @ApiTags('sprints')
 @ApiBearerAuth()
@@ -29,7 +35,10 @@ import { SprintsService } from './sprints.service';
 @ProjectScoped()
 @Controller('sprints')
 export class SprintsController {
-  constructor(private readonly sprints: SprintsService) {}
+  constructor(
+    private readonly sprints: SprintsService,
+    private readonly boards: SprintBoardService,
+  ) {}
 
   @RequirePermission('work_items.manage')
   @Post()
@@ -46,6 +55,24 @@ export class SprintsController {
   @ApiOperation({ summary: 'List the sprints of a project with its velocity' })
   list(@Query(zodQuery(listSprintsQuerySchema)) query: ListSprintsQuery) {
     return this.sprints.list(query);
+  }
+
+  @RequirePermission('work_items.read')
+  @Get('board')
+  @ApiOperation({ summary: 'Scrum board of the active (or given) sprint of a project' })
+  board(
+    @Query(zodQuery(boardQuerySchema)) query: BoardQuery,
+    @CurrentUser() user: CurrentUserContext,
+  ) {
+    return this.boards.board(query, user.userId);
+  }
+
+  @RequirePermission('work_items.write')
+  @Post(':id/board/move')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Move a card of the active sprint to a column and/or position' })
+  moveCard(@Param('id') id: string, @Body(zodBody(moveBoardCardSchema)) body: MoveBoardCardInput) {
+    return this.boards.move(id, body);
   }
 
   @RequirePermission('work_items.read')

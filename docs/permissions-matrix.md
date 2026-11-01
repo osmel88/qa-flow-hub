@@ -215,6 +215,9 @@ archived projects are read-only; every change is an audited `role_change`.
 - Kanban board (S4-F7): reading needs `work_items.read`, moving cards
   `work_items.write` (read-only without it) and changing WIP limits
   `work_items.manage`; no new permission.
+- Development links (S5-F1): reading needs `work_items.read`; recording,
+  editing, linking and unlinking artifacts `work_items.write`; deleting an
+  artifact `work_items.manage`; no new permission.
 - `work_items.write` covers creating and editing work items, moving them
   between statuses, in the hierarchy and into open releases;
   `work_items.manage` adds soft deletion. Reordering the backlog and bulk

@@ -229,6 +229,11 @@ and chapter 10 of the backend course. Summary:
   the request: an item, anchor or project of another project or tenant, or a
   hidden one, answers 404 like a missing one. `kanban_column_settings` is
   under RLS and the app role cannot delete from it.
+- Development links (S5-F1): both foreign keys of
+  `work_item_development_links` carry `projectId`, so the database refuses a
+  cross-project link; artifacts and links are under RLS and the app role
+  cannot delete artifacts. Foreign or hidden ids answer 404 like missing
+  ones, and stored URLs must be http(s).
 
 ## Custom fields and defect workflow
 

@@ -1270,3 +1270,14 @@ caller's own tenant, never of another one.
 - **Board order is the backlog rank**, shared with the backlog and the Scrum
   board (debt 50).
 
+## 52. Development links: what S5-F1 leaves (S5-F1)
+
+- **No provider is connected**: `DevelopmentActivitySource` is a port with no
+  adapter; no webhooks, polling or work item key detection in branch names.
+- **One generic table**: provider-specific data (PR reviewers, check runs,
+  build logs, deployment URLs per environment) is not modelled.
+- **References are immutable**: fixing a wrong SHA or number means deleting
+  and recording again.
+- **No history of status changes** of an artifact beyond the audit log.
+- **The consolidated view is paginated** (100 per page in the web) and has no
+  timeline grouping per work item or per release.

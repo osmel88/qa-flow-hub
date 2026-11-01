@@ -14,6 +14,7 @@ import { ReleasesPage } from '../pages/ReleasesPage';
 import { WorkItemDetailPage } from '../pages/WorkItemDetailPage';
 import { BoardPage } from '../pages/BoardPage';
 import { KanbanPage } from '../pages/KanbanPage';
+import { DevelopmentPage } from '../pages/DevelopmentPage';
 import { SprintDetailPage } from '../pages/SprintDetailPage';
 import { SprintsPage } from '../pages/SprintsPage';
 import { WorkItemsPage } from '../pages/WorkItemsPage';
@@ -65,6 +66,7 @@ const router = createBrowserRouter([
           { path: '/sprints', element: <SprintsPage /> },
           { path: '/board', element: <BoardPage /> },
           { path: '/kanban', element: <KanbanPage /> },
+          { path: '/development', element: <DevelopmentPage /> },
           { path: '/sprints/:sprintId', element: <SprintDetailPage /> },
           { path: '/work-items', element: <WorkItemsPage /> },
           { path: '/work-items/:workItemId', element: <WorkItemDetailPage /> },

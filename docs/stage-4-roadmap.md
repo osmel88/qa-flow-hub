@@ -226,10 +226,9 @@ One migration (`sprints`, `work_items.sprintId`); no new ADR; debt 49.
 - Tests: `kanban.int-spec.ts`, `kanban.contracts.test.ts`,
   `KanbanPage.test.tsx`, `kanban.e2e.spec.ts`.
 
-## Next candidates
+## Next
 
-- Links between work items and test cases or defects.
-- Development and CI views on top of the existing GitHub mock and ingestion.
+Stage 5 (Development & CI) continues in [`stage-5-roadmap.md`](stage-5-roadmap.md).
 
 ## Related
 

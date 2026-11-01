@@ -13,6 +13,7 @@ const NAV = [
   { to: '/sprints', label: 'Sprints' },
   { to: '/board', label: 'Board' },
   { to: '/kanban', label: 'Kanban' },
+  { to: '/development', label: 'Development' },
   { to: '/work-items', label: 'Work items' },
   { to: '/test-cases', label: 'Test cases' },
   { to: '/imports', label: 'Import' },

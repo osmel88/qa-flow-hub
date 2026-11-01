@@ -1,4 +1,10 @@
 import type {
+  CreateDevelopmentArtifactInput,
+  DevelopmentArtifactView,
+  DevelopmentLinkResult,
+  ListDevelopmentArtifactsQuery,
+  UpdateDevelopmentArtifactInput,
+  WorkItemDevelopmentView,
   KanbanQuery,
   KanbanView,
   MoveKanbanCardInput,
@@ -701,6 +707,28 @@ export const sprintsApi = {
     apiFetch<BoardView>(`/sprints/board${query(params)}`),
   moveCard: (id: string, body: MoveBoardCardInput) =>
     apiFetch<WorkItemView>(`/sprints/${id}/board/move`, { method: 'POST', body }),
+};
+
+export const developmentApi = {
+  list: (params: Partial<ListDevelopmentArtifactsQuery> & { projectId: string }) =>
+    apiFetch<Paginated<DevelopmentArtifactView>>(
+      `/development-artifacts${query({ pageSize: 100, ...params })}`,
+    ),
+  get: (id: string) => apiFetch<DevelopmentArtifactView>(`/development-artifacts/${id}`),
+  create: (body: Partial<CreateDevelopmentArtifactInput> & { projectId: string; kind: string }) =>
+    apiFetch<DevelopmentArtifactView>('/development-artifacts', { method: 'POST', body }),
+  update: (id: string, body: UpdateDevelopmentArtifactInput) =>
+    apiFetch<DevelopmentArtifactView>(`/development-artifacts/${id}`, { method: 'PATCH', body }),
+  remove: (id: string) => apiFetch<void>(`/development-artifacts/${id}`, { method: 'DELETE' }),
+  forWorkItem: (workItemId: string) =>
+    apiFetch<WorkItemDevelopmentView>(`/work-items/${workItemId}/development`),
+  link: (workItemId: string, artifactId: string) =>
+    apiFetch<DevelopmentLinkResult>(`/work-items/${workItemId}/development`, {
+      method: 'POST',
+      body: { artifactId },
+    }),
+  unlink: (workItemId: string, artifactId: string) =>
+    apiFetch<void>(`/work-items/${workItemId}/development/${artifactId}`, { method: 'DELETE' }),
 };
 
 export const kanbanApi = {

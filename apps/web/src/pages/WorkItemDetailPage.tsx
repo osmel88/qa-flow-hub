@@ -1,6 +1,7 @@
 import {
   PRIORITIES,
   WORK_ITEM_STATUSES,
+  artifactReference,
   WORK_ITEM_TYPES,
   canBeParentOf,
   isOpenRelease,
@@ -10,11 +11,18 @@ import { Badge, Button, DataState, SelectField, TextField } from '@qa-flow-hub/u
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { projectsApi, releasesApi, requirementsApi, workItemsApi } from '../api/endpoints';
+import {
+  developmentApi,
+  projectsApi,
+  releasesApi,
+  requirementsApi,
+  workItemsApi,
+} from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
+import { ArtifactSummary } from './DevelopmentPage';
 import { rollupText } from './HierarchyPage';
 import { WORK_ITEM_TONE, parseLabels } from './WorkItemsPage';
 
@@ -320,6 +328,8 @@ function WorkItemEditor({
 
       <ImplementsSection item={item} editable={editable} />
 
+      <DevelopmentSection item={item} editable={editable} />
+
       <section className="card" aria-labelledby="work-item-children">
         <h2 id="work-item-children">Children</h2>
         {item.children.length === 0 ? (
@@ -437,6 +447,136 @@ function ImplementsSection({
           />
           <Button type="submit" disabled={choice === '' || link.isPending}>
             Link requirement
+          </Button>
+        </form>
+      )}
+      {error !== null && (
+        <p className="ui-field__error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** Branches, commits, pull requests, builds and deployments of the item (S5-F1). */
+function DevelopmentSection({
+  item,
+  editable,
+}: {
+  item: WorkItemDetailView;
+  editable: boolean;
+}): React.JSX.Element {
+  const queryClient = useQueryClient();
+  const [choice, setChoice] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const development = useQuery({
+    queryKey: ['development', 'work-item', item.id],
+    queryFn: () => developmentApi.forWorkItem(item.id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  const candidates = useQuery({
+    queryKey: ['development', item.projectId, 'link-candidates'],
+    queryFn: () => developmentApi.list({ projectId: item.projectId }),
+    enabled: editable,
+  });
+  const refresh = async () => {
+    setError(null);
+    await queryClient.invalidateQueries({ queryKey: ['development'] });
+  };
+  const onError = (cause: unknown) => {
+    setError(cause instanceof ApiError ? cause.message : 'Could not update the link.');
+  };
+  const link = useMutation({
+    mutationFn: (artifactId: string) => developmentApi.link(item.id, artifactId),
+    onSuccess: async () => {
+      setChoice('');
+      await refresh();
+    },
+    onError,
+  });
+  const unlink = useMutation({
+    mutationFn: (artifactId: string) => developmentApi.unlink(item.id, artifactId),
+    onSuccess: refresh,
+    onError,
+  });
+  const artifacts = development.data?.artifacts ?? [];
+  const linked = new Set(artifacts.map((artifact) => artifact.id));
+  const options = (candidates.data?.data ?? []).filter((artifact) => !linked.has(artifact.id));
+
+  return (
+    <section className="card" aria-labelledby="work-item-development">
+      <h2 id="work-item-development">Development</h2>
+      <DataState
+        isPending={development.isPending}
+        error={development.error}
+        isEmpty={artifacts.length === 0}
+        emptyMessage="No development activity is linked to this item yet."
+      >
+        <ul className="link-list">
+          {artifacts.map((artifact) => (
+            <li key={artifact.linkId}>
+              <ArtifactSummary artifact={artifact} />{' '}
+              {artifact.workItems.length > 1 && (
+                <span className="muted">
+                  also{' '}
+                  {artifact.workItems
+                    .filter((entry) => entry.workItemId !== item.id)
+                    .map((entry) => (
+                      <Link key={entry.linkId} to={`/work-items/${entry.workItemId}`}>
+                        {entry.key}{' '}
+                      </Link>
+                    ))}
+                </span>
+              )}
+              {editable && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  aria-label={`Unlink ${artifact.kind} ${artifactReference(artifact)}`}
+                  onClick={() => {
+                    unlink.mutate(artifact.id);
+                  }}
+                >
+                  Unlink
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      </DataState>
+      <p>
+        <Link to={`/development?workItemId=${item.id}`}>Record or browse development activity</Link>
+      </p>
+      {editable && (
+        <form
+          className="inline-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (choice !== '') {
+              link.mutate(choice);
+            }
+          }}
+        >
+          <SelectField
+            label="Link development artifact"
+            value={choice}
+            options={[
+              { value: '', label: 'Choose an artifact…' },
+              ...options.map((artifact) => ({
+                value: artifact.id,
+                label: `${humanize(artifact.kind)} ${artifactReference(artifact)}${
+                  artifact.title === null ? '' : ` · ${artifact.title}`
+                }`,
+              })),
+            ]}
+            onChange={(event) => {
+              setChoice(event.target.value);
+            }}
+          />
+          <Button type="submit" disabled={choice === '' || link.isPending}>
+            Link artifact
           </Button>
         </form>
       )}

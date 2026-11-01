@@ -77,6 +77,7 @@ apps/api/src/
 ├─ modules/requirement-links/ requirement ↔ work item `implements` links and implementation rollup (S4-F4)
 ├─ modules/sprints/        sprints, sprint backlog, start/complete/cancel with carry-over, capacity and velocity (S4-F5), Scrum board (S4-F6)
 ├─ modules/kanban/         Kanban board of a project: status columns, WIP limits, flow metrics (S4-F7)
+├─ modules/development/    branches, commits, PRs, builds, deployments linked to work items (S5-F1)
 ├─ storage/                StorageProvider port, LocalStorageProvider, MemoryStorageProvider, StorageModule (S2-F7)
 ├─ modules/attachments/    multipart upload → inspection → provider → AttachmentMetadata; authenticated download (S2-F7)
 └─ modules/<area>/         controller, service, repository, dto, domain, policies

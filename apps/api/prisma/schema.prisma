@@ -470,6 +470,7 @@ model Organization {
   workItems              WorkItem[]
   sprints                Sprint[]
   kanbanColumnSettings   KanbanColumnSetting[]
+  developmentArtifacts   DevelopmentArtifact[]
   defectWorkflows        DefectWorkflow[]
 
   @@index([deletedAt])
@@ -581,6 +582,7 @@ model Project {
   workItems              WorkItem[]
   sprints                Sprint[]
   kanbanColumnSettings   KanbanColumnSetting[]
+  developmentArtifacts   DevelopmentArtifact[]
   defectWorkflow         DefectWorkflow?
 
   @@unique([organizationId, key])
@@ -1585,6 +1587,7 @@ model WorkItem {
   rank Int @default(0)
 
   requirementLinks RequirementWorkItemLink[]
+  developmentLinks WorkItemDevelopmentLink[]
 
   /// Optimistic concurrency: bumped by every update.
   version         Int       @default(1)
@@ -1682,4 +1685,75 @@ model KanbanColumnSetting {
   @@unique([projectId, status])
   @@index([organizationId, projectId])
   @@map("kanban_column_settings")
+}
+
+enum DevelopmentArtifactKind {
+  branch
+  commit
+  pull_request
+  build
+  deployment
+}
+
+enum DevelopmentProvider {
+  local
+  github
+  gitlab
+  azure_devops
+  bitbucket
+}
+
+/// Internal record of development activity (S5-F1), provider-neutral: an
+/// adapter syncs it through (provider, externalId). `naturalKey` (branch name,
+/// SHA, #PR, identifier) is unique per live artifact (partial index).
+model DevelopmentArtifact {
+  id             String                  @id @default(cuid())
+  organizationId String
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String
+  project        Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind           DevelopmentArtifactKind
+  provider       DevelopmentProvider     @default(local)
+  externalId     String?
+  naturalKey     String
+  url            String?
+  title          String?
+  branchName     String?
+  commitSha      String?
+  prNumber       Int?
+  identifier     String?
+  environment    String?
+  /// Validated per kind (CHECK in the migration and Zod).
+  status         String?
+  occurredAt     DateTime?
+  version        Int                     @default(1)
+  createdById    String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  deletedAt      DateTime?
+
+  links WorkItemDevelopmentLink[]
+
+  @@unique([id, projectId])
+  @@index([organizationId, projectId, kind])
+  @@map("development_artifacts")
+}
+
+/// A work item relates to a development artifact (S5-F1). Both foreign keys
+/// carry projectId; unlinking deletes the row.
+model WorkItemDevelopmentLink {
+  id             String              @id @default(cuid())
+  organizationId String
+  projectId      String
+  workItemId     String
+  workItem       WorkItem            @relation(fields: [workItemId, projectId], references: [id, projectId], onDelete: Cascade)
+  artifactId     String
+  artifact       DevelopmentArtifact @relation(fields: [artifactId, projectId], references: [id, projectId], onDelete: Cascade)
+  createdById    String?
+  createdAt      DateTime            @default(now())
+
+  @@unique([workItemId, artifactId])
+  @@index([organizationId, projectId])
+  @@index([artifactId])
+  @@map("work_item_development_links")
 }

@@ -61,6 +61,8 @@ export function referenceFields(
 
 export const DEVELOPMENT_STATUS_TONE: Record<string, BadgeTone> = {
   succeeded: 'success',
+  passed: 'success',
+  running: 'info',
   merged: 'success',
   failed: 'danger',
   rolled_back: 'danger',

@@ -1299,3 +1299,11 @@ caller's own tenant, never of another one.
   reviewer lists will want a batched permission resolution.
 - **No re-review on new commits**: a pushed commit does not reset approvals.
 - **No sync yet**: `provider`/`externalId` exist but no adapter fills them.
+
+## 55. Builds: what S5-F4 leaves (S5-F4)
+
+- **Redaction is pattern-based**: unknown secret formats can still reach a
+  log summary; real adapters should send summaries, not raw logs.
+- **Metrics are computed per request** over the window; no rollup table.
+- **No re-run**: a terminal build never moves; a re-run is a new build.
+- **Pipelines and stages are not modelled**, only whole builds.

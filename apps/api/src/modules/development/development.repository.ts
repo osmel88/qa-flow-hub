@@ -27,6 +27,10 @@ export interface ArtifactFilters {
   /** An id, or `null` for artifacts linked to no live work item. */
   workItemId?: string | null | undefined;
   search?: string | undefined;
+  /** Builds (S5-F4). */
+  branchName?: string | undefined;
+  /** A release id, or `null` for builds of no release. */
+  releaseId?: string | null | undefined;
 }
 
 interface LockedRow {
@@ -212,6 +216,8 @@ export class DevelopmentRepository extends TenantAwareRepository {
     const where: Prisma.DevelopmentArtifactWhereInput = this.active({
       projectId: filters.projectId,
       ...(filters.kind === undefined ? {} : { kind: filters.kind }),
+      ...(filters.branchName === undefined ? {} : { branchName: filters.branchName }),
+      ...(filters.releaseId === undefined ? {} : { releaseId: filters.releaseId }),
       ...(filters.provider === undefined ? {} : { provider: filters.provider }),
       ...(filters.status === undefined ? {} : { status: filters.status }),
       ...(filters.workItemId === undefined
@@ -398,5 +404,74 @@ export class DevelopmentRepository extends TenantAwareRepository {
       _count: { _all: true },
     });
     return new Map(rows.map((row) => [row.kind, row._count._all]));
+  }
+
+  // --- Builds (S5-F4) --------------------------------------------------------
+
+  findBuildByExternalId(
+    projectId: string,
+    provider: DevelopmentArtifact['provider'],
+    externalId: string,
+  ): Promise<DevelopmentArtifact | null> {
+    return this.prisma.developmentArtifact.findFirst({
+      where: this.active({ projectId, provider, kind: 'build' as const, externalId }),
+    });
+  }
+
+  /** A release of the project, locked for share so it cannot move meanwhile. */
+  async lockRelease(projectId: string, id: string, tx: PrismaTransaction): Promise<boolean> {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "releases"
+      WHERE "id" = ${id} AND "projectId" = ${projectId} AND "organizationId" = ${this.organizationId}
+      FOR SHARE`;
+    return rows.length === 1;
+  }
+
+  releases(ids: readonly string[]) {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.prisma.release.findMany({
+      where: { organizationId: this.organizationId, id: { in: [...ids] } },
+      select: { id: true, name: true, version: true },
+    });
+  }
+
+  /** Live branch and commit artifacts matching these names and SHAs. */
+  relatedArtifacts(
+    projectId: string,
+    branchNames: readonly string[],
+    commitShas: readonly string[],
+  ) {
+    if (branchNames.length === 0 && commitShas.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.prisma.developmentArtifact.findMany({
+      where: this.active({
+        projectId,
+        OR: [
+          { kind: 'branch' as const, branchName: { in: [...branchNames] } },
+          { kind: 'commit' as const, commitSha: { in: [...commitShas] } },
+        ],
+      }),
+      select: { id: true, kind: true, branchName: true, commitSha: true, provider: true },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  buildRows(
+    projectId: string,
+    filters: { branchName?: string | undefined; releaseId?: string | undefined; since: Date },
+  ) {
+    return this.prisma.developmentArtifact.findMany({
+      where: this.active({
+        projectId,
+        kind: 'build' as const,
+        createdAt: { gte: filters.since },
+        ...(filters.branchName === undefined ? {} : { branchName: filters.branchName }),
+        ...(filters.releaseId === undefined ? {} : { releaseId: filters.releaseId }),
+      }),
+      select: { status: true, startedAt: true, finishedAt: true },
+    });
   }
 }

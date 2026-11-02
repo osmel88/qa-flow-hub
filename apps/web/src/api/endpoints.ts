@@ -1,4 +1,11 @@
 import type {
+  BuildMetricsView,
+  BuildView,
+  CreateBuildInput,
+  CreateBuildResult,
+  ListBuildsQuery,
+  TransitionBuildInput,
+  UpdateBuildInput,
   CodeReviewDecisionInput,
   CodeReviewSettingsView,
   CodeReviewSummaryView,
@@ -794,4 +801,18 @@ export const codeReviewsApi = {
       method: 'PUT',
       body: { projectId, requiredApprovals },
     }),
+};
+
+export const buildsApi = {
+  list: (params: Partial<ListBuildsQuery> & { projectId: string }) =>
+    apiFetch<Paginated<BuildView>>(`/builds${query({ pageSize: 100, ...params })}`),
+  get: (id: string) => apiFetch<BuildView>(`/builds/${id}`),
+  metrics: (projectId: string, params: { releaseId?: string; branch?: string } = {}) =>
+    apiFetch<BuildMetricsView>(`/builds/metrics${query({ projectId, ...params })}`),
+  create: (body: Partial<CreateBuildInput> & { projectId: string; identifier: string }) =>
+    apiFetch<CreateBuildResult>('/builds', { method: 'POST', body }),
+  update: (id: string, body: UpdateBuildInput) =>
+    apiFetch<BuildView>(`/builds/${id}`, { method: 'PATCH', body }),
+  transition: (id: string, body: TransitionBuildInput) =>
+    apiFetch<BuildView>(`/builds/${id}/transition`, { method: 'POST', body }),
 };

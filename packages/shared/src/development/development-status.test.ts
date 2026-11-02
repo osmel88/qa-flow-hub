@@ -34,7 +34,7 @@ describe('development status', () => {
     expect(statusOf([signal('pull_request', 'merged'), signal('build', 'running')])).toBe(
       'build_running',
     );
-    expect(statusOf([signal('build', 'succeeded'), signal('pull_request', 'open')])).toBe(
+    expect(statusOf([signal('build', 'passed'), signal('pull_request', 'open')])).toBe(
       'build_passed',
     );
     expect(statusOf([signal('build', 'failed'), signal('deployment', 'succeeded')])).toBe(
@@ -48,12 +48,12 @@ describe('development status', () => {
     const summary = computeDevelopmentStatus([
       signal('commit'),
       signal('pull_request', 'merged'),
-      signal('build', 'succeeded', 10),
+      signal('build', 'passed', 10),
       failed,
     ]);
     expect(summary.status).toBe('build_failed');
     expect(summary.evidence).toEqual([failed.id]);
-    expect(statusOf([signal('build', 'failed', 10), signal('build', 'succeeded', 1)])).toBe(
+    expect(statusOf([signal('build', 'failed', 10), signal('build', 'passed', 1)])).toBe(
       'build_passed',
     );
     expect(statusOf([signal('build', 'cancelled'), signal('commit')])).toBe('commits');
@@ -66,7 +66,7 @@ describe('development status', () => {
       statusOf([
         signal('deployment', 'failed'),
         signal('deployment', 'rolled_back'),
-        signal('build', 'succeeded'),
+        signal('build', 'passed'),
       ]),
     ).toBe('build_passed');
   });

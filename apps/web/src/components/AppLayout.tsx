@@ -15,6 +15,7 @@ const NAV = [
   { to: '/kanban', label: 'Kanban' },
   { to: '/development', label: 'Development' },
   { to: '/code-reviews', label: 'Code reviews' },
+  { to: '/builds', label: 'Builds' },
   { to: '/work-items', label: 'Work items' },
   { to: '/test-cases', label: 'Test cases' },
   { to: '/imports', label: 'Import' },

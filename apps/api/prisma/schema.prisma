@@ -1456,6 +1456,7 @@ model Release {
 
   runs      TestRun[]
   workItems WorkItem[]
+  builds    DevelopmentArtifact[]
 
   @@unique([projectId, version])
   @@unique([id, projectId])
@@ -1731,6 +1732,14 @@ model DevelopmentArtifact {
   /// Validated per kind (CHECK in the migration and Zod).
   status         String?
   occurredAt     DateTime?
+  /// Build-only fields (S5-F4); null on other kinds (CHECK in the migration).
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  trigger        String?
+  releaseId      String?
+  release        Release?                @relation(fields: [releaseId, projectId], references: [id, projectId], onDelete: Restrict)
+  metadata       Json?
+  logSummary     String?
   version        Int                     @default(1)
   createdById    String?
   createdAt      DateTime                @default(now())
@@ -1742,6 +1751,7 @@ model DevelopmentArtifact {
 
   @@unique([id, projectId])
   @@index([organizationId, projectId, kind])
+  @@index([organizationId, projectId, releaseId])
   @@map("development_artifacts")
 }
 

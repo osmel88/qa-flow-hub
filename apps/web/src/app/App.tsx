@@ -14,6 +14,8 @@ import { ReleasesPage } from '../pages/ReleasesPage';
 import { WorkItemDetailPage } from '../pages/WorkItemDetailPage';
 import { BoardPage } from '../pages/BoardPage';
 import { KanbanPage } from '../pages/KanbanPage';
+import { BuildDetailPage } from '../pages/BuildDetailPage';
+import { BuildsPage } from '../pages/BuildsPage';
 import { CodeReviewDetailPage } from '../pages/CodeReviewDetailPage';
 import { CodeReviewsPage } from '../pages/CodeReviewsPage';
 import { DevelopmentPage } from '../pages/DevelopmentPage';
@@ -69,6 +71,8 @@ const router = createBrowserRouter([
           { path: '/board', element: <BoardPage /> },
           { path: '/kanban', element: <KanbanPage /> },
           { path: '/development', element: <DevelopmentPage /> },
+          { path: '/builds', element: <BuildsPage /> },
+          { path: '/builds/:buildId', element: <BuildDetailPage /> },
           { path: '/code-reviews', element: <CodeReviewsPage /> },
           { path: '/code-reviews/:reviewId', element: <CodeReviewDetailPage /> },
           { path: '/sprints/:sprintId', element: <SprintDetailPage /> },

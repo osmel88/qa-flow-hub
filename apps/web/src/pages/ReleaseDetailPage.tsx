@@ -4,11 +4,12 @@ import { Badge, Button, DataState } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { releasesApi } from '../api/endpoints';
+import { buildsApi, releasesApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
+import { BuildList } from './BuildsPage';
 import { RELEASE_TONE } from './ReleasesPage';
 
 const ACTIONS: Array<{
@@ -152,6 +153,8 @@ export function ReleaseDetailPage(): React.JSX.Element {
             )}
           </section>
 
+          <ReleaseBuilds projectId={release.projectId} releaseId={release.id} />
+
           <section className="card" aria-labelledby="release-trace">
             <h2 id="release-trace">Traceability</h2>
             <DataState
@@ -193,5 +196,31 @@ export function ReleaseDetailPage(): React.JSX.Element {
         </>
       )}
     </DataState>
+  );
+}
+
+/** Builds of the release (S5-F4). */
+function ReleaseBuilds({
+  projectId,
+  releaseId,
+}: {
+  projectId: string;
+  releaseId: string;
+}): React.JSX.Element {
+  const builds = useQuery({
+    queryKey: ['builds', projectId, 'release', releaseId],
+    queryFn: () => buildsApi.list({ projectId, releaseId }),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  return (
+    <section className="card" aria-labelledby="release-builds">
+      <h2 id="release-builds">Builds</h2>
+      {(builds.data?.data.length ?? 0) === 0 ? (
+        <p>No build in this release yet.</p>
+      ) : (
+        <BuildList builds={builds.data?.data ?? []} label="Release builds" />
+      )}
+    </section>
   );
 }

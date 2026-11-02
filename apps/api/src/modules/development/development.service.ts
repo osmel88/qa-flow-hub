@@ -15,8 +15,11 @@ import {
   Paginated,
   UpdateDevelopmentArtifactInput,
   WorkItemDevelopmentView,
+  BuildStatus,
   artifactReference,
+  canTransitionBuild,
   computeDevelopmentStatus,
+  isTerminalBuildStatus,
   naturalKeyOf,
   statusesFor,
 } from '@qa-flow-hub/shared';
@@ -24,6 +27,7 @@ import { PrismaService, PrismaTransaction } from '../../database/prisma.service'
 import {
   ConflictError,
   DuplicateResourceError,
+  InvalidStateTransitionError,
   NotFoundError,
   ValidationError,
 } from '../../errors';
@@ -88,6 +92,18 @@ export class DevelopmentService {
                 : null,
             environment: input.environment ?? null,
             status: input.status ?? null,
+            ...(input.kind === 'build' && input.status !== undefined && input.status !== 'queued'
+              ? {
+                  startedAt:
+                    input.occurredAt === undefined ? new Date() : new Date(input.occurredAt),
+                  ...(isTerminalBuildStatus(input.status)
+                    ? {
+                        finishedAt:
+                          input.occurredAt === undefined ? new Date() : new Date(input.occurredAt),
+                      }
+                    : {}),
+                }
+              : {}),
             occurredAt: input.occurredAt === undefined ? null : new Date(input.occurredAt),
             createdById: userId,
           },
@@ -184,6 +200,9 @@ export class DevelopmentService {
           changes[key] = { from: current[key], to: value };
         }
       };
+      if (current.kind === 'build' && input.status !== undefined) {
+        Object.assign(data, buildStatusChange(current, input.status, new Date()));
+      }
       assign('title');
       assign('url');
       assign('environment');
@@ -488,4 +507,31 @@ export function toArtifactView(
       linkedAt: link.createdAt.toISOString(),
     })),
   };
+}
+
+/**
+ * A build status change through the generic artifact route follows the
+ * build lifecycle (S5-F4): valid transitions only, start and finish times.
+ */
+export function buildStatusChange(
+  current: Pick<DevelopmentArtifact, 'status' | 'startedAt'>,
+  next: string | null,
+  at: Date,
+): Prisma.DevelopmentArtifactUncheckedUpdateManyInput {
+  if (next === null) {
+    throw new ValidationError('A build status cannot be cleared');
+  }
+  if (next === current.status) {
+    return {};
+  }
+  if (!canTransitionBuild(current.status, next as BuildStatus)) {
+    throw new InvalidStateTransitionError('Build', current.status ?? 'queued', next);
+  }
+  if (next === 'running') {
+    return { startedAt: current.startedAt ?? at };
+  }
+  if (isTerminalBuildStatus(next)) {
+    return { startedAt: current.startedAt ?? at, finishedAt: at };
+  }
+  return {};
 }

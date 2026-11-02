@@ -31,7 +31,7 @@ export const DEVELOPMENT_STATUSES = {
   branch: ['active', 'merged', 'deleted'],
   commit: [],
   pull_request: ['draft', 'open', 'approved', 'merged', 'closed'],
-  build: ['queued', 'running', 'succeeded', 'failed', 'cancelled'],
+  build: ['queued', 'running', 'passed', 'failed', 'cancelled'],
   deployment: ['pending', 'in_progress', 'succeeded', 'failed', 'rolled_back'],
 } as const satisfies Record<DevelopmentArtifactKind, readonly string[]>;
 
@@ -326,12 +326,12 @@ export function computeDevelopmentStatus(
   if (deployed.length > 0) {
     return result('deployed', deployed);
   }
-  const build = of('build', ['queued', 'running', 'succeeded', 'failed'])[0];
+  const build = of('build', ['queued', 'running', 'passed', 'failed'])[0];
   if (build !== undefined) {
     return result(
       build.status === 'failed'
         ? 'build_failed'
-        : build.status === 'succeeded'
+        : build.status === 'passed'
           ? 'build_passed'
           : 'build_running',
       [build],

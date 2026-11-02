@@ -121,6 +121,34 @@ KEY: from → to`). Those writes lock the affected work items `FOR UPDATE`
 - Tests: `code-reviews.int-spec.ts`, `code-review.contracts.test.ts`,
   `code-reviews.e2e.spec.ts`.
 
+## S5-F4 — Build
+
+- A build stays the `build` development artifact of S5-F1: one record for
+  links, development status, RLS and soft deletion. 1 migration adds the
+  CI fields (`startedAt`, `finishedAt`, `trigger`, `releaseId`, `metadata`,
+  `logSummary`, CHECK-ed to stay null on other kinds), a release foreign key
+  with `projectId` (no release of another project), and renames the build
+  status `succeeded` to `passed` (rows migrated).
+- Statuses `queued`, `running`, `passed`, `failed`, `cancelled`; transitions
+  `BUILD_TRANSITIONS` (queued → running/failed/cancelled, running →
+  passed/failed/cancelled, terminal → nothing), enforced by
+  `POST /builds/:id/transition` and by the generic artifact PATCH. Start and
+  finish times are set by the transitions; duration is derived.
+- `POST /builds` is idempotent per (provider, externalId): a repeated or
+  concurrent report returns the existing build (`created: false`); without
+  `externalId` a repeated identifier answers 409.
+- Filters by status, provider, branch, release (`none`) and work item;
+  `GET /builds/metrics` (success/failure rate over passed+failed, average,
+  median and p85 duration in a window). Builds expose the live branch and
+  commit artifacts they ran on.
+- Logs and metadata are redacted (`redactSecrets()`, sensitive fact names)
+  before they are stored.
+- Development status reads build `passed` as `build_passed`.
+- Web: Builds page (metrics, filters, report form), build detail
+  (transitions, release, work items, output) and builds in release detail.
+- Tests: `builds.int-spec.ts`, `build.contracts.test.ts`,
+  `builds.e2e.spec.ts`.
+
 ## Next candidates
 
 - CI views on top of builds and the existing ingestion of test results.

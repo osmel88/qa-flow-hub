@@ -170,7 +170,7 @@ describe('Development links', () => {
       status: 'open',
       url: 'https://git.example.test/pr/42',
     });
-    const build = await artifact({ kind: 'build', identifier: 'build-7', status: 'succeeded' });
+    const build = await artifact({ kind: 'build', identifier: 'build-7', status: 'passed' });
     const deployment = await artifact({
       kind: 'deployment',
       identifier: 'deploy-3',
@@ -202,7 +202,8 @@ describe('Development links', () => {
     expect((await list('&kind=build')).data.map((row) => row.id)).toEqual([build.id]);
     expect((await list('&provider=local')).meta.total).toBe(5);
     expect((await list('&provider=github')).meta.total).toBe(0);
-    expect((await list('&status=succeeded')).meta.total).toBe(2);
+    expect((await list('&status=succeeded')).meta.total).toBe(1);
+    expect((await list('&status=passed')).data.map((row) => row.id)).toEqual([build.id]);
     expect((await list(`&workItemId=${b.id}`)).data.map((row) => row.id)).toEqual([deployment.id]);
     expect((await list('&workItemId=none')).meta.total).toBe(0);
     expect((await list('&search=cards')).data.map((row) => row.id).sort()).toEqual(

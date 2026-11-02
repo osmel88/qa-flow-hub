@@ -4,6 +4,9 @@ Stage 4 closed Planning & Work Management (work items, backlog, hierarchy,
 requirement links, sprints, Scrum and Kanban boards). Stage 5 connects work
 items with development activity, still without real providers.
 
+**Status: Stage 5 — Development Tracking is complete** (S5-F1 … S5-F5).
+Stage 6 continues in [stage-6-roadmap.md](stage-6-roadmap.md).
+
 ```text
 Requirements → Planning → Work Items/Backlog → Sprints → Development → CI → QA → Defects → Releases → Analytics
 ```

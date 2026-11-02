@@ -281,3 +281,12 @@ archived projects are read-only; every change is an audited `role_change`.
 - Attaching a run to a release is a run edit (`testruns.manage`); the release
   must be open and in the same project. A release of a hidden project answers
   like a missing one.
+
+## Environments and deployments (S5-F5, S6-F1)
+
+| Action                                                      | Permission          |
+| ----------------------------------------------------------- | ------------------- |
+| List and view environments and deployments                  | `work_items.read`   |
+| Create, edit, archive, restore or delete an environment     | `work_items.manage` |
+| Report, move, edit or roll back a deployment                | `work_items.write`  |
+| The same in a protected environment (production by default) | `work_items.manage` |

@@ -2,17 +2,14 @@ import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nes
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateDeploymentInput,
-  CreateEnvironmentInput,
   DeploymentMetricsQuery,
   ListDeploymentsQuery,
   RollbackDeploymentInput,
   TransitionDeploymentInput,
   UpdateDeploymentInput,
   createDeploymentSchema,
-  createEnvironmentSchema,
   deploymentMetricsQuerySchema,
   listDeploymentsQuerySchema,
-  listEnvironmentsQuerySchema,
   rollbackDeploymentSchema,
   transitionDeploymentSchema,
   updateDeploymentSchema,
@@ -24,9 +21,9 @@ import { RequirePermission } from '../auth/decorators/require-permission.decorat
 import { DeploymentsService } from './deployments.service';
 
 /**
- * Deployments and environments (S5-F5): reading needs `work_items.read`;
- * reporting, moving, editing and rolling back `work_items.write`; creating
- * an environment `work_items.manage`.
+ * Deployments (S5-F5): reading needs `work_items.read`; reporting, moving,
+ * editing and rolling back `work_items.write` (`work_items.manage` in a
+ * protected environment, S6-F1).
  */
 @ApiTags('deployments')
 @ApiBearerAuth()
@@ -103,31 +100,5 @@ export class DeploymentsController {
     @CurrentUser() user: CurrentUserContext,
   ) {
     return this.deployments.rollback(id, body, user.userId);
-  }
-}
-
-@ApiTags('deployments')
-@ApiBearerAuth()
-@ApiHeader({ name: 'X-Organization-Id', required: true })
-@ProjectScoped()
-@Controller('environments')
-export class EnvironmentsController {
-  constructor(private readonly deployments: DeploymentsService) {}
-
-  @RequirePermission('work_items.read')
-  @Get()
-  @ApiOperation({ summary: 'Environments of a project and what runs there' })
-  list(@Query(zodQuery(listEnvironmentsQuerySchema)) query: { projectId: string }) {
-    return this.deployments.environments(query.projectId);
-  }
-
-  @RequirePermission('work_items.manage')
-  @Post()
-  @ApiOperation({ summary: 'Create an environment' })
-  create(
-    @Body(zodBody(createEnvironmentSchema)) body: CreateEnvironmentInput,
-    @CurrentUser() user: CurrentUserContext,
-  ) {
-    return this.deployments.createEnvironment(body, user.userId);
   }
 }

@@ -5,6 +5,8 @@ import type {
   DeploymentMetricsView,
   DeploymentView,
   EnvironmentView,
+  ListEnvironmentsQuery,
+  UpdateEnvironmentInput,
   ListDeploymentsQuery,
   RollbackDeploymentInput,
   TransitionDeploymentInput,
@@ -827,9 +829,24 @@ export const buildsApi = {
 };
 
 export const environmentsApi = {
-  list: (projectId: string) => apiFetch<EnvironmentView[]>(`/environments${query({ projectId })}`),
+  list: (params: Partial<ListEnvironmentsQuery> & { projectId: string }) =>
+    apiFetch<EnvironmentView[]>(`/environments${query(params)}`),
+  get: (id: string) => apiFetch<EnvironmentView>(`/environments/${id}`),
   create: (body: Partial<CreateEnvironmentInput> & { projectId: string; name: string }) =>
     apiFetch<EnvironmentView>('/environments', { method: 'POST', body }),
+  update: (id: string, body: UpdateEnvironmentInput) =>
+    apiFetch<EnvironmentView>(`/environments/${id}`, { method: 'PATCH', body }),
+  archive: (id: string, version?: number) =>
+    apiFetch<EnvironmentView>(`/environments/${id}/archive`, {
+      method: 'POST',
+      body: version === undefined ? {} : { version },
+    }),
+  restore: (id: string, version?: number) =>
+    apiFetch<EnvironmentView>(`/environments/${id}/restore`, {
+      method: 'POST',
+      body: version === undefined ? {} : { version },
+    }),
+  remove: (id: string) => apiFetch<void>(`/environments/${id}`, { method: 'DELETE' }),
 };
 
 export const deploymentsApi = {

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { EnvironmentKind, EnvironmentStatus } from './environment.contracts.js';
 import { paginationQuerySchema } from '../common/pagination.js';
 import { buildDurationMs, buildMetadataSchema } from './build.contracts.js';
 import type { BuildMetadata } from './build.contracts.js';
@@ -61,46 +62,10 @@ export const DEPLOYMENT_TRIGGERS = [
 ] as const;
 export type DeploymentTrigger = (typeof DEPLOYMENT_TRIGGERS)[number];
 
-export const ENVIRONMENT_KINDS = [
-  'development',
-  'testing',
-  'staging',
-  'production',
-  'other',
-] as const;
-export type EnvironmentKind = (typeof ENVIRONMENT_KINDS)[number];
-
 const idSchema = z.string().min(1).max(64);
 const text = (max: number) => z.string().trim().min(1).max(max);
 const dateSchema = z.string().datetime({ offset: true });
 const logSchema = z.string().trim().min(1).max(20_000);
-
-export const createEnvironmentSchema = z.object({
-  projectId: idSchema,
-  name: z
-    .string()
-    .trim()
-    .min(1)
-    .max(60)
-    .regex(
-      /^[A-Za-z0-9][A-Za-z0-9 ._-]*$/,
-      'Letters, digits, spaces, dots, dashes and underscores',
-    ),
-  kind: z.enum(ENVIRONMENT_KINDS).default('other'),
-});
-export type CreateEnvironmentInput = z.infer<typeof createEnvironmentSchema>;
-
-export const listEnvironmentsQuerySchema = z.object({ projectId: idSchema });
-
-export interface EnvironmentView {
-  id: string;
-  projectId: string;
-  name: string;
-  kind: EnvironmentKind;
-  createdAt: string;
-  /** The live deployment currently succeeded there, newest first. */
-  current: { deploymentId: string; identifier: string | null; buildId: string | null } | null;
-}
 
 export const createDeploymentSchema = z
   .object({
@@ -187,7 +152,13 @@ export const deploymentMetricsQuerySchema = z.object({
 export type DeploymentMetricsQuery = z.infer<typeof deploymentMetricsQuerySchema>;
 
 export interface DeploymentView extends DevelopmentArtifactView {
-  environmentRef: { id: string; name: string; kind: EnvironmentKind } | null;
+  environmentRef: {
+    id: string;
+    name: string;
+    kind: EnvironmentKind;
+    status: EnvironmentStatus;
+    protected: boolean;
+  } | null;
   build: { id: string; identifier: string | null; status: string | null } | null;
   release: { id: string; name: string; version: string } | null;
   rollbackOf: { id: string; identifier: string | null } | null;

@@ -17,6 +17,8 @@ import { KanbanPage } from '../pages/KanbanPage';
 import { BuildDetailPage } from '../pages/BuildDetailPage';
 import { DeploymentDetailPage } from '../pages/DeploymentDetailPage';
 import { DeploymentsPage } from '../pages/DeploymentsPage';
+import { EnvironmentDetailPage } from '../pages/EnvironmentDetailPage';
+import { EnvironmentsPage } from '../pages/EnvironmentsPage';
 import { BuildsPage } from '../pages/BuildsPage';
 import { CodeReviewDetailPage } from '../pages/CodeReviewDetailPage';
 import { CodeReviewsPage } from '../pages/CodeReviewsPage';
@@ -77,6 +79,8 @@ const router = createBrowserRouter([
           { path: '/builds/:buildId', element: <BuildDetailPage /> },
           { path: '/deployments', element: <DeploymentsPage /> },
           { path: '/deployments/:deploymentId', element: <DeploymentDetailPage /> },
+          { path: '/environments', element: <EnvironmentsPage /> },
+          { path: '/environments/:environmentId', element: <EnvironmentDetailPage /> },
           { path: '/code-reviews', element: <CodeReviewsPage /> },
           { path: '/code-reviews/:reviewId', element: <CodeReviewDetailPage /> },
           { path: '/sprints/:sprintId', element: <SprintDetailPage /> },

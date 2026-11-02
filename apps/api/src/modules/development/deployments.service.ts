@@ -4,13 +4,13 @@ import {
   BuildMetadata,
   CreateDeploymentInput,
   CreateDeploymentResult,
-  CreateEnvironmentInput,
   DeploymentMetricsQuery,
   DeploymentMetricsView,
   DeploymentTrigger,
   DeploymentView,
   EnvironmentKind,
-  EnvironmentView,
+  EnvironmentStatus,
+  PROTECTED_ENVIRONMENT_PERMISSION,
   ListDeploymentsQuery,
   Paginated,
   RollbackDeploymentInput,
@@ -28,6 +28,7 @@ import { PrismaService } from '../../database/prisma.service';
 import {
   ConflictError,
   DuplicateResourceError,
+  ForbiddenError,
   InvalidStateTransitionError,
   NotFoundError,
   ValidationError,
@@ -45,7 +46,10 @@ const DEPLOYMENT = 'Deployment';
  * externalId). A rollback locks the original, requires it `succeeded`,
  * marks it `rolled_back` and records a new succeeded deployment pointing to
  * it; a partial unique index allows one live rollback per original. Lock
- * order: artifact(s), environment, build, release, work items.
+ * order: artifact(s), environment, build, release, work items. Since S6-F1 a
+ * protected environment needs `work_items.manage` to deploy to, move a
+ * deployment in, or roll back, and only active environments take new
+ * deployments or rollbacks.
  */
 @Injectable()
 export class DeploymentsService {
@@ -56,69 +60,6 @@ export class DeploymentsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
-
-  // --- environments ----------------------------------------------------------
-
-  async environments(projectId: string): Promise<EnvironmentView[]> {
-    const authorized = await this.access.authorizeProjectScope(projectId);
-    if (authorized === null) {
-      return [];
-    }
-    const [rows, current] = await Promise.all([
-      this.repo.environments(authorized),
-      this.repo.currentDeployments(authorized),
-    ]);
-    return rows.map((row) => {
-      const live = current.find((deployment) => deployment.environmentId === row.id);
-      return {
-        id: row.id,
-        projectId: row.projectId,
-        name: row.name,
-        kind: row.kind as EnvironmentKind,
-        createdAt: row.createdAt.toISOString(),
-        current:
-          live === undefined
-            ? null
-            : { deploymentId: live.id, identifier: live.identifier, buildId: live.buildId },
-      };
-    });
-  }
-
-  async createEnvironment(input: CreateEnvironmentInput, userId: string): Promise<EnvironmentView> {
-    const projectId = await this.requireProject(input.projectId);
-    try {
-      const row = await this.prisma.runInTransaction(async (tx) => {
-        const created = await this.repo.createEnvironment(
-          { projectId, name: input.name, kind: input.kind, createdById: userId },
-          tx,
-        );
-        await this.audit.record(
-          {
-            action: AuditAction.create,
-            entityType: 'Environment',
-            entityId: created.id,
-            summary: `Created environment ${created.name}`,
-            changes: { name: created.name, kind: created.kind },
-          },
-          tx,
-        );
-        return created;
-      });
-      return {
-        id: row.id,
-        projectId: row.projectId,
-        name: row.name,
-        kind: row.kind as EnvironmentKind,
-        createdAt: row.createdAt.toISOString(),
-        current: null,
-      };
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new DuplicateResourceError('environment', 'name');
-      }
-      throw error;
-    }
-  }
 
   // --- deployments -----------------------------------------------------------
 
@@ -151,6 +92,7 @@ export class DeploymentsService {
         if (environment === null) {
           throw new NotFoundError('Environment');
         }
+        await this.assertDeployable(projectId, environment, true);
         const build =
           input.buildId === undefined
             ? null
@@ -278,6 +220,7 @@ export class DeploymentsService {
     await this.requireVisible(id);
     await this.prisma.runInTransaction(async (tx) => {
       const current = await this.lockDeployment(id, input.version, tx);
+      await this.assertEnvironmentAccess(current, tx);
       if (!canTransitionDeployment(current.status, input.status)) {
         throw new InvalidStateTransitionError(
           DEPLOYMENT,
@@ -319,6 +262,7 @@ export class DeploymentsService {
     await this.requireVisible(id);
     await this.prisma.runInTransaction(async (tx) => {
       const current = await this.lockDeployment(id, input.version, tx);
+      await this.assertEnvironmentAccess(current, tx);
       if (
         input.releaseId !== undefined &&
         input.releaseId !== null &&
@@ -387,6 +331,7 @@ export class DeploymentsService {
         if (environment === null) {
           throw new NotFoundError('Environment');
         }
+        await this.assertDeployable(current.projectId, environment, true);
         let targetBuildId: string | null = null;
         if (input.toBuildId !== undefined) {
           const build = await this.repo.lockBuild(current.projectId, input.toBuildId, tx);
@@ -460,6 +405,44 @@ export class DeploymentsService {
   }
 
   // --- internals -------------------------------------------------------------
+
+  /** Protected environments need the higher permission; new work needs an active one. */
+  private async assertDeployable(
+    projectId: string,
+    environment: { name: string; status: string; protected: boolean },
+    requireActive: boolean,
+  ): Promise<void> {
+    if (
+      environment.protected &&
+      !(await this.access.hasPermission(projectId, PROTECTED_ENVIRONMENT_PERMISSION))
+    ) {
+      throw new ForbiddenError(
+        `Environment ${environment.name} is protected: deploying there needs ${PROTECTED_ENVIRONMENT_PERMISSION}`,
+      );
+    }
+    if (requireActive && environment.status !== 'active') {
+      throw new ConflictError(
+        `Environment ${environment.name} is ${environment.status as EnvironmentStatus}; only active environments take deployments`,
+      );
+    }
+  }
+
+  private async assertEnvironmentAccess(
+    deployment: DevelopmentArtifact,
+    tx: Parameters<Parameters<PrismaService['runInTransaction']>[0]>[0],
+  ): Promise<void> {
+    if (deployment.environmentId === null) {
+      return;
+    }
+    const environment = await this.repo.lockEnvironment(
+      deployment.projectId,
+      deployment.environmentId,
+      tx,
+    );
+    if (environment !== null) {
+      await this.assertDeployable(deployment.projectId, environment, false);
+    }
+  }
 
   private async requireProject(projectId: string): Promise<string> {
     const authorized = await this.access.authorizeProjectScope(projectId);
@@ -549,6 +532,8 @@ export class DeploymentsService {
                 id: environment.id,
                 name: environment.name,
                 kind: environment.kind as EnvironmentKind,
+                status: environment.status as EnvironmentStatus,
+                protected: environment.protected,
               },
         build:
           build === undefined

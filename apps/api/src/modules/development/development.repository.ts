@@ -492,10 +492,12 @@ export class DevelopmentRepository extends TenantAwareRepository {
     });
   }
 
-  /** A live environment of the project, locked for share. */
+  /** A live environment of the project, locked for share (archiving waits). */
   async lockEnvironment(projectId: string, id: string, tx: PrismaTransaction) {
-    const rows = await tx.$queryRaw<Array<{ id: string; name: string }>>`
-      SELECT "id", "name" FROM "environments"
+    const rows = await tx.$queryRaw<
+      Array<{ id: string; name: string; status: string; protected: boolean }>
+    >`
+      SELECT "id", "name", "status", "protected" FROM "environments"
       WHERE "id" = ${id} AND "projectId" = ${projectId} AND "organizationId" = ${this.organizationId}
         AND "deletedAt" IS NULL
       FOR SHARE`;
@@ -512,11 +514,110 @@ export class DevelopmentRepository extends TenantAwareRepository {
     return rows[0] ?? null;
   }
 
-  environments(projectId: string) {
+  environments(
+    projectId: string,
+    filters: {
+      statuses?: readonly string[] | undefined;
+      kind?: string | undefined;
+      protected?: boolean | undefined;
+      search?: string | undefined;
+    } = {},
+  ) {
     return this.prisma.environment.findMany({
-      where: this.active({ projectId }),
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      where: this.active({
+        projectId,
+        ...(filters.statuses === undefined ? {} : { status: { in: [...filters.statuses] } }),
+        ...(filters.kind === undefined ? {} : { kind: filters.kind }),
+        ...(filters.protected === undefined ? {} : { protected: filters.protected }),
+        ...(filters.search === undefined
+          ? {}
+          : {
+              OR: [
+                { name: { contains: filters.search, mode: 'insensitive' as const } },
+                { description: { contains: filters.search, mode: 'insensitive' as const } },
+              ],
+            }),
+      }),
+      orderBy: [{ position: 'asc' }, { name: 'asc' }, { id: 'asc' }],
     });
+  }
+
+  findEnvironment(id: string) {
+    return this.prisma.environment.findFirst({ where: this.active({ id }) });
+  }
+
+  /** A live environment locked for update, then read in full. */
+  async lockEnvironmentForUpdate(id: string, tx: PrismaTransaction) {
+    await tx.$queryRaw`
+      SELECT "id" FROM "environments"
+      WHERE "id" = ${id} AND "organizationId" = ${this.organizationId} AND "deletedAt" IS NULL
+      FOR UPDATE`;
+    return tx.environment.findFirst({ where: this.active({ id }) });
+  }
+
+  updateEnvironment(
+    id: string,
+    data: Prisma.EnvironmentUncheckedUpdateInput,
+    tx: PrismaTransaction,
+  ) {
+    return tx.environment.update({ where: { id }, data: { ...data, version: { increment: 1 } } });
+  }
+
+  /** Every deployment ever recorded there (soft-deleted ones too) and those still in flight. */
+  async environmentHistory(id: string, tx: PrismaTransaction) {
+    const [total, inFlight] = await Promise.all([
+      tx.developmentArtifact.count({
+        where: { organizationId: this.organizationId, environmentId: id },
+      }),
+      tx.developmentArtifact.count({
+        where: this.active({ environmentId: id, status: { in: ['pending', 'deploying'] } }),
+      }),
+    ]);
+    return { total, inFlight };
+  }
+
+  /** Per environment: live deployment count, newest non-cancelled and newest succeeded. */
+  async environmentStats(projectId: string, environmentIds: readonly string[]) {
+    if (environmentIds.length === 0) {
+      return { counts: [], last: [], current: [] };
+    }
+    const where = this.active({
+      projectId,
+      kind: 'deployment' as const,
+      environmentId: { in: [...environmentIds] },
+    });
+    const [counts, last, current] = await Promise.all([
+      this.prisma.developmentArtifact.groupBy({
+        by: ['environmentId'],
+        where,
+        _count: { _all: true },
+      }),
+      this.prisma.developmentArtifact.findMany({
+        where: { ...where, status: { not: 'cancelled' } },
+        distinct: ['environmentId'],
+        orderBy: [{ environmentId: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
+        select: { id: true, identifier: true, status: true, environmentId: true, createdAt: true },
+      }),
+      this.prisma.developmentArtifact.findMany({
+        where: { ...where, status: 'succeeded' },
+        distinct: ['environmentId'],
+        orderBy: [
+          { environmentId: 'asc' },
+          { finishedAt: { sort: 'desc', nulls: 'last' } },
+          { createdAt: 'desc' },
+        ],
+        select: {
+          id: true,
+          identifier: true,
+          environmentId: true,
+          buildId: true,
+          commitSha: true,
+          releaseId: true,
+          finishedAt: true,
+        },
+      }),
+    ]);
+    return { counts, last, current };
   }
 
   environmentsByIds(ids: readonly string[]) {
@@ -529,7 +630,7 @@ export class DevelopmentRepository extends TenantAwareRepository {
   }
 
   createEnvironment(
-    data: { projectId: string; name: string; kind: string; createdById: string },
+    data: Omit<Prisma.EnvironmentUncheckedCreateInput, 'organizationId'>,
     tx: PrismaTransaction,
   ) {
     return tx.environment.create({ data: { ...data, organizationId: this.organizationId } });
@@ -552,15 +653,6 @@ export class DevelopmentRepository extends TenantAwareRepository {
     return this.prisma.developmentArtifact.findMany({
       where: this.active({ rollbackOfId: { in: [...ids] } }),
       select: { id: true, identifier: true, rollbackOfId: true },
-    });
-  }
-
-  /** Newest live succeeded deployment per environment, for "what runs there". */
-  currentDeployments(projectId: string) {
-    return this.prisma.developmentArtifact.findMany({
-      where: this.active({ projectId, kind: 'deployment' as const, status: 'succeeded' }),
-      orderBy: [{ finishedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
-      select: { id: true, identifier: true, buildId: true, environmentId: true },
     });
   }
 

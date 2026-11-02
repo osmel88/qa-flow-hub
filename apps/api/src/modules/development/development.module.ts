@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ProjectsModule } from '../projects/projects.module';
 import { BuildsController } from './builds.controller';
 import { BuildsService } from './builds.service';
-import { DeploymentsController, EnvironmentsController } from './deployments.controller';
+import { DeploymentsController } from './deployments.controller';
 import { DeploymentsService } from './deployments.service';
 import {
   DevelopmentArtifactsController,
@@ -10,6 +10,8 @@ import {
 } from './development.controller';
 import { DevelopmentRepository } from './development.repository';
 import { DevelopmentService } from './development.service';
+import { EnvironmentsController } from './environments.controller';
+import { EnvironmentsService } from './environments.service';
 
 /** Branches, commits, pull requests, builds and deployments of work items (S5-F1). */
 @Module({
@@ -21,7 +23,13 @@ import { DevelopmentService } from './development.service';
     DeploymentsController,
     EnvironmentsController,
   ],
-  providers: [DevelopmentService, DevelopmentRepository, BuildsService, DeploymentsService],
+  providers: [
+    DevelopmentService,
+    DevelopmentRepository,
+    BuildsService,
+    DeploymentsService,
+    EnvironmentsService,
+  ],
   exports: [DevelopmentService],
 })
 export class DevelopmentModule {}

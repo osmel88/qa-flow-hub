@@ -25,11 +25,13 @@ import {
   isTerminalBuildStatus,
   naturalKeyOf,
   statusesFor,
+  PROTECTED_ENVIRONMENT_PERMISSION,
 } from '@qa-flow-hub/shared';
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import {
   ConflictError,
   DuplicateResourceError,
+  ForbiddenError,
   InvalidStateTransitionError,
   NotFoundError,
   ValidationError,
@@ -59,6 +61,29 @@ export class DevelopmentService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
+
+  /** Moving a deployment of a protected environment needs the higher permission (S6-F1). */
+  private async assertProtectedEnvironment(
+    deployment: DevelopmentArtifact,
+    tx: PrismaTransaction,
+  ): Promise<void> {
+    if (deployment.environmentId === null) {
+      return;
+    }
+    const environment = await this.repo.lockEnvironment(
+      deployment.projectId,
+      deployment.environmentId,
+      tx,
+    );
+    if (
+      environment?.protected === true &&
+      !(await this.access.hasPermission(deployment.projectId, PROTECTED_ENVIRONMENT_PERMISSION))
+    ) {
+      throw new ForbiddenError(
+        `Environment ${environment.name} is protected: deploying there needs ${PROTECTED_ENVIRONMENT_PERMISSION}`,
+      );
+    }
+  }
 
   async create(
     input: CreateDevelopmentArtifactInput,
@@ -207,6 +232,7 @@ export class DevelopmentService {
         Object.assign(data, buildStatusChange(current, input.status, new Date()));
       }
       if (current.kind === 'deployment' && input.status !== undefined) {
+        await this.assertProtectedEnvironment(current, tx);
         Object.assign(data, deploymentStatusChange(current, input.status, new Date()));
       }
       assign('title');

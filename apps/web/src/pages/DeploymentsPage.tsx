@@ -1,9 +1,8 @@
-import { DEPLOYMENT_STATUSES, DEVELOPMENT_PROVIDERS, ENVIRONMENT_KINDS } from '@qa-flow-hub/shared';
+import { DEPLOYMENT_STATUSES, DEVELOPMENT_PROVIDERS } from '@qa-flow-hub/shared';
 import type {
   DeploymentStatus,
   DeploymentView,
   DevelopmentProvider,
-  EnvironmentKind,
   ListDeploymentsQuery,
 } from '@qa-flow-hub/shared';
 import type { BadgeTone } from '@qa-flow-hub/ui';
@@ -97,7 +96,10 @@ export function DeploymentsOf({
   filter,
 }: {
   projectId: string;
-  filter: Pick<Partial<ListDeploymentsQuery>, 'buildId' | 'releaseId' | 'workItemId'>;
+  filter: Pick<
+    Partial<ListDeploymentsQuery>,
+    'buildId' | 'releaseId' | 'workItemId' | 'environmentId'
+  >;
 }): React.JSX.Element {
   const deployments = useQuery({
     queryKey: ['deployments', projectId, 'of', filter],
@@ -124,7 +126,6 @@ export function DeploymentsPage(): React.JSX.Element {
   const navigate = useNavigate();
   const { can } = useProjectPermissions(activeProjectId);
   const writable = can('work_items.write');
-  const manage = can('work_items.manage');
   const projectId = activeProjectId ?? '';
   const [filters, setFilters] = useState({
     status: '',
@@ -133,8 +134,6 @@ export function DeploymentsPage(): React.JSX.Element {
     buildId: '',
     provider: '',
   });
-  const [envName, setEnvName] = useState('');
-  const [envKind, setEnvKind] = useState<EnvironmentKind>('staging');
   const [identifier, setIdentifier] = useState('');
   const [environmentId, setEnvironmentId] = useState('');
   const [buildId, setBuildId] = useState('');
@@ -167,7 +166,7 @@ export function DeploymentsPage(): React.JSX.Element {
   });
   const environments = useQuery({
     queryKey: ['environments', activeProjectId],
-    queryFn: () => environmentsApi.list(projectId),
+    queryFn: () => environmentsApi.list({ projectId }),
     enabled,
     staleTime: 0,
     refetchOnMount: 'always',
@@ -190,15 +189,6 @@ export function DeploymentsPage(): React.JSX.Element {
   const onError = (cause: unknown) => {
     setError(cause instanceof ApiError ? cause.message : 'Something went wrong.');
   };
-  const createEnvironment = useMutation({
-    mutationFn: () => environmentsApi.create({ projectId, name: envName.trim(), kind: envKind }),
-    onSuccess: async () => {
-      setEnvName('');
-      setError(null);
-      await queryClient.invalidateQueries({ queryKey: ['environments'] });
-    },
-    onError,
-  });
   const create = useMutation({
     mutationFn: () =>
       deploymentsApi.create({
@@ -220,7 +210,12 @@ export function DeploymentsPage(): React.JSX.Element {
   if (activeProjectId === null) {
     return <NoProject />;
   }
-  const envOptions = (environments.data ?? []).map((env) => ({ value: env.id, label: env.name }));
+  const envOptions = (environments.data ?? [])
+    .filter((env) => env.status === 'active')
+    .map((env) => ({
+      value: env.id,
+      label: env.protected ? `${env.name} (protected)` : env.name,
+    }));
   const buildOptions = (builds.data?.data ?? []).map((build) => ({
     value: build.id,
     label: `${build.identifier ?? build.id} · ${build.status ?? ''}`,
@@ -249,7 +244,9 @@ export function DeploymentsPage(): React.JSX.Element {
         <ul aria-label="Environments">
           {(environments.data ?? []).map((env) => (
             <li key={env.id} data-testid={`environment-${env.name}`}>
-              <strong>{env.name}</strong> <span className="muted">{env.kind}</span> ·{' '}
+              <Link to={`/environments/${env.id}`}>{env.name}</Link>{' '}
+              <span className="muted">{env.kind}</span>{' '}
+              {env.protected && <Badge tone="warning">protected</Badge>} ·{' '}
               {env.current === null ? (
                 'nothing deployed'
               ) : (
@@ -260,35 +257,9 @@ export function DeploymentsPage(): React.JSX.Element {
             </li>
           ))}
         </ul>
-        {manage && (
-          <form
-            aria-label="Add an environment"
-            onSubmit={(event) => {
-              event.preventDefault();
-              createEnvironment.mutate();
-            }}
-          >
-            <TextField
-              label="Environment name"
-              value={envName}
-              required
-              onChange={(event) => {
-                setEnvName(event.target.value);
-              }}
-            />
-            <SelectField
-              label="Environment kind"
-              value={envKind}
-              options={ENVIRONMENT_KINDS.map((value) => ({ value, label: humanize(value) }))}
-              onChange={(event) => {
-                setEnvKind(event.target.value as EnvironmentKind);
-              }}
-            />
-            <Button type="submit" size="sm">
-              Add environment
-            </Button>
-          </form>
-        )}
+        <p>
+          <Link to="/environments">Manage environments</Link>
+        </p>
       </section>
       {metrics.data !== undefined && (
         <section className="card" aria-labelledby="deployment-metrics">

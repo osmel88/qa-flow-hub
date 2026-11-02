@@ -44,10 +44,12 @@ test('a local deployment succeeds, drives development status and rolls back once
   });
 
   await test.step('an environment is added and a deployment reported', async () => {
-    await page.getByRole('link', { name: 'Deployments', exact: true }).click();
-    await expect(page.getByText('No deployments match.')).toBeVisible();
+    await page.getByRole('link', { name: 'Environments', exact: true }).click();
     await page.getByLabel('Environment name').fill('staging');
     await page.getByRole('button', { name: 'Add environment' }).click();
+    await expect(page.getByRole('heading', { name: 'Environment staging' })).toBeVisible();
+    await page.getByRole('link', { name: 'Deployments', exact: true }).click();
+    await expect(page.getByText('No deployments match.')).toBeVisible();
     await expect(page.getByTestId('environment-staging')).toContainText('nothing deployed');
     await page.getByLabel('Deployment identifier').fill('dep-1');
     await page.getByLabel('Target environment').selectOption({ label: 'staging' });

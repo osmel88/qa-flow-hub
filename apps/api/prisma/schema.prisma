@@ -1910,7 +1910,15 @@ model Environment {
   project        Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name           String
   /// development, testing, staging, production or other (CHECK).
-  kind           String                @default("other")
+  kind           String                @default("custom")
+  description    String?
+  status         String                @default("active")
+  protected      Boolean               @default(false)
+  position       Int                   @default(0)
+  url            String?
+  metadata       Json?
+  version        Int                   @default(1)
+  archivedAt     DateTime?
   createdById    String?
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
@@ -1919,5 +1927,6 @@ model Environment {
 
   @@unique([id, projectId])
   @@index([organizationId, projectId])
+  @@index([projectId, status, position])
   @@map("environments")
 }

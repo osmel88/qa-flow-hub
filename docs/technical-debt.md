@@ -1310,8 +1310,18 @@ caller's own tenant, never of another one.
 
 ## 56. Deployments: what S5-F5 leaves (S5-F5)
 
-- **Environments are minimal**: no protection rules, approvals, variables or
-  ordering; Stage 6 owns them.
+- **Environments are minimal**: resolved by S6-F1 (see 57).
 - **Rollback is mock-only**: it records a succeeded deployment at once; a real
   adapter will drive it through `pending → deploying`.
 - **No rollback of a rollback chain view**: only one level is shown.
+
+## 57. Environments: what S6-F1 leaves (S6-F1)
+
+- **One protection rule**: a protected environment needs `work_items.manage`;
+  there are no approvals, required reviewers or deployment windows yet.
+- **Health is derived from deployments only**: no probes of the environment
+  URL and no external monitoring.
+- **No variables or secrets per environment**: metadata refuses anything
+  secret-looking; a secret store stays out of scope.
+- **`health` filter runs after the query**: fine for tens of environments per
+  project, not for thousands.

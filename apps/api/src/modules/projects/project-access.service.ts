@@ -95,6 +95,35 @@ export class ProjectAccessService {
     );
   }
 
+  /**
+   * Whether another member effectively holds `permission` in the project,
+   * with the same rule as `effectivePermissions` (code reviewers, S5-F3).
+   */
+  async memberHasPermission(
+    projectId: string,
+    userId: string,
+    organizationRole: OrganizationRole,
+    permission: Permission,
+  ): Promise<boolean> {
+    if (organizationRole === OrganizationRole.organization_owner) {
+      return true;
+    }
+    const grant = await this.grants.findGrant(projectId, userId);
+    if (grant === null && !seesEveryProject(organizationRole)) {
+      return false;
+    }
+    const role = grant?.role ?? organizationRole;
+    if (role === OrganizationRole.organization_owner) {
+      return true;
+    }
+    const override = (await this.overrides.listForMember(projectId, userId)).find(
+      (entry) => entry.permission === permission,
+    );
+    return override === undefined
+      ? roleHasPermission(role, permission)
+      : override.effect === 'grant';
+  }
+
   async isVisible(projectId: string): Promise<boolean> {
     if (seesEveryProject(this.tenant.requireRole())) {
       return true;

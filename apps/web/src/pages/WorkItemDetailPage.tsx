@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
+  codeReviewsApi,
   developmentApi,
   projectsApi,
   releasesApi,
@@ -22,6 +23,7 @@ import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
+import { CodeReviewRow } from './CodeReviewsPage';
 import { ArtifactSummary } from './DevelopmentPage';
 import { rollupText } from './HierarchyPage';
 import { WORK_ITEM_TONE, parseLabels } from './WorkItemsPage';
@@ -330,6 +332,8 @@ function WorkItemEditor({
 
       <DevelopmentSection item={item} editable={editable} />
 
+      <CodeReviewsSection item={item} />
+
       <section className="card" aria-labelledby="work-item-children">
         <h2 id="work-item-children">Children</h2>
         {item.children.length === 0 ? (
@@ -460,6 +464,33 @@ function ImplementsSection({
 }
 
 /** Branches, commits, pull requests, builds and deployments of the item (S5-F1). */
+/** Code reviews linked to the work item (S5-F3). */
+function CodeReviewsSection({ item }: { item: WorkItemDetailView }): React.JSX.Element {
+  const reviews = useQuery({
+    queryKey: ['code-reviews', 'work-item', item.id],
+    queryFn: () => codeReviewsApi.forWorkItem(item.id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  return (
+    <section className="card" aria-labelledby="work-item-code-reviews">
+      <h2 id="work-item-code-reviews">Code reviews</h2>
+      {(reviews.data ?? []).length === 0 ? (
+        <p className="muted">No code review yet.</p>
+      ) : (
+        <ul aria-label="Code reviews of the work item">
+          {(reviews.data ?? []).map((review) => (
+            <li key={review.id}>
+              <CodeReviewRow review={review} />
+            </li>
+          ))}
+        </ul>
+      )}
+      <Link to="/code-reviews">Open or browse code reviews</Link>
+    </section>
+  );
+}
+
 function DevelopmentSection({
   item,
   editable,

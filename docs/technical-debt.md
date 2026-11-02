@@ -1291,3 +1291,11 @@ caller's own tenant, never of another one.
 - **PR approval is a status**, not reviews: no reviewer counts or required
   approvals until a provider adapter exists.
 - **Badges hide `no_development`** to keep lists readable.
+
+## 54. Code review: what S5-F3 leaves (S5-F3)
+
+- **No line comments or diffs**: comments belong to the review, not to code.
+- **Readiness checks access per reviewer** with one query each; large
+  reviewer lists will want a batched permission resolution.
+- **No re-review on new commits**: a pushed commit does not reset approvals.
+- **No sync yet**: `provider`/`externalId` exist but no adapter fills them.

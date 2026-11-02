@@ -271,6 +271,8 @@ export interface DevelopmentSignal {
   status: string | null;
   occurredAt: string | null;
   createdAt: string;
+  /** Code reviews count as pull request signals but not as artifacts (S5-F3). */
+  source?: 'artifact' | 'code_review';
 }
 
 export interface DevelopmentStatusSummary {
@@ -301,7 +303,9 @@ export function computeDevelopmentStatus(
     number
   >;
   for (const signal of sorted) {
-    counts[signal.kind] += 1;
+    if (signal.source !== 'code_review') {
+      counts[signal.kind] += 1;
+    }
   }
   const first = sorted[0];
   const lastActivityAt = first === undefined ? null : new Date(at(first)).toISOString();

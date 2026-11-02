@@ -290,6 +290,80 @@ export class DevelopmentRepository extends TenantAwareRepository {
       });
       result.set(row.workItemId, list);
     }
+    for (const review of await this.reviewSignals(workItemIds, tx)) {
+      const list = result.get(review.workItemId) ?? [];
+      list.push({
+        id: review.id,
+        kind: 'pull_request',
+        status: review.status === 'approved' ? 'approved' : 'open',
+        occurredAt: review.updatedAt.toISOString(),
+        createdAt: review.createdAt.toISOString(),
+        source: 'code_review',
+      });
+      result.set(review.workItemId, list);
+    }
+    return result;
+  }
+
+  /**
+   * Live, not dismissed code reviews of these work items, linked directly or
+   * through a live pull request linked to the item (S5-F3).
+   */
+  private async reviewSignals(
+    workItemIds: readonly string[],
+    tx?: PrismaTransaction,
+  ): Promise<
+    Array<{ workItemId: string; id: string; status: string; updatedAt: Date; createdAt: Date }>
+  > {
+    const client = tx ?? this.prisma;
+    const live = { deletedAt: null, status: { not: 'dismissed' as const } };
+    const ids = [...workItemIds];
+    const [direct, viaPullRequest] = await Promise.all([
+      client.codeReviewWorkItem.findMany({
+        where: { organizationId: this.organizationId, workItemId: { in: ids }, review: live },
+        select: { workItemId: true, review: true },
+      }),
+      client.codeReview.findMany({
+        where: {
+          organizationId: this.organizationId,
+          ...live,
+          pullRequest: { deletedAt: null, links: { some: { workItemId: { in: ids } } } },
+        },
+        include: { pullRequest: { include: { links: { where: { workItemId: { in: ids } } } } } },
+      }),
+    ]);
+    const seen = new Set<string>();
+    const result: Array<{
+      workItemId: string;
+      id: string;
+      status: string;
+      updatedAt: Date;
+      createdAt: Date;
+    }> = [];
+    const add = (
+      workItemId: string,
+      review: { id: string; status: string; updatedAt: Date; createdAt: Date },
+    ) => {
+      const key = `${workItemId}:${review.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push({
+          workItemId,
+          id: review.id,
+          status: review.status,
+          updatedAt: review.updatedAt,
+          createdAt: review.createdAt,
+        });
+      }
+    };
+    for (const row of direct) {
+      add(row.workItemId, row.review);
+    }
+    for (const review of viaPullRequest) {
+      for (const link of review.pullRequest?.links ?? []) {
+        add(link.workItemId, review);
+      }
+    }
     return result;
   }
 

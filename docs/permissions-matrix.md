@@ -182,6 +182,7 @@ Rules that hold even for an owner:
 | `work_items.read`      |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   ✓    |
 | `work_items.write`     |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   —    |
 | `work_items.manage`    |   ✓   |   ✓   |       ✓       |    —    |   —    |   —    |
+| `code_reviews.review`  |   ✓   |   ✓   |       ✓       |    ✓    |   ✓    |   —    |
 
 The table is `ROLE_PERMISSIONS` in `packages/shared`; it was derived from the
 `@Roles` lists the routes carried before, so an installation without overrides
@@ -218,6 +219,13 @@ archived projects are read-only; every change is an audited `role_change`.
 - Development links (S5-F1): reading needs `work_items.read`; recording,
   editing, linking and unlinking artifacts `work_items.write`; deleting an
   artifact `work_items.manage`; no new permission.
+- Code reviews (S5-F3): reading needs `work_items.read`; opening, editing,
+  reviewers, comments and work item links `work_items.write`; approving,
+  requesting changes or revoking one's own decision the new
+  `code_reviews.review` (default from `tester` up) and being an assigned
+  reviewer who is not the author; dismissing a decision or a review,
+  deleting it and the project approval rule `work_items.manage`. Approvals
+  of a reviewer who lost access or `code_reviews.review` stop counting.
 - `work_items.write` covers creating and editing work items, moving them
   between statuses, in the hierarchy and into open releases;
   `work_items.manage` adds soft deletion. Reordering the backlog and bulk

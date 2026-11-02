@@ -88,6 +88,39 @@ KEY: from → to`). Those writes lock the affected work items `FOR UPDATE`
 - Tests: `development-status.int-spec.ts`, `development-status.test.ts`,
   extended `development.e2e.spec.ts`.
 
+## S5-F3 — Code Review
+
+- Internal, provider-neutral code reviews (`code_reviews`, 1 migration with
+  5 tables: reviews, reviewers, work item links, append-only events and the
+  project approval rule). A review belongs to a project and optionally to a
+  local pull request artifact and to work items; composite foreign keys with
+  `projectId` refuse anything across projects or tenants, RLS isolates
+  tenants, reviews are soft-deleted and `provider`/`externalId` are ready for
+  a future GitHub/GitLab adapter.
+- Statuses `pending`, `in_review`, `changes_requested`, `approved`,
+  `dismissed`. Each reviewer holds one decision; the review status is
+  recomputed from the decisions (`computeCodeReviewStatus()`) under the
+  review row lock, so concurrent approve/request changes/dismiss apply one at
+  a time. `dismissed` closes the review.
+- Rules: the author can never be a reviewer or decide; only assigned
+  reviewers with `code_reviews.review` decide; approving twice answers 409;
+  reviewers must be active members who can review in the project. Required
+  approvals per review, or the project rule (`PUT /code-reviews/settings`,
+  default 1).
+- Merge readiness is derived (`computeMergeReadiness()`): not dismissed, no
+  change request, enough approvals from reviewers who can still review, and
+  the pull request (if any) open or approved; blockers are listed.
+- Development status: a live, not dismissed review of a work item (directly
+  or through its pull request) counts as a pull request signal, `approved`
+  as `pr_approved`; reviews are not counted as artifacts.
+- History: every action writes a `code_review_events` row and an audit
+  entry; development status changes it causes are audited on the work item.
+- Web: Code reviews page (filters by status, reviewer, author; open form),
+  review detail (decide, reviewers, comments, work items, history, dismiss)
+  and a Code reviews section in the work item detail.
+- Tests: `code-reviews.int-spec.ts`, `code-review.contracts.test.ts`,
+  `code-reviews.e2e.spec.ts`.
+
 ## Next candidates
 
 - CI views on top of builds and the existing ingestion of test results.

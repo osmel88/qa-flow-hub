@@ -1,4 +1,10 @@
 import type {
+  CodeReviewDecisionInput,
+  CodeReviewSettingsView,
+  CodeReviewSummaryView,
+  CodeReviewView,
+  CreateCodeReviewInput,
+  ListCodeReviewsQuery,
   CreateDevelopmentArtifactInput,
   DevelopmentArtifactView,
   DevelopmentLinkResult,
@@ -746,4 +752,46 @@ export const kanbanApi = {
 export const backlogApi = {
   get: (params: Partial<BacklogQuery> & { projectId: string }) =>
     apiFetch<BacklogView>(`/backlog${query(params)}`),
+};
+
+export const codeReviewsApi = {
+  list: (params: Partial<ListCodeReviewsQuery> & { projectId: string }) =>
+    apiFetch<Paginated<CodeReviewSummaryView>>(
+      `/code-reviews${query({ pageSize: 100, ...params })}`,
+    ),
+  get: (id: string) => apiFetch<CodeReviewView>(`/code-reviews/${id}`),
+  create: (body: Partial<CreateCodeReviewInput> & { projectId: string; title: string }) =>
+    apiFetch<CodeReviewView>('/code-reviews', { method: 'POST', body }),
+  remove: (id: string) => apiFetch<void>(`/code-reviews/${id}`, { method: 'DELETE' }),
+  decide: (id: string, body: CodeReviewDecisionInput) =>
+    apiFetch<CodeReviewView>(`/code-reviews/${id}/decision`, { method: 'POST', body }),
+  addReviewer: (id: string, userId: string) =>
+    apiFetch<CodeReviewView>(`/code-reviews/${id}/reviewers`, { method: 'POST', body: { userId } }),
+  removeReviewer: (id: string, userId: string) =>
+    apiFetch<void>(`/code-reviews/${id}/reviewers/${userId}`, { method: 'DELETE' }),
+  dismissDecision: (id: string, userId: string) =>
+    apiFetch<CodeReviewView>(`/code-reviews/${id}/reviewers/${userId}/dismiss`, {
+      method: 'POST',
+      body: {},
+    }),
+  dismiss: (id: string) =>
+    apiFetch<CodeReviewView>(`/code-reviews/${id}/dismiss`, { method: 'POST', body: {} }),
+  comment: (id: string, comment: string) =>
+    apiFetch<CodeReviewView>(`/code-reviews/${id}/comments`, { method: 'POST', body: { comment } }),
+  link: (id: string, workItemId: string) =>
+    apiFetch<{ created: boolean }>(`/code-reviews/${id}/work-items`, {
+      method: 'POST',
+      body: { workItemId },
+    }),
+  unlink: (id: string, workItemId: string) =>
+    apiFetch<void>(`/code-reviews/${id}/work-items/${workItemId}`, { method: 'DELETE' }),
+  forWorkItem: (workItemId: string) =>
+    apiFetch<CodeReviewSummaryView[]>(`/work-items/${workItemId}/code-reviews`),
+  settings: (projectId: string) =>
+    apiFetch<CodeReviewSettingsView>(`/code-reviews/settings${query({ projectId })}`),
+  updateSettings: (projectId: string, requiredApprovals: number) =>
+    apiFetch<CodeReviewSettingsView>('/code-reviews/settings', {
+      method: 'PUT',
+      body: { projectId, requiredApprovals },
+    }),
 };

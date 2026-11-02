@@ -77,6 +77,7 @@ export const PERMISSIONS = [
   'work_items.read',
   'work_items.write',
   'work_items.manage',
+  'code_reviews.review',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -289,6 +290,12 @@ export const PERMISSION_CATALOG: readonly PermissionDescriptor[] = [
     label: 'Manage',
     description: 'Delete work items',
   },
+  {
+    permission: 'code_reviews.review',
+    module: 'work_items',
+    label: 'Review code',
+    description: 'Approve or request changes on code reviews as an assigned reviewer',
+  },
 ];
 
 export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
@@ -333,6 +340,7 @@ const TESTER: readonly Permission[] = [
   'attachments.upload',
   'attachments.delete',
   'work_items.write',
+  'code_reviews.review',
 ];
 
 const QA_LEAD: readonly Permission[] = [

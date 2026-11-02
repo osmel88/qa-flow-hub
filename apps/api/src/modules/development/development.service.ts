@@ -69,7 +69,7 @@ export class DevelopmentService {
         if (items.length !== workItemIds.length) {
           throw new NotFoundError('Work item');
         }
-        const before = await this.statusesIn(items, tx);
+        const before = await this.captureStatuses(items, tx);
         const row = await this.repo.create(
           {
             projectId,
@@ -200,7 +200,7 @@ export class DevelopmentService {
       }
       if (Object.keys(data).length > 0) {
         const items = await this.repo.lockLinkedWorkItems(id, tx);
-        const before = await this.statusesIn(items, tx);
+        const before = await this.captureStatuses(items, tx);
         await this.repo.update(id, data, tx);
         await this.audit.record(
           {
@@ -232,7 +232,7 @@ export class DevelopmentService {
         throw new NotFoundError(ARTIFACT);
       }
       const items = await this.repo.lockLinkedWorkItems(id, tx);
-      const before = await this.statusesIn(items, tx);
+      const before = await this.captureStatuses(items, tx);
       if (!(await this.repo.softDelete(id, tx))) {
         throw new NotFoundError(ARTIFACT);
       }
@@ -252,7 +252,7 @@ export class DevelopmentService {
   async link(ends: LinkEnds, userId: string): Promise<DevelopmentLinkResult> {
     return this.prisma.runInTransaction(async (tx) => {
       const { artifact, workItem } = await this.lockEnds(ends, tx);
-      const before = await this.statusesIn([workItem], tx);
+      const before = await this.captureStatuses([workItem], tx);
       const created =
         (await this.repo.insertLinks(
           artifact.projectId,
@@ -273,7 +273,7 @@ export class DevelopmentService {
   async unlink(ends: LinkEnds): Promise<void> {
     await this.prisma.runInTransaction(async (tx) => {
       const { artifact, workItem } = await this.lockEnds(ends, tx);
-      const before = await this.statusesIn([workItem], tx);
+      const before = await this.captureStatuses([workItem], tx);
       if ((await this.repo.removeLink(workItem.id, artifact.id, tx)) !== null) {
         await this.auditLink(AuditAction.delete, artifact, workItem, tx);
         await this.auditStatusChanges([workItem], before, tx);
@@ -361,7 +361,7 @@ export class DevelopmentService {
     return { projectId: authorized, workItems, artifacts };
   }
 
-  private async statusesIn(
+  async captureStatuses(
     items: ReadonlyArray<{ id: string }>,
     tx: PrismaTransaction,
   ): Promise<Map<string, DevelopmentStatus>> {
@@ -373,12 +373,12 @@ export class DevelopmentService {
   }
 
   /** The status is derived, but its changes are worth an audit entry each. */
-  private async auditStatusChanges(
+  async auditStatusChanges(
     items: ReadonlyArray<{ id: string; key: string }>,
     before: ReadonlyMap<string, DevelopmentStatus>,
     tx: PrismaTransaction,
   ): Promise<void> {
-    const after = await this.statusesIn(items, tx);
+    const after = await this.captureStatuses(items, tx);
     for (const item of items) {
       const from = before.get(item.id) ?? 'no_development';
       const to = after.get(item.id) ?? 'no_development';

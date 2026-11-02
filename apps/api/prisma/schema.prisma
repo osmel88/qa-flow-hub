@@ -471,6 +471,8 @@ model Organization {
   sprints                Sprint[]
   kanbanColumnSettings   KanbanColumnSetting[]
   developmentArtifacts   DevelopmentArtifact[]
+  codeReviews            CodeReview[]
+  codeReviewSettings     CodeReviewSetting[]
   defectWorkflows        DefectWorkflow[]
 
   @@index([deletedAt])
@@ -583,6 +585,8 @@ model Project {
   sprints                Sprint[]
   kanbanColumnSettings   KanbanColumnSetting[]
   developmentArtifacts   DevelopmentArtifact[]
+  codeReviews            CodeReview[]
+  codeReviewSetting      CodeReviewSetting?
   defectWorkflow         DefectWorkflow?
 
   @@unique([organizationId, key])
@@ -1588,6 +1592,7 @@ model WorkItem {
 
   requirementLinks RequirementWorkItemLink[]
   developmentLinks WorkItemDevelopmentLink[]
+  codeReviewLinks  CodeReviewWorkItem[]
 
   /// Optimistic concurrency: bumped by every update.
   version         Int       @default(1)
@@ -1732,7 +1737,8 @@ model DevelopmentArtifact {
   updatedAt      DateTime                @updatedAt
   deletedAt      DateTime?
 
-  links WorkItemDevelopmentLink[]
+  links       WorkItemDevelopmentLink[]
+  codeReviews CodeReview[]
 
   @@unique([id, projectId])
   @@index([organizationId, projectId, kind])
@@ -1756,4 +1762,117 @@ model WorkItemDevelopmentLink {
   @@index([organizationId, projectId])
   @@index([artifactId])
   @@map("work_item_development_links")
+}
+
+enum CodeReviewStatus {
+  pending
+  in_review
+  changes_requested
+  approved
+  dismissed
+}
+
+enum CodeReviewDecision {
+  pending
+  approved
+  changes_requested
+  dismissed
+}
+
+/// Internal, provider-neutral code review (S5-F3). `status` is recomputed from
+/// the reviewer decisions under the review row lock (`dismissed` is explicit).
+model CodeReview {
+  id                String               @id @default(cuid())
+  organizationId    String
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId         String
+  project           Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title             String
+  summary           String?
+  status            CodeReviewStatus     @default(pending)
+  authorId          String
+  pullRequestId     String?
+  pullRequest       DevelopmentArtifact? @relation(fields: [pullRequestId, projectId], references: [id, projectId], onDelete: Restrict)
+  /// Null: the project rule applies.
+  requiredApprovals Int?
+  provider          DevelopmentProvider  @default(local)
+  externalId        String?
+  version           Int                  @default(1)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  deletedAt         DateTime?
+
+  reviewers CodeReviewReviewer[]
+  workItems CodeReviewWorkItem[]
+  events    CodeReviewEvent[]
+
+  @@unique([id, projectId])
+  @@index([organizationId, projectId, status])
+  @@index([pullRequestId])
+  @@map("code_reviews")
+}
+
+model CodeReviewReviewer {
+  id             String             @id @default(cuid())
+  organizationId String
+  projectId      String
+  reviewId       String
+  review         CodeReview         @relation(fields: [reviewId, projectId], references: [id, projectId], onDelete: Cascade)
+  userId         String
+  decision       CodeReviewDecision @default(pending)
+  comment        String?
+  decidedAt      DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([reviewId, userId])
+  @@index([organizationId, userId])
+  @@map("code_review_reviewers")
+}
+
+model CodeReviewWorkItem {
+  id             String     @id @default(cuid())
+  organizationId String
+  projectId      String
+  reviewId       String
+  review         CodeReview @relation(fields: [reviewId, projectId], references: [id, projectId], onDelete: Cascade)
+  workItemId     String
+  workItem       WorkItem   @relation(fields: [workItemId, projectId], references: [id, projectId], onDelete: Cascade)
+  createdById    String?
+  createdAt      DateTime   @default(now())
+
+  @@unique([reviewId, workItemId])
+  @@index([workItemId])
+  @@map("code_review_work_items")
+}
+
+/// Append-only history of a review: decisions, reviewer changes, comments.
+model CodeReviewEvent {
+  id             String     @id @default(cuid())
+  organizationId String
+  projectId      String
+  reviewId       String
+  review         CodeReview @relation(fields: [reviewId, projectId], references: [id, projectId], onDelete: Cascade)
+  actorId        String?
+  kind           String
+  subjectId      String?
+  comment        String?
+  createdAt      DateTime   @default(now())
+
+  @@index([reviewId, createdAt])
+  @@map("code_review_events")
+}
+
+model CodeReviewSetting {
+  id                String       @id @default(cuid())
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId         String       @unique
+  project           Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requiredApprovals Int          @default(1)
+  updatedById       String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@map("code_review_settings")
 }

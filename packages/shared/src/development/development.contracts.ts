@@ -32,7 +32,7 @@ export const DEVELOPMENT_STATUSES = {
   commit: [],
   pull_request: ['draft', 'open', 'approved', 'merged', 'closed'],
   build: ['queued', 'running', 'passed', 'failed', 'cancelled'],
-  deployment: ['pending', 'in_progress', 'succeeded', 'failed', 'rolled_back'],
+  deployment: ['pending', 'deploying', 'succeeded', 'failed', 'rolled_back', 'cancelled'],
 } as const satisfies Record<DevelopmentArtifactKind, readonly string[]>;
 
 export const ALL_DEVELOPMENT_STATUSES = [

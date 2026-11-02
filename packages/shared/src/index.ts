@@ -33,5 +33,6 @@ export * from './sprints/board.contracts.js';
 export * from './kanban/kanban.contracts.js';
 export * from './development/development.contracts.js';
 export * from './development/build.contracts.js';
+export * from './development/deployment.contracts.js';
 export * from './code-reviews/code-review.contracts.js';
 export * from './requirements/requirement-links.contracts.js';

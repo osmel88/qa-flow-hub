@@ -149,6 +149,38 @@ KEY: from → to`). Those writes lock the affected work items `FOR UPDATE`
 - Tests: `builds.int-spec.ts`, `build.contracts.test.ts`,
   `builds.e2e.spec.ts`.
 
+## S5-F5 — Deployment
+
+- A deployment stays the `deployment` development artifact of S5-F1. 1
+  migration adds a minimal per-project `environments` table (name, kind;
+  RLS, no hard delete; Stage 6 extends it) and the deployment fields
+  `environmentId`, `buildId`, `rollbackOfId`, `actorId`, reusing the run
+  fields of S5-F4. Composite foreign keys with `projectId` keep the
+  environment, build, release and original deployment in the project.
+  Status `in_progress` becomes `deploying`; `cancelled` is new; triggers are
+  checked per kind.
+- Statuses `pending`, `deploying`, `succeeded`, `failed`, `rolled_back`,
+  `cancelled`; `DEPLOYMENT_TRANSITIONS` (pending → deploying/failed/cancelled,
+  deploying → succeeded/failed/cancelled); terminals never move, and
+  `rolled_back` is only reachable through the rollback route.
+- `POST /deployments` is idempotent per (provider, externalId).
+- `POST /deployments/:id/rollback` (local/mock): locks the original, requires
+  it `succeeded`, marks it `rolled_back` and records a succeeded rollback
+  deployment (trigger `rollback`) to the given build or the previous build of
+  the environment. One live rollback per original (partial unique index):
+  repeated or concurrent rollbacks answer 409.
+- Filters by status, environment, release, build, provider and work item;
+  `GET /deployments/metrics` (success/failure rate, rollbacks, durations);
+  `GET/POST /environments` (create needs `work_items.manage`) with what runs
+  in each environment.
+- Development status: a succeeded deployment is `deployed`; a rolled back one
+  no longer counts.
+- Web: Deployments page (environments, metrics, filters, report form),
+  deployment detail (transitions, rollback, build/release/work items) and
+  deployment sections in build, release and work item detail.
+- Tests: `deployments.int-spec.ts`, `deployment.contracts.test.ts`,
+  `deployments.e2e.spec.ts`.
+
 ## Next candidates
 
 - CI views on top of builds and the existing ingestion of test results.

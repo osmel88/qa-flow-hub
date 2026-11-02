@@ -31,6 +31,9 @@ export interface ArtifactFilters {
   branchName?: string | undefined;
   /** A release id, or `null` for builds of no release. */
   releaseId?: string | null | undefined;
+  /** Deployments (S5-F5). */
+  environmentId?: string | undefined;
+  buildId?: string | undefined;
 }
 
 interface LockedRow {
@@ -218,6 +221,8 @@ export class DevelopmentRepository extends TenantAwareRepository {
       ...(filters.kind === undefined ? {} : { kind: filters.kind }),
       ...(filters.branchName === undefined ? {} : { branchName: filters.branchName }),
       ...(filters.releaseId === undefined ? {} : { releaseId: filters.releaseId }),
+      ...(filters.environmentId === undefined ? {} : { environmentId: filters.environmentId }),
+      ...(filters.buildId === undefined ? {} : { buildId: filters.buildId }),
       ...(filters.provider === undefined ? {} : { provider: filters.provider }),
       ...(filters.status === undefined ? {} : { status: filters.status }),
       ...(filters.workItemId === undefined
@@ -472,6 +477,133 @@ export class DevelopmentRepository extends TenantAwareRepository {
         ...(filters.releaseId === undefined ? {} : { releaseId: filters.releaseId }),
       }),
       select: { status: true, startedAt: true, finishedAt: true },
+    });
+  }
+
+  // --- Deployments and environments (S5-F5) -----------------------------------
+
+  findDeploymentByExternalId(
+    projectId: string,
+    provider: DevelopmentArtifact['provider'],
+    externalId: string,
+  ): Promise<DevelopmentArtifact | null> {
+    return this.prisma.developmentArtifact.findFirst({
+      where: this.active({ projectId, provider, kind: 'deployment' as const, externalId }),
+    });
+  }
+
+  /** A live environment of the project, locked for share. */
+  async lockEnvironment(projectId: string, id: string, tx: PrismaTransaction) {
+    const rows = await tx.$queryRaw<Array<{ id: string; name: string }>>`
+      SELECT "id", "name" FROM "environments"
+      WHERE "id" = ${id} AND "projectId" = ${projectId} AND "organizationId" = ${this.organizationId}
+        AND "deletedAt" IS NULL
+      FOR SHARE`;
+    return rows[0] ?? null;
+  }
+
+  /** A live build of the project, locked for share. */
+  async lockBuild(projectId: string, id: string, tx: PrismaTransaction) {
+    const rows = await tx.$queryRaw<Array<{ id: string; commitSha: string | null }>>`
+      SELECT "id", "commitSha" FROM "development_artifacts"
+      WHERE "id" = ${id} AND "projectId" = ${projectId} AND "kind" = 'build'
+        AND "organizationId" = ${this.organizationId} AND "deletedAt" IS NULL
+      FOR SHARE`;
+    return rows[0] ?? null;
+  }
+
+  environments(projectId: string) {
+    return this.prisma.environment.findMany({
+      where: this.active({ projectId }),
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  environmentsByIds(ids: readonly string[]) {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.prisma.environment.findMany({
+      where: { organizationId: this.organizationId, id: { in: [...ids] } },
+    });
+  }
+
+  createEnvironment(
+    data: { projectId: string; name: string; kind: string; createdById: string },
+    tx: PrismaTransaction,
+  ) {
+    return tx.environment.create({ data: { ...data, organizationId: this.organizationId } });
+  }
+
+  artifactsByIds(ids: readonly string[]) {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.prisma.developmentArtifact.findMany({
+      where: { organizationId: this.organizationId, id: { in: [...ids] }, deletedAt: null },
+      select: { id: true, identifier: true, status: true, rollbackOfId: true },
+    });
+  }
+
+  rollbacksOf(ids: readonly string[]) {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.prisma.developmentArtifact.findMany({
+      where: this.active({ rollbackOfId: { in: [...ids] } }),
+      select: { id: true, identifier: true, rollbackOfId: true },
+    });
+  }
+
+  /** Newest live succeeded deployment per environment, for "what runs there". */
+  currentDeployments(projectId: string) {
+    return this.prisma.developmentArtifact.findMany({
+      where: this.active({ projectId, kind: 'deployment' as const, status: 'succeeded' }),
+      orderBy: [{ finishedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+      select: { id: true, identifier: true, buildId: true, environmentId: true },
+    });
+  }
+
+  /** The succeeded or rolled-back deployment that ran in the environment before this one. */
+  previousDeployment(projectId: string, environmentId: string, before: Date, excludeId: string) {
+    return this.prisma.developmentArtifact.findFirst({
+      where: this.active({
+        projectId,
+        kind: 'deployment' as const,
+        environmentId,
+        id: { not: excludeId },
+        status: { in: ['succeeded', 'rolled_back'] },
+        createdAt: { lt: before },
+        buildId: { not: null },
+      }),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { buildId: true },
+    });
+  }
+
+  deploymentRows(
+    projectId: string,
+    filters: { environmentId?: string | undefined; releaseId?: string | undefined; since: Date },
+  ) {
+    return this.prisma.developmentArtifact.findMany({
+      where: this.active({
+        projectId,
+        kind: 'deployment' as const,
+        createdAt: { gte: filters.since },
+        ...(filters.environmentId === undefined ? {} : { environmentId: filters.environmentId }),
+        ...(filters.releaseId === undefined ? {} : { releaseId: filters.releaseId }),
+      }),
+      select: { status: true, startedAt: true, finishedAt: true, rollbackOfId: true },
+    });
+  }
+
+  users(ids: readonly string[]) {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.prisma.user.findMany({
+      where: { id: { in: [...ids] } },
+      select: { id: true, fullName: true },
     });
   }
 }

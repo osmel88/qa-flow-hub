@@ -1,4 +1,13 @@
 import type {
+  CreateDeploymentInput,
+  CreateDeploymentResult,
+  CreateEnvironmentInput,
+  DeploymentMetricsView,
+  DeploymentView,
+  EnvironmentView,
+  ListDeploymentsQuery,
+  RollbackDeploymentInput,
+  TransitionDeploymentInput,
   BuildMetricsView,
   BuildView,
   CreateBuildInput,
@@ -815,4 +824,29 @@ export const buildsApi = {
     apiFetch<BuildView>(`/builds/${id}`, { method: 'PATCH', body }),
   transition: (id: string, body: TransitionBuildInput) =>
     apiFetch<BuildView>(`/builds/${id}/transition`, { method: 'POST', body }),
+};
+
+export const environmentsApi = {
+  list: (projectId: string) => apiFetch<EnvironmentView[]>(`/environments${query({ projectId })}`),
+  create: (body: Partial<CreateEnvironmentInput> & { projectId: string; name: string }) =>
+    apiFetch<EnvironmentView>('/environments', { method: 'POST', body }),
+};
+
+export const deploymentsApi = {
+  list: (params: Partial<ListDeploymentsQuery> & { projectId: string }) =>
+    apiFetch<Paginated<DeploymentView>>(`/deployments${query({ pageSize: 100, ...params })}`),
+  get: (id: string) => apiFetch<DeploymentView>(`/deployments/${id}`),
+  metrics: (projectId: string, params: { environmentId?: string; releaseId?: string } = {}) =>
+    apiFetch<DeploymentMetricsView>(`/deployments/metrics${query({ projectId, ...params })}`),
+  create: (
+    body: Partial<CreateDeploymentInput> & {
+      projectId: string;
+      identifier: string;
+      environmentId: string;
+    },
+  ) => apiFetch<CreateDeploymentResult>('/deployments', { method: 'POST', body }),
+  transition: (id: string, body: TransitionDeploymentInput) =>
+    apiFetch<DeploymentView>(`/deployments/${id}/transition`, { method: 'POST', body }),
+  rollback: (id: string, body: RollbackDeploymentInput) =>
+    apiFetch<DeploymentView>(`/deployments/${id}/rollback`, { method: 'POST', body }),
 };

@@ -10,6 +10,7 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { BuildList } from './BuildsPage';
+import { DeploymentsOf } from './DeploymentsPage';
 import { RELEASE_TONE } from './ReleasesPage';
 
 const ACTIONS: Array<{
@@ -154,6 +155,7 @@ export function ReleaseDetailPage(): React.JSX.Element {
           </section>
 
           <ReleaseBuilds projectId={release.projectId} releaseId={release.id} />
+          <DeploymentsOf projectId={release.projectId} filter={{ releaseId: release.id }} />
 
           <section className="card" aria-labelledby="release-trace">
             <h2 id="release-trace">Traceability</h2>

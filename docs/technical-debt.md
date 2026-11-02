@@ -1307,3 +1307,11 @@ caller's own tenant, never of another one.
 - **Metrics are computed per request** over the window; no rollup table.
 - **No re-run**: a terminal build never moves; a re-run is a new build.
 - **Pipelines and stages are not modelled**, only whole builds.
+
+## 56. Deployments: what S5-F5 leaves (S5-F5)
+
+- **Environments are minimal**: no protection rules, approvals, variables or
+  ordering; Stage 6 owns them.
+- **Rollback is mock-only**: it records a succeeded deployment at once; a real
+  adapter will drive it through `pending → deploying`.
+- **No rollback of a rollback chain view**: only one level is shown.

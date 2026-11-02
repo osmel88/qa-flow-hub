@@ -10,6 +10,7 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { BUILD_TONE, formatDuration } from './BuildsPage';
+import { DeploymentsOf } from './DeploymentsPage';
 
 /** A build: lifecycle, release, work items and related branch/commit (S5-F4). */
 export function BuildDetailPage(): React.JSX.Element {
@@ -221,6 +222,8 @@ export function BuildDetailPage(): React.JSX.Element {
               </form>
             )}
           </section>
+
+          <DeploymentsOf projectId={data.projectId} filter={{ buildId: data.id }} />
 
           {(data.metadata !== null || data.logSummary !== null) && (
             <section className="card" aria-labelledby="build-output">

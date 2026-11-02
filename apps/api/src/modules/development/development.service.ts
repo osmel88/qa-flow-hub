@@ -16,8 +16,11 @@ import {
   UpdateDevelopmentArtifactInput,
   WorkItemDevelopmentView,
   BuildStatus,
+  DeploymentStatus,
   artifactReference,
   canTransitionBuild,
+  canTransitionDeployment,
+  isFinishedDeploymentStatus,
   computeDevelopmentStatus,
   isTerminalBuildStatus,
   naturalKeyOf,
@@ -202,6 +205,9 @@ export class DevelopmentService {
       };
       if (current.kind === 'build' && input.status !== undefined) {
         Object.assign(data, buildStatusChange(current, input.status, new Date()));
+      }
+      if (current.kind === 'deployment' && input.status !== undefined) {
+        Object.assign(data, deploymentStatusChange(current, input.status, new Date()));
       }
       assign('title');
       assign('url');
@@ -531,6 +537,33 @@ export function buildStatusChange(
     return { startedAt: current.startedAt ?? at };
   }
   if (isTerminalBuildStatus(next)) {
+    return { startedAt: current.startedAt ?? at, finishedAt: at };
+  }
+  return {};
+}
+
+/** The same for deployments (S5-F5); rollbacks only go through their route. */
+export function deploymentStatusChange(
+  current: Pick<DevelopmentArtifact, 'status' | 'startedAt'>,
+  next: string | null,
+  at: Date,
+): Prisma.DevelopmentArtifactUncheckedUpdateManyInput {
+  if (next === null) {
+    throw new ValidationError('A deployment status cannot be cleared');
+  }
+  if (next === current.status) {
+    return {};
+  }
+  if (
+    next === 'rolled_back' ||
+    !canTransitionDeployment(current.status, next as DeploymentStatus)
+  ) {
+    throw new InvalidStateTransitionError('Deployment', current.status ?? 'pending', next);
+  }
+  if (next === 'deploying') {
+    return { startedAt: current.startedAt ?? at };
+  }
+  if (isFinishedDeploymentStatus(next)) {
     return { startedAt: current.startedAt ?? at, finishedAt: at };
   }
   return {};

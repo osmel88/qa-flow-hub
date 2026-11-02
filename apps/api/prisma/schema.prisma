@@ -471,6 +471,7 @@ model Organization {
   sprints                Sprint[]
   kanbanColumnSettings   KanbanColumnSetting[]
   developmentArtifacts   DevelopmentArtifact[]
+  environments           Environment[]
   codeReviews            CodeReview[]
   codeReviewSettings     CodeReviewSetting[]
   defectWorkflows        DefectWorkflow[]
@@ -585,6 +586,7 @@ model Project {
   sprints                Sprint[]
   kanbanColumnSettings   KanbanColumnSetting[]
   developmentArtifacts   DevelopmentArtifact[]
+  environments           Environment[]
   codeReviews            CodeReview[]
   codeReviewSetting      CodeReviewSetting?
   defectWorkflow         DefectWorkflow?
@@ -1740,6 +1742,16 @@ model DevelopmentArtifact {
   release        Release?                @relation(fields: [releaseId, projectId], references: [id, projectId], onDelete: Restrict)
   metadata       Json?
   logSummary     String?
+  /// Deployment-only fields (S5-F5).
+  environmentId  String?
+  environmentRef Environment?            @relation(fields: [environmentId, projectId], references: [id, projectId], onDelete: Restrict)
+  buildId        String?
+  build          DevelopmentArtifact?    @relation("DeploymentBuild", fields: [buildId, projectId], references: [id, projectId], onDelete: Restrict)
+  deployments    DevelopmentArtifact[]   @relation("DeploymentBuild")
+  rollbackOfId   String?
+  rollbackOf     DevelopmentArtifact?    @relation("DeploymentRollback", fields: [rollbackOfId, projectId], references: [id, projectId], onDelete: Restrict)
+  rollbacks      DevelopmentArtifact[]   @relation("DeploymentRollback")
+  actorId        String?
   version        Int                     @default(1)
   createdById    String?
   createdAt      DateTime                @default(now())
@@ -1752,6 +1764,8 @@ model DevelopmentArtifact {
   @@unique([id, projectId])
   @@index([organizationId, projectId, kind])
   @@index([organizationId, projectId, releaseId])
+  @@index([environmentId])
+  @@index([buildId])
   @@map("development_artifacts")
 }
 
@@ -1885,4 +1899,25 @@ model CodeReviewSetting {
   updatedAt         DateTime     @updatedAt
 
   @@map("code_review_settings")
+}
+
+/// Minimal deployment target of a project (S5-F5); Stage 6 extends it.
+model Environment {
+  id             String                @id @default(cuid())
+  organizationId String
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String
+  project        Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           String
+  /// development, testing, staging, production or other (CHECK).
+  kind           String                @default("other")
+  createdById    String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  deletedAt      DateTime?
+  deployments    DevelopmentArtifact[]
+
+  @@unique([id, projectId])
+  @@index([organizationId, projectId])
+  @@map("environments")
 }

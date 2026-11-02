@@ -27,6 +27,7 @@ import { CodeReviewRow } from './CodeReviewsPage';
 import { ArtifactSummary } from './DevelopmentPage';
 import { rollupText } from './HierarchyPage';
 import { WORK_ITEM_TONE, parseLabels } from './WorkItemsPage';
+import { DeploymentsOf } from './DeploymentsPage';
 
 interface Draft {
   title: string;
@@ -333,6 +334,7 @@ function WorkItemEditor({
       <DevelopmentSection item={item} editable={editable} />
 
       <CodeReviewsSection item={item} />
+      <DeploymentsOf projectId={item.projectId} filter={{ workItemId: item.id }} />
 
       <section className="card" aria-labelledby="work-item-children">
         <h2 id="work-item-children">Children</h2>

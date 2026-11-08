@@ -51,7 +51,27 @@ function DeploymentLine({ deployment }: { deployment: PipelineDeploymentRef }): 
     <>
       <Link to={`/deployments/${deployment.id}`}>{deployment.identifier}</Link> ·{' '}
       {humanize(deployment.status)}
-      {deployment.isRollback && ' (rollback)'}
+      {deployment.rollback !== null && (
+        <span data-testid={`rollback-${deployment.identifier ?? deployment.id}`}>
+          {' · Rolled back from '}
+          {deployment.rollback.from === null ? (
+            'unknown'
+          ) : (
+            <Link to={`/deployments/${deployment.rollback.from.id}`}>
+              {deployment.rollback.from.identifier}
+            </Link>
+          )}
+          {' to '}
+          {deployment.rollback.to === null ? (
+            'an earlier build'
+          ) : (
+            <Link to={`/deployments/${deployment.rollback.to.id}`}>
+              {deployment.rollback.to.identifier}
+            </Link>
+          )}
+          {deployment.rollback.emergency && ' (emergency)'}
+        </span>
+      )}
       <br />
       <span className="muted">
         {new Date(at).toLocaleString()}

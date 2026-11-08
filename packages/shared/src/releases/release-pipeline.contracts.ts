@@ -186,6 +186,13 @@ export interface PipelineDeploymentRef {
   status: DeploymentStatus;
   trigger: string | null;
   isRollback: boolean;
+  /** For a rollback: where it came from and went back to (S6-F5). */
+  rollback: {
+    from: { id: string; identifier: string | null } | null;
+    to: { id: string; identifier: string | null } | null;
+    reason: string | null;
+    emergency: boolean;
+  } | null;
   build: { id: string; identifier: string | null } | null;
   commitSha: string | null;
   actor: { id: string; fullName: string } | null;

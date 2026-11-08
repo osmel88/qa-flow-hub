@@ -1,6 +1,6 @@
 import { DEPLOYMENT_TRANSITIONS } from '@qa-flow-hub/shared';
 import type { DeploymentStatus } from '@qa-flow-hub/shared';
-import { Badge, Button, DataState } from '@qa-flow-hub/ui';
+import { Badge, Button, DataState, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -18,6 +18,7 @@ export function DeploymentDetailPage(): React.JSX.Element {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
   const deployment = useQuery({
     queryKey: ['deployment', deploymentId],
     queryFn: () => deploymentsApi.get(deploymentId),
@@ -49,6 +50,7 @@ export function DeploymentDetailPage(): React.JSX.Element {
   const rollback = useMutation({
     mutationFn: () =>
       deploymentsApi.rollback(deploymentId, {
+        reason: reason.trim(),
         ...(deployment.data === undefined ? {} : { version: deployment.data.version }),
       }),
     onSuccess: async (created) => {
@@ -131,13 +133,28 @@ export function DeploymentDetailPage(): React.JSX.Element {
                 )}
               </li>
               {data.rollbackOf !== null && (
-                <li>
-                  Rollback of{' '}
+                <li data-testid="deployment-rollback">
+                  Rolled back from{' '}
                   <Link to={`/deployments/${data.rollbackOf.id}`}>
                     {data.rollbackOf.identifier}
-                  </Link>
+                  </Link>{' '}
+                  to{' '}
+                  {data.rollbackTarget === null ? (
+                    'an earlier build'
+                  ) : (
+                    <Link to={`/deployments/${data.rollbackTarget.id}`}>
+                      {data.rollbackTarget.identifier}
+                    </Link>
+                  )}
+                  {data.rollbackEmergency && (
+                    <>
+                      {' '}
+                      <Badge tone="danger">emergency</Badge>
+                    </>
+                  )}
                 </li>
               )}
+              {data.rollbackReason !== null && <li>Rollback reason: {data.rollbackReason}</li>}
               {data.rolledBackBy !== null && (
                 <li>
                   Rolled back by{' '}
@@ -165,10 +182,19 @@ export function DeploymentDetailPage(): React.JSX.Element {
                     </Button>
                   ))}
                 {status === 'succeeded' && data.rolledBackBy === null && (
+                  <TextField
+                    label="Rollback reason"
+                    value={reason}
+                    onChange={(event) => {
+                      setReason(event.target.value);
+                    }}
+                  />
+                )}
+                {status === 'succeeded' && data.rolledBackBy === null && (
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={rollback.isPending}
+                    disabled={rollback.isPending || reason.trim().length < 10}
                     onClick={() => {
                       rollback.mutate();
                     }}

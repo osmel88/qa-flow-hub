@@ -495,9 +495,15 @@ export class DevelopmentRepository extends TenantAwareRepository {
   /** A live environment of the project, locked for share (archiving waits). */
   async lockEnvironment(projectId: string, id: string, tx: PrismaTransaction) {
     const rows = await tx.$queryRaw<
-      Array<{ id: string; name: string; status: string; protected: boolean }>
+      Array<{
+        id: string;
+        name: string;
+        status: string;
+        protected: boolean;
+        rollbackChecks: string;
+      }>
     >`
-      SELECT "id", "name", "status", "protected" FROM "environments"
+      SELECT "id", "name", "status", "protected", "rollbackChecks" FROM "environments"
       WHERE "id" = ${id} AND "projectId" = ${projectId} AND "organizationId" = ${this.organizationId}
         AND "deletedAt" IS NULL
       FOR SHARE`;
@@ -669,7 +675,52 @@ export class DevelopmentRepository extends TenantAwareRepository {
         buildId: { not: null },
       }),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: { buildId: true },
+      select: { id: true, identifier: true, buildId: true, releaseId: true },
+    });
+  }
+
+  /** The newest live succeeded deployment of an environment: what runs there (S6-F5). */
+  liveDeployment(projectId: string, environmentId: string, tx: PrismaTransaction) {
+    return tx.developmentArtifact.findFirst({
+      where: this.active({
+        projectId,
+        kind: 'deployment' as const,
+        environmentId,
+        status: 'succeeded',
+      }),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+  }
+
+  /** A rollback recorded with this idempotency key in the environment. */
+  findRollbackByKey(
+    projectId: string,
+    environmentId: string,
+    externalId: string,
+    tx?: PrismaTransaction,
+  ) {
+    return (tx ?? this.prisma).developmentArtifact.findFirst({
+      where: this.active({
+        projectId,
+        kind: 'deployment' as const,
+        environmentId,
+        externalId,
+        trigger: 'rollback',
+      }),
+    });
+  }
+
+  /** Rollback history of an environment, newest first. */
+  rollbackDeployments(projectId: string, environmentId: string) {
+    return this.prisma.developmentArtifact.findMany({
+      where: this.active({
+        projectId,
+        kind: 'deployment' as const,
+        environmentId,
+        trigger: 'rollback',
+      }),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 100,
     });
   }
 

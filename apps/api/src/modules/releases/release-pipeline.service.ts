@@ -82,9 +82,13 @@ export class ReleasePipelineService {
             await this.approvals.forEnvironment(projectId, id, env.id, tx),
           );
         }
-        const [builds, users] = await Promise.all([
+        const [builds, users, refs] = await Promise.all([
           this.releases.buildsByIds(unique(deployments.map((row) => row.buildId)), tx),
           this.releases.usersByIds(unique(deployments.map((row) => row.actorId)), tx),
+          this.releases.deploymentRefs(
+            unique(deployments.flatMap((row) => [row.rollbackOfId, row.rollbackTargetId])),
+            tx,
+          ),
         ]);
         return {
           release,
@@ -97,6 +101,7 @@ export class ReleasePipelineService {
           blocking,
           builds,
           users,
+          refs,
           gateResults,
           approvalResults,
         };
@@ -104,6 +109,20 @@ export class ReleasePipelineService {
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
 
+    const ref = (refId: string | null) => {
+      const found = data.refs.find((entry) => entry.id === refId);
+      return found === undefined ? null : { id: found.id, identifier: found.identifier };
+    };
+    const rollbackOf = (row: DevelopmentArtifact) => ({
+      from: ref(row.rollbackOfId),
+      to: ref(row.rollbackTargetId),
+      reason: row.rollbackReason,
+      emergency: row.rollbackEmergency === true,
+    });
+    /** A rollback away from this release un-deploys it; one back to it deploys it. */
+    const rollsThisBack = (row: DevelopmentArtifact) =>
+      row.rollbackOfId !== null &&
+      data.refs.find((entry) => entry.id === row.rollbackOfId)?.releaseId === data.release.id;
     const deploymentRef = (row: DevelopmentArtifact): PipelineDeploymentRef => {
       const built = data.builds.find((entry) => entry.id === row.buildId);
       const actor = data.users.find((entry) => entry.id === row.actorId);
@@ -113,6 +132,7 @@ export class ReleasePipelineService {
         status: row.status as DeploymentStatus,
         trigger: row.trigger,
         isRollback: row.rollbackOfId !== null,
+        rollback: row.rollbackOfId === null ? null : rollbackOf(row),
         build:
           row.buildId === null ? null : { id: row.buildId, identifier: built?.identifier ?? null },
         commitSha: row.commitSha,
@@ -145,7 +165,7 @@ export class ReleasePipelineService {
               ? null
               : {
                   status: last.status as DeploymentStatus,
-                  isRollback: last.rollbackOfId !== null,
+                  isRollback: rollsThisBack(last),
                 },
         };
       }),

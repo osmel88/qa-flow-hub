@@ -20,6 +20,8 @@ import type {
   UpdateEnvironmentInput,
   ListDeploymentsQuery,
   RollbackDeploymentInput,
+  RollbackEnvironmentInput,
+  EnvironmentRollbackResult,
   TransitionDeploymentInput,
   BuildMetricsView,
   BuildView,
@@ -860,6 +862,9 @@ export const environmentsApi = {
       body: version === undefined ? {} : { version },
     }),
   remove: (id: string) => apiFetch<void>(`/environments/${id}`, { method: 'DELETE' }),
+  rollback: (id: string, body: RollbackEnvironmentInput) =>
+    apiFetch<EnvironmentRollbackResult>(`/environments/${id}/rollback`, { method: 'POST', body }),
+  rollbacks: (id: string) => apiFetch<DeploymentView[]>(`/environments/${id}/rollbacks`),
 };
 
 export const deploymentsApi = {

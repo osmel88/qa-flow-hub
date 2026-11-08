@@ -80,6 +80,7 @@ export const PERMISSIONS = [
   'code_reviews.review',
   'quality_gates.override',
   'releases.approve',
+  'releases.emergency_rollback',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -311,6 +312,13 @@ export const PERMISSION_CATALOG: readonly PermissionDescriptor[] = [
     description:
       'Approve, reject or request changes on a release as QA, Product, Engineering or Release Manager',
   },
+  {
+    permission: 'releases.emergency_rollback',
+    module: 'releases',
+    label: 'Emergency rollback',
+    description:
+      'Roll an environment back skipping its quality gates and approvals (reason required)',
+  },
 ];
 
 export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
@@ -386,6 +394,7 @@ const ORGANIZATION_ADMIN: readonly Permission[] = [
   ...PROJECT_MANAGER,
   'integrations.manage',
   'notifications.manage',
+  'releases.emergency_rollback',
 ];
 
 /**

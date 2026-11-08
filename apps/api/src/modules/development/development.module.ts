@@ -11,6 +11,7 @@ import {
 } from './development.controller';
 import { DevelopmentRepository } from './development.repository';
 import { DevelopmentService } from './development.service';
+import { EnvironmentRollbacksController } from './environment-rollbacks.controller';
 import { EnvironmentsController } from './environments.controller';
 import { EnvironmentsService } from './environments.service';
 
@@ -23,6 +24,7 @@ import { EnvironmentsService } from './environments.service';
     BuildsController,
     DeploymentsController,
     EnvironmentsController,
+    EnvironmentRollbacksController,
   ],
   providers: [
     DevelopmentService,

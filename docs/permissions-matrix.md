@@ -298,3 +298,6 @@ archived projects are read-only; every change is an audited `role_change`.
 | Configure approval rules                                    | `releases.manage`                     |
 | Approve, reject or request changes (comment to refuse)      | `releases.approve`                    |
 | Revoke one's own decision / anyone's                        | `releases.approve` / `releases.manage` |
+| Roll an environment back (S6-F5; reason required)           | `work_items.write` (`work_items.manage` when protected) |
+| Emergency rollback (skips gates and approvals)              | `releases.emergency_rollback`         |
+| View rollback history                                       | `work_items.read`                     |

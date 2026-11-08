@@ -130,7 +130,11 @@ describe('Environments', () => {
   const move = (id: string, status: string, account: TestAccount = acme.owner) =>
     request('POST', `/api/v1/deployments/${id}/transition`, as(account, { status }));
   const rollback = (id: string, account: TestAccount = acme.owner) =>
-    request('POST', `/api/v1/deployments/${id}/rollback`, as(account, {}));
+    request(
+      'POST',
+      `/api/v1/deployments/${id}/rollback`,
+      as(account, { reason: 'Regression in checkout' }),
+    );
 
   it('creates, filters and edits environments; names stay unique, also concurrently', async () => {
     const prod = await env('prod', { kind: 'production', position: 2 });

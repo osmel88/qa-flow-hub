@@ -75,9 +75,10 @@ test('a local deployment succeeds, drives development status and rolls back once
   });
 
   await test.step('a rollback replaces it once and the story is no longer deployed', async () => {
+    await page.getByLabel('Rollback reason').fill('Checkout is broken in staging');
     await page.getByRole('button', { name: 'Roll back' }).click();
     await expect(page.getByRole('heading', { name: 'Deployment dep-1-rollback' })).toBeVisible();
-    await expect(page.getByText('Rollback of')).toBeVisible();
+    await expect(page.getByTestId('deployment-rollback')).toContainText('Rolled back from dep-1');
     await page.getByRole('link', { name: 'dep-1', exact: true }).click();
     await expect(page.getByTestId('deployment-status')).toHaveText('rolled back');
     await expect(page.getByRole('button', { name: 'Roll back' })).toHaveCount(0);

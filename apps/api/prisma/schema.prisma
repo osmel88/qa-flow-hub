@@ -1721,48 +1721,54 @@ enum DevelopmentProvider {
 /// adapter syncs it through (provider, externalId). `naturalKey` (branch name,
 /// SHA, #PR, identifier) is unique per live artifact (partial index).
 model DevelopmentArtifact {
-  id             String                  @id @default(cuid())
-  organizationId String
-  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  projectId      String
-  project        Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  kind           DevelopmentArtifactKind
-  provider       DevelopmentProvider     @default(local)
-  externalId     String?
-  naturalKey     String
-  url            String?
-  title          String?
-  branchName     String?
-  commitSha      String?
-  prNumber       Int?
-  identifier     String?
-  environment    String?
+  id                String                  @id @default(cuid())
+  organizationId    String
+  organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId         String
+  project           Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind              DevelopmentArtifactKind
+  provider          DevelopmentProvider     @default(local)
+  externalId        String?
+  naturalKey        String
+  url               String?
+  title             String?
+  branchName        String?
+  commitSha         String?
+  prNumber          Int?
+  identifier        String?
+  environment       String?
   /// Validated per kind (CHECK in the migration and Zod).
-  status         String?
-  occurredAt     DateTime?
+  status            String?
+  occurredAt        DateTime?
   /// Build-only fields (S5-F4); null on other kinds (CHECK in the migration).
-  startedAt      DateTime?
-  finishedAt     DateTime?
-  trigger        String?
-  releaseId      String?
-  release        Release?                @relation(fields: [releaseId, projectId], references: [id, projectId], onDelete: Restrict)
-  metadata       Json?
-  logSummary     String?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  trigger           String?
+  releaseId         String?
+  release           Release?                @relation(fields: [releaseId, projectId], references: [id, projectId], onDelete: Restrict)
+  metadata          Json?
+  logSummary        String?
   /// Deployment-only fields (S5-F5).
-  environmentId  String?
-  environmentRef Environment?            @relation(fields: [environmentId, projectId], references: [id, projectId], onDelete: Restrict)
-  buildId        String?
-  build          DevelopmentArtifact?    @relation("DeploymentBuild", fields: [buildId, projectId], references: [id, projectId], onDelete: Restrict)
-  deployments    DevelopmentArtifact[]   @relation("DeploymentBuild")
-  rollbackOfId   String?
-  rollbackOf     DevelopmentArtifact?    @relation("DeploymentRollback", fields: [rollbackOfId, projectId], references: [id, projectId], onDelete: Restrict)
-  rollbacks      DevelopmentArtifact[]   @relation("DeploymentRollback")
-  actorId        String?
-  version        Int                     @default(1)
-  createdById    String?
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
-  deletedAt      DateTime?
+  environmentId     String?
+  environmentRef    Environment?            @relation(fields: [environmentId, projectId], references: [id, projectId], onDelete: Restrict)
+  buildId           String?
+  build             DevelopmentArtifact?    @relation("DeploymentBuild", fields: [buildId, projectId], references: [id, projectId], onDelete: Restrict)
+  deployments       DevelopmentArtifact[]   @relation("DeploymentBuild")
+  rollbackOfId      String?
+  rollbackOf        DevelopmentArtifact?    @relation("DeploymentRollback", fields: [rollbackOfId, projectId], references: [id, projectId], onDelete: Restrict)
+  rollbacks         DevelopmentArtifact[]   @relation("DeploymentRollback")
+  /// Rollback fields (S6-F5): the earlier deployment it went back to, why, and whether checks were skipped.
+  rollbackTargetId  String?
+  rollbackTarget    DevelopmentArtifact?    @relation("DeploymentRollbackTarget", fields: [rollbackTargetId, projectId], references: [id, projectId], onDelete: Restrict)
+  rollbackTargetOf  DevelopmentArtifact[]   @relation("DeploymentRollbackTarget")
+  rollbackReason    String?
+  rollbackEmergency Boolean?
+  actorId           String?
+  version           Int                     @default(1)
+  createdById       String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  deletedAt         DateTime?
 
   links       WorkItemDevelopmentLink[]
   codeReviews CodeReview[]
@@ -1772,6 +1778,7 @@ model DevelopmentArtifact {
   @@index([organizationId, projectId, releaseId])
   @@index([environmentId])
   @@index([buildId])
+  @@index([rollbackTargetId])
   @@map("development_artifacts")
 }
 
@@ -1920,6 +1927,7 @@ model Environment {
   description          String?
   status               String                @default("active")
   protected            Boolean               @default(false)
+  rollbackChecks       String                @default("enforce")
   position             Int                   @default(0)
   url                  String?
   metadata             Json?

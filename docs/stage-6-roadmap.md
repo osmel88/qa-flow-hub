@@ -142,3 +142,42 @@ Billing, SSO/SAML/SCIM); debt 39 stays out of scope.
   an Approvals section in the pipeline page.
 - Tests: `release-approvals.int-spec.ts`, `release-approval.contracts.test.ts`,
   `release-approvals.e2e.spec.ts`.
+
+## S6-F5 — Rollback
+
+- 1 migration: deployments gain `rollbackTargetId` (composite foreign key
+  with `projectId`, so a target of another project or tenant is refused by
+  the database), `rollbackReason` and `rollbackEmergency`; environments gain
+  `rollbackChecks` (`enforce` by default, or `skip`).
+- `POST /environments/:id/rollback` (`targetDeploymentId`, `reason` of at
+  least 10 characters, optional `emergency`, `idempotencyKey`,
+  `expectedCurrentId`): the deployment that runs there becomes
+  `rolled_back` and a new succeeded `rollback` deployment records the
+  target's build, commit and release, the original (`rollbackOf`), the
+  target, reason, actor and time. Nothing is deleted.
+- The target must be an earlier deployment of the same environment that
+  succeeded (or was rolled back later), with a build different from the one
+  running. Invalid targets answer 422, a target of another project/tenant
+  404, the current one 409.
+- Concurrency: lock order current deployment → target → environment. A
+  racing or repeated rollback answers 409; the same `idempotencyKey`
+  returns the first rollback with `created: false`, also under races.
+  `expectedCurrentId` refuses a rollback if what runs there changed.
+- Protected environments need `work_items.manage`. With `enforce`, the
+  release the rollback goes back to must pass quality gates and approvals.
+  An emergency rollback skips them and needs the new
+  `releases.emergency_rollback` permission (organization admin and above);
+  it is audited separately ("Emergency: ...").
+- The S5-F5 `POST /deployments/:id/rollback` now requires a reason, records
+  the target and follows the same policy.
+- `GET /environments/:id/rollbacks`: history, newest first. Release
+  pipeline: a rollback deployment shows "Rolled back from X to Y"; a rollback
+  away from a release un-deploys its stage, one back to it deploys it.
+- Web: rollback form and history in the environment page, "Rolled back from
+  X to Y" in the deployment page and the pipeline, rollback policy in the
+  environment editor.
+- Tests: `rollbacks.int-spec.ts`, `rollback.contracts.test.ts`,
+  `rollbacks.e2e.spec.ts`.
+
+Stage 6 — Environments & Release Management is complete.
+

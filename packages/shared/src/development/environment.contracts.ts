@@ -64,6 +64,14 @@ export type EnvironmentMetadata = z.infer<typeof environmentMetadataSchema>;
 
 const positionSchema = z.number().int().min(0).max(999);
 
+/**
+ * Whether a rollback in a protected environment must pass the quality gates
+ * and approvals of the release it goes back to (S6-F5). An emergency
+ * rollback skips them either way.
+ */
+export const ROLLBACK_CHECK_POLICIES = ['enforce', 'skip'] as const;
+export type RollbackCheckPolicy = (typeof ROLLBACK_CHECK_POLICIES)[number];
+
 export const createEnvironmentSchema = z.object({
   projectId: idSchema,
   name: environmentNameSchema,
@@ -72,6 +80,7 @@ export const createEnvironmentSchema = z.object({
   /** Defaults to `true` for production, `false` otherwise. */
   protected: z.boolean().optional(),
   position: positionSchema.optional(),
+  rollbackChecks: z.enum(ROLLBACK_CHECK_POLICIES).optional(),
   url: urlSchema.optional(),
   metadata: environmentMetadataSchema.optional(),
 });
@@ -84,6 +93,7 @@ export const updateEnvironmentSchema = z
     description: z.string().trim().min(1).max(2000).nullable().optional(),
     protected: z.boolean().optional(),
     position: positionSchema.optional(),
+    rollbackChecks: z.enum(ROLLBACK_CHECK_POLICIES).optional(),
     url: urlSchema.nullable().optional(),
     metadata: environmentMetadataSchema.nullable().optional(),
     /** Archiving has its own route. */
@@ -119,6 +129,7 @@ export interface EnvironmentView {
   status: EnvironmentStatus;
   protected: boolean;
   position: number;
+  rollbackChecks: RollbackCheckPolicy;
   url: string | null;
   metadata: EnvironmentMetadata | null;
   version: number;

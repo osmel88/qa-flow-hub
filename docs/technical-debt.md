@@ -1354,3 +1354,13 @@ caller's own tenant, never of another one.
   work items); revoking is manual.
 - **No approval override**: a protected environment with rules cannot be
   deployed without the approvals.
+
+## 61. Rollback: what S6-F5 leaves (S6-F5)
+
+- **Local/mock only**: a rollback succeeds at once; a real provider would
+  report it `deploying` first.
+- **Work items of the target are not re-linked** to the rollback
+  deployment, so their development status does not return to `deployed`.
+- **Emergency rollbacks are not reviewed afterwards**: no follow-up task or
+  notification is created.
+

@@ -274,6 +274,16 @@ export class ReleasesRepository extends TenantAwareRepository {
     });
   }
 
+  /** Deployments a rollback came from or went back to (S6-F5). */
+  deploymentRefs(ids: readonly string[], tx: PrismaTransaction) {
+    return ids.length === 0
+      ? Promise.resolve([])
+      : tx.developmentArtifact.findMany({
+          where: { organizationId: this.organizationId, id: { in: [...ids] }, kind: 'deployment' },
+          select: { id: true, identifier: true, releaseId: true },
+        });
+  }
+
   buildsByIds(ids: readonly string[], tx: PrismaTransaction) {
     return ids.length === 0
       ? Promise.resolve([])

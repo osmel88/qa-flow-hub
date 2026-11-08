@@ -126,10 +126,26 @@ export type TransitionDeploymentInput = z.infer<typeof transitionDeploymentSchem
 export const rollbackDeploymentSchema = z.object({
   /** The build to go back to; by default the build of the previous succeeded deployment there. */
   toBuildId: idSchema.optional(),
-  reason: text(1000).optional(),
+  reason: z.string().trim().min(10, 'Explain the rollback in at least 10 characters').max(1000),
   version: z.number().int().positive().optional(),
 });
 export type RollbackDeploymentInput = z.infer<typeof rollbackDeploymentSchema>;
+
+/**
+ * Formal environment rollback (S6-F5): go back to an earlier deployment of
+ * the environment. A new `rollback` deployment is recorded; history is kept.
+ */
+export const rollbackEnvironmentSchema = z.object({
+  targetDeploymentId: idSchema,
+  reason: z.string().trim().min(10, 'Explain the rollback in at least 10 characters').max(1000),
+  /** Skips quality gates and approvals; needs `releases.emergency_rollback`. */
+  emergency: z.boolean().default(false),
+  /** Repeating a request with the same key returns the same rollback. */
+  idempotencyKey: z.string().trim().min(1).max(100).optional(),
+  /** The deployment the caller saw running; 409 if it changed meanwhile. */
+  expectedCurrentId: idSchema.optional(),
+});
+export type RollbackEnvironmentInput = z.infer<typeof rollbackEnvironmentSchema>;
 
 export const listDeploymentsQuerySchema = paginationQuerySchema.extend({
   projectId: idSchema,
@@ -163,6 +179,10 @@ export interface DeploymentView extends DevelopmentArtifactView {
   release: { id: string; name: string; version: string } | null;
   rollbackOf: { id: string; identifier: string | null } | null;
   rolledBackBy: { id: string; identifier: string | null } | null;
+  /** The earlier deployment a rollback went back to (S6-F5). */
+  rollbackTarget: { id: string; identifier: string | null } | null;
+  rollbackReason: string | null;
+  rollbackEmergency: boolean;
   startedAt: string | null;
   finishedAt: string | null;
   durationMs: number | null;
@@ -246,4 +266,18 @@ export function computeDeploymentMetrics(
       samples: durations.length,
     },
   };
+}
+
+export interface EnvironmentRollbackResult {
+  deployment: DeploymentView;
+  /** False when an idempotency key replayed an earlier rollback. */
+  created: boolean;
+}
+
+/** "rolled back from X to Y" (S6-F5). */
+export function rollbackLabel(
+  from: { identifier: string | null } | null,
+  to: { identifier: string | null } | null,
+): string {
+  return `Rolled back from ${from?.identifier ?? 'unknown'} to ${to?.identifier ?? 'an earlier build'}`;
 }

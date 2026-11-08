@@ -229,7 +229,13 @@ describe('Release pipeline', () => {
       'completed',
       { deployed: 3, total: 3, percent: 100 },
     ]);
-    ok(await request('POST', `/api/v1/deployments/${p1.id}/rollback`, as(acme.owner, {})));
+    ok(
+      await request(
+        'POST',
+        `/api/v1/deployments/${p1.id}/rollback`,
+        as(acme.owner, { reason: 'Regression in checkout' }),
+      ),
+    );
     const rolled = await pipeline(r1.id);
     expect([rolled.status, statuses(rolled), rolled.stages[2]!.rolledBack]).toEqual([
       'in_progress',

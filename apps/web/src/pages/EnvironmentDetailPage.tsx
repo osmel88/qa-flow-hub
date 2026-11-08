@@ -1,10 +1,15 @@
-import { ENVIRONMENT_KINDS } from '@qa-flow-hub/shared';
-import type { EnvironmentKind, EnvironmentView, UpdateEnvironmentInput } from '@qa-flow-hub/shared';
+import { ENVIRONMENT_KINDS, ROLLBACK_CHECK_POLICIES } from '@qa-flow-hub/shared';
+import type {
+  EnvironmentKind,
+  EnvironmentView,
+  RollbackCheckPolicy,
+  UpdateEnvironmentInput,
+} from '@qa-flow-hub/shared';
 import { Button, DataState, SelectField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { environmentsApi } from '../api/endpoints';
+import { deploymentsApi, environmentsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
@@ -28,6 +33,7 @@ function EditEnvironment({
   const [position, setPosition] = useState(String(env.position));
   const [isProtected, setProtected] = useState(env.protected);
   const [active, setActive] = useState(env.status === 'active');
+  const [rollbackChecks, setRollbackChecks] = useState<RollbackCheckPolicy>(env.rollbackChecks);
   return (
     <form
       className="card"
@@ -41,6 +47,7 @@ function EditEnvironment({
           url: url.trim() === '' ? null : url.trim(),
           position: Number.parseInt(position, 10) || 0,
           protected: isProtected,
+          rollbackChecks,
           status: active ? 'active' : 'inactive',
           version: env.version,
         });
@@ -97,6 +104,17 @@ function EditEnvironment({
         />{' '}
         Protected (deploying needs work item management)
       </label>
+      <SelectField
+        label="Rollback checks"
+        value={rollbackChecks}
+        options={ROLLBACK_CHECK_POLICIES.map((value) => ({
+          value,
+          label: value === 'enforce' ? 'Enforce gates and approvals' : 'Skip gates and approvals',
+        }))}
+        onChange={(event) => {
+          setRollbackChecks(event.target.value as RollbackCheckPolicy);
+        }}
+      />
       <label>
         <input
           type="checkbox"
@@ -111,6 +129,154 @@ function EditEnvironment({
         Save environment
       </Button>
     </form>
+  );
+}
+
+/** Rollback to an earlier deployment and the rollback history (S6-F5). */
+function EnvironmentRollback({ env }: { env: EnvironmentView }): React.JSX.Element {
+  const queryClient = useQueryClient();
+  const { can } = useProjectPermissions(env.projectId);
+  const allowed = can(env.protected ? 'work_items.manage' : 'work_items.write');
+  const canEmergency = can('releases.emergency_rollback');
+  const [target, setTarget] = useState('');
+  const [reason, setReason] = useState('');
+  const [emergency, setEmergency] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const deployments = useQuery({
+    queryKey: ['deployments', env.projectId, 'rollback-targets', env.id],
+    queryFn: () => deploymentsApi.list({ projectId: env.projectId, environmentId: env.id }),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  const history = useQuery({
+    queryKey: ['environment', env.id, 'rollbacks'],
+    queryFn: () => environmentsApi.rollbacks(env.id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  const currentId = env.current?.deploymentId;
+  const targets = (deployments.data?.data ?? []).filter(
+    (row) =>
+      row.id !== currentId &&
+      (row.status === 'succeeded' || row.status === 'rolled_back') &&
+      row.build !== null,
+  );
+  const rollback = useMutation({
+    mutationFn: () =>
+      environmentsApi.rollback(env.id, {
+        targetDeploymentId: target,
+        reason: reason.trim(),
+        emergency,
+        ...(currentId === undefined ? {} : { expectedCurrentId: currentId }),
+      }),
+    onSuccess: async () => {
+      setError(null);
+      setReason('');
+      setTarget('');
+      setEmergency(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['environment'] }),
+        queryClient.invalidateQueries({ queryKey: ['deployments'] }),
+      ]);
+    },
+    onError: async (cause: unknown) => {
+      setError(cause instanceof ApiError ? cause.message : 'Could not roll back.');
+      await queryClient.invalidateQueries({ queryKey: ['environment'] });
+    },
+  });
+  return (
+    <section className="card" aria-labelledby="environment-rollback">
+      <h2 id="environment-rollback">Rollback</h2>
+      {error !== null && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {allowed && env.status === 'active' && env.current !== null && (
+        <form
+          aria-label="Roll back environment"
+          onSubmit={(event) => {
+            event.preventDefault();
+            rollback.mutate();
+          }}
+        >
+          <SelectField
+            label="Rollback target"
+            value={target}
+            options={[
+              { value: '', label: 'Choose an earlier deployment' },
+              ...targets.map((row) => ({
+                value: row.id,
+                label: `${row.identifier ?? row.id} · build ${row.build?.identifier ?? ''} · ${humanize(row.status ?? '')}`,
+              })),
+            ]}
+            onChange={(event) => {
+              setTarget(event.target.value);
+            }}
+          />
+          <TextField
+            label="Reason for the rollback"
+            value={reason}
+            required
+            onChange={(event) => {
+              setReason(event.target.value);
+            }}
+          />
+          {canEmergency && (
+            <label>
+              <input
+                type="checkbox"
+                checked={emergency}
+                onChange={(event) => {
+                  setEmergency(event.target.checked);
+                }}
+              />{' '}
+              Emergency rollback (skips quality gates and approvals)
+            </label>
+          )}
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={rollback.isPending || target === '' || reason.trim().length < 10}
+          >
+            Roll back environment
+          </Button>
+        </form>
+      )}
+      <h3>Rollback history</h3>
+      {(history.data?.length ?? 0) === 0 ? (
+        <p className="muted">No rollback yet.</p>
+      ) : (
+        <ul aria-label="Rollback history">
+          {(history.data ?? []).map((row) => (
+            <li key={row.id} data-testid={`rollback-${row.identifier ?? row.id}`}>
+              <Link to={`/deployments/${row.id}`}>{row.identifier}</Link>: Rolled back from{' '}
+              {row.rollbackOf === null ? (
+                'unknown'
+              ) : (
+                <Link to={`/deployments/${row.rollbackOf.id}`}>{row.rollbackOf.identifier}</Link>
+              )}{' '}
+              to{' '}
+              {row.rollbackTarget === null ? (
+                'an earlier build'
+              ) : (
+                <Link to={`/deployments/${row.rollbackTarget.id}`}>
+                  {row.rollbackTarget.identifier}
+                </Link>
+              )}
+              {row.rollbackEmergency && ' (emergency)'} · {row.actor?.fullName ?? 'someone'} ·{' '}
+              {new Date(row.createdAt).toLocaleString()}
+              {row.rollbackReason !== null && (
+                <>
+                  <br />
+                  <span className="muted">{row.rollbackReason}</span>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -299,6 +465,7 @@ export function EnvironmentDetailPage(): React.JSX.Element {
               }}
             />
           )}
+          <EnvironmentRollback env={env} />
           <DeploymentsOf projectId={env.projectId} filter={{ environmentId: env.id }} />
         </>
       )}

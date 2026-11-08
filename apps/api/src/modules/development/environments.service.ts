@@ -5,6 +5,7 @@ import {
   DeploymentStatus,
   EnvironmentKind,
   EnvironmentMetadata,
+  RollbackCheckPolicy,
   EnvironmentStatus,
   EnvironmentVersionInput,
   EnvironmentView,
@@ -80,6 +81,7 @@ export class EnvironmentsService {
             description: input.description ?? null,
             protected: defaultProtected(input.kind, input.protected),
             position: input.position ?? 0,
+            rollbackChecks: input.rollbackChecks ?? 'enforce',
             url: input.url ?? null,
             ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
             createdById: userId,
@@ -117,6 +119,7 @@ export class EnvironmentsService {
           ...(input.description === undefined ? {} : { description: input.description }),
           ...(input.protected === undefined ? {} : { protected: input.protected }),
           ...(input.position === undefined ? {} : { position: input.position }),
+          ...(input.rollbackChecks === undefined ? {} : { rollbackChecks: input.rollbackChecks }),
           ...(input.url === undefined ? {} : { url: input.url }),
           ...(input.metadata === undefined
             ? {}
@@ -298,6 +301,7 @@ export class EnvironmentsService {
         status,
         protected: row.protected,
         position: row.position,
+        rollbackChecks: row.rollbackChecks as RollbackCheckPolicy,
         url: row.url,
         metadata: row.metadata as EnvironmentMetadata | null,
         version: row.version,

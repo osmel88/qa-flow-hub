@@ -143,7 +143,11 @@ describe('Deployments', () => {
   const move = (id: string, status: string, account: TestAccount = acme.owner, extra = {}) =>
     request('POST', `/api/v1/deployments/${id}/transition`, as(account, { status, ...extra }));
   const rollback = (id: string, body: object = {}, account: TestAccount = acme.owner) =>
-    request('POST', `/api/v1/deployments/${id}/rollback`, as(account, body));
+    request(
+      'POST',
+      `/api/v1/deployments/${id}/rollback`,
+      as(account, { reason: 'Regression in checkout', ...body }),
+    );
   const get = async (id: string) =>
     ok<Deployment>(await request('GET', `/api/v1/deployments/${id}`, as(acme.owner)));
   const statusOf = async (id: string) =>
@@ -357,7 +361,15 @@ describe('Deployments', () => {
     expect((await rollback(ours.id, { toBuildId: foreignBuild.id })).statusCode).toBe(404);
     expect((await get(ours.id)).status).toBe('succeeded');
     const globexCall = (method: 'GET' | 'POST', path: string) =>
-      request(method, path, as(globex.owner, method === 'POST' ? {} : undefined, globex));
+      request(
+        method,
+        path,
+        as(
+          globex.owner,
+          method === 'POST' ? { reason: 'Regression in checkout' } : undefined,
+          globex,
+        ),
+      );
     expect((await globexCall('GET', `/api/v1/deployments/${ours.id}`)).statusCode).toBe(404);
     expect((await globexCall('POST', `/api/v1/deployments/${ours.id}/rollback`)).statusCode).toBe(
       404,

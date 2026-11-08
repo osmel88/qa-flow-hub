@@ -14,6 +14,7 @@ import { Link, useParams } from 'react-router-dom';
 import { qualityGatesApi, releasesApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { GATE_TONE, QualityGateResults } from '../components/QualityGateResults';
+import { APPROVAL_TONE, ReleaseApprovals } from '../components/ReleaseApprovals';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
@@ -117,7 +118,12 @@ function Stage({
         <span data-testid={`stage-gates-${stage.environment.name}`}>
           <Badge tone={GATE_TONE[stage.gates.result]}>{humanize(stage.gates.result)}</Badge>
         </span>
-        {stage.gates.overridden && ' (overridden)'}
+        {stage.gates.overridden && ' (overridden)'} · Approvals:{' '}
+        <span data-testid={`stage-approvals-${stage.environment.name}`}>
+          <Badge tone={APPROVAL_TONE[stage.approvals.state]}>
+            {humanize(stage.approvals.state)}
+          </Badge>
+        </span>
       </p>
       <p className="muted">
         {stage.deploymentCount} deployment(s)
@@ -358,6 +364,10 @@ export function ReleasePipelinePage(): React.JSX.Element {
               ))}
             </ol>
           )}
+          <ReleaseApprovals
+            releaseId={view.release.id}
+            environments={(environments.data?.stages ?? []).map((stage) => stage.environment)}
+          />
           <ReleaseGates
             releaseId={view.release.id}
             projectId={view.release.projectId}

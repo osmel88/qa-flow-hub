@@ -1345,3 +1345,12 @@ caller's own tenant, never of another one.
   at once; the audit log keeps the previous rules.
 - **Code review rule looks at the release's work items only**, not at pull
   requests that are not linked to a work item.
+
+## 60. Release approvals: what S6-F4 leaves (S6-F4)
+
+- **Any holder of `releases.approve` can approve as any type**: types are
+  not bound to roles or named approvers yet.
+- **Approvals do not expire** when the release changes (new build, new
+  work items); revoking is manual.
+- **No approval override**: a protected environment with rules cannot be
+  deployed without the approvals.

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { DeploymentStatus } from '../development/deployment.contracts.js';
 import type { EnvironmentKind, EnvironmentStatus } from '../development/environment.contracts.js';
 import type { GateResult } from './quality-gate.contracts.js';
+import type { ApprovalState } from './release-approval.contracts.js';
 import type { ReleaseStatus, ReleaseStatusCounts, ReleaseView } from './release.contracts.js';
 
 /**
@@ -37,6 +38,7 @@ export const PIPELINE_BLOCKERS = [
   'blocking_defects',
   'previous_stage_failed',
   'quality_gates',
+  'approvals',
 ] as const;
 export type PipelineBlocker = (typeof PIPELINE_BLOCKERS)[number];
 
@@ -58,6 +60,8 @@ export interface PipelineStageInput {
   last: { status: DeploymentStatus; isRollback: boolean } | null;
   /** Required quality gates of a protected environment do not let the release in (S6-F3). */
   gatesBlocking?: boolean;
+  /** Required approvals of a protected environment are not complete (S6-F4). */
+  approvalsBlocking?: boolean;
 }
 
 export interface PipelineStageState {
@@ -110,6 +114,9 @@ export function computePipelineStages(input: {
     }
     if (stage.gatesBlocking === true) {
       blockers.push('quality_gates');
+    }
+    if (stage.approvalsBlocking === true) {
+      blockers.push('approvals');
     }
     const status: PipelineStageStatus =
       blockers.length > 0
@@ -195,6 +202,8 @@ export interface ReleasePipelineStage extends PipelineStageState {
   lastDeployment: PipelineDeploymentRef | null;
   /** Combined required quality gates there (S6-F3). */
   gates: { result: GateResult; required: number; overridden: boolean };
+  /** Derived approval workflow there; `required` counts approval types (S6-F4). */
+  approvals: { state: ApprovalState; required: number };
   /** Newest non-aborted run of the release whose environment matches by name. */
   qa: {
     runId: string;

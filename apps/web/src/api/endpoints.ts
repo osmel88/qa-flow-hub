@@ -6,6 +6,11 @@ import type {
   DeploymentView,
   EnvironmentView,
   CreateQualityGateInput,
+  ApprovalRuleView,
+  CreateApprovalRuleInput,
+  DecideApprovalInput,
+  ReleaseApprovalsView,
+  UpdateApprovalRuleInput,
   QualityGateView,
   ReleaseQualityGatesView,
   UpdateQualityGateInput,
@@ -891,5 +896,26 @@ export const qualityGatesApi = {
     apiFetch<ReleaseQualityGatesView>(`/releases/${releaseId}/quality-gates/override`, {
       method: 'POST',
       body: { environmentId, reason },
+    }),
+};
+
+export const releaseApprovalsApi = {
+  rules: (projectId: string) =>
+    apiFetch<ApprovalRuleView[]>(`/release-approval-rules${query({ projectId })}`),
+  createRule: (body: CreateApprovalRuleInput) =>
+    apiFetch<ApprovalRuleView>('/release-approval-rules', { method: 'POST', body }),
+  updateRule: (id: string, body: UpdateApprovalRuleInput) =>
+    apiFetch<ApprovalRuleView>(`/release-approval-rules/${id}`, { method: 'PATCH', body }),
+  removeRule: (id: string) => apiFetch<void>(`/release-approval-rules/${id}`, { method: 'DELETE' }),
+  view: (releaseId: string, environmentId?: string) =>
+    apiFetch<ReleaseApprovalsView>(
+      `/releases/${releaseId}/approvals${query(environmentId === undefined ? {} : { environmentId })}`,
+    ),
+  decide: (releaseId: string, body: DecideApprovalInput) =>
+    apiFetch<ReleaseApprovalsView>(`/releases/${releaseId}/approvals`, { method: 'POST', body }),
+  revoke: (releaseId: string, approvalId: string, reason?: string) =>
+    apiFetch<ReleaseApprovalsView>(`/releases/${releaseId}/approvals/${approvalId}/revoke`, {
+      method: 'POST',
+      body: reason === undefined ? {} : { reason },
     }),
 };

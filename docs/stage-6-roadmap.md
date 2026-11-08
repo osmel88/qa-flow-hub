@@ -104,3 +104,41 @@ Billing, SSO/SAML/SCIM); debt 39 stays out of scope.
   the pipeline page.
 - Tests: `quality-gates.int-spec.ts`, `quality-gate.contracts.test.ts`,
   `quality-gates.e2e.spec.ts`.
+
+## S6-F4 — Release Approval
+
+- 1 migration: `release_approval_rules` (project, optional environment,
+  type `qa` / `product` / `engineering` / `release_manager`, required count
+  1–10, `allowSelfApproval`, `enabled`, `version`, soft delete, one live rule
+  per type and scope) and `release_approvals` (decision history: release,
+  optional environment, type, `approved` / `rejected` / `changes_requested`,
+  comment, approver, revocation). The application may only insert decisions
+  and set the revocation columns; a partial unique index allows one live
+  decision per approver, type and scope. RLS and composite foreign keys with
+  `projectId` everywhere.
+- The workflow state is derived on read: per type, a live rejection beats a
+  change request, which beats counting approvals against the highest
+  required count; the release state is the worst of them (`rejected` >
+  `changes_requested` > `pending` > `approved`, no requirement = approved).
+  Environment evaluation counts release-wide decisions and that
+  environment's own.
+- Decisions: `POST /releases/:id/approvals` (`releases.approve`, tester and
+  above; checked again in the service so a revoked permission refuses even
+  with a stale screen). Reject and request changes need a comment of at least
+  5 characters. The release creator cannot approve unless every applicable
+  rule of that type allows it. Archived releases refuse decisions and
+  revocations (409) and keep their history.
+- Revocation: `POST /releases/:id/approvals/:approvalId/revoke` by the
+  approver or anyone with `releases.manage`; it marks the decision, never
+  deletes it. Everything is audited.
+- Protected environments: a deployment (or a move to `deploying`) needs the
+  applicable approvals `approved` (409 `APPROVAL_REQUIRED` with the missing
+  ones), checked inside the deployment transaction after quality gates; both
+  must hold. No approval override exists.
+- The release pipeline shows the approval state of each stage and blocks
+  protected stages (`approvals`).
+- API: `/release-approval-rules` CRUD (`releases.read` / `releases.manage`),
+  `GET /releases/:id/approvals?environmentId=`. Web: Approval rules page and
+  an Approvals section in the pipeline page.
+- Tests: `release-approvals.int-spec.ts`, `release-approval.contracts.test.ts`,
+  `release-approvals.e2e.spec.ts`.

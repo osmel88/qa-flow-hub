@@ -4,6 +4,12 @@ import { ProjectsModule } from '../projects/projects.module';
 import { QualityGatesController, ReleaseQualityGatesController } from './quality-gates.controller';
 import { QualityGatesRepository } from './quality-gates.repository';
 import { QualityGatesService } from './quality-gates.service';
+import {
+  ReleaseApprovalRulesController,
+  ReleaseApprovalsController,
+} from './release-approvals.controller';
+import { ReleaseApprovalsRepository } from './release-approvals.repository';
+import { ReleaseApprovalsService } from './release-approvals.service';
 import { ReleasePipelineService } from './release-pipeline.service';
 import { ReleasesController } from './releases.controller';
 import { ReleasesRepository } from './releases.repository';
@@ -12,14 +18,22 @@ import { ReleasesService } from './releases.service';
 /** Releases of a project and the runs that point at them (S3-F4). */
 @Module({
   imports: [ProjectsModule, RequirementLinksModule],
-  controllers: [ReleasesController, QualityGatesController, ReleaseQualityGatesController],
+  controllers: [
+    ReleasesController,
+    QualityGatesController,
+    ReleaseQualityGatesController,
+    ReleaseApprovalRulesController,
+    ReleaseApprovalsController,
+  ],
   providers: [
     ReleasesService,
     ReleasesRepository,
     ReleasePipelineService,
     QualityGatesService,
     QualityGatesRepository,
+    ReleaseApprovalsService,
+    ReleaseApprovalsRepository,
   ],
-  exports: [ReleasesService, QualityGatesService],
+  exports: [ReleasesService, QualityGatesService, ReleaseApprovalsService],
 })
 export class ReleasesModule {}

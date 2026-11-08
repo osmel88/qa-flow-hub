@@ -473,6 +473,7 @@ model Organization {
   developmentArtifacts   DevelopmentArtifact[]
   environments           Environment[]
   qualityGates           QualityGate[]
+  approvalRules          ReleaseApprovalRule[]
   codeReviews            CodeReview[]
   codeReviewSettings     CodeReviewSetting[]
   defectWorkflows        DefectWorkflow[]
@@ -589,6 +590,7 @@ model Project {
   developmentArtifacts   DevelopmentArtifact[]
   environments           Environment[]
   qualityGates           QualityGate[]
+  approvalRules          ReleaseApprovalRule[]
   codeReviews            CodeReview[]
   codeReviewSetting      CodeReviewSetting?
   defectWorkflow         DefectWorkflow?
@@ -1458,10 +1460,11 @@ model Release {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  runs      TestRun[]
-  workItems WorkItem[]
-  builds    DevelopmentArtifact[]
+  runs                 TestRun[]
+  workItems            WorkItem[]
+  builds               DevelopmentArtifact[]
   qualityGateOverrides QualityGateOverride[]
+  approvals            ReleaseApproval[]
 
   @@unique([projectId, version])
   @@unique([id, projectId])
@@ -1906,29 +1909,31 @@ model CodeReviewSetting {
 
 /// Minimal deployment target of a project (S5-F5); Stage 6 extends it.
 model Environment {
-  id             String                @id @default(cuid())
-  organizationId String
-  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  projectId      String
-  project        Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  name           String
+  id                   String                @id @default(cuid())
+  organizationId       String
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId            String
+  project              Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name                 String
   /// development, testing, staging, production or other (CHECK).
-  kind           String                @default("custom")
-  description    String?
-  status         String                @default("active")
-  protected      Boolean               @default(false)
-  position       Int                   @default(0)
-  url            String?
-  metadata       Json?
-  version        Int                   @default(1)
-  archivedAt     DateTime?
-  createdById    String?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  deletedAt      DateTime?
-  deployments    DevelopmentArtifact[]
-  qualityGates   QualityGate[]
+  kind                 String                @default("custom")
+  description          String?
+  status               String                @default("active")
+  protected            Boolean               @default(false)
+  position             Int                   @default(0)
+  url                  String?
+  metadata             Json?
+  version              Int                   @default(1)
+  archivedAt           DateTime?
+  createdById          String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deletedAt            DateTime?
+  deployments          DevelopmentArtifact[]
+  qualityGates         QualityGate[]
   qualityGateOverrides QualityGateOverride[]
+  approvalRules        ReleaseApprovalRule[]
+  approvals            ReleaseApproval[]
 
   @@unique([id, projectId])
   @@index([organizationId, projectId])
@@ -1996,3 +2001,48 @@ model QualityGateOverride {
   @@map("quality_gate_overrides")
 }
 
+/// Which approvals a release needs, project-wide or for one environment (S6-F4).
+model ReleaseApprovalRule {
+  id                String       @id @default(cuid())
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId         String
+  project           Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  environmentId     String?
+  environment       Environment? @relation(fields: [environmentId, projectId], references: [id, projectId], onDelete: Restrict)
+  type              String
+  requiredApprovals Int          @default(1)
+  allowSelfApproval Boolean      @default(false)
+  enabled           Boolean      @default(true)
+  version           Int          @default(1)
+  createdById       String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  deletedAt         DateTime?
+
+  @@index([organizationId, projectId])
+  @@index([environmentId])
+  @@map("release_approval_rules")
+}
+
+/// Approval decisions on a release; revoking marks the row, never deletes it (S6-F4).
+model ReleaseApproval {
+  id             String       @id @default(cuid())
+  organizationId String
+  projectId      String
+  releaseId      String
+  release        Release      @relation(fields: [releaseId, projectId], references: [id, projectId], onDelete: Restrict)
+  environmentId  String?
+  environment    Environment? @relation(fields: [environmentId, projectId], references: [id, projectId], onDelete: Restrict)
+  type           String
+  decision       String
+  comment        String?
+  approverId     String
+  createdAt      DateTime     @default(now())
+  revokedAt      DateTime?
+  revokedById    String?
+  revokeReason   String?
+
+  @@index([releaseId, environmentId])
+  @@map("release_approvals")
+}

@@ -36,6 +36,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { QualityGatesService } from '../releases/quality-gates.service';
+import { ReleaseApprovalsService } from '../releases/release-approvals.service';
 import { DevelopmentRepository, LinkWithWorkItem } from './development.repository';
 import { DevelopmentService, toArtifactView } from './development.service';
 
@@ -61,6 +62,7 @@ export class DeploymentsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly qualityGates: QualityGatesService,
+    private readonly releaseApprovals: ReleaseApprovalsService,
   ) {}
 
   // --- deployments -----------------------------------------------------------
@@ -97,6 +99,12 @@ export class DeploymentsService {
         await this.assertDeployable(projectId, environment, true);
         if (environment.protected && input.status !== 'cancelled') {
           await this.qualityGates.assertDeployable(
+            projectId,
+            input.releaseId ?? null,
+            environment,
+            tx,
+          );
+          await this.releaseApprovals.assertApproved(
             projectId,
             input.releaseId ?? null,
             environment,
@@ -239,6 +247,12 @@ export class DeploymentsService {
         );
         if (environment?.protected === true) {
           await this.qualityGates.assertDeployable(
+            current.projectId,
+            current.releaseId,
+            environment,
+            tx,
+          );
+          await this.releaseApprovals.assertApproved(
             current.projectId,
             current.releaseId,
             environment,

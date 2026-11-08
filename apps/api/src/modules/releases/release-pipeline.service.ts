@@ -20,6 +20,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { ForbiddenError, NotFoundError } from '../../errors';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { EnvironmentGates, QualityGatesService } from './quality-gates.service';
+import { EnvironmentApprovals, ReleaseApprovalsService } from './release-approvals.service';
 import { ReleasesRepository } from './releases.repository';
 import { statusCounts, toReleaseView } from './releases.service';
 
@@ -37,6 +38,7 @@ export class ReleasePipelineService {
     private readonly access: ProjectAccessService,
     private readonly prisma: PrismaService,
     private readonly gates: QualityGatesService,
+    private readonly approvals: ReleaseApprovalsService,
   ) {}
 
   async pipeline(id: string, query: ReleasePipelineQuery): Promise<ReleasePipelineView> {
@@ -69,10 +71,15 @@ export class ReleasePipelineService {
           ]);
         const facts = await this.gates.facts(projectId, id, tx);
         const gateResults = new Map<string, EnvironmentGates>();
+        const approvalResults = new Map<string, EnvironmentApprovals>();
         for (const env of environments.filter((entry) => entry.status !== 'archived')) {
           gateResults.set(
             env.id,
             await this.gates.forEnvironment(projectId, id, env.id, facts, tx),
+          );
+          approvalResults.set(
+            env.id,
+            await this.approvals.forEnvironment(projectId, id, env.id, tx),
           );
         }
         const [builds, users] = await Promise.all([
@@ -91,6 +98,7 @@ export class ReleasePipelineService {
           builds,
           users,
           gateResults,
+          approvalResults,
         };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -130,6 +138,8 @@ export class ReleasePipelineService {
         return {
           environmentStatus: env.status as EnvironmentStatus,
           gatesBlocking: env.protected && gateBlocks(data.gateResults.get(env.id)),
+          approvalsBlocking:
+            env.protected && (data.approvalResults.get(env.id)?.state ?? 'approved') !== 'approved',
           last:
             last === null
               ? null
@@ -159,6 +169,10 @@ export class ReleasePipelineService {
           (env.protected ? canManage : canWrite),
         deploymentCount: perStage[index]!.rows.length,
         gates: gateSummary(data.gateResults.get(env.id)),
+        approvals: {
+          state: data.approvalResults.get(env.id)?.state ?? 'approved',
+          required: data.approvalResults.get(env.id)?.requirements.length ?? 0,
+        },
         lastDeployment: last === null ? null : deploymentRef(last),
         qa:
           run === undefined || counts === null

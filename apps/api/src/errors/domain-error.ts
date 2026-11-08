@@ -73,6 +73,15 @@ export class QualityGateFailedError extends DomainError {
   }
 }
 
+export class ApprovalRequiredError extends DomainError {
+  readonly code = 'APPROVAL_REQUIRED' as const;
+  readonly httpStatus = 409;
+
+  constructor(message: string, context: Record<string, unknown> = {}) {
+    super(message, context);
+  }
+}
+
 export class ForbiddenError extends DomainError {
   readonly code = 'FORBIDDEN' as const;
   readonly httpStatus = 403;

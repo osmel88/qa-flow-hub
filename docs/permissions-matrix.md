@@ -294,3 +294,7 @@ archived projects are read-only; every change is an audited `role_change`.
 | View and evaluate quality gates (S6-F3)                     | `releases.read`                       |
 | Configure quality gates                                     | `releases.manage`                     |
 | Override failing required gates (reason required)           | `quality_gates.override`              |
+| View release approvals (S6-F4)                              | `releases.read`                       |
+| Configure approval rules                                    | `releases.manage`                     |
+| Approve, reject or request changes (comment to refuse)      | `releases.approve`                    |
+| Revoke one's own decision / anyone's                        | `releases.approve` / `releases.manage` |

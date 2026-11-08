@@ -78,6 +78,7 @@ export const PERMISSIONS = [
   'work_items.write',
   'work_items.manage',
   'code_reviews.review',
+  'quality_gates.override',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -296,6 +297,12 @@ export const PERMISSION_CATALOG: readonly PermissionDescriptor[] = [
     label: 'Review code',
     description: 'Approve or request changes on code reviews as an assigned reviewer',
   },
+  {
+    permission: 'quality_gates.override',
+    module: 'releases',
+    label: 'Override quality gates',
+    description: 'Let a release reach an environment whose required quality gates do not pass',
+  },
 ];
 
 export const PERMISSION_MODULE_LABELS: Record<PermissionModule, string> = {
@@ -363,6 +370,7 @@ const PROJECT_MANAGER: readonly Permission[] = [
   'releases.manage',
   'customization.manage',
   'work_items.manage',
+  'quality_gates.override',
 ];
 
 const ORGANIZATION_ADMIN: readonly Permission[] = [

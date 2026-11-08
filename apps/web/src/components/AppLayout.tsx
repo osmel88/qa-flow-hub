@@ -18,6 +18,7 @@ const NAV = [
   { to: '/builds', label: 'Builds' },
   { to: '/deployments', label: 'Deployments' },
   { to: '/environments', label: 'Environments' },
+  { to: '/quality-gates', label: 'Quality gates' },
   { to: '/work-items', label: 'Work items' },
   { to: '/test-cases', label: 'Test cases' },
   { to: '/imports', label: 'Import' },

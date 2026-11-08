@@ -7,11 +7,14 @@ import type {
   ReleasePipelineStage,
 } from '@qa-flow-hub/shared';
 import type { BadgeTone } from '@qa-flow-hub/ui';
-import { Badge, DataState, SelectField } from '@qa-flow-hub/ui';
-import { useQuery } from '@tanstack/react-query';
+import { Badge, Button, DataState, SelectField, TextField } from '@qa-flow-hub/ui';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { releasesApi } from '../api/endpoints';
+import { qualityGatesApi, releasesApi } from '../api/endpoints';
+import { ApiError } from '../api/http-client';
+import { GATE_TONE, QualityGateResults } from '../components/QualityGateResults';
+import { useProjectPermissions } from '../components/use-project-permissions';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 
@@ -109,6 +112,13 @@ function Stage({
           <DeploymentLine deployment={stage.lastDeployment} />
         )}
       </p>
+      <p>
+        Gates:{' '}
+        <span data-testid={`stage-gates-${stage.environment.name}`}>
+          <Badge tone={GATE_TONE[stage.gates.result]}>{humanize(stage.gates.result)}</Badge>
+        </span>
+        {stage.gates.overridden && ' (overridden)'}
+      </p>
       <p className="muted">
         {stage.deploymentCount} deployment(s)
         {stage.environment.protected && !stage.canDeploy && ' · needs work item management'}
@@ -125,6 +135,104 @@ function Stage({
         )}
       </p>
     </li>
+  );
+}
+
+/** Gate results of the release for one environment, with the override form (S6-F3). */
+function ReleaseGates({
+  releaseId,
+  projectId,
+  environments,
+}: {
+  releaseId: string;
+  projectId: string;
+  environments: ReadonlyArray<{ id: string; name: string }>;
+}): React.JSX.Element {
+  const queryClient = useQueryClient();
+  const { can } = useProjectPermissions(projectId);
+  const [environmentId, setEnvironmentId] = useState('');
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const gates = useQuery({
+    queryKey: ['release-gates', releaseId, environmentId],
+    queryFn: () =>
+      qualityGatesApi.evaluate(releaseId, environmentId === '' ? undefined : environmentId),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  const override = useMutation({
+    mutationFn: () => qualityGatesApi.override(releaseId, environmentId, reason.trim()),
+    onSuccess: async () => {
+      setReason('');
+      setError(null);
+      await queryClient.invalidateQueries({ queryKey: ['release-gates'] });
+      await queryClient.invalidateQueries({ queryKey: ['release-pipeline'] });
+    },
+    onError: (cause: unknown) => {
+      setError(cause instanceof ApiError ? cause.message : 'Could not override the gates.');
+    },
+  });
+  const view = gates.data;
+  return (
+    <section className="card" aria-labelledby="release-gates">
+      <h2 id="release-gates">Quality gates</h2>
+      <SelectField
+        label="Gates for environment"
+        value={environmentId}
+        options={[
+          { value: '', label: 'Project-wide gates only' },
+          ...environments.map((env) => ({ value: env.id, label: env.name })),
+        ]}
+        onChange={(event) => {
+          setEnvironmentId(event.target.value);
+        }}
+      />
+      {error !== null && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {view !== undefined && (
+        <>
+          <p>
+            Required gates:{' '}
+            <span data-testid="gates-required">
+              <Badge tone={GATE_TONE[view.required.result]}>{humanize(view.required.result)}</Badge>
+            </span>{' '}
+            <span className="muted">
+              {view.deployable ? 'deployment allowed' : 'deployment blocked if protected'}
+            </span>
+          </p>
+          {view.override !== null && (
+            <p data-testid="gates-override">
+              Overridden by {view.override.createdBy?.fullName ?? 'someone'}: {view.override.reason}
+            </p>
+          )}
+          <QualityGateResults view={view} />
+          {environmentId !== '' && !view.deployable && can('quality_gates.override') && (
+            <form
+              aria-label="Override quality gates"
+              onSubmit={(event) => {
+                event.preventDefault();
+                override.mutate();
+              }}
+            >
+              <TextField
+                label="Override reason"
+                value={reason}
+                required
+                onChange={(event) => {
+                  setReason(event.target.value);
+                }}
+              />
+              <Button type="submit" variant="secondary" disabled={override.isPending}>
+                Override gates
+              </Button>
+            </form>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -250,6 +358,11 @@ export function ReleasePipelinePage(): React.JSX.Element {
               ))}
             </ol>
           )}
+          <ReleaseGates
+            releaseId={view.release.id}
+            projectId={view.release.projectId}
+            environments={(environments.data?.stages ?? []).map((stage) => stage.environment)}
+          />
           {view.history.length > 0 && (
             <section className="card" aria-labelledby="pipeline-history">
               <h2 id="pipeline-history">Archived environments</h2>

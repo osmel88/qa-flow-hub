@@ -5,6 +5,10 @@ import type {
   DeploymentMetricsView,
   DeploymentView,
   EnvironmentView,
+  CreateQualityGateInput,
+  QualityGateView,
+  ReleaseQualityGatesView,
+  UpdateQualityGateInput,
   ReleasePipelineQuery,
   ReleasePipelineView,
   ListEnvironmentsQuery,
@@ -870,4 +874,22 @@ export const deploymentsApi = {
     apiFetch<DeploymentView>(`/deployments/${id}/transition`, { method: 'POST', body }),
   rollback: (id: string, body: RollbackDeploymentInput) =>
     apiFetch<DeploymentView>(`/deployments/${id}/rollback`, { method: 'POST', body }),
+};
+
+export const qualityGatesApi = {
+  list: (projectId: string) => apiFetch<QualityGateView[]>(`/quality-gates${query({ projectId })}`),
+  create: (body: CreateQualityGateInput) =>
+    apiFetch<QualityGateView>('/quality-gates', { method: 'POST', body }),
+  update: (id: string, body: UpdateQualityGateInput) =>
+    apiFetch<QualityGateView>(`/quality-gates/${id}`, { method: 'PATCH', body }),
+  remove: (id: string) => apiFetch<void>(`/quality-gates/${id}`, { method: 'DELETE' }),
+  evaluate: (releaseId: string, environmentId?: string) =>
+    apiFetch<ReleaseQualityGatesView>(
+      `/releases/${releaseId}/quality-gates${query(environmentId === undefined ? {} : { environmentId })}`,
+    ),
+  override: (releaseId: string, environmentId: string, reason: string) =>
+    apiFetch<ReleaseQualityGatesView>(`/releases/${releaseId}/quality-gates/override`, {
+      method: 'POST',
+      body: { environmentId, reason },
+    }),
 };

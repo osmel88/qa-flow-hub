@@ -289,7 +289,37 @@ export class ReleasesRepository extends TenantAwareRepository {
       : tx.user.findMany({ where: { id: { in: [...ids] } }, select: { id: true, fullName: true } });
   }
 
-  /** Open blocker/critical defects raised in runs of the release. */
+  /** Newest live build of the release, whatever its status (S6-F3). */
+  latestBuild(projectId: string, releaseId: string, tx: PrismaTransaction) {
+    return tx.developmentArtifact.findFirst({
+      where: {
+        organizationId: this.organizationId,
+        projectId,
+        releaseId,
+        kind: 'build',
+        deletedAt: null,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { id: true, identifier: true, status: true },
+    });
+  }
+
+  /** Live, non-dismissed code reviews of the release's work items (S6-F3). */
+  releaseReviews(projectId: string, releaseId: string, tx: PrismaTransaction) {
+    return tx.codeReview.findMany({
+      where: {
+        organizationId: this.organizationId,
+        projectId,
+        deletedAt: null,
+        status: { not: 'dismissed' },
+        workItems: { some: { workItem: { releaseId, deletedAt: null } } },
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: { id: true, title: true, status: true },
+    });
+  }
+
+  /** Open defects of the given severities raised in runs of the release. */
   blockingDefects(releaseId: string, severities: readonly string[], tx: PrismaTransaction) {
     return tx.defect.findMany({
       where: {

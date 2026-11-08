@@ -472,6 +472,7 @@ model Organization {
   kanbanColumnSettings   KanbanColumnSetting[]
   developmentArtifacts   DevelopmentArtifact[]
   environments           Environment[]
+  qualityGates           QualityGate[]
   codeReviews            CodeReview[]
   codeReviewSettings     CodeReviewSetting[]
   defectWorkflows        DefectWorkflow[]
@@ -587,6 +588,7 @@ model Project {
   kanbanColumnSettings   KanbanColumnSetting[]
   developmentArtifacts   DevelopmentArtifact[]
   environments           Environment[]
+  qualityGates           QualityGate[]
   codeReviews            CodeReview[]
   codeReviewSetting      CodeReviewSetting?
   defectWorkflow         DefectWorkflow?
@@ -1459,6 +1461,7 @@ model Release {
   runs      TestRun[]
   workItems WorkItem[]
   builds    DevelopmentArtifact[]
+  qualityGateOverrides QualityGateOverride[]
 
   @@unique([projectId, version])
   @@unique([id, projectId])
@@ -1924,9 +1927,72 @@ model Environment {
   updatedAt      DateTime              @updatedAt
   deletedAt      DateTime?
   deployments    DevelopmentArtifact[]
+  qualityGates   QualityGate[]
+  qualityGateOverrides QualityGateOverride[]
 
   @@unique([id, projectId])
   @@index([organizationId, projectId])
   @@index([projectId, status, position])
   @@map("environments")
 }
+
+/// A named set of rules of a project, optionally for one environment (S6-F3).
+/// Results are evaluated on read, never stored.
+model QualityGate {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String
+  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  environmentId  String?
+  environment    Environment?      @relation(fields: [environmentId, projectId], references: [id, projectId], onDelete: Restrict)
+  name           String
+  description    String?
+  required       Boolean           @default(true)
+  enabled        Boolean           @default(true)
+  version        Int               @default(1)
+  createdById    String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  deletedAt      DateTime?
+  rules          QualityGateRule[]
+
+  @@unique([id, projectId])
+  @@index([organizationId, projectId])
+  @@index([environmentId])
+  @@map("quality_gates")
+}
+
+model QualityGateRule {
+  id             String      @id @default(cuid())
+  organizationId String
+  projectId      String
+  gateId         String
+  gate           QualityGate @relation(fields: [gateId, projectId], references: [id, projectId], onDelete: Cascade)
+  type           String
+  threshold      Float?
+  position       Int         @default(0)
+  createdAt      DateTime    @default(now())
+
+  @@unique([gateId, type])
+  @@map("quality_gate_rules")
+}
+
+/// Manual override of the required gates of a release in an environment; append-only.
+model QualityGateOverride {
+  id             String      @id @default(cuid())
+  organizationId String
+  projectId      String
+  releaseId      String
+  release        Release     @relation(fields: [releaseId, projectId], references: [id, projectId], onDelete: Restrict)
+  environmentId  String
+  environment    Environment @relation(fields: [environmentId, projectId], references: [id, projectId], onDelete: Restrict)
+  reason         String
+  gateStatus     String
+  createdById    String
+  createdAt      DateTime    @default(now())
+
+  @@index([releaseId, environmentId])
+  @@map("quality_gate_overrides")
+}
+

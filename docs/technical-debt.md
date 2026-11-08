@@ -1334,3 +1334,14 @@ caller's own tenant, never of another one.
 - **QA per stage matches by environment name**: test runs keep `environment`
   as free text; a foreign key to `environments` would make it exact.
 - **One stage per environment**: no parallel stages or skipped environments.
+
+## 59. Quality gates: what S6-F3 leaves (S6-F3)
+
+- **Overrides never expire or get revoked**: the latest override of a release
+  in an environment stays effective; expiry or revocation needs a product
+  rule.
+- **"High" defects are `major`**: the severity model has no `high`.
+- **Gates are not versioned**: an edit changes the rules for every release
+  at once; the audit log keeps the previous rules.
+- **Code review rule looks at the release's work items only**, not at pull
+  requests that are not linked to a work item.

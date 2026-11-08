@@ -70,3 +70,37 @@ Billing, SSO/SAML/SCIM); debt 39 stays out of scope.
   timeline, archived history) linked from the release detail.
 - Tests: `release-pipeline.int-spec.ts`, `release-pipeline.contracts.test.ts`,
   `release-pipeline.e2e.spec.ts`.
+
+## S6-F3 — Quality Gates
+
+- 1 migration: `quality_gates` (project, optional environment, `required`,
+  `enabled`, `version`, soft delete, unique live name), `quality_gate_rules`
+  (one per type with its threshold) and `quality_gate_overrides`
+  (append-only: release, environment, reason of at least 10 characters,
+  the gate status it overrode, author). All with RLS and composite foreign
+  keys with `projectId`.
+- Rules: `min_pass_rate`, `max_failed_tests`, `max_blocked_tests`,
+  `min_requirement_coverage`, `max_open_critical_defects` (blocker +
+  critical), `max_open_high_defects` (major), `build_must_pass`,
+  `completed_test_run_required`, `code_review_approval_required`. A gate
+  combines several; results are `passed`, `failed`, `pending` (missing data)
+  or `not_applicable`, each with the measured value, a message and links to
+  the runs, defects, build, reviews or requirements behind it.
+- Results are evaluated on read (`GET /releases/:id/quality-gates`, one
+  REPEATABLE READ snapshot) and never stored. Project-wide gates apply to
+  every environment; environment gates only there.
+- Protected environments: a deployment (or a move to `deploying`) of a
+  release needs its required gates `passed`/`not_applicable` or an override
+  (409 `QUALITY_GATE_FAILED` with the failing rules); without a release it is
+  refused when required gates exist. Checked inside the deployment
+  transaction.
+- Overrides: `POST /releases/:id/quality-gates/override` needs the new
+  `quality_gates.override` permission (project manager and above), refuses
+  when there is nothing to override, and is audited.
+- The release pipeline shows the gates of each stage and blocks protected
+  stages (`quality_gates`) until gates pass or are overridden.
+- API: `/quality-gates` CRUD (`releases.read` / `releases.manage`, optional
+  `version`). Web: Quality gates page and a gates section with override in
+  the pipeline page.
+- Tests: `quality-gates.int-spec.ts`, `quality-gate.contracts.test.ts`,
+  `quality-gates.e2e.spec.ts`.

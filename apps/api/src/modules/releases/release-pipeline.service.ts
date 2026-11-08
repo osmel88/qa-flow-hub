@@ -19,6 +19,7 @@ import {
 import { PrismaService } from '../../database/prisma.service';
 import { ForbiddenError, NotFoundError } from '../../errors';
 import { ProjectAccessService } from '../projects/project-access.service';
+import { EnvironmentGates, QualityGatesService } from './quality-gates.service';
 import { ReleasesRepository } from './releases.repository';
 import { statusCounts, toReleaseView } from './releases.service';
 
@@ -35,6 +36,7 @@ export class ReleasePipelineService {
     private readonly releases: ReleasesRepository,
     private readonly access: ProjectAccessService,
     private readonly prisma: PrismaService,
+    private readonly gates: QualityGatesService,
   ) {}
 
   async pipeline(id: string, query: ReleasePipelineQuery): Promise<ReleasePipelineView> {
@@ -65,6 +67,14 @@ export class ReleasePipelineService {
             this.releases.defectCounts(id, tx),
             this.releases.blockingDefects(id, BLOCKING_DEFECT_SEVERITIES, tx),
           ]);
+        const facts = await this.gates.facts(projectId, id, tx);
+        const gateResults = new Map<string, EnvironmentGates>();
+        for (const env of environments.filter((entry) => entry.status !== 'archived')) {
+          gateResults.set(
+            env.id,
+            await this.gates.forEnvironment(projectId, id, env.id, facts, tx),
+          );
+        }
         const [builds, users] = await Promise.all([
           this.releases.buildsByIds(unique(deployments.map((row) => row.buildId)), tx),
           this.releases.usersByIds(unique(deployments.map((row) => row.actorId)), tx),
@@ -80,6 +90,7 @@ export class ReleasePipelineService {
           blocking,
           builds,
           users,
+          gateResults,
         };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -118,6 +129,7 @@ export class ReleasePipelineService {
         const last = perStage[index]?.last ?? null;
         return {
           environmentStatus: env.status as EnvironmentStatus,
+          gatesBlocking: env.protected && gateBlocks(data.gateResults.get(env.id)),
           last:
             last === null
               ? null
@@ -146,6 +158,7 @@ export class ReleasePipelineService {
           data.release.status !== 'archived' &&
           (env.protected ? canManage : canWrite),
         deploymentCount: perStage[index]!.rows.length,
+        gates: gateSummary(data.gateResults.get(env.id)),
         lastDeployment: last === null ? null : deploymentRef(last),
         qa:
           run === undefined || counts === null
@@ -190,6 +203,23 @@ export class ReleasePipelineService {
       generatedAt: new Date().toISOString(),
     };
   }
+}
+
+function gateBlocks(gates: EnvironmentGates | undefined): boolean {
+  return (
+    gates !== undefined &&
+    gates.override === null &&
+    gates.required.result !== 'passed' &&
+    gates.required.result !== 'not_applicable'
+  );
+}
+
+function gateSummary(gates: EnvironmentGates | undefined): ReleasePipelineStage['gates'] {
+  return {
+    result: gates?.required.result ?? 'not_applicable',
+    required: gates?.required.gateCount ?? 0,
+    overridden: gates !== undefined && gates.override !== null,
+  };
 }
 
 function unique(ids: ReadonlyArray<string | null>): string[] {

@@ -20,6 +20,7 @@ import { DeploymentsPage } from '../pages/DeploymentsPage';
 import { ReleasePipelinePage } from '../pages/ReleasePipelinePage';
 import { EnvironmentDetailPage } from '../pages/EnvironmentDetailPage';
 import { EnvironmentsPage } from '../pages/EnvironmentsPage';
+import { QualityGatesPage } from '../pages/QualityGatesPage';
 import { BuildsPage } from '../pages/BuildsPage';
 import { CodeReviewDetailPage } from '../pages/CodeReviewDetailPage';
 import { CodeReviewsPage } from '../pages/CodeReviewsPage';
@@ -81,6 +82,7 @@ const router = createBrowserRouter([
           { path: '/deployments', element: <DeploymentsPage /> },
           { path: '/deployments/:deploymentId', element: <DeploymentDetailPage /> },
           { path: '/environments', element: <EnvironmentsPage /> },
+          { path: '/quality-gates', element: <QualityGatesPage /> },
           { path: '/environments/:environmentId', element: <EnvironmentDetailPage /> },
           { path: '/code-reviews', element: <CodeReviewsPage /> },
           { path: '/code-reviews/:reviewId', element: <CodeReviewDetailPage /> },

@@ -26,6 +26,7 @@ export * from './automation/api-key.contracts.js';
 export * from './automation/ingestion.contracts.js';
 export * from './releases/release.contracts.js';
 export * from './releases/release-pipeline.contracts.js';
+export * from './releases/quality-gate.contracts.js';
 export * from './customization/custom-field.contracts.js';
 export * from './customization/defect-workflow.contracts.js';
 export * from './work-items/work-item.contracts.js';

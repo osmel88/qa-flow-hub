@@ -63,6 +63,16 @@ export class InvalidStateTransitionError extends DomainError {
   }
 }
 
+/** Required quality gates of a release do not pass for a protected environment (S6-F3). */
+export class QualityGateFailedError extends DomainError {
+  readonly code = 'QUALITY_GATE_FAILED' as const;
+  readonly httpStatus = 409;
+
+  constructor(message: string, context: Record<string, unknown> = {}) {
+    super(message, context);
+  }
+}
+
 export class ForbiddenError extends DomainError {
   readonly code = 'FORBIDDEN' as const;
   readonly httpStatus = 403;
@@ -246,14 +256,22 @@ export class PlanLimitReachedError extends DomainError {
   readonly code = 'PLAN_LIMIT_REACHED' as const;
   readonly httpStatus = 402;
 
-  constructor(resource: 'projects' | 'members' | 'storage', plan: string, limit: number, used: number) {
-    super(`The ${plan} plan allows ${limit} ${resource === 'storage' ? 'bytes of evidence' : resource}; ${used} in use`, {
-      details: [{ path: resource, message: `limit ${limit}, used ${used}, plan ${plan}` }],
-      resource,
-      plan,
-      limit,
-      used,
-    });
+  constructor(
+    resource: 'projects' | 'members' | 'storage',
+    plan: string,
+    limit: number,
+    used: number,
+  ) {
+    super(
+      `The ${plan} plan allows ${limit} ${resource === 'storage' ? 'bytes of evidence' : resource}; ${used} in use`,
+      {
+        details: [{ path: resource, message: `limit ${limit}, used ${used}, plan ${plan}` }],
+        resource,
+        plan,
+        limit,
+        used,
+      },
+    );
   }
 }
 

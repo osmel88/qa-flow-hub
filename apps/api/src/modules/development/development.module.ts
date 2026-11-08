@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ProjectsModule } from '../projects/projects.module';
+import { ReleasesModule } from '../releases/releases.module';
 import { BuildsController } from './builds.controller';
 import { BuildsService } from './builds.service';
 import { DeploymentsController } from './deployments.controller';
@@ -15,7 +16,7 @@ import { EnvironmentsService } from './environments.service';
 
 /** Branches, commits, pull requests, builds and deployments of work items (S5-F1). */
 @Module({
-  imports: [ProjectsModule],
+  imports: [ProjectsModule, ReleasesModule],
   controllers: [
     DevelopmentArtifactsController,
     WorkItemDevelopmentController,

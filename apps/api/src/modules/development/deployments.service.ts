@@ -35,6 +35,7 @@ import {
 } from '../../errors';
 import { AuditService } from '../audit/audit.service';
 import { ProjectAccessService } from '../projects/project-access.service';
+import { QualityGatesService } from '../releases/quality-gates.service';
 import { DevelopmentRepository, LinkWithWorkItem } from './development.repository';
 import { DevelopmentService, toArtifactView } from './development.service';
 
@@ -59,6 +60,7 @@ export class DeploymentsService {
     private readonly access: ProjectAccessService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly qualityGates: QualityGatesService,
   ) {}
 
   // --- deployments -----------------------------------------------------------
@@ -93,6 +95,14 @@ export class DeploymentsService {
           throw new NotFoundError('Environment');
         }
         await this.assertDeployable(projectId, environment, true);
+        if (environment.protected && input.status !== 'cancelled') {
+          await this.qualityGates.assertDeployable(
+            projectId,
+            input.releaseId ?? null,
+            environment,
+            tx,
+          );
+        }
         const build =
           input.buildId === undefined
             ? null
@@ -221,6 +231,21 @@ export class DeploymentsService {
     await this.prisma.runInTransaction(async (tx) => {
       const current = await this.lockDeployment(id, input.version, tx);
       await this.assertEnvironmentAccess(current, tx);
+      if (input.status === 'deploying' && current.environmentId !== null) {
+        const environment = await this.repo.lockEnvironment(
+          current.projectId,
+          current.environmentId,
+          tx,
+        );
+        if (environment?.protected === true) {
+          await this.qualityGates.assertDeployable(
+            current.projectId,
+            current.releaseId,
+            environment,
+            tx,
+          );
+        }
+      }
       if (!canTransitionDeployment(current.status, input.status)) {
         throw new InvalidStateTransitionError(
           DEPLOYMENT,

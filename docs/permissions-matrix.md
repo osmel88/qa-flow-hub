@@ -291,3 +291,6 @@ archived projects are read-only; every change is an audited `role_change`.
 | Report, move, edit or roll back a deployment                | `work_items.write`                    |
 | The same in a protected environment (production by default) | `work_items.manage`                   |
 | View a release pipeline (S6-F2)                             | `releases.read` and `work_items.read` |
+| View and evaluate quality gates (S6-F3)                     | `releases.read`                       |
+| Configure quality gates                                     | `releases.manage`                     |
+| Override failing required gates (reason required)           | `quality_gates.override`              |

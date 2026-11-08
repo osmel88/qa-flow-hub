@@ -846,3 +846,50 @@ body {
     grid-template-columns: repeat(6, 85%);
   }
 }
+
+/* Release pipeline (S6-F2) */
+.pipeline {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(15rem, 1fr);
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding-left: 0;
+}
+
+.pipeline-stage {
+  border-top: 4px solid var(--color-border, #d1d5db);
+  position: relative;
+}
+
+.pipeline-stage--deployed {
+  border-top-color: var(--color-success, #15803d);
+}
+
+.pipeline-stage--deploying {
+  border-top-color: var(--color-info, #1d4ed8);
+}
+
+.pipeline-stage--failed,
+.pipeline-stage--blocked {
+  border-top-color: var(--color-danger, #b91c1c);
+}
+
+.pipeline-stage--ready {
+  border-top-color: var(--color-warning, #b45309);
+}
+
+.pipeline-progress {
+  width: 100%;
+  max-width: 24rem;
+}
+
+@media (max-width: 48rem) {
+  .pipeline {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+  }
+}

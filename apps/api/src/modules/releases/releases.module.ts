@@ -1,6 +1,7 @@
 import { RequirementLinksModule } from '../requirement-links/requirement-links.module';
 import { Module } from '@nestjs/common';
 import { ProjectsModule } from '../projects/projects.module';
+import { ReleasePipelineService } from './release-pipeline.service';
 import { ReleasesController } from './releases.controller';
 import { ReleasesRepository } from './releases.repository';
 import { ReleasesService } from './releases.service';
@@ -9,7 +10,7 @@ import { ReleasesService } from './releases.service';
 @Module({
   imports: [ProjectsModule, RequirementLinksModule],
   controllers: [ReleasesController],
-  providers: [ReleasesService, ReleasesRepository],
+  providers: [ReleasesService, ReleasesRepository, ReleasePipelineService],
   exports: [ReleasesService],
 })
 export class ReleasesModule {}

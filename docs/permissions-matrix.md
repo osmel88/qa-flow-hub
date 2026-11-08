@@ -284,9 +284,10 @@ archived projects are read-only; every change is an audited `role_change`.
 
 ## Environments and deployments (S5-F5, S6-F1)
 
-| Action                                                      | Permission          |
-| ----------------------------------------------------------- | ------------------- |
-| List and view environments and deployments                  | `work_items.read`   |
-| Create, edit, archive, restore or delete an environment     | `work_items.manage` |
-| Report, move, edit or roll back a deployment                | `work_items.write`  |
-| The same in a protected environment (production by default) | `work_items.manage` |
+| Action                                                      | Permission                            |
+| ----------------------------------------------------------- | ------------------------------------- |
+| List and view environments and deployments                  | `work_items.read`                     |
+| Create, edit, archive, restore or delete an environment     | `work_items.manage`                   |
+| Report, move, edit or roll back a deployment                | `work_items.write`                    |
+| The same in a protected environment (production by default) | `work_items.manage`                   |
+| View a release pipeline (S6-F2)                             | `releases.read` and `work_items.read` |

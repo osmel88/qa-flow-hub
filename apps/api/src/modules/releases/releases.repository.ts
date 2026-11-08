@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Release, ReleaseStatus, TestResultStatus } from '@prisma/client';
+import { DefectSeverity, Prisma, Release, ReleaseStatus, TestResultStatus } from '@prisma/client';
 import {
   Paginated,
   PaginationQuery,
@@ -232,6 +232,76 @@ export class ReleasesRepository extends TenantAwareRepository {
       WHERE d."organizationId" = ${this.organizationId} AND d."deletedAt" IS NULL
         AND r."releaseId" = ${releaseId} AND r."deletedAt" IS NULL`;
     return rows[0] ?? { total: 0, open: 0 };
+  }
+
+  // --- Release pipeline (S6-F2) ----------------------------------------------
+
+  /** Live environments of the project in pipeline order, archived ones included. */
+  pipelineEnvironments(projectId: string, tx: PrismaTransaction) {
+    return tx.environment.findMany({
+      where: { organizationId: this.organizationId, projectId, deletedAt: null },
+      orderBy: [{ position: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  /** Live deployments of the release, newest first. */
+  releaseDeployments(projectId: string, releaseId: string, tx: PrismaTransaction) {
+    return tx.developmentArtifact.findMany({
+      where: {
+        organizationId: this.organizationId,
+        projectId,
+        releaseId,
+        kind: 'deployment',
+        deletedAt: null,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+  }
+
+  /** Newest live passed build of the release. */
+  latestPassedBuild(projectId: string, releaseId: string, tx: PrismaTransaction) {
+    return tx.developmentArtifact.findFirst({
+      where: {
+        organizationId: this.organizationId,
+        projectId,
+        releaseId,
+        kind: 'build',
+        status: 'passed',
+        deletedAt: null,
+      },
+      orderBy: [{ finishedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+      select: { id: true, identifier: true, commitSha: true },
+    });
+  }
+
+  buildsByIds(ids: readonly string[], tx: PrismaTransaction) {
+    return ids.length === 0
+      ? Promise.resolve([])
+      : tx.developmentArtifact.findMany({
+          where: { organizationId: this.organizationId, id: { in: [...ids] }, kind: 'build' },
+          select: { id: true, identifier: true },
+        });
+  }
+
+  usersByIds(ids: readonly string[], tx: PrismaTransaction) {
+    return ids.length === 0
+      ? Promise.resolve([])
+      : tx.user.findMany({ where: { id: { in: [...ids] } }, select: { id: true, fullName: true } });
+  }
+
+  /** Open blocker/critical defects raised in runs of the release. */
+  blockingDefects(releaseId: string, severities: readonly string[], tx: PrismaTransaction) {
+    return tx.defect.findMany({
+      where: {
+        organizationId: this.organizationId,
+        deletedAt: null,
+        status: { in: ['open', 'triaged', 'in_progress', 'reopened'] },
+        severity: { in: severities as DefectSeverity[] },
+        testRun: { releaseId, deletedAt: null },
+      },
+      orderBy: [{ severity: 'asc' }, { key: 'asc' }],
+      select: { id: true, key: true, title: true, severity: true, status: true },
+    });
   }
 }
 

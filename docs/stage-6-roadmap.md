@@ -41,3 +41,32 @@ Billing, SSO/SAML/SCIM); debt 39 stays out of scope.
   archive/restore/delete, recent deployments).
 - Tests: `environments.int-spec.ts` (including the migration backfill),
   `environment.contracts.test.ts`, `environments.e2e.spec.ts`.
+
+## S6-F2 — Release Pipeline
+
+- `GET /releases/:id/pipeline` (filters `environmentId`, `status`) derives the
+  pipeline of a release on every read; nothing is stored and no migration
+  is needed. Needs `releases.read` and `work_items.read`.
+- Stages are the active and inactive environments of the release's project,
+  in environment order. Archived environments where the release ran are
+  returned as `history`, outside the active flow.
+- Stage rules (`computePipelineStages()`, shared): the newest non-cancelled
+  deployment of the release decides — pending/deploying → `deploying`,
+  failed → `failed`, succeeded → `deployed`; a rolled back release counts as
+  not deployed (`rolledBack`). Otherwise known blockers give `blocked`
+  (archived release, inactive environment, open blocker/critical defects
+  of the release's runs, previous stage failed); `ready` needs a passed
+  build of the release and the previous stage deployed; else `pending`.
+- Pipeline status: failed > deploying > completed > blocked > in progress >
+  not started; progress counts deployed stages over all stages.
+- Each stage carries the environment (with its protected flag), the last
+  deployment (build, commit, actor, dates), the deployment count, whether
+  the current user may deploy there and the QA of the newest non-aborted
+  run of the release whose environment matches by name.
+- All reads share one REPEATABLE READ snapshot, so a pipeline read while
+  deployments move is internally consistent. Being read-only, it writes no
+  audit entries; the deployments it reflects are audited.
+- Web: pipeline page (summary, progress, blocking defects, filters, stage
+  timeline, archived history) linked from the release detail.
+- Tests: `release-pipeline.int-spec.ts`, `release-pipeline.contracts.test.ts`,
+  `release-pipeline.e2e.spec.ts`.

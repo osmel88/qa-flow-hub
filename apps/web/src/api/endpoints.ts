@@ -5,6 +5,8 @@ import type {
   DeploymentMetricsView,
   DeploymentView,
   EnvironmentView,
+  ReleasePipelineQuery,
+  ReleasePipelineView,
   ListEnvironmentsQuery,
   UpdateEnvironmentInput,
   ListDeploymentsQuery,
@@ -656,6 +658,8 @@ export const releasesApi = {
   transition: (id: string, action: 'start' | 'release' | 'archive') =>
     apiFetch<ReleaseView>(`/releases/${id}/${action}`, { method: 'POST' }),
   summary: (id: string) => apiFetch<ReleaseSummaryView>(`/releases/${id}/summary`),
+  pipeline: (id: string, params: ReleasePipelineQuery = {}) =>
+    apiFetch<ReleasePipelineView>(`/releases/${id}/pipeline${query(params)}`),
   traceability: (id: string) => apiFetch<ReleaseTraceabilityView>(`/releases/${id}/traceability`),
 };
 

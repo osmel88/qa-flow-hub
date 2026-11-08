@@ -3,15 +3,18 @@ import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger
 import {
   CreateReleaseInput,
   ListReleasesQuery,
+  ReleasePipelineQuery,
   UpdateReleaseInput,
   createReleaseSchema,
   listReleasesQuerySchema,
+  releasePipelineQuerySchema,
   updateReleaseSchema,
 } from '@qa-flow-hub/shared';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { ReleasePipelineService } from './release-pipeline.service';
 import { ReleasesService } from './releases.service';
 
 @ApiTags('releases')
@@ -20,7 +23,10 @@ import { ReleasesService } from './releases.service';
 @ProjectScoped()
 @Controller('releases')
 export class ReleasesController {
-  constructor(private readonly releases: ReleasesService) {}
+  constructor(
+    private readonly releases: ReleasesService,
+    private readonly pipelines: ReleasePipelineService,
+  ) {}
 
   @RequirePermission('releases.manage')
   @Post()
@@ -44,6 +50,18 @@ export class ReleasesController {
   @ApiOperation({ summary: 'Get a release' })
   get(@Param('id') id: string) {
     return this.releases.get(id);
+  }
+
+  @RequirePermission('releases.read')
+  @Get(':id/pipeline')
+  @ApiOperation({
+    summary: 'Release pipeline: one derived stage per environment, QA and blocking defects',
+  })
+  pipeline(
+    @Param('id') id: string,
+    @Query(zodQuery(releasePipelineQuerySchema)) query: ReleasePipelineQuery,
+  ) {
+    return this.pipelines.pipeline(id, query);
   }
 
   @RequirePermission('releases.read')

@@ -64,6 +64,9 @@ export function ReleaseDetailPage(): React.JSX.Element {
             description={release.description ?? 'Runs, results and coverage of this release.'}
           />
           <p>
+            <Link to={`/releases/${release.id}/pipeline`}>Release pipeline →</Link>
+          </p>
+          <p>
             <Badge tone={RELEASE_TONE[release.status]}>{humanize(release.status)}</Badge>{' '}
             {release.tag !== null && <span>Tag {release.tag} · </span>}
             <span>

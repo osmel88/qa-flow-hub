@@ -1325,3 +1325,12 @@ caller's own tenant, never of another one.
   secret-looking; a secret store stays out of scope.
 - **`health` filter runs after the query**: fine for tens of environments per
   project, not for thousands.
+
+## 58. Release pipeline: what S6-F2 leaves (S6-F2)
+
+- **Fixed blocking rules**: blocker/critical defects, inactive environments,
+  archived releases and failed previous stages; configurable rules are
+  Quality Gates (S6-F3).
+- **QA per stage matches by environment name**: test runs keep `environment`
+  as free text; a foreign key to `environments` would make it exact.
+- **One stage per environment**: no parallel stages or skipped environments.

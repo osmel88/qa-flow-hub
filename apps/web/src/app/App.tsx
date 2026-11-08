@@ -17,6 +17,7 @@ import { KanbanPage } from '../pages/KanbanPage';
 import { BuildDetailPage } from '../pages/BuildDetailPage';
 import { DeploymentDetailPage } from '../pages/DeploymentDetailPage';
 import { DeploymentsPage } from '../pages/DeploymentsPage';
+import { ReleasePipelinePage } from '../pages/ReleasePipelinePage';
 import { EnvironmentDetailPage } from '../pages/EnvironmentDetailPage';
 import { EnvironmentsPage } from '../pages/EnvironmentsPage';
 import { BuildsPage } from '../pages/BuildsPage';
@@ -93,6 +94,7 @@ const router = createBrowserRouter([
           { path: '/releases', element: <ReleasesPage /> },
           { path: '/customization', element: <CustomizationPage /> },
           { path: '/releases/:releaseId', element: <ReleaseDetailPage /> },
+          { path: '/releases/:releaseId/pipeline', element: <ReleasePipelinePage /> },
           { path: '/test-runs', element: <TestRunsPage /> },
           { path: '/test-runs/:runId', element: <RunExecutionPage /> },
           { path: '/defects', element: <DefectsPage /> },

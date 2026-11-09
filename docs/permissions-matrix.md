@@ -301,3 +301,12 @@ archived projects are read-only; every change is an audited `role_change`.
 | Roll an environment back (S6-F5; reason required)           | `work_items.write` (`work_items.manage` when protected) |
 | Emergency rollback (skips gates and approvals)              | `releases.emergency_rollback`         |
 | View rollback history                                       | `work_items.read`                     |
+
+## Test plans (S7-F1)
+
+| Action                                                 | Permission        |
+| ------------------------------------------------------ | ----------------- |
+| List and view plans, progress and coverage             | `testruns.read`   |
+| Create, edit, refresh the scope, attach or detach runs | `testruns.create` |
+| Start, complete, cancel or archive a plan              | `testruns.manage` |
+

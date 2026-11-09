@@ -1364,3 +1364,11 @@ caller's own tenant, never of another one.
 - **Emergency rollbacks are not reviewed afterwards**: no follow-up task or
   notification is created.
 
+
+## 62. Test plans: what S7-F1 leaves (S7-F1)
+
+- **No run is generated from a plan**: runs are created separately and
+  attached; a "create run from plan" action would save a step.
+- **Environments of a plan are not matched to runs**: a run's environment is
+  still free text.
+- **Owner changes are not notified**.

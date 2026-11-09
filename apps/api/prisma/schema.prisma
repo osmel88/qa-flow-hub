@@ -336,6 +336,8 @@ model User {
   mfaRecoveryCodes       MfaRecoveryCode[]
   mfaChallenges          MfaChallenge[]
 
+  ownedTestPlans TestPlan[] @relation("TestPlanOwner")
+
   @@index([deletedAt])
   @@map("users")
 }
@@ -478,6 +480,8 @@ model Organization {
   codeReviewSettings     CodeReviewSetting[]
   defectWorkflows        DefectWorkflow[]
 
+  testPlans TestPlan[]
+
   @@index([deletedAt])
   @@map("organizations")
 }
@@ -594,6 +598,8 @@ model Project {
   codeReviews            CodeReview[]
   codeReviewSetting      CodeReviewSetting?
   defectWorkflow         DefectWorkflow?
+
+  testPlans TestPlan[]
 
   @@unique([organizationId, key])
   @@index([organizationId, status])
@@ -729,6 +735,9 @@ model TestSuite {
   sections  TestSection[]
   testCases TestCase[]
 
+  testPlans TestPlanSuite[]
+
+  @@unique([id, projectId])
   @@unique([organizationId, projectId, name])
   @@index([organizationId, projectId, deletedAt])
   @@map("test_suites")
@@ -800,6 +809,10 @@ model TestCase {
   testRunCases TestRunCase[]
   defects      Defect[]
 
+  testPlans     TestPlanCase[]
+  testPlanScope TestPlanScopeItem[]
+
+  @@unique([id, projectId])
   @@unique([organizationId, projectId, key])
   @@index([organizationId, projectId, status])
   @@index([organizationId, suiteId, sectionId])
@@ -864,6 +877,9 @@ model TestRun {
   defects          Defect[]
   ingestionReports IngestionReport[]
 
+  testPlans TestPlanRun[]
+
+  @@unique([id, projectId])
   @@index([organizationId, projectId, status])
   @@index([organizationId, projectId, deletedAt])
   @@index([releaseId])
@@ -1466,6 +1482,8 @@ model Release {
   qualityGateOverrides QualityGateOverride[]
   approvals            ReleaseApproval[]
 
+  testPlans TestPlan[]
+
   @@unique([projectId, version])
   @@unique([id, projectId])
   @@index([organizationId, projectId, status])
@@ -1943,6 +1961,8 @@ model Environment {
   approvalRules        ReleaseApprovalRule[]
   approvals            ReleaseApproval[]
 
+  testPlans TestPlanEnvironment[]
+
   @@unique([id, projectId])
   @@index([organizationId, projectId])
   @@index([projectId, status, position])
@@ -2053,4 +2073,122 @@ model ReleaseApproval {
 
   @@index([releaseId, environmentId])
   @@map("release_approvals")
+}
+
+/// A test plan (S7-F1): the planning layer above suites and runs.
+model TestPlan {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  /// draft, active, completed, cancelled or archived (CHECK).
+  status         String       @default("draft")
+  ownerId        String?
+  owner          User?        @relation("TestPlanOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  releaseId      String?
+  release        Release?     @relation(fields: [releaseId, projectId], references: [id, projectId], onDelete: NoAction, onUpdate: NoAction)
+  startDate      DateTime?    @db.Date
+  endDate        DateTime?    @db.Date
+  /// 0 while the scope is live; the frozen snapshot version afterwards.
+  scopeVersion   Int          @default(0)
+  frozenAt       DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  archivedAt     DateTime?
+  version        Int          @default(1)
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  environments TestPlanEnvironment[]
+  suites       TestPlanSuite[]
+  cases        TestPlanCase[]
+  runs         TestPlanRun[]
+  scopeItems   TestPlanScopeItem[]
+
+  @@unique([id, projectId])
+  @@index([organizationId, projectId, status])
+  @@index([releaseId])
+  @@index([ownerId])
+  @@map("test_plans")
+}
+
+model TestPlanEnvironment {
+  planId         String
+  organizationId String
+  projectId      String
+  environmentId  String
+  plan           TestPlan    @relation(fields: [planId, projectId], references: [id, projectId], onDelete: Cascade)
+  environment    Environment @relation(fields: [environmentId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@id([planId, environmentId])
+  @@index([environmentId])
+  @@map("test_plan_environments")
+}
+
+model TestPlanSuite {
+  planId         String
+  organizationId String
+  projectId      String
+  suiteId        String
+  plan           TestPlan  @relation(fields: [planId, projectId], references: [id, projectId], onDelete: Cascade)
+  suite          TestSuite @relation(fields: [suiteId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@id([planId, suiteId])
+  @@index([suiteId])
+  @@map("test_plan_suites")
+}
+
+model TestPlanCase {
+  planId         String
+  organizationId String
+  projectId      String
+  testCaseId     String
+  plan           TestPlan @relation(fields: [planId, projectId], references: [id, projectId], onDelete: Cascade)
+  testCase       TestCase @relation(fields: [testCaseId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@id([planId, testCaseId])
+  @@index([testCaseId])
+  @@map("test_plan_cases")
+}
+
+model TestPlanRun {
+  planId         String
+  organizationId String
+  projectId      String
+  testRunId      String
+  createdAt      DateTime @default(now())
+  plan           TestPlan @relation(fields: [planId, projectId], references: [id, projectId], onDelete: Cascade)
+  testRun        TestRun  @relation(fields: [testRunId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@id([planId, testRunId])
+  @@unique([testRunId])
+  @@map("test_plan_runs")
+}
+
+/// Frozen scope of a plan: one row per case and scope version, never edited.
+model TestPlanScopeItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  planId         String
+  scopeVersion   Int
+  testCaseId     String
+  caseKey        String
+  caseTitle      String
+  caseVersion    Int
+  suiteId        String?
+  suiteName      String?
+  /// direct or suite (CHECK).
+  source         String
+  createdAt      DateTime @default(now())
+  plan           TestPlan @relation(fields: [planId, projectId], references: [id, projectId], onDelete: Cascade)
+  testCase       TestCase @relation(fields: [testCaseId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@unique([planId, scopeVersion, testCaseId])
+  @@index([testCaseId])
+  @@map("test_plan_scope_items")
 }

@@ -1,4 +1,9 @@
 import type {
+  CreateTestPlanInput,
+  ListTestPlansQuery,
+  TestPlanProgressView,
+  TestPlanView,
+  UpdateTestPlanInput,
   CreateDeploymentInput,
   CreateDeploymentResult,
   CreateEnvironmentInput,
@@ -923,4 +928,28 @@ export const releaseApprovalsApi = {
       method: 'POST',
       body: reason === undefined ? {} : { reason },
     }),
+};
+
+export const testPlansApi = {
+  list: (params: Omit<ListTestPlansQuery, 'page' | 'pageSize'>) =>
+    apiFetch<Paginated<TestPlanView>>(`/test-plans${query({ ...params, pageSize: 100 })}`),
+  get: (id: string) => apiFetch<TestPlanView>(`/test-plans/${id}`),
+  progress: (id: string) => apiFetch<TestPlanProgressView>(`/test-plans/${id}/progress`),
+  create: (body: Partial<CreateTestPlanInput> & { projectId: string; name: string }) =>
+    apiFetch<TestPlanView>('/test-plans', { method: 'POST', body }),
+  update: (id: string, body: UpdateTestPlanInput) =>
+    apiFetch<TestPlanView>(`/test-plans/${id}`, { method: 'PATCH', body }),
+  action: (
+    id: string,
+    action: 'start' | 'complete' | 'cancel' | 'archive' | 'scope/refresh',
+    version?: number,
+  ) =>
+    apiFetch<TestPlanView>(`/test-plans/${id}/${action}`, {
+      method: 'POST',
+      body: version === undefined ? {} : { version },
+    }),
+  attachRun: (id: string, testRunId: string) =>
+    apiFetch<TestPlanView>(`/test-plans/${id}/runs`, { method: 'POST', body: { testRunId } }),
+  detachRun: (id: string, testRunId: string) =>
+    apiFetch<TestPlanView>(`/test-plans/${id}/runs/${testRunId}`, { method: 'DELETE' }),
 };

@@ -26,12 +26,20 @@ import {
   formatParameterValue,
   parseParameterCell,
   validateParameterDefinition,
+  RestoreVersionInput,
+  TestCaseVersionContent,
+  TestCaseVersionSummaryView,
+  TestCaseVersionView,
+  VersionDiffQuery,
+  VersionDiffView,
+  VersionStepView,
+  diffVersionContent,
 } from '@qa-flow-hub/shared';
 import { randomBytes } from 'node:crypto';
 import { parse } from 'csv-parse/sync';
 import { csvDocument } from '../exports/csv-writer';
 import type { CsvExport } from '../exports/exports.service';
-import { PrismaService } from '../../database/prisma.service';
+import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import {
   ConflictError,
   DuplicateResourceError,
@@ -47,7 +55,7 @@ import {
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsRepository } from '../projects/projects.repository';
 import { TraceabilityLinksRepository } from '../traceability/traceability-links.repository';
-import { TestDesignRepository } from './test-design.repository';
+import { TestDesignRepository, VersionWithAuthor } from './test-design.repository';
 
 /**
  * Sections nest, and every level costs a query when the tree is walked. Five is
@@ -309,6 +317,7 @@ export class TestDesignService {
       );
 
       await this.repository.replaceSteps(testCase.id, input.steps, tx);
+      await this.repository.appendVersion(testCase.id, { authorId: userId }, tx);
 
       await this.audit.record(
         {
@@ -356,7 +365,17 @@ export class TestDesignService {
     return this.detail(id);
   }
 
-  async updateCase(id: string, input: UpdateTestCaseInput): Promise<TestCaseDetailView> {
+  /**
+   * Edits a case. Only content (title, description, preconditions, expected
+   * result, type, priority, steps) creates a version; bookkeeping fields such
+   * as status, tags or section change in place. The case row is locked, and
+   * `version` makes a stale editor fail with 409 instead of overwriting.
+   */
+  async updateCase(
+    id: string,
+    input: UpdateTestCaseInput,
+    userId: string | null = null,
+  ): Promise<TestCaseDetailView> {
     const testCase = await this.requireCase(id);
     this.assertEditable(testCase);
 
@@ -369,16 +388,28 @@ export class TestDesignService {
     // run snapshots, so two bumps per edit would make a report cite a version
     // nobody ever saw.
     await this.prisma.runInTransaction(async (tx) => {
+      const locked = await this.lockEditable(id, input.version, tx);
       const customFields =
         input.customFields === undefined
           ? undefined
           : await this.customValues.resolve(
-              testCase.projectId,
+              locked.projectId,
               'test_case',
               input.customFields,
               await this.repository.lockCustomFields(id, tx),
               tx,
             );
+      const stepsChanged =
+        input.steps !== undefined &&
+        !sameSteps(await this.repository.listSteps(id, tx), input.steps);
+      const contentChanged =
+        stepsChanged ||
+        changed(input.title, locked.title) ||
+        changed(input.description, locked.description) ||
+        changed(input.preconditions, locked.preconditions) ||
+        changed(input.expectedResult, locked.expectedResult) ||
+        changed(input.type, locked.type) ||
+        changed(input.priority, locked.priority);
       const testCaseAfter = await this.repository.updateCase(
         id,
         {
@@ -398,7 +429,7 @@ export class TestDesignService {
             : { estimateMinutes: input.estimateMinutes }),
           ...(input.tags === undefined ? {} : { tags: input.tags }),
           ...(sectionId === undefined ? {} : { sectionId }),
-          version: { increment: 1 },
+          ...(contentChanged ? { version: { increment: 1 } } : {}),
         },
         tx,
       );
@@ -406,8 +437,15 @@ export class TestDesignService {
         throw new NotFoundError('Test case');
       }
 
-      if (input.steps !== undefined) {
+      if (stepsChanged && input.steps !== undefined) {
         await this.repository.replaceSteps(id, input.steps, tx);
+      }
+      if (contentChanged) {
+        await this.repository.appendVersion(
+          id,
+          { authorId: userId, changeReason: input.changeReason ?? null },
+          tx,
+        );
       }
 
       await this.audit.record(
@@ -415,8 +453,15 @@ export class TestDesignService {
           action: AuditAction.update,
           entityType: 'TestCase',
           entityId: id,
-          summary: `Updated ${testCaseAfter.key} to version ${testCaseAfter.version}`,
-          ...(input.steps === undefined ? {} : { changes: { steps: input.steps.length } }),
+          summary: contentChanged
+            ? `Updated ${testCaseAfter.key} to version ${testCaseAfter.version}`
+            : `Updated ${testCaseAfter.key} (version ${testCaseAfter.version} unchanged)`,
+          changes: {
+            version: testCaseAfter.version,
+            newVersion: contentChanged,
+            ...(input.steps === undefined ? {} : { steps: input.steps.length }),
+            ...(input.changeReason === undefined ? {} : { reason: input.changeReason }),
+          },
         },
         tx,
       );
@@ -425,20 +470,132 @@ export class TestDesignService {
     return this.detail(id);
   }
 
-  async replaceSteps(id: string, input: ReplaceStepsInput): Promise<TestCaseDetailView> {
+  async replaceSteps(
+    id: string,
+    input: ReplaceStepsInput,
+    userId: string | null = null,
+  ): Promise<TestCaseDetailView> {
     const testCase = await this.requireCase(id);
     this.assertEditable(testCase);
 
     await this.prisma.runInTransaction(async (tx) => {
+      await this.lockEditable(id, input.version, tx);
+      if (sameSteps(await this.repository.listSteps(id, tx), input.steps)) {
+        return;
+      }
       await this.repository.replaceSteps(id, input.steps, tx);
-      await this.repository.updateCase(id, { version: { increment: 1 } }, tx);
+      const after = await this.repository.updateCase(id, { version: { increment: 1 } }, tx);
+      await this.repository.appendVersion(
+        id,
+        { authorId: userId, changeReason: input.changeReason ?? null },
+        tx,
+      );
       await this.audit.record(
         {
           action: AuditAction.update,
           entityType: 'TestCase',
           entityId: id,
-          summary: `Rewrote the steps of ${testCase.key}`,
+          summary: `Rewrote the steps of ${testCase.key}, version ${after?.version ?? '?'}`,
           changes: { steps: input.steps.length },
+        },
+        tx,
+      );
+    });
+
+    return this.detail(id);
+  }
+
+  // --- Versions (S7-F4) ----------------------------------------------------
+
+  async listVersions(id: string): Promise<TestCaseVersionSummaryView[]> {
+    const testCase = await this.requireCase(id);
+    const rows = await this.repository.listVersions(id);
+    return rows.map((row) => toVersionSummary(row, testCase.version));
+  }
+
+  async getVersion(id: string, version: number): Promise<TestCaseVersionView> {
+    const testCase = await this.requireCase(id);
+    const row = await this.requireVersion(id, version);
+    return { ...toVersionSummary(row, testCase.version), content: versionContent(row) };
+  }
+
+  async diffVersions(id: string, query: VersionDiffQuery): Promise<VersionDiffView> {
+    await this.requireCase(id);
+    const [from, to] = await Promise.all([
+      this.requireVersion(id, query.from),
+      this.requireVersion(id, query.to),
+    ]);
+    return {
+      testCaseId: id,
+      from: from.version,
+      to: to.version,
+      ...diffVersionContent(versionContent(from), versionContent(to)),
+    };
+  }
+
+  /**
+   * Restoring copies an older version into a new one. History is never
+   * rewritten: the restored content gets the next number and remembers where
+   * it came from.
+   */
+  async restoreVersion(
+    id: string,
+    version: number,
+    input: RestoreVersionInput,
+    userId: string | null = null,
+  ): Promise<TestCaseDetailView> {
+    const testCase = await this.requireCase(id);
+    this.assertEditable(testCase);
+
+    await this.prisma.runInTransaction(async (tx) => {
+      const locked = await this.lockEditable(id, input.version, tx);
+      const target = await this.repository.findVersion(id, version, tx);
+      if (target === null) {
+        throw new NotFoundError('Test case version');
+      }
+      if (target.version === locked.version) {
+        throw new ConflictError(`Version ${version} is already the current version`);
+      }
+      const content = versionContent(target);
+      const after = await this.repository.updateCase(
+        id,
+        {
+          title: content.title,
+          description: content.description,
+          preconditions: content.preconditions,
+          expectedResult: content.expectedResult,
+          type: target.type,
+          priority: target.priority,
+          parameters: content.parameters as unknown as Prisma.InputJsonValue,
+          dataset: content.dataset as unknown as Prisma.InputJsonValue,
+          version: { increment: 1 },
+        },
+        tx,
+      );
+      if (after === null) {
+        throw new NotFoundError('Test case');
+      }
+      await this.repository.replaceSteps(id, content.steps, tx);
+      await this.repository.appendVersion(
+        id,
+        {
+          authorId: userId,
+          changeReason: input.reason ?? `Restored version ${version}`,
+          restoredFromVersion: version,
+        },
+        tx,
+      );
+      await this.audit.record(
+        {
+          action: AuditAction.restore,
+          entityType: 'TestCase',
+          entityId: id,
+          summary: `Restored ${after.key} version ${version} as version ${after.version}`,
+          changes: {
+            restoredFromVersion: version,
+            version: after.version,
+            ...(input.reason === undefined ? {} : { reason: input.reason }),
+          },
         },
         tx,
       );
@@ -454,7 +611,11 @@ export class TestDesignService {
    * version. Runs already created keep the values they froze, so this never
    * rewrites an execution; `version` makes a stale editor fail with 409.
    */
-  async replaceParameters(id: string, input: ReplaceParametersInput): Promise<TestCaseDetailView> {
+  async replaceParameters(
+    id: string,
+    input: ReplaceParametersInput,
+    userId: string | null = null,
+  ): Promise<TestCaseDetailView> {
     const testCase = await this.requireCase(id);
     this.assertEditable(testCase);
     const errors = validateParameterDefinition(input.parameters, input.rows);
@@ -505,6 +666,11 @@ export class TestDesignService {
       if (after === null) {
         throw new NotFoundError('Test case');
       }
+      await this.repository.appendVersion(
+        id,
+        { authorId: userId, changeReason: input.changeReason ?? null },
+        tx,
+      );
       await this.audit.record(
         {
           action: AuditAction.update,
@@ -555,7 +721,11 @@ export class TestDesignService {
    * Every cell is checked before anything is written: one bad cell rejects the
    * whole file with the line that caused it.
    */
-  async importDataset(id: string, input: ImportDatasetInput): Promise<TestCaseDetailView> {
+  async importDataset(
+    id: string,
+    input: ImportDatasetInput,
+    userId: string | null = null,
+  ): Promise<TestCaseDetailView> {
     const testCase = await this.requireCase(id);
     const parameters = parametersOf(testCase);
     if (parameters.length === 0) {
@@ -629,14 +799,19 @@ export class TestDesignService {
     if (errors.length > 0) {
       throw new ValidationError(errors.join('; '));
     }
-    return this.replaceParameters(id, {
-      parameters: parameters.map((parameter) => ({
-        ...parameter,
-        defaultValue: parameter.defaultValue,
-      })),
-      rows,
-      ...(input.version === undefined ? {} : { version: input.version }),
-    });
+    return this.replaceParameters(
+      id,
+      {
+        parameters: parameters.map((parameter) => ({
+          ...parameter,
+          defaultValue: parameter.defaultValue,
+        })),
+        rows,
+        ...(input.version === undefined ? {} : { version: input.version }),
+        changeReason: input.changeReason ?? 'Imported the dataset from CSV',
+      },
+      userId,
+    );
   }
 
   /**
@@ -685,6 +860,11 @@ export class TestDesignService {
       );
 
       await this.repository.replaceSteps(created.id, source.steps, tx);
+      await this.repository.appendVersion(
+        created.id,
+        { authorId: userId, changeReason: `Duplicated from ${source.key}` },
+        tx,
+      );
       await this.audit.record(
         {
           action: AuditAction.create,
@@ -773,6 +953,33 @@ export class TestDesignService {
       parameters: parametersOf(testCase),
       dataset: datasetOf(testCase),
     };
+  }
+
+  /** Locks the case row and checks the version the editor loaded. */
+  private async lockEditable(
+    id: string,
+    expectedVersion: number | undefined,
+    tx: PrismaTransaction,
+  ): Promise<TestCase> {
+    const locked = await this.repository.lockCase(id, tx);
+    if (locked === null) {
+      throw new NotFoundError('Test case');
+    }
+    this.assertEditable(locked);
+    if (expectedVersion !== undefined && expectedVersion !== locked.version) {
+      throw new ConflictError(
+        `Test case ${locked.key} changed (version ${locked.version}); reload and retry`,
+      );
+    }
+    return locked;
+  }
+
+  private async requireVersion(id: string, version: number): Promise<VersionWithAuthor> {
+    const row = await this.repository.findVersion(id, version);
+    if (row === null) {
+      throw new NotFoundError('Test case version');
+    }
+    return row;
   }
 
   private assertEditable(testCase: TestCase): void {
@@ -956,4 +1163,65 @@ export function parametersOf(testCase: Pick<TestCase, 'parameters'>): TestParame
 
 export function datasetOf(testCase: Pick<TestCase, 'dataset'>): DatasetRowView[] {
   return Array.isArray(testCase.dataset) ? (testCase.dataset as unknown as DatasetRowView[]) : [];
+}
+
+/** `undefined` leaves a field alone; anything else is a change if it differs. */
+function changed<T>(next: T | null | undefined, current: T | null): boolean {
+  return next !== undefined && (next ?? null) !== current;
+}
+
+function sameSteps(
+  current: ReadonlyArray<Pick<TestStep, 'action' | 'expectedResult' | 'data'>>,
+  next: ReadonlyArray<{
+    action: string;
+    expectedResult?: string | null | undefined;
+    data?: string | null | undefined;
+  }>,
+): boolean {
+  return (
+    current.length === next.length &&
+    current.every(
+      (step, index) =>
+        step.action === next[index]!.action &&
+        step.expectedResult === (next[index]!.expectedResult ?? null) &&
+        step.data === (next[index]!.data ?? null),
+    )
+  );
+}
+
+function toVersionSummary(
+  row: VersionWithAuthor,
+  currentVersion: number,
+): TestCaseVersionSummaryView {
+  return {
+    id: row.id,
+    testCaseId: row.testCaseId,
+    version: row.version,
+    current: row.version === currentVersion,
+    changeReason: row.changeReason,
+    restoredFromVersion: row.restoredFromVersion,
+    author: row.author,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function versionContent(row: VersionWithAuthor): TestCaseVersionContent {
+  const steps = Array.isArray(row.steps) ? (row.steps as unknown as VersionStepView[]) : [];
+  return {
+    title: row.title,
+    description: row.description,
+    preconditions: row.preconditions,
+    expectedResult: row.expectedResult,
+    type: row.type,
+    priority: row.priority,
+    // Versions recovered from old run snapshots may lack `data`.
+    steps: steps.map((step, index) => ({
+      position: step.position ?? index + 1,
+      action: step.action,
+      expectedResult: step.expectedResult ?? null,
+      data: step.data ?? null,
+    })),
+    parameters: parametersOf(row),
+    dataset: datasetOf(row),
+  };
 }

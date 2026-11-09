@@ -72,6 +72,8 @@ export interface MatrixCase {
   title: string;
   /** Worst outcome across every run the case took part in. */
   lastStatus: 'untested' | 'passed' | 'failed' | 'blocked' | 'skipped';
+  /** The case version of that latest execution (S7-F4); the link stays on the case. */
+  lastExecutedVersion: number | null;
   /**
    * An archived case keeps its link and stays listed, but it does not count
    * towards coverage: a requirement whose only test is deprecated is not

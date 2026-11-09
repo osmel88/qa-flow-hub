@@ -1391,3 +1391,15 @@ caller's own tenant, never of another one.
   there is no per-row coverage metric yet.
 - **Automation ingestion ignores datasets**: imported results map to the
   plain execution of a case.
+
+## 65. Test case versions: what S7-F4 leaves (S7-F4)
+
+- **Recovered versions are partial**: versions rebuilt from run snapshots
+  during the backfill have no description nor dataset, and versions never
+  executed before S7-F4 are not recoverable at all.
+- **Frozen scope created before S7-F4** whose version could not be recovered
+  keeps `testCaseVersionId` empty (the version number is still stored).
+- **Imports record versions without a reason**; the deferred trigger only
+  knows the creator.
+- **No side-by-side text diff**: the diff is per field and per step position,
+  so inserting a step in the middle shows every following step as changed.

@@ -251,7 +251,7 @@ export function TestCycleDetailPage(): React.JSX.Element {
                     <tr key={entry.testCaseId} data-testid={`cycle-case-${entry.key}`}>
                       <td>
                         <Link to={`/test-cases/${entry.testCaseId}`}>{entry.key}</Link>{' '}
-                        {entry.title}
+                        {entry.title} <span className="muted">v{entry.caseVersion}</span>
                       </td>
                       <td>{humanize(entry.status)}</td>
                       <td>

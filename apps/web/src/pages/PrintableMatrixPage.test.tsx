@@ -9,7 +9,16 @@ const matrix = {
       requirementId: 'r1',
       key: 'WEB-R-1',
       title: '<script>alert(1)</script>',
-      cases: [{ id: 'c1', key: 'WEB-C-1', title: 'Login', lastStatus: 'passed', archived: false }],
+      cases: [
+        {
+          id: 'c1',
+          key: 'WEB-C-1',
+          title: 'Login',
+          lastStatus: 'passed',
+          lastExecutedVersion: 1,
+          archived: false,
+        },
+      ],
       covered: true,
       verified: true,
       defectIds: [],

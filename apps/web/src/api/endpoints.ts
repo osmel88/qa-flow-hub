@@ -1,4 +1,8 @@
 import type {
+  RestoreVersionInput,
+  TestCaseVersionSummaryView,
+  TestCaseVersionView,
+  VersionDiffView,
   ImportDatasetInput,
   ReplaceParametersInput,
   CreateTestCycleInput,
@@ -427,6 +431,16 @@ export const testDesignApi = {
   importDataset: (id: string, body: ImportDatasetInput) =>
     apiFetch<TestCaseDetailView>(`/test-cases/${id}/dataset/import`, { method: 'POST', body }),
   exportDataset: (id: string) => apiFetchBlob(`/test-cases/${id}/dataset/export.csv`),
+  versions: (id: string) => apiFetch<TestCaseVersionSummaryView[]>(`/test-cases/${id}/versions`),
+  version: (id: string, version: number) =>
+    apiFetch<TestCaseVersionView>(`/test-cases/${id}/versions/${version}`),
+  diffVersions: (id: string, from: number, to: number) =>
+    apiFetch<VersionDiffView>(`/test-cases/${id}/versions/diff${query({ from, to })}`),
+  restoreVersion: (id: string, version: number, body: RestoreVersionInput) =>
+    apiFetch<TestCaseDetailView>(`/test-cases/${id}/versions/${version}/restore`, {
+      method: 'POST',
+      body,
+    }),
 };
 
 export const testRunsApi = {

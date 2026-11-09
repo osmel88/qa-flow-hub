@@ -158,6 +158,8 @@ export interface PlanCaseProgress {
   title: string;
   suite: string | null;
   source: PlanCaseSource;
+  /** The case version in the scope: frozen once the plan or cycle starts. */
+  caseVersion: number;
   status: TestResultStatus;
   /** The plan run of the latest result, or the run that holds the case. */
   run: { id: string; name: string } | null;

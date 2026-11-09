@@ -9,6 +9,7 @@ import { PageHeader } from '../components/PageHeader';
 import { CustomFieldInputs, useCustomFields } from '../components/CustomFieldInputs';
 import type { CustomFieldDraft } from '../components/CustomFieldInputs';
 import { useProjectPermissions } from '../components/use-project-permissions';
+import { TestCaseHistory } from './TestCaseHistory';
 import { TestCaseParameters } from './TestCaseParameters';
 
 interface DraftStep {
@@ -36,6 +37,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
   // display bug hides a real one.
   const [savedVersion, setSavedVersion] = useState<number | null>(null);
   const [customDraft, setCustomDraft] = useState<CustomFieldDraft>({});
+  const [changeReason, setChangeReason] = useState('');
 
   const detail = useQuery({
     queryKey: ['case', caseId],
@@ -69,9 +71,13 @@ export function TestCaseEditorPage(): React.JSX.Element {
           expectedResult: step.expectedResult === '' ? null : step.expectedResult,
         })),
         ...(Object.keys(customDraft).length === 0 ? {} : { customFields: customDraft }),
+        // Optimistic lock: a case edited elsewhere since it loaded answers 409.
+        ...(detail.data === undefined ? {} : { version: detail.data.version }),
+        ...(changeReason.trim() === '' ? {} : { changeReason: changeReason.trim() }),
       }),
     onSuccess: async (updated) => {
       setError(null);
+      setChangeReason('');
       setSavedVersion(updated.version);
       await queryClient.invalidateQueries({ queryKey: ['case', caseId] });
       await queryClient.invalidateQueries({ queryKey: ['cases'] });
@@ -92,7 +98,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
     <>
       <PageHeader
         title={detail.data === undefined ? 'Test case' : `${detail.data.key} — editor`}
-        description="Saving bumps the case version; runs already created keep their frozen copy."
+        description="Saving a content change creates a new version; runs already created keep the version they executed."
         actions={<Link to="/test-cases">Back to cases</Link>}
       />
 
@@ -166,6 +172,14 @@ export function TestCaseEditorPage(): React.JSX.Element {
             }}
           />
 
+          <TextField
+            label="Change reason (optional)"
+            value={changeReason}
+            onChange={(event) => {
+              setChangeReason(event.target.value);
+            }}
+          />
+
           <div className="row-actions">
             <Button
               variant="secondary"
@@ -198,6 +212,10 @@ export function TestCaseEditorPage(): React.JSX.Element {
             canImport={can('test_design.import')}
             canExport={can('data.export')}
           />
+        )}
+
+        {detail.data !== undefined && (
+          <TestCaseHistory detail={detail.data} canWrite={can('test_design.write')} />
         )}
 
         {detail.data !== undefined && (

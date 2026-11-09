@@ -213,6 +213,7 @@ export const replaceParametersSchema = z
     rows: z.array(datasetRowSchema).max(MAX_DATASET_ROWS),
     /** The case version the editor started from; 409 if it moved. */
     version: z.number().int().min(1).optional(),
+    changeReason: z.string().trim().min(1).max(500).optional(),
   })
   .superRefine((value, ctx) => {
     for (const message of validateParameterDefinition(value.parameters, value.rows)) {
@@ -227,6 +228,7 @@ export const importDatasetSchema = z.object({
     .min(1)
     .max(512 * 1024),
   version: z.number().int().min(1).optional(),
+  changeReason: z.string().trim().min(1).max(500).optional(),
 });
 export type ImportDatasetInput = z.infer<typeof importDatasetSchema>;
 

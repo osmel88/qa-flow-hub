@@ -110,6 +110,9 @@ export type TestStepInput = z.infer<typeof testStepSchema>;
 
 export const replaceStepsSchema = z.object({
   steps: z.array(testStepSchema).max(100),
+  /** Optimistic lock (S7-F4): the case version the editor loaded. */
+  version: z.number().int().min(1).optional(),
+  changeReason: z.string().trim().min(1).max(500).optional(),
 });
 export type ReplaceStepsInput = z.infer<typeof replaceStepsSchema>;
 
@@ -160,10 +163,18 @@ export const updateTestCaseSchema = z
     steps: z.array(testStepSchema).max(100).optional(),
     /** Patch semantics: only the listed fields change, `null` clears one. */
     customFields: customFieldValuesInputSchema.optional(),
+    /** Optimistic lock (S7-F4): the case version the editor loaded. */
+    version: z.number().int().min(1).optional(),
+    /** Stored on the version a content change creates. */
+    changeReason: z.string().trim().min(1).max(500).optional(),
   })
-  .refine((value) => Object.keys(value).length > 0, {
-    message: 'Provide at least one field to update',
-  });
+  .refine(
+    (value) =>
+      Object.keys(value).filter((key) => key !== 'version' && key !== 'changeReason').length > 0,
+    {
+      message: 'Provide at least one field to update',
+    },
+  );
 export type UpdateTestCaseInput = z.infer<typeof updateTestCaseSchema>;
 
 export const duplicateTestCaseSchema = z.object({

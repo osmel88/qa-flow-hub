@@ -127,6 +127,9 @@ export function TraceabilityPage(): React.JSX.Element {
                           <Badge tone={toneFor(testCase.lastStatus)}>
                             {humanize(testCase.lastStatus)}
                           </Badge>{' '}
+                          {testCase.lastExecutedVersion !== null && (
+                            <span className="muted">v{testCase.lastExecutedVersion} </span>
+                          )}
                           {testCase.archived ? <Badge tone="neutral">Archived</Badge> : null}
                         </li>
                       ))}

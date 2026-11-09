@@ -311,7 +311,7 @@ export function TestPlanDetailPage(): React.JSX.Element {
                     <tr key={entry.testCaseId} data-testid={`plan-case-${entry.key}`}>
                       <td>
                         <Link to={`/test-cases/${entry.testCaseId}`}>{entry.key}</Link>{' '}
-                        {entry.title}
+                        {entry.title} <span className="muted">v{entry.caseVersion}</span>
                         {entry.source === 'direct' && ' (direct)'}
                       </td>
                       <td>{entry.suite ?? 'none'}</td>

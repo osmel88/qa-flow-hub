@@ -484,6 +484,7 @@ export function caseProgress(
     title: entry.title,
     suite: entry.suiteName,
     source: entry.source,
+    caseVersion: entry.caseVersion,
     status,
     run: shown?.run ?? null,
     executedAt: executed?.executedAt?.toISOString() ?? null,

@@ -276,7 +276,13 @@ export function RunExecutionPage(): React.JSX.Element {
 
               {openCase === runCase.id && (
                 <div>
-                  <p className="muted">Frozen at version {runCase.caseVersion}.</p>
+                  <p className="muted">
+                    Executed version:{' '}
+                    <Link to={`/test-cases/${runCase.testCaseId}?version=${runCase.caseVersion}`}>
+                      v{runCase.caseVersion}
+                    </Link>
+                    .
+                  </p>
                   {runCase.iteration !== null && <ParameterValues runCase={runCase} />}
                   {runCase.snapshot.steps.length === 0 ? (
                     <p className="muted">This case had no steps when the run was created.</p>
@@ -366,6 +372,7 @@ function LatestResult({
         <span className="muted">
           Latest result: {humanize(latest.status)} ({new Date(latest.executedAt).toLocaleString()})
           {runCase.iteration !== null && ` with ${runCase.iteration.label}`}
+          {latest.caseVersion !== null && ` on version ${latest.caseVersion}`}
         </span>
         <GitHubResultOrigin reference={gitHubReferences?.get(latest.id)} />
         <TestRailSyncCell

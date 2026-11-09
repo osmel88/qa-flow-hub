@@ -327,3 +327,11 @@ archived projects are read-only; every change is an audited `role_change`.
 | Import a dataset from CSV              | `test_design.import`   |
 | Export a dataset as CSV                | `data.export`          |
 | Execute dataset rows and filter by row | `testruns.*` (as runs) |
+
+## Test case versions (S7-F4)
+
+| Action                                | Permission          |
+| ------------------------------------- | ------------------- |
+| List versions, view one, diff two     | `test_design.read`  |
+| Edit content (creates a version)      | `test_design.write` |
+| Restore an older version as a new one | `test_design.write` |

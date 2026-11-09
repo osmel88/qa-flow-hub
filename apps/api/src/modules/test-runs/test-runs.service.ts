@@ -653,6 +653,7 @@ function toRunCaseView(runCase: TestRunCase): RunCaseView {
     testRunId: runCase.testRunId,
     testCaseId: runCase.testCaseId,
     caseVersion: runCase.caseVersion,
+    caseVersionId: runCase.testCaseVersionId,
     // Snapshots frozen before step data was captured carry no `data` key.
     snapshot: {
       ...snapshot,
@@ -680,6 +681,7 @@ function toResultView(result: TestResult): TestResultView {
     status: result.status as TestResultView['status'],
     comment: result.comment,
     elapsedSeconds: result.elapsedSeconds,
+    caseVersion: result.caseVersion,
     stepResults: (result.stepResults as TestResultView['stepResults']) ?? null,
     executedById: result.executedById,
     executedAt: result.executedAt.toISOString(),

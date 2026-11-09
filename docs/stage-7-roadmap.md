@@ -101,3 +101,34 @@ local; no external provider is involved.
 - Web: parameters and dataset editor on the case page (CSV import/export
   included); the run page shows the row label, the values used, the values
   next to the latest result, and a dataset-row filter.
+
+## S7-F4 — Test Case Versioning
+
+- 1 migration: `test_case_versions` (append-only for the app, RLS, composite
+  `projectId` foreign key) holds an immutable copy of title, description,
+  preconditions, expected result, type, priority, steps, parameters and
+  dataset, with author, timestamp, optional reason and `restoredFromVersion`.
+  `test_run_cases`, `test_results`, `test_plan_scope_items` and
+  `test_cycle_scope_items` gain `testCaseVersionId`; results also get
+  `caseVersion`. Insert triggers fill them on every write path, and a deferred
+  constraint trigger records the version of any case created or bumped
+  outside the service (imports, seeds, scripts).
+- Backfill: every case gets its current version; older executed versions are
+  recovered from run snapshots (without description and dataset, which the
+  snapshot never stored).
+- Only content creates a version; status, tags, section, estimate and custom
+  fields change in place. Saving identical steps is not a version. Every edit
+  locks the case row and accepts `version` (409 when stale) and
+  `changeReason`.
+- API: `GET /test-cases/:id/versions`, `GET /test-cases/:id/versions/:version`,
+  `GET /test-cases/:id/versions/diff?from=&to=` (`test_design.read`) and
+  `POST /test-cases/:id/versions/:version/restore` (`test_design.write`),
+  which copies the old content into a new version and is audited as
+  `restore`. A deleted case answers 404; its versions and executions stay.
+- Runs, results, plan and cycle progress show the exact version; the
+  traceability matrix keeps linking the logical case and adds
+  `lastExecutedVersion`.
+- Web: version history on the case page (author, date, reason, view, compare,
+  restore with reason), change reason on save, executed version on runs and
+  results with a link to that version, version column in plan and cycle cases
+  and in the traceability matrix.

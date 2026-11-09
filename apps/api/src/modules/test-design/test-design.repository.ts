@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, TestCase, TestSection, TestStep, TestSuite } from '@prisma/client';
+import {
+  Prisma,
+  TestCase,
+  TestCaseVersion,
+  TestSection,
+  TestStep,
+  TestSuite,
+} from '@prisma/client';
 import {
   CustomFieldValues,
   Paginated,
@@ -255,8 +262,8 @@ export class TestDesignRepository extends TenantAwareRepository {
 
   // --- Steps ---------------------------------------------------------------
 
-  listSteps(testCaseId: string): Promise<TestStep[]> {
-    return this.prisma.testStep.findMany({
+  listSteps(testCaseId: string, tx?: PrismaTransaction): Promise<TestStep[]> {
+    return (tx ?? this.prisma).testStep.findMany({
       where: this.scope({ testCaseId }),
       orderBy: { position: 'asc' },
     });
@@ -291,4 +298,69 @@ export class TestDesignRepository extends TenantAwareRepository {
       })),
     });
   }
+
+  // --- Versions (S7-F4) ----------------------------------------------------
+
+  /**
+   * Records the case as it is now, inside the transaction that changed it, as
+   * an immutable version row. Called after the fields and steps are written.
+   */
+  async appendVersion(
+    testCaseId: string,
+    meta: { authorId: string | null; changeReason?: string | null; restoredFromVersion?: number },
+    tx: PrismaTransaction,
+  ): Promise<TestCaseVersion> {
+    const testCase = await tx.testCase.findFirstOrThrow({
+      where: this.scope({ id: testCaseId }),
+      include: { steps: { orderBy: { position: 'asc' } } },
+    });
+    return tx.testCaseVersion.create({
+      data: {
+        organizationId: this.organizationId,
+        projectId: testCase.projectId,
+        testCaseId,
+        version: testCase.version,
+        title: testCase.title,
+        description: testCase.description,
+        preconditions: testCase.preconditions,
+        expectedResult: testCase.expectedResult,
+        type: testCase.type,
+        priority: testCase.priority,
+        steps: testCase.steps.map((step) => ({
+          position: step.position,
+          action: step.action,
+          expectedResult: step.expectedResult,
+          data: step.data,
+        })),
+        parameters: testCase.parameters as Prisma.InputJsonValue,
+        dataset: testCase.dataset as Prisma.InputJsonValue,
+        authorId: meta.authorId,
+        changeReason: meta.changeReason ?? null,
+        restoredFromVersion: meta.restoredFromVersion ?? null,
+      },
+    });
+  }
+
+  listVersions(testCaseId: string): Promise<VersionWithAuthor[]> {
+    return this.prisma.testCaseVersion.findMany({
+      where: this.scope({ testCaseId }),
+      include: { author: { select: { id: true, fullName: true } } },
+      orderBy: { version: 'desc' },
+    });
+  }
+
+  findVersion(
+    testCaseId: string,
+    version: number,
+    tx?: PrismaTransaction,
+  ): Promise<VersionWithAuthor | null> {
+    return (tx ?? this.prisma).testCaseVersion.findFirst({
+      where: this.scope({ testCaseId, version }),
+      include: { author: { select: { id: true, fullName: true } } },
+    });
+  }
 }
+
+export type VersionWithAuthor = TestCaseVersion & {
+  author: { id: string; fullName: string } | null;
+};

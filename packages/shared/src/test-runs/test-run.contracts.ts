@@ -157,6 +157,8 @@ export interface RunCaseView {
   testRunId: string;
   testCaseId: string;
   caseVersion: number;
+  /** The exact `test_case_versions` row executed (S7-F4). */
+  caseVersionId: string | null;
   snapshot: RunCaseSnapshot;
   assignedToId: string | null;
   latestStatus: TestResultStatus;
@@ -171,6 +173,8 @@ export interface TestResultView {
   status: RecordableResultStatus;
   comment: string | null;
   elapsedSeconds: number | null;
+  /** The case version the result was recorded against (S7-F4). */
+  caseVersion: number | null;
   stepResults: StepResultInput[] | null;
   executedById: string | null;
   executedAt: string;

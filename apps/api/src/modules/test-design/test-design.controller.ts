@@ -37,7 +37,12 @@ import {
   updateSectionSchema,
   updateSuiteSchema,
   updateTestCaseSchema,
+  RestoreVersionInput,
+  VersionDiffQuery,
+  restoreVersionSchema,
+  versionDiffQuerySchema,
 } from '@qa-flow-hub/shared';
+import { NotFoundError } from '../../errors';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
@@ -147,10 +152,11 @@ export class TestDesignController {
   @Patch('test-cases/:id')
   @ApiOperation({ summary: 'Edit a test case, bumping its version' })
   updateCase(
+    @CurrentUser() user: CurrentUserContext,
     @Param('id') id: string,
     @Body(zodBody(updateTestCaseSchema)) body: UpdateTestCaseInput,
   ) {
-    return this.design.updateCase(id, body);
+    return this.design.updateCase(id, body, user.userId);
   }
 
   @RequirePermission('test_design.write')
@@ -158,20 +164,61 @@ export class TestDesignController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Replace the whole ordered list of steps' })
   replaceSteps(
+    @CurrentUser() user: CurrentUserContext,
     @Param('id') id: string,
     @Body(zodBody(replaceStepsSchema)) body: ReplaceStepsInput,
   ) {
-    return this.design.replaceSteps(id, body);
+    return this.design.replaceSteps(id, body, user.userId);
+  }
+
+  // --- Versions (S7-F4) ----------------------------------------------------
+
+  @RequirePermission('test_design.read')
+  @Get('test-cases/:id/versions')
+  @ApiOperation({ summary: 'Version history of a test case, newest first' })
+  listVersions(@Param('id') id: string) {
+    return this.design.listVersions(id);
+  }
+
+  @RequirePermission('test_design.read')
+  @Get('test-cases/:id/versions/diff')
+  @ApiOperation({ summary: 'Differences between two versions of a test case' })
+  diffVersions(
+    @Param('id') id: string,
+    @Query(zodQuery(versionDiffQuerySchema)) query: VersionDiffQuery,
+  ) {
+    return this.design.diffVersions(id, query);
+  }
+
+  @RequirePermission('test_design.read')
+  @Get('test-cases/:id/versions/:version')
+  @ApiOperation({ summary: 'The full content of one version' })
+  getVersion(@Param('id') id: string, @Param('version') version: string) {
+    return this.design.getVersion(id, versionNumber(version));
+  }
+
+  @RequirePermission('test_design.write')
+  @Post('test-cases/:id/versions/:version/restore')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Restore an older version as a new version' })
+  restoreVersion(
+    @CurrentUser() user: CurrentUserContext,
+    @Param('id') id: string,
+    @Param('version') version: string,
+    @Body(zodBody(restoreVersionSchema)) body: RestoreVersionInput,
+  ) {
+    return this.design.restoreVersion(id, versionNumber(version), body, user.userId);
   }
 
   @RequirePermission('test_design.write')
   @Put('test-cases/:id/parameters')
   @ApiOperation({ summary: 'Replace the parameters and dataset of a case, bumping its version' })
   replaceParameters(
+    @CurrentUser() user: CurrentUserContext,
     @Param('id') id: string,
     @Body(zodBody(replaceParametersSchema)) body: ReplaceParametersInput,
   ) {
-    return this.design.replaceParameters(id, body);
+    return this.design.replaceParameters(id, body, user.userId);
   }
 
   @RequirePermission('test_design.import')
@@ -179,10 +226,11 @@ export class TestDesignController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Replace the dataset of a case with the rows of a CSV' })
   importDataset(
+    @CurrentUser() user: CurrentUserContext,
     @Param('id') id: string,
     @Body(zodBody(importDatasetSchema)) body: ImportDatasetInput,
   ) {
-    return this.design.importDataset(id, body);
+    return this.design.importDataset(id, body, user.userId);
   }
 
   @RequirePermission('data.export')
@@ -234,4 +282,13 @@ export class TestDesignController {
   async deleteCase(@Param('id') id: string) {
     await this.design.deleteCase(id);
   }
+}
+
+/** A version number in a path; anything else names no version. */
+function versionNumber(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new NotFoundError('Test case version');
+  }
+  return parsed;
 }

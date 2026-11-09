@@ -187,7 +187,8 @@ export class TraceabilityService {
         id: testCase.id,
         key: testCase.key,
         title: testCase.title,
-        lastStatus: statuses.get(testCase.id) ?? 'untested',
+        lastStatus: statuses.get(testCase.id)?.status ?? 'untested',
+        lastExecutedVersion: statuses.get(testCase.id)?.caseVersion ?? null,
         archived: testCase.archivedAt !== null,
       });
       casesByRequirement.set(link.sourceId, row);

@@ -321,6 +321,7 @@ model User {
   auditLogs              AuditLog[]
   assignedRunCases       TestRunCase[]               @relation("TestRunCaseAssignee")
   executedResults        TestResult[]                @relation("TestResultExecutedBy")
+  authoredCaseVersions   TestCaseVersion[]           @relation("TestCaseVersionAuthor")
   reportedDefects        Defect[]                    @relation("DefectReportedBy")
   assignedDefects        Defect[]                    @relation("DefectAssignee")
   uploadedFiles          AttachmentMetadata[]
@@ -824,12 +825,49 @@ model TestCase {
 
   testCycleScope TestCycleScopeItem[]
 
+  versions TestCaseVersion[]
+
   @@unique([id, projectId])
   @@unique([organizationId, projectId, key])
   @@index([organizationId, projectId, status])
   @@index([organizationId, suiteId, sectionId])
   @@index([organizationId, projectId, deletedAt])
   @@map("test_cases")
+}
+
+/// Immutable copy of the content of one case version (S7-F4). Append-only for
+/// the app; runs, results and frozen plan/cycle scope point at the exact row.
+model TestCaseVersion {
+  id                  String       @id @default(cuid())
+  organizationId      String
+  projectId           String
+  testCaseId          String
+  version             Int
+  title               String
+  description         String?
+  preconditions       String?
+  expectedResult      String?
+  type                TestCaseType
+  priority            Priority
+  steps               Json         @default("[]")
+  parameters          Json         @default("[]")
+  dataset             Json         @default("[]")
+  changeReason        String?
+  restoredFromVersion Int?
+  authorId            String?
+  createdAt           DateTime     @default(now())
+  testCase            TestCase     @relation(fields: [testCaseId, projectId], references: [id, projectId], onDelete: Cascade)
+  author              User?        @relation("TestCaseVersionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  runCases        TestRunCase[]
+  results         TestResult[]
+  planScopeItems  TestPlanScopeItem[]
+  cycleScopeItems TestCycleScopeItem[]
+
+  @@unique([testCaseId, version])
+  @@unique([id, testCaseId])
+  @@index([organizationId, projectId])
+  @@map("test_case_versions")
 }
 
 model TestStep {
@@ -912,8 +950,11 @@ model TestRunCase {
   testCaseId     String
   testCase       TestCase     @relation(fields: [testCaseId], references: [id], onDelete: Restrict)
 
-  caseSnapshot Json
-  caseVersion  Int
+  caseSnapshot      Json
+  caseVersion       Int
+  /// The exact version row executed (S7-F4), filled by a trigger on insert.
+  testCaseVersionId String?
+  testCaseVersion   TestCaseVersion? @relation(fields: [testCaseVersionId, testCaseId], references: [id, testCaseId], onDelete: Restrict)
 
   assignedToId String?
   assignedTo   User?   @relation("TestRunCaseAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
@@ -952,11 +993,15 @@ model TestResult {
   testRunCaseId  String
   testRunCase    TestRunCase  @relation(fields: [testRunCaseId], references: [id], onDelete: Cascade)
 
-  status         TestResultStatus
-  comment        String?
+  status            TestResultStatus
+  comment           String?
   /// Per-step outcomes, shaped by the snapshot rather than by the live case.
-  stepResults    Json?
-  elapsedSeconds Int?
+  stepResults       Json?
+  elapsedSeconds    Int?
+  /// Copied from the execution by a trigger on insert (S7-F4).
+  caseVersion       Int?
+  testCaseVersionId String?
+  testCaseVersion   TestCaseVersion? @relation(fields: [testCaseVersionId], references: [id], onDelete: Restrict)
 
   executedById String?
   executedBy   User?    @relation("TestResultExecutedBy", fields: [executedById], references: [id], onDelete: SetNull)
@@ -2198,22 +2243,24 @@ model TestPlanRun {
 
 /// Frozen scope of a plan: one row per case and scope version, never edited.
 model TestPlanScopeItem {
-  id             String   @id @default(cuid())
-  organizationId String
-  projectId      String
-  planId         String
-  scopeVersion   Int
-  testCaseId     String
-  caseKey        String
-  caseTitle      String
-  caseVersion    Int
-  suiteId        String?
-  suiteName      String?
+  id                String           @id @default(cuid())
+  organizationId    String
+  projectId         String
+  planId            String
+  scopeVersion      Int
+  testCaseId        String
+  caseKey           String
+  caseTitle         String
+  caseVersion       Int
+  testCaseVersionId String?
+  testCaseVersion   TestCaseVersion? @relation(fields: [testCaseVersionId, testCaseId], references: [id, testCaseId], onDelete: Restrict)
+  suiteId           String?
+  suiteName         String?
   /// direct or suite (CHECK).
-  source         String
-  createdAt      DateTime @default(now())
-  plan           TestPlan @relation(fields: [planId, projectId], references: [id, projectId], onDelete: Cascade)
-  testCase       TestCase @relation(fields: [testCaseId, projectId], references: [id, projectId], onDelete: Cascade)
+  source            String
+  createdAt         DateTime         @default(now())
+  plan              TestPlan         @relation(fields: [planId, projectId], references: [id, projectId], onDelete: Cascade)
+  testCase          TestCase         @relation(fields: [testCaseId, projectId], references: [id, projectId], onDelete: Cascade)
 
   @@unique([planId, scopeVersion, testCaseId])
   @@index([testCaseId])
@@ -2277,20 +2324,22 @@ model TestCycleRun {
 
 /// Frozen scope of a cycle: copied from its plan at start, never edited.
 model TestCycleScopeItem {
-  id             String    @id @default(cuid())
-  organizationId String
-  projectId      String
-  cycleId        String
-  testCaseId     String
-  caseKey        String
-  caseTitle      String
-  caseVersion    Int
-  suiteId        String?
-  suiteName      String?
-  source         String
-  createdAt      DateTime  @default(now())
-  cycle          TestCycle @relation(fields: [cycleId, projectId], references: [id, projectId], onDelete: Cascade)
-  testCase       TestCase  @relation(fields: [testCaseId, projectId], references: [id, projectId], onDelete: Cascade)
+  id                String           @id @default(cuid())
+  organizationId    String
+  projectId         String
+  cycleId           String
+  testCaseId        String
+  caseKey           String
+  caseTitle         String
+  caseVersion       Int
+  testCaseVersionId String?
+  testCaseVersion   TestCaseVersion? @relation(fields: [testCaseVersionId, testCaseId], references: [id, testCaseId], onDelete: Restrict)
+  suiteId           String?
+  suiteName         String?
+  source            String
+  createdAt         DateTime         @default(now())
+  cycle             TestCycle        @relation(fields: [cycleId, projectId], references: [id, projectId], onDelete: Cascade)
+  testCase          TestCase         @relation(fields: [testCaseId, projectId], references: [id, projectId], onDelete: Cascade)
 
   @@unique([cycleId, testCaseId])
   @@index([testCaseId])

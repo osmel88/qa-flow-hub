@@ -43,7 +43,9 @@ export class TraceabilityRepository extends TenantAwareRepository {
    * The most recent execution of each case, whichever run it happened in.
    * Ordered ascending so that the last write into the map wins.
    */
-  async latestStatusByCase(testCaseIds: string[]): Promise<Map<string, TestResultStatus>> {
+  async latestStatusByCase(
+    testCaseIds: string[],
+  ): Promise<Map<string, { status: TestResultStatus; caseVersion: number }>> {
     if (testCaseIds.length === 0) {
       return new Map();
     }
@@ -56,11 +58,16 @@ export class TraceabilityRepository extends TenantAwareRepository {
         // whether a requirement is verified either.
         testRun: { deletedAt: null },
       }),
-      select: { testCaseId: true, latestStatus: true, updatedAt: true },
+      select: { testCaseId: true, latestStatus: true, caseVersion: true, updatedAt: true },
       orderBy: { updatedAt: 'asc' },
     });
 
-    return new Map(rows.map((row) => [row.testCaseId, row.latestStatus]));
+    return new Map(
+      rows.map((row) => [
+        row.testCaseId,
+        { status: row.latestStatus, caseVersion: row.caseVersion },
+      ]),
+    );
   }
 
   /**

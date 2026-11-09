@@ -32,7 +32,7 @@ import { ProjectAccessService } from '../projects/project-access.service';
 import { PlanRow, ScopeCase, TestPlansRepository } from './test-plans.repository';
 
 const PLAN = 'Test plan';
-const OPEN_DEFECTS = new Set(['open', 'triaged', 'in_progress', 'reopened']);
+export const OPEN_DEFECTS = new Set(['open', 'triaged', 'in_progress', 'reopened']);
 
 /**
  * Test plans (S7-F1). Every write locks the plan row (`FOR UPDATE`) and
@@ -256,6 +256,9 @@ export class TestPlansService {
     await this.requirePlan(id);
     await this.prisma.runInTransaction(async (tx) => {
       const current = await this.lockEditable(id, undefined, tx);
+      if ((await tx.testCycleRun.count({ where: { testRunId } })) > 0) {
+        throw new ConflictError('This run belongs to a test cycle; detach it from the cycle first');
+      }
       const removed = await this.plans.detachRun(id, testRunId, tx);
       if (removed.count === 0) {
         throw new NotFoundError('Test run in plan');
@@ -380,7 +383,7 @@ export class TestPlansService {
     await check(input.testCaseIds, (ids) => this.plans.liveCases(projectId, ids, tx), 'Test case');
   }
 
-  private async assertOwner(projectId: string, ownerId: string, tx: PrismaTransaction) {
+  async assertOwner(projectId: string, ownerId: string, tx: PrismaTransaction) {
     const member = await this.plans.findMember(ownerId, tx);
     if (member === null || !(await this.access.memberSees(projectId, ownerId, member.role))) {
       throw new ValidationError('The owner must be an active member who can see this project');
@@ -457,7 +460,7 @@ export class TestPlansService {
 }
 
 /** The latest executed result among the plan runs wins; otherwise untested. */
-function caseProgress(
+export function caseProgress(
   entry: ScopeCase,
   rows: ReadonlyArray<{
     status: TestResultStatus;
@@ -482,10 +485,10 @@ function caseProgress(
   };
 }
 
-function toDate(value: string | null | undefined): Date | null {
+export function toDate(value: string | null | undefined): Date | null {
   return value === undefined || value === null ? null : new Date(`${value}T00:00:00Z`);
 }
 
-function isoDay(value: Date | null): string | null {
+export function isoDay(value: Date | null): string | null {
   return value === null ? null : value.toISOString().slice(0, 10);
 }

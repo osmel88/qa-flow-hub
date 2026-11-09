@@ -1372,3 +1372,11 @@ caller's own tenant, never of another one.
 - **Environments of a plan are not matched to runs**: a run's environment is
   still free text.
 - **Owner changes are not notified**.
+
+## 63. Test cycles: what S7-F2 leaves (S7-F2)
+
+- **A run's environment is not checked against the cycle environment**
+  (still free text on runs).
+- **No "create run from cycle" action**.
+- **An environment referenced by a cycle cannot be deleted** (foreign key);
+  it can still be archived.

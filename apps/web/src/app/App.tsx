@@ -52,6 +52,7 @@ import { TestCasesPage } from '../pages/TestCasesPage';
 import { TestRunsPage } from '../pages/TestRunsPage';
 import { TestPlansPage } from '../pages/TestPlansPage';
 import { TestPlanDetailPage } from '../pages/TestPlanDetailPage';
+import { TestCycleDetailPage } from '../pages/TestCycleDetailPage';
 import { ExternalTraceabilityPage } from '../pages/ExternalTraceabilityPage';
 import { TraceabilityPage } from '../pages/TraceabilityPage';
 import { createQueryClient } from './query-client';
@@ -103,6 +104,7 @@ const router = createBrowserRouter([
           { path: '/releases/:releaseId/pipeline', element: <ReleasePipelinePage /> },
           { path: '/test-plans', element: <TestPlansPage /> },
           { path: '/test-plans/:planId', element: <TestPlanDetailPage /> },
+          { path: '/test-cycles/:cycleId', element: <TestCycleDetailPage /> },
           { path: '/test-runs', element: <TestRunsPage /> },
           { path: '/test-runs/:runId', element: <RunExecutionPage /> },
           { path: '/defects', element: <DefectsPage /> },

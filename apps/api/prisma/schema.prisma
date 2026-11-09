@@ -338,6 +338,8 @@ model User {
 
   ownedTestPlans TestPlan[] @relation("TestPlanOwner")
 
+  ownedTestCycles TestCycle[] @relation("TestCycleOwner")
+
   @@index([deletedAt])
   @@map("users")
 }
@@ -482,6 +484,8 @@ model Organization {
 
   testPlans TestPlan[]
 
+  testCycles TestCycle[]
+
   @@index([deletedAt])
   @@map("organizations")
 }
@@ -600,6 +604,8 @@ model Project {
   defectWorkflow         DefectWorkflow?
 
   testPlans TestPlan[]
+
+  testCycles TestCycle[]
 
   @@unique([organizationId, key])
   @@index([organizationId, status])
@@ -812,6 +818,8 @@ model TestCase {
   testPlans     TestPlanCase[]
   testPlanScope TestPlanScopeItem[]
 
+  testCycleScope TestCycleScopeItem[]
+
   @@unique([id, projectId])
   @@unique([organizationId, projectId, key])
   @@index([organizationId, projectId, status])
@@ -878,6 +886,8 @@ model TestRun {
   ingestionReports IngestionReport[]
 
   testPlans TestPlanRun[]
+
+  testCycles TestCycleRun[]
 
   @@unique([id, projectId])
   @@index([organizationId, projectId, status])
@@ -1484,6 +1494,8 @@ model Release {
 
   testPlans TestPlan[]
 
+  testCycles TestCycle[]
+
   @@unique([projectId, version])
   @@unique([id, projectId])
   @@index([organizationId, projectId, status])
@@ -1963,6 +1975,8 @@ model Environment {
 
   testPlans TestPlanEnvironment[]
 
+  testCycles TestCycle[]
+
   @@unique([id, projectId])
   @@index([organizationId, projectId])
   @@index([projectId, status, position])
@@ -2109,6 +2123,8 @@ model TestPlan {
   runs         TestPlanRun[]
   scopeItems   TestPlanScopeItem[]
 
+  cycles TestCycle[]
+
   @@unique([id, projectId])
   @@index([organizationId, projectId, status])
   @@index([releaseId])
@@ -2191,4 +2207,81 @@ model TestPlanScopeItem {
   @@unique([planId, scopeVersion, testCaseId])
   @@index([testCaseId])
   @@map("test_plan_scope_items")
+}
+
+/// A planned execution inside a test plan (S7-F2).
+model TestCycle {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId        String
+  project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testPlanId       String
+  testPlan         TestPlan     @relation(fields: [testPlanId, projectId], references: [id, projectId], onDelete: Cascade)
+  name             String
+  description      String?
+  /// planned, active, completed, cancelled or archived (CHECK).
+  status           String       @default("planned")
+  ownerId          String?
+  owner            User?        @relation("TestCycleOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  environmentId    String?
+  environment      Environment? @relation(fields: [environmentId, projectId], references: [id, projectId], onDelete: NoAction, onUpdate: NoAction)
+  releaseId        String?
+  release          Release?     @relation(fields: [releaseId, projectId], references: [id, projectId], onDelete: NoAction, onUpdate: NoAction)
+  startDate        DateTime?    @db.Date
+  endDate          DateTime?    @db.Date
+  frozenAt         DateTime?
+  /// The plan scope version copied at start (0 = the plan's live scope).
+  planScopeVersion Int?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  archivedAt       DateTime?
+  version          Int          @default(1)
+  createdById      String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  runs       TestCycleRun[]
+  scopeItems TestCycleScopeItem[]
+
+  @@unique([id, projectId])
+  @@index([organizationId, projectId, status])
+  @@index([testPlanId])
+  @@map("test_cycles")
+}
+
+model TestCycleRun {
+  cycleId        String
+  organizationId String
+  projectId      String
+  testRunId      String
+  createdAt      DateTime  @default(now())
+  cycle          TestCycle @relation(fields: [cycleId, projectId], references: [id, projectId], onDelete: Cascade)
+  testRun        TestRun   @relation(fields: [testRunId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@id([cycleId, testRunId])
+  @@unique([testRunId])
+  @@map("test_cycle_runs")
+}
+
+/// Frozen scope of a cycle: copied from its plan at start, never edited.
+model TestCycleScopeItem {
+  id             String    @id @default(cuid())
+  organizationId String
+  projectId      String
+  cycleId        String
+  testCaseId     String
+  caseKey        String
+  caseTitle      String
+  caseVersion    Int
+  suiteId        String?
+  suiteName      String?
+  source         String
+  createdAt      DateTime  @default(now())
+  cycle          TestCycle @relation(fields: [cycleId, projectId], references: [id, projectId], onDelete: Cascade)
+  testCase       TestCase  @relation(fields: [testCaseId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@unique([cycleId, testCaseId])
+  @@index([testCaseId])
+  @@map("test_cycle_scope_items")
 }

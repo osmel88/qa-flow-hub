@@ -48,7 +48,10 @@ export class AuditService {
       // `createMany` because it issues no `RETURNING`: PostgreSQL checks
       // returned rows against the policy's USING clause, which an entry
       // without an organization never satisfies, so `create` fails for it.
-      await (tx ?? this.prisma.scoped).auditLog.createMany({
+      // Typed through `PrismaTransaction`: comparing the extended scoped
+      // client with it directly exceeds the compiler's type depth.
+      const client = tx ?? (this.prisma.scoped as unknown as PrismaTransaction);
+      await client.auditLog.createMany({
         data: {
           organizationId,
           userId: entry.userId ?? request?.userId ?? null,

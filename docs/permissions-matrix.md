@@ -284,23 +284,23 @@ archived projects are read-only; every change is an audited `role_change`.
 
 ## Environments and deployments (S5-F5, S6-F1)
 
-| Action                                                      | Permission                            |
-| ----------------------------------------------------------- | ------------------------------------- |
-| List and view environments and deployments                  | `work_items.read`                     |
-| Create, edit, archive, restore or delete an environment     | `work_items.manage`                   |
-| Report, move, edit or roll back a deployment                | `work_items.write`                    |
-| The same in a protected environment (production by default) | `work_items.manage`                   |
-| View a release pipeline (S6-F2)                             | `releases.read` and `work_items.read` |
-| View and evaluate quality gates (S6-F3)                     | `releases.read`                       |
-| Configure quality gates                                     | `releases.manage`                     |
-| Override failing required gates (reason required)           | `quality_gates.override`              |
-| View release approvals (S6-F4)                              | `releases.read`                       |
-| Configure approval rules                                    | `releases.manage`                     |
-| Approve, reject or request changes (comment to refuse)      | `releases.approve`                    |
-| Revoke one's own decision / anyone's                        | `releases.approve` / `releases.manage` |
+| Action                                                      | Permission                                              |
+| ----------------------------------------------------------- | ------------------------------------------------------- |
+| List and view environments and deployments                  | `work_items.read`                                       |
+| Create, edit, archive, restore or delete an environment     | `work_items.manage`                                     |
+| Report, move, edit or roll back a deployment                | `work_items.write`                                      |
+| The same in a protected environment (production by default) | `work_items.manage`                                     |
+| View a release pipeline (S6-F2)                             | `releases.read` and `work_items.read`                   |
+| View and evaluate quality gates (S6-F3)                     | `releases.read`                                         |
+| Configure quality gates                                     | `releases.manage`                                       |
+| Override failing required gates (reason required)           | `quality_gates.override`                                |
+| View release approvals (S6-F4)                              | `releases.read`                                         |
+| Configure approval rules                                    | `releases.manage`                                       |
+| Approve, reject or request changes (comment to refuse)      | `releases.approve`                                      |
+| Revoke one's own decision / anyone's                        | `releases.approve` / `releases.manage`                  |
 | Roll an environment back (S6-F5; reason required)           | `work_items.write` (`work_items.manage` when protected) |
-| Emergency rollback (skips gates and approvals)              | `releases.emergency_rollback`         |
-| View rollback history                                       | `work_items.read`                     |
+| Emergency rollback (skips gates and approvals)              | `releases.emergency_rollback`                           |
+| View rollback history                                       | `work_items.read`                                       |
 
 ## Test plans (S7-F1)
 
@@ -310,3 +310,10 @@ archived projects are read-only; every change is an audited `role_change`.
 | Create, edit, refresh the scope, attach or detach runs | `testruns.create` |
 | Start, complete, cancel or archive a plan              | `testruns.manage` |
 
+## Test cycles (S7-F2)
+
+| Action                                        | Permission        |
+| --------------------------------------------- | ----------------- |
+| List and view cycles and their progress       | `testruns.read`   |
+| Create and edit cycles, attach or detach runs | `testruns.create` |
+| Start, complete, cancel or archive a cycle    | `testruns.manage` |

@@ -9,6 +9,7 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { TEST_PLAN_TONE } from './TestPlansPage';
+import { TestCyclesSection } from './TestCyclesSection';
 
 const ACTION_OF = {
   active: 'start',
@@ -275,6 +276,7 @@ export function TestPlanDetailPage(): React.JSX.Element {
               </>
             )}
           </section>
+          <TestCyclesSection plan={data} canCreate={can('testruns.create') && editable} />
           {stats !== undefined && (
             <section className="card" aria-labelledby="plan-progress">
               <h2 id="plan-progress">Progress</h2>

@@ -1,4 +1,8 @@
 import type {
+  CreateTestCycleInput,
+  TestCycleProgressView,
+  TestCycleView,
+  UpdateTestCycleInput,
   CreateTestPlanInput,
   ListTestPlansQuery,
   TestPlanProgressView,
@@ -952,4 +956,24 @@ export const testPlansApi = {
     apiFetch<TestPlanView>(`/test-plans/${id}/runs`, { method: 'POST', body: { testRunId } }),
   detachRun: (id: string, testRunId: string) =>
     apiFetch<TestPlanView>(`/test-plans/${id}/runs/${testRunId}`, { method: 'DELETE' }),
+};
+
+export const testCyclesApi = {
+  list: (testPlanId: string) =>
+    apiFetch<Paginated<TestCycleView>>(`/test-cycles${query({ testPlanId, pageSize: 100 })}`),
+  get: (id: string) => apiFetch<TestCycleView>(`/test-cycles/${id}`),
+  progress: (id: string) => apiFetch<TestCycleProgressView>(`/test-cycles/${id}/progress`),
+  create: (body: Partial<CreateTestCycleInput> & { testPlanId: string; name: string }) =>
+    apiFetch<TestCycleView>('/test-cycles', { method: 'POST', body }),
+  update: (id: string, body: UpdateTestCycleInput) =>
+    apiFetch<TestCycleView>(`/test-cycles/${id}`, { method: 'PATCH', body }),
+  action: (id: string, action: 'start' | 'complete' | 'cancel' | 'archive', version?: number) =>
+    apiFetch<TestCycleView>(`/test-cycles/${id}/${action}`, {
+      method: 'POST',
+      body: version === undefined ? {} : { version },
+    }),
+  attachRun: (id: string, testRunId: string) =>
+    apiFetch<TestCycleView>(`/test-cycles/${id}/runs`, { method: 'POST', body: { testRunId } }),
+  detachRun: (id: string, testRunId: string) =>
+    apiFetch<TestCycleView>(`/test-cycles/${id}/runs/${testRunId}`, { method: 'DELETE' }),
 };

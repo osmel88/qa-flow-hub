@@ -39,3 +39,34 @@ local; no external provider is involved.
   runs, progress, cases and defects).
 - Tests: `test-plans.int-spec.ts`, `test-plan.contracts.test.ts`,
   `test-plans.e2e.spec.ts`.
+
+## S7-F2 — Test Cycles
+
+- 1 migration: `test_cycles` (plan, name unique per plan ignoring case,
+  description, status, owner, optional environment and release, dates,
+  `frozenAt`, `planScopeVersion`, lifecycle timestamps, `version`),
+  `test_cycle_runs` (a run belongs to at most one cycle) and
+  `test_cycle_scope_items` (append-only). Composite `projectId` foreign keys
+  and RLS on all of them; the app cannot delete cycles nor edit frozen scope.
+- Lifecycle: `planned` → `active` → `completed` → `archived`; planned and
+  active can be cancelled, a planned cycle can be archived directly. Invalid
+  moves answer 422; finished cycles and cycles of a closed plan are
+  read-only (409).
+- Scope: a planned cycle follows its plan. A cycle starts only inside an
+  active plan and copies the plan's current frozen scope version; later plan
+  refreshes do not alter it. Once started, environment and release are
+  frozen too (409).
+- Target: the environment must belong to the project and, if the plan lists
+  environments, be one of them; the release defaults to the plan's.
+- Runs: a cycle run must belong to the cycle's plan; a run of no plan is
+  attached to the plan as well, a run of another plan or cycle answers 409.
+  A plan cannot detach a run that a cycle uses.
+- Progress (`GET /test-cycles/:id/progress`): same derivation as plans, over
+  the cycle's runs only; defects found in those runs.
+- API: `/test-cycles?testPlanId=` (filters status, environment, release,
+  owner), create, get, `PATCH`, `start`, `complete`, `cancel`, `archive`,
+  `runs` attach/detach. Same permissions as test plans. All audited; a cycle
+  or plan of another tenant or a hidden project answers 404.
+- Web: Cycles section in the plan detail and a cycle detail page.
+- Tests: `test-cycles.int-spec.ts`, `test-cycle.contracts.test.ts`,
+  `test-cycles.e2e.spec.ts`.

@@ -63,6 +63,7 @@ test('a test plan freezes its scope, tracks a run and completes', async ({ page 
 
   await test.step('a run is attached and executed, and the plan reflects it', async () => {
     await page.getByRole('link', { name: 'Test runs', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Test runs', level: 1 })).toBeVisible();
     await page.getByLabel('Name').fill('Plan run');
     await page.getByRole('button', { name: 'Create run' }).click();
     await expect(page.getByRole('link', { name: 'Plan run' })).toBeVisible();

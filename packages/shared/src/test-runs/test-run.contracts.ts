@@ -1,25 +1,18 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from '../common/pagination.js';
+import type {
+  RunCaseIterationView,
+  TestParameterView,
+} from '../test-design/test-parameters.contracts.js';
 
 export const TEST_RUN_STATUSES = ['planned', 'in_progress', 'completed', 'aborted'] as const;
 export type TestRunStatus = (typeof TEST_RUN_STATUSES)[number];
 
-export const TEST_RESULT_STATUSES = [
-  'untested',
-  'passed',
-  'failed',
-  'blocked',
-  'skipped',
-] as const;
+export const TEST_RESULT_STATUSES = ['untested', 'passed', 'failed', 'blocked', 'skipped'] as const;
 export type TestResultStatus = (typeof TEST_RESULT_STATUSES)[number];
 
 /** `untested` is the absence of a result; it cannot be recorded as one. */
-export const RECORDABLE_RESULT_STATUSES = [
-  'passed',
-  'failed',
-  'blocked',
-  'skipped',
-] as const;
+export const RECORDABLE_RESULT_STATUSES = ['passed', 'failed', 'blocked', 'skipped'] as const;
 export type RecordableResultStatus = (typeof RECORDABLE_RESULT_STATUSES)[number];
 
 /**
@@ -109,6 +102,11 @@ export type ListTestRunsQuery = z.infer<typeof listTestRunsQuerySchema>;
 export const listRunCasesQuerySchema = paginationQuerySchema.extend({
   status: z.enum(TEST_RESULT_STATUSES).optional(),
   assignedToId: z.string().min(1).optional(),
+  testCaseId: z.string().min(1).optional(),
+  /** One dataset row: its executions across the cases that share the id. */
+  datasetRowId: z.string().min(1).max(40).optional(),
+  /** Query strings have no booleans; see `includeArchived`. */
+  parameterized: z.enum(['true', 'false']).optional(),
 });
 export type ListRunCasesQuery = z.infer<typeof listRunCasesQuerySchema>;
 
@@ -150,6 +148,8 @@ export interface RunCaseSnapshot {
     /** Test data the step is executed with. */
     data: string | null;
   }>;
+  /** The parameter definition the case was executed with (S7-F3). */
+  parameters?: TestParameterView[];
 }
 
 export interface RunCaseView {
@@ -161,6 +161,8 @@ export interface RunCaseView {
   assignedToId: string | null;
   latestStatus: TestResultStatus;
   position: number;
+  /** The dataset row of a parameterized case, `null` for a plain one. */
+  iteration: RunCaseIterationView | null;
 }
 
 export interface TestResultView {

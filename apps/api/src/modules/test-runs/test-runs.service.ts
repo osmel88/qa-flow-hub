@@ -25,7 +25,10 @@ import {
   TestRunView,
   UpdateTestRunInput,
   buildPaginationMeta,
+  RunCaseIterationView,
+  resolveRowValues,
 } from '@qa-flow-hub/shared';
+import { datasetOf, parametersOf } from '../test-design/test-design.service';
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../../errors';
@@ -288,6 +291,11 @@ export class TestRunsService {
     const page = await this.runs.listRunCases(id, query, {
       ...(query.status === undefined ? {} : { latestStatus: query.status }),
       ...(query.assignedToId === undefined ? {} : { assignedToId: query.assignedToId }),
+      ...(query.testCaseId === undefined ? {} : { testCaseId: query.testCaseId }),
+      ...(query.datasetRowId === undefined ? {} : { iterationKey: query.datasetRowId }),
+      ...(query.parameterized === undefined
+        ? {}
+        : { parameterized: query.parameterized === 'true' }),
     });
 
     return { data: page.data.map(toRunCaseView), meta: page.meta };
@@ -429,7 +437,7 @@ export class TestRunsService {
           action: AuditAction.create,
           entityType: 'TestResult',
           entityId: created.id,
-          summary: `Recorded ${input.status} for ${snapshot.key} in run ${run.name}`,
+          summary: `Recorded ${input.status} for ${snapshot.key}${runCase.iterationKey === '' ? '' : ` [${runCase.iterationLabel ?? runCase.iterationKey}]`} in run ${run.name}`,
         },
         tx,
       );
@@ -496,13 +504,16 @@ export class TestRunsService {
     const offset = await this.runs.maxPosition(run.id, tx);
 
     return this.runs.addRunCases(
-      fresh.map((testCase, index) => ({
-        testRunId: run.id,
-        testCaseId: testCase.id,
-        caseSnapshot: snapshotOf(testCase) as unknown as Prisma.InputJsonValue,
-        caseVersion: testCase.version,
-        position: offset + index + 1,
-      })),
+      fresh.flatMap((testCase, index) =>
+        expandRunCase(testCase).map((iteration) => ({
+          testRunId: run.id,
+          testCaseId: testCase.id,
+          caseSnapshot: snapshotOf(testCase) as unknown as Prisma.InputJsonValue,
+          caseVersion: testCase.version,
+          position: offset + index + 1,
+          ...iteration,
+        })),
+      ),
       tx,
     );
   }
@@ -563,7 +574,31 @@ export function snapshotOf(testCase: TestCase & { steps: TestStep[] }): RunCaseS
       expectedResult: step.expectedResult,
       data: step.data,
     })),
+    ...(parametersOf(testCase).length === 0 ? {} : { parameters: parametersOf(testCase) }),
   };
+}
+
+/**
+ * One execution per dataset row, each with the values it runs with frozen;
+ * a case without a dataset is a single plain execution.
+ */
+export function expandRunCase(testCase: TestCase): Array<{
+  iterationKey?: string;
+  iterationLabel?: string;
+  iterationIndex?: number;
+  parameterValues?: Prisma.InputJsonValue;
+}> {
+  const parameters = parametersOf(testCase);
+  const dataset = datasetOf(testCase);
+  if (dataset.length === 0) {
+    return [{}];
+  }
+  return dataset.map((row, index) => ({
+    iterationKey: row.id,
+    iterationLabel: row.label,
+    iterationIndex: index + 1,
+    parameterValues: resolveRowValues(parameters, row),
+  }));
 }
 
 export function buildProgress(
@@ -626,6 +661,15 @@ function toRunCaseView(runCase: TestRunCase): RunCaseView {
     assignedToId: runCase.assignedToId,
     latestStatus: runCase.latestStatus,
     position: runCase.position,
+    iteration:
+      runCase.iterationKey === ''
+        ? null
+        : {
+            rowId: runCase.iterationKey,
+            label: runCase.iterationLabel ?? runCase.iterationKey,
+            index: runCase.iterationIndex ?? 0,
+            values: (runCase.parameterValues ?? {}) as RunCaseIterationView['values'],
+          },
   };
 }
 

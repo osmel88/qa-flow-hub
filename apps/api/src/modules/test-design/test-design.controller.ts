@@ -1,10 +1,28 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  Res,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
+import type { FastifyReply } from 'fastify';
+import { attachmentDisposition } from '../exports/csv-writer';
 import {
   CreateSectionInput,
   CreateSuiteInput,
   CreateTestCaseInput,
   DuplicateTestCaseInput,
+  ImportDatasetInput,
+  ReplaceParametersInput,
+  importDatasetSchema,
+  replaceParametersSchema,
   ListTestCasesQuery,
   ReplaceStepsInput,
   UpdateSectionInput,
@@ -144,6 +162,42 @@ export class TestDesignController {
     @Body(zodBody(replaceStepsSchema)) body: ReplaceStepsInput,
   ) {
     return this.design.replaceSteps(id, body);
+  }
+
+  @RequirePermission('test_design.write')
+  @Put('test-cases/:id/parameters')
+  @ApiOperation({ summary: 'Replace the parameters and dataset of a case, bumping its version' })
+  replaceParameters(
+    @Param('id') id: string,
+    @Body(zodBody(replaceParametersSchema)) body: ReplaceParametersInput,
+  ) {
+    return this.design.replaceParameters(id, body);
+  }
+
+  @RequirePermission('test_design.import')
+  @Post('test-cases/:id/dataset/import')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Replace the dataset of a case with the rows of a CSV' })
+  importDataset(
+    @Param('id') id: string,
+    @Body(zodBody(importDatasetSchema)) body: ImportDatasetInput,
+  ) {
+    return this.design.importDataset(id, body);
+  }
+
+  @RequirePermission('data.export')
+  @Get('test-cases/:id/dataset/export.csv')
+  @ApiProduces('text/csv')
+  @ApiOperation({ summary: 'The dataset of a case as CSV' })
+  async exportDataset(@Param('id') id: string, @Res() reply: FastifyReply): Promise<void> {
+    const file = await this.design.exportDataset(id);
+    reply
+      .header('Content-Type', 'text/csv; charset=utf-8')
+      .header('Content-Disposition', attachmentDisposition(file.fileName))
+      .header('X-Content-Type-Options', 'nosniff')
+      .header('Cache-Control', 'private, no-store')
+      .header('X-Export-Rows', String(file.rows));
+    await reply.send(file.body);
   }
 
   @RequirePermission('test_design.write')

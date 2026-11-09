@@ -36,6 +36,7 @@ export function RunExecutionPage(): React.JSX.Element {
   const [openCase, setOpenCase] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [datasetFilter, setDatasetFilter] = useState('');
   const [defectFor, setDefectFor] = useState<{ resultId: string; title: string } | null>(null);
 
   const run = useQuery({ queryKey: ['run', runId], queryFn: () => testRunsApi.get(runId) });
@@ -46,6 +47,20 @@ export function RunExecutionPage(): React.JSX.Element {
   });
 
   const refresh = () => invalidateAfterResult(queryClient, runId);
+  const datasetLabels = [
+    ...new Set(
+      (cases.data?.data ?? []).flatMap((entry) =>
+        entry.iteration === null ? [] : [entry.iteration.label],
+      ),
+    ),
+  ];
+  const shownCases = (cases.data?.data ?? []).filter(
+    (entry) =>
+      datasetFilter === '' ||
+      (datasetFilter === '__plain'
+        ? entry.iteration === null
+        : entry.iteration?.label === datasetFilter),
+  );
 
   const record = useMutation({
     mutationFn: (input: { runCase: RunCaseView; status: RecordableResultStatus }) =>
@@ -221,8 +236,27 @@ export function RunExecutionPage(): React.JSX.Element {
         isEmpty={(cases.data?.data.length ?? 0) === 0}
         emptyMessage="This run has no cases."
       >
+        {datasetLabels.length > 0 && (
+          <label className="ui-field">
+            <span className="ui-field__label">Dataset row</span>
+            <select
+              value={datasetFilter}
+              onChange={(event) => {
+                setDatasetFilter(event.target.value);
+              }}
+            >
+              <option value="">All executions</option>
+              <option value="__plain">Without dataset</option>
+              {datasetLabels.map((label) => (
+                <option key={label} value={label}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <ul className="plain-list">
-          {cases.data?.data.map((runCase) => (
+          {shownCases.map((runCase) => (
             <li key={runCase.id} className="card run-case">
               <div className="run-case__header">
                 <button
@@ -233,6 +267,9 @@ export function RunExecutionPage(): React.JSX.Element {
                   }}
                 >
                   <code>{runCase.snapshot.key}</code> {runCase.snapshot.title}
+                  {runCase.iteration !== null && (
+                    <span className="muted"> [{runCase.iteration.label}]</span>
+                  )}
                 </button>
                 <Badge tone={toneFor(runCase.latestStatus)}>{humanize(runCase.latestStatus)}</Badge>
               </div>
@@ -240,6 +277,7 @@ export function RunExecutionPage(): React.JSX.Element {
               {openCase === runCase.id && (
                 <div>
                   <p className="muted">Frozen at version {runCase.caseVersion}.</p>
+                  {runCase.iteration !== null && <ParameterValues runCase={runCase} />}
                   {runCase.snapshot.steps.length === 0 ? (
                     <p className="muted">This case had no steps when the run was created.</p>
                   ) : (
@@ -327,6 +365,7 @@ function LatestResult({
       <div className="external-sync">
         <span className="muted">
           Latest result: {humanize(latest.status)} ({new Date(latest.executedAt).toLocaleString()})
+          {runCase.iteration !== null && ` with ${runCase.iteration.label}`}
         </span>
         <GitHubResultOrigin reference={gitHubReferences?.get(latest.id)} />
         <TestRailSyncCell
@@ -341,5 +380,20 @@ function LatestResult({
         title={`Evidence for latest result (${humanize(latest.status)})`}
       />
     </>
+  );
+}
+
+/** The values this execution ran with, frozen when the run included the case. */
+function ParameterValues({ runCase }: { runCase: RunCaseView }): React.JSX.Element {
+  const values = runCase.iteration?.values ?? {};
+  return (
+    <dl className="parameter-values" aria-label="Parameters used">
+      {Object.entries(values).map(([name, value]) => (
+        <div key={name}>
+          <dt>{name}</dt>
+          <dd>{value === null ? '—' : String(value)}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }

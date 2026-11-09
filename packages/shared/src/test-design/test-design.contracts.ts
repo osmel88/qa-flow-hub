@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { DatasetRowView, TestParameterView } from './test-parameters.contracts.js';
 import { paginationQuerySchema } from '../common/pagination.js';
 import { PRIORITIES, tagsSchema } from '../requirements/requirement.contracts.js';
 import {
@@ -218,4 +219,7 @@ export interface TestCaseView {
 
 export interface TestCaseDetailView extends TestCaseView {
   steps: TestStepView[];
+  /** Parameters and dataset rows (S7-F3); empty for a plain case. */
+  parameters: TestParameterView[];
+  dataset: DatasetRowView[];
 }

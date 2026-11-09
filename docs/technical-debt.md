@@ -1364,7 +1364,6 @@ caller's own tenant, never of another one.
 - **Emergency rollbacks are not reviewed afterwards**: no follow-up task or
   notification is created.
 
-
 ## 62. Test plans: what S7-F1 leaves (S7-F1)
 
 - **No run is generated from a plan**: runs are created separately and
@@ -1380,3 +1379,15 @@ caller's own tenant, never of another one.
 - **No "create run from cycle" action**.
 - **An environment referenced by a cycle cannot be deleted** (foreign key);
   it can still be archived.
+
+## 64. Parameterized tests: what S7-F3 leaves (S7-F3)
+
+- **Parameters are not interpolated into step text**; the tester reads the
+  values next to the steps.
+- **No per-parameter history view**: past definitions live in run snapshots
+  and in the audit log, not in a case version table (future versioning can
+  read them from there).
+- **Plans and cycles aggregate rows per case** (worst row in the newest run);
+  there is no per-row coverage metric yet.
+- **Automation ingestion ignores datasets**: imported results map to the
+  plain execution of a case.

@@ -317,3 +317,13 @@ archived projects are read-only; every change is an audited `role_change`.
 | List and view cycles and their progress       | `testruns.read`   |
 | Create and edit cycles, attach or detach runs | `testruns.create` |
 | Start, complete, cancel or archive a cycle    | `testruns.manage` |
+
+## Parameterized test cases (S7-F3)
+
+| Action                                 | Permission             |
+| -------------------------------------- | ---------------------- |
+| View parameters and dataset            | `test_design.read`     |
+| Replace parameters and dataset         | `test_design.write`    |
+| Import a dataset from CSV              | `test_design.import`   |
+| Export a dataset as CSV                | `data.export`          |
+| Execute dataset rows and filter by row | `testruns.*` (as runs) |

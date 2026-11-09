@@ -6,6 +6,7 @@ export * from './organizations/organization.contracts.js';
 export * from './projects/project.contracts.js';
 export * from './requirements/requirement.contracts.js';
 export * from './test-design/test-design.contracts.js';
+export * from './test-design/test-parameters.contracts.js';
 export * from './test-runs/test-run.contracts.js';
 export * from './test-plans/test-plan.contracts.js';
 export * from './test-plans/test-cycle.contracts.js';

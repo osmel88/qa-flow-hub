@@ -804,6 +804,10 @@ model TestCase {
   version          Int              @default(1)
   /// Custom field values keyed by definition id (S3-F7).
   customFields     Json             @default("{}")
+  /// Parameter definitions (S7-F3), versioned with the case.
+  parameters       Json             @default("[]")
+  /// Dataset rows `{ id, label, values }`; one execution per row in a run.
+  dataset          Json             @default("[]")
 
   createdById String?
   createdAt   DateTime  @default(now())
@@ -919,12 +923,19 @@ model TestRunCase {
   latestStatus TestResultStatus @default(untested)
   position     Int              @default(0)
 
+  /// The dataset row executed (S7-F3); empty for a plain case. Frozen, like
+  /// the snapshot: a trigger rejects any change to it.
+  iterationKey    String  @default("")
+  iterationLabel  String?
+  iterationIndex  Int?
+  parameterValues Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   results TestResult[]
 
-  @@unique([testRunId, testCaseId])
+  @@unique([testRunId, testCaseId, iterationKey])
   @@index([organizationId, testRunId, latestStatus])
   @@index([organizationId, assignedToId])
   @@map("test_run_cases")

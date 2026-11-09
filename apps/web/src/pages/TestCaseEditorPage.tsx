@@ -8,6 +8,8 @@ import { CoverageLinks } from '../components/CoverageLinks';
 import { PageHeader } from '../components/PageHeader';
 import { CustomFieldInputs, useCustomFields } from '../components/CustomFieldInputs';
 import type { CustomFieldDraft } from '../components/CustomFieldInputs';
+import { useProjectPermissions } from '../components/use-project-permissions';
+import { TestCaseParameters } from './TestCaseParameters';
 
 interface DraftStep {
   action: string;
@@ -40,6 +42,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
     queryFn: () => testDesignApi.case(caseId),
   });
 
+  const { can } = useProjectPermissions(detail.data?.projectId ?? null);
   const customFields = useCustomFields(detail.data?.projectId ?? null, 'test_case');
 
   useEffect(() => {
@@ -188,6 +191,14 @@ export function TestCaseEditorPage(): React.JSX.Element {
             <p className="muted">A case is capped at {MAX_STEPS} steps.</p>
           )}
         </section>
+
+        {detail.data !== undefined && (
+          <TestCaseParameters
+            detail={detail.data}
+            canImport={can('test_design.import')}
+            canExport={can('data.export')}
+          />
+        )}
 
         {detail.data !== undefined && (
           <CoverageLinks side="test_case" entityId={caseId} projectId={detail.data.projectId} />

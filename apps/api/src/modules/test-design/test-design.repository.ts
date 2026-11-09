@@ -176,6 +176,15 @@ export class TestDesignRepository extends TenantAwareRepository {
     return (tx ?? this.prisma).testCase.findFirst({ where: this.active({ id }) });
   }
 
+  /** Serializes edits of one case's parameters and dataset. */
+  async lockCase(id: string, tx: PrismaTransaction): Promise<TestCase | null> {
+    await tx.$queryRaw`
+      SELECT "id" FROM "test_cases"
+      WHERE "id" = ${id} AND "organizationId" = ${this.organizationId}
+      FOR UPDATE`;
+    return tx.testCase.findFirst({ where: this.active({ id }) });
+  }
+
   findCaseWithSteps(id: string): Promise<(TestCase & { steps: TestStep[] }) | null> {
     return this.prisma.testCase.findFirst({
       where: this.active({ id }),

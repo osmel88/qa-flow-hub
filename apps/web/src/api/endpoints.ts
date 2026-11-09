@@ -1,4 +1,6 @@
 import type {
+  ImportDatasetInput,
+  ReplaceParametersInput,
   CreateTestCycleInput,
   TestCycleProgressView,
   TestCycleView,
@@ -420,6 +422,11 @@ export const testDesignApi = {
     apiFetch<TestCaseDetailView>(`/test-cases/${id}/duplicate`, { method: 'POST', body: {} }),
   archive: (id: string) => apiFetch<TestCaseView>(`/test-cases/${id}/archive`, { method: 'POST' }),
   restore: (id: string) => apiFetch<TestCaseView>(`/test-cases/${id}/restore`, { method: 'POST' }),
+  replaceParameters: (id: string, body: ReplaceParametersInput) =>
+    apiFetch<TestCaseDetailView>(`/test-cases/${id}/parameters`, { method: 'PUT', body }),
+  importDataset: (id: string, body: ImportDatasetInput) =>
+    apiFetch<TestCaseDetailView>(`/test-cases/${id}/dataset/import`, { method: 'POST', body }),
+  exportDataset: (id: string) => apiFetchBlob(`/test-cases/${id}/dataset/export.csv`),
 };
 
 export const testRunsApi = {

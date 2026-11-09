@@ -24,6 +24,9 @@ export interface TestRunFilters {
 export interface RunCaseFilters {
   latestStatus?: TestResultStatus;
   assignedToId?: string;
+  testCaseId?: string;
+  iterationKey?: string;
+  parameterized?: boolean;
 }
 
 @Injectable()
@@ -122,12 +125,19 @@ export class TestRunsRepository extends TenantAwareRepository {
       testRunId,
       ...(filters.latestStatus === undefined ? {} : { latestStatus: filters.latestStatus }),
       ...(filters.assignedToId === undefined ? {} : { assignedToId: filters.assignedToId }),
+      ...(filters.testCaseId === undefined ? {} : { testCaseId: filters.testCaseId }),
+      ...(filters.iterationKey === undefined ? {} : { iterationKey: filters.iterationKey }),
+      ...(filters.parameterized === undefined
+        ? {}
+        : filters.parameterized
+          ? { iterationKey: { not: '' } }
+          : { iterationKey: '' }),
     });
 
     const [data, total] = await Promise.all([
       this.prisma.testRunCase.findMany({
         where,
-        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+        orderBy: [{ position: 'asc' }, { iterationIndex: 'asc' }, { createdAt: 'asc' }],
         ...this.page(query),
       }),
       this.prisma.testRunCase.count({ where }),

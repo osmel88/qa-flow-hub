@@ -472,17 +472,38 @@ export function caseProgress(
     .filter((row) => row.executedAt !== null && row.status !== 'untested')
     .sort((a, b) => b.executedAt!.getTime() - a.executedAt!.getTime())[0];
   const shown = executed ?? rows[0];
+  // A parameterized case has one execution per dataset row in a run; the case
+  // counts once, with the worst status of its rows in the newest run.
+  const status =
+    executed === undefined
+      ? 'untested'
+      : worstStatus(rows.filter((row) => row.run.id === executed.run.id));
   return {
     testCaseId: entry.testCaseId,
     key: entry.key,
     title: entry.title,
     suite: entry.suiteName,
     source: entry.source,
-    status: executed?.status ?? 'untested',
+    status,
     run: shown?.run ?? null,
     executedAt: executed?.executedAt?.toISOString() ?? null,
     inRun: rows.length > 0,
   };
+}
+
+const STATUS_WEIGHT: Record<TestResultStatus, number> = {
+  failed: 5,
+  blocked: 4,
+  untested: 3,
+  skipped: 2,
+  passed: 1,
+};
+
+function worstStatus(rows: ReadonlyArray<{ status: TestResultStatus }>): TestResultStatus {
+  return rows.reduce<TestResultStatus>(
+    (worst, row) => (STATUS_WEIGHT[row.status] > STATUS_WEIGHT[worst] ? row.status : worst),
+    'passed',
+  );
 }
 
 export function toDate(value: string | null | undefined): Date | null {

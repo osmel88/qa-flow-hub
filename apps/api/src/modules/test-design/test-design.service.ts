@@ -17,7 +17,20 @@ import {
   UpdateSuiteInput,
   UpdateTestCaseInput,
   buildPaginationMeta,
+  DATASET_ID_COLUMN,
+  DATASET_LABEL_COLUMN,
+  DatasetRowView,
+  ImportDatasetInput,
+  ReplaceParametersInput,
+  TestParameterView,
+  formatParameterValue,
+  parseParameterCell,
+  validateParameterDefinition,
 } from '@qa-flow-hub/shared';
+import { randomBytes } from 'node:crypto';
+import { parse } from 'csv-parse/sync';
+import { csvDocument } from '../exports/csv-writer';
+import type { CsvExport } from '../exports/exports.service';
 import { PrismaService } from '../../database/prisma.service';
 import {
   ConflictError,
@@ -369,9 +382,7 @@ export class TestDesignService {
       const testCaseAfter = await this.repository.updateCase(
         id,
         {
-          ...(customFields === undefined
-            ? {}
-            : { customFields: customFields }),
+          ...(customFields === undefined ? {} : { customFields: customFields }),
           ...(input.title === undefined ? {} : { title: input.title }),
           ...(input.description === undefined ? {} : { description: input.description }),
           ...(input.preconditions === undefined ? {} : { preconditions: input.preconditions }),
@@ -434,6 +445,198 @@ export class TestDesignService {
     });
 
     return this.detail(id);
+  }
+
+  // --- Parameters and dataset (S7-F3) --------------------------------------
+
+  /**
+   * Replaces the parameters and the dataset as one definition, bumping the case
+   * version. Runs already created keep the values they froze, so this never
+   * rewrites an execution; `version` makes a stale editor fail with 409.
+   */
+  async replaceParameters(id: string, input: ReplaceParametersInput): Promise<TestCaseDetailView> {
+    const testCase = await this.requireCase(id);
+    this.assertEditable(testCase);
+    const errors = validateParameterDefinition(input.parameters, input.rows);
+    if (errors.length > 0) {
+      throw new ValidationError(errors.join('; '));
+    }
+
+    await this.prisma.runInTransaction(async (tx) => {
+      const locked = await this.repository.lockCase(id, tx);
+      if (locked === null) {
+        throw new NotFoundError('Test case');
+      }
+      this.assertEditable(locked);
+      if (input.version !== undefined && input.version !== locked.version) {
+        throw new ConflictError(
+          `Test case ${locked.key} changed (version ${locked.version}); reload and retry`,
+        );
+      }
+      const parameters: TestParameterView[] = input.parameters.map((parameter) => ({
+        name: parameter.name,
+        type: parameter.type,
+        required: parameter.required,
+        defaultValue: parameter.defaultValue ?? null,
+        description: parameter.description ?? null,
+      }));
+      const dataset: DatasetRowView[] = input.rows.map((row, index) => ({
+        id: row.id ?? `r${randomBytes(6).toString('hex')}`,
+        label: row.label ?? `Row ${index + 1}`,
+        values: Object.fromEntries(
+          parameters.map((parameter) => {
+            const key = Object.keys(row.values).find(
+              (name) => name.toLowerCase() === parameter.name.toLowerCase(),
+            );
+            const value = key === undefined ? null : (row.values[key] ?? null);
+            return [parameter.name, value === '' ? null : value];
+          }),
+        ),
+      }));
+      const after = await this.repository.updateCase(
+        id,
+        {
+          parameters: parameters as unknown as Prisma.InputJsonValue,
+          dataset: dataset as unknown as Prisma.InputJsonValue,
+          version: { increment: 1 },
+        },
+        tx,
+      );
+      if (after === null) {
+        throw new NotFoundError('Test case');
+      }
+      await this.audit.record(
+        {
+          action: AuditAction.update,
+          entityType: 'TestCase',
+          entityId: id,
+          summary: `Set ${parameters.length} parameter(s) and ${dataset.length} dataset row(s) on ${after.key}, version ${after.version}`,
+          changes: {
+            parameters: parameters.map((parameter) => parameter.name),
+            rows: dataset.length,
+          },
+        },
+        tx,
+      );
+    });
+
+    return this.detail(id);
+  }
+
+  /** The dataset as CSV: `_id`, `_label` and one column per parameter. */
+  async exportDataset(id: string): Promise<CsvExport> {
+    const testCase = await this.requireCase(id);
+    const parameters = parametersOf(testCase);
+    const dataset = datasetOf(testCase);
+    await this.audit.record({
+      action: AuditAction.export,
+      entityType: 'TestCase',
+      entityId: id,
+      summary: `Exported the dataset of ${testCase.key} (${dataset.length} rows)`,
+    });
+    return {
+      fileName: `${testCase.key}-dataset.csv`,
+      rows: dataset.length,
+      body: csvDocument(
+        [DATASET_ID_COLUMN, DATASET_LABEL_COLUMN, ...parameters.map((parameter) => parameter.name)],
+        dataset.map((row) => [
+          row.id,
+          row.label,
+          ...parameters.map((parameter) =>
+            formatParameterValue(row.values[parameter.name] ?? null),
+          ),
+        ]),
+      ),
+    };
+  }
+
+  /**
+   * Replaces the dataset with the rows of a CSV, typed by the case parameters.
+   * Every cell is checked before anything is written: one bad cell rejects the
+   * whole file with the line that caused it.
+   */
+  async importDataset(id: string, input: ImportDatasetInput): Promise<TestCaseDetailView> {
+    const testCase = await this.requireCase(id);
+    const parameters = parametersOf(testCase);
+    if (parameters.length === 0) {
+      throw new ValidationError('Define the parameters before importing a dataset');
+    }
+    let records: string[][];
+    try {
+      records = parse(input.csv.replace(/^\uFEFF/, ''), {
+        bom: true,
+        skip_empty_lines: true,
+        relax_column_count: false,
+      });
+    } catch (cause) {
+      throw new ValidationError(
+        `The CSV cannot be read: ${cause instanceof Error ? cause.message : 'invalid file'}`,
+      );
+    }
+    const [header, ...body] = records;
+    if (header === undefined) {
+      throw new ValidationError('The CSV has no header');
+    }
+    const byName = new Map(
+      parameters.map((parameter) => [parameter.name.toLowerCase(), parameter]),
+    );
+    const errors: string[] = [];
+    const columns = header.map((name) => name.trim());
+    for (const name of columns) {
+      if (
+        name !== DATASET_ID_COLUMN &&
+        name !== DATASET_LABEL_COLUMN &&
+        !byName.has(name.toLowerCase())
+      ) {
+        errors.push(`Unknown column ${name}`);
+      }
+    }
+    const rows = body.map((cells, index) => {
+      const row: {
+        id?: string;
+        label?: string;
+        values: Record<string, string | number | boolean | null>;
+      } = {
+        values: {},
+      };
+      columns.forEach((name, column) => {
+        const text = cells[column] ?? '';
+        if (name === DATASET_ID_COLUMN) {
+          if (text.trim() !== '') {
+            row.id = text.trim();
+          }
+        } else if (name === DATASET_LABEL_COLUMN) {
+          if (text.trim() !== '') {
+            row.label = text.trim();
+          }
+        } else {
+          const parameter = byName.get(name.toLowerCase());
+          if (parameter !== undefined) {
+            const parsed = parseParameterCell(parameter.type, text);
+            if ('error' in parsed) {
+              errors.push(`Line ${index + 2}: ${parameter.name} ${parsed.error}`);
+            } else {
+              row.values[parameter.name] = parsed.value;
+            }
+          }
+        }
+      });
+      if (row.id !== undefined && !/^[A-Za-z0-9_-]{1,40}$/.test(row.id)) {
+        errors.push(`Line ${index + 2}: invalid row id`);
+      }
+      return row;
+    });
+    if (errors.length > 0) {
+      throw new ValidationError(errors.join('; '));
+    }
+    return this.replaceParameters(id, {
+      parameters: parameters.map((parameter) => ({
+        ...parameter,
+        defaultValue: parameter.defaultValue,
+      })),
+      rows,
+      ...(input.version === undefined ? {} : { version: input.version }),
+    });
   }
 
   /**
@@ -564,7 +767,12 @@ export class TestDesignService {
     if (testCase === null) {
       throw new NotFoundError('Test case');
     }
-    return { ...toTestCaseView(testCase), steps: testCase.steps.map(toStepView) };
+    return {
+      ...toTestCaseView(testCase),
+      steps: testCase.steps.map(toStepView),
+      parameters: parametersOf(testCase),
+      dataset: datasetOf(testCase),
+    };
   }
 
   private assertEditable(testCase: TestCase): void {
@@ -738,4 +946,14 @@ function toStepView(step: TestStep): TestStepView {
     expectedResult: step.expectedResult,
     data: step.data,
   };
+}
+
+export function parametersOf(testCase: Pick<TestCase, 'parameters'>): TestParameterView[] {
+  return Array.isArray(testCase.parameters)
+    ? (testCase.parameters as unknown as TestParameterView[])
+    : [];
+}
+
+export function datasetOf(testCase: Pick<TestCase, 'dataset'>): DatasetRowView[] {
+  return Array.isArray(testCase.dataset) ? (testCase.dataset as unknown as DatasetRowView[]) : [];
 }

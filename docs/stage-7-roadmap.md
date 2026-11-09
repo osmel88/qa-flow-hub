@@ -70,3 +70,34 @@ local; no external provider is involved.
 - Web: Cycles section in the plan detail and a cycle detail page.
 - Tests: `test-cycles.int-spec.ts`, `test-cycle.contracts.test.ts`,
   `test-cycles.e2e.spec.ts`.
+
+## S7-F3 — Parameterized Testing
+
+- 1 migration: `test_cases.parameters` and `test_cases.dataset` (JSONB,
+  versioned with the case) and, on `test_run_cases`, `iterationKey`,
+  `iterationLabel`, `iterationIndex` and `parameterValues`. The run-case
+  uniqueness becomes `(testRunId, testCaseId, iterationKey)`; a plain case
+  keeps `iterationKey = ''`. A trigger rejects any update of the snapshot,
+  the version or the dataset row of an execution, from any code path.
+- Parameters: name (letters, digits, `_`, unique ignoring case), type
+  (`string`, `number`, `boolean`, `date` as `YYYY-MM-DD`), required, default
+  and description. Rows: stable id, label and typed values. Validation is
+  shared by the API and the editor: wrong types, unknown columns, duplicate
+  names or row ids and missing required values (without default) answer 400.
+- `PUT /test-cases/:id/parameters` replaces the whole definition and bumps
+  the case version; `version` makes a stale editor fail with 409. Edits lock
+  the case row. Audited.
+- Expansion: including a case with a dataset in a run creates one execution
+  per row with the resolved values (defaults applied) and the parameter
+  definition in the snapshot. Each execution has its own append-only results.
+- Filters on `GET /test-runs/:id/cases`: `testCaseId`, `datasetRowId` and
+  `parameterized=true|false`.
+- Plans and cycles count a parameterized case once, with the worst status of
+  its rows in the newest executed run.
+- CSV: `GET /test-cases/:id/dataset/export.csv` (`data.export`) writes `_id`,
+  `_label` and one column per parameter; `POST /test-cases/:id/dataset/import`
+  (`test_design.import`) types every cell, rejects the whole file on the first
+  bad line and keeps row ids, so export → import is a round trip.
+- Web: parameters and dataset editor on the case page (CSV import/export
+  included); the run page shows the row label, the values used, the values
+  next to the latest result, and a dataset-row filter.

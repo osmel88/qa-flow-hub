@@ -27,6 +27,7 @@ const NAV = [
   { to: '/test-plans', label: 'Test plans' },
   { to: '/test-runs', label: 'Test runs' },
   { to: '/exploratory-sessions', label: 'Exploratory testing' },
+  { to: '/flaky-tests', label: 'Flaky tests' },
   { to: '/defects', label: 'Defects' },
   { to: '/traceability', label: 'Traceability' },
   { to: '/customization', label: 'Customization' },

@@ -344,3 +344,10 @@ archived projects are read-only; every change is an audited `role_change`.
 | Create, edit, start, pause, resume, complete; notes, findings, links | `testruns.execute` |
 | Cancel or archive a session                                          | `testruns.manage`  |
 | Turn a finding into a new defect                                     | `defects.create`   |
+
+## Flaky tests (S7-F6)
+
+| Action                                                          | Permission          |
+| --------------------------------------------------------------- | ------------------- |
+| List cases by stability, view metrics, history and mark history | `testruns.read`     |
+| Confirm, dismiss or clear a flaky mark                          | `test_design.write` |

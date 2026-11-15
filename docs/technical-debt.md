@@ -1412,3 +1412,15 @@ caller's own tenant, never of another one.
   assignee; it is edited on the Defects page afterwards.
 - **Findings cannot be edited**, only recorded and related to a defect.
 - **The one-active-session rule is per project**, not per organization.
+
+## 67. Flaky detection: what S7-F6 leaves (S7-F6)
+
+- **Computed on every read for the whole project**: the window query is
+  indexed and bounded to 20 results per case, but filtering and sorting
+  happen in memory. A project with tens of thousands of executed cases would
+  want a materialized projection refreshed on result writes.
+- **The rules are global constants**, not configurable per project.
+- **Retries inside one run count as separate results**; a JUnit report that
+  already folds retries into one outcome hides that flakiness.
+- **Marks have no optimistic locking**: two people marking at once both
+  append, and the newest one wins (both stay in the history and audit).

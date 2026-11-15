@@ -12,6 +12,7 @@ export * from './test-runs/test-run.contracts.js';
 export * from './test-plans/test-plan.contracts.js';
 export * from './test-plans/test-cycle.contracts.js';
 export * from './exploratory/exploratory.contracts.js';
+export * from './flaky/flaky.contracts.js';
 export * from './defects/defect.contracts.js';
 export * from './traceability/traceability.contracts.js';
 export * from './dashboard/dashboard.contracts.js';

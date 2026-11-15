@@ -342,6 +342,7 @@ model User {
   ownedTestCycles TestCycle[] @relation("TestCycleOwner")
 
   ownedExploratorySessions ExploratorySession[] @relation("ExploratorySessionOwner")
+  flakyMarks               TestCaseFlakyMark[]  @relation("TestCaseFlakyMarkAuthor")
 
   @@index([deletedAt])
   @@map("users")
@@ -490,6 +491,7 @@ model Organization {
   testCycles TestCycle[]
 
   exploratorySessions ExploratorySession[]
+  flakyMarks          TestCaseFlakyMark[]
 
   @@index([deletedAt])
   @@map("organizations")
@@ -613,6 +615,7 @@ model Project {
   testCycles TestCycle[]
 
   exploratorySessions ExploratorySession[]
+  flakyMarks          TestCaseFlakyMark[]
 
   @@unique([organizationId, key])
   @@index([organizationId, status])
@@ -833,6 +836,8 @@ model TestCase {
 
   versions TestCaseVersion[]
 
+  flakyMarks TestCaseFlakyMark[]
+
   @@unique([id, projectId])
   @@unique([organizationId, projectId, key])
   @@index([organizationId, projectId, status])
@@ -985,6 +990,7 @@ model TestRunCase {
   @@unique([testRunId, testCaseId, iterationKey])
   @@index([organizationId, testRunId, latestStatus])
   @@index([organizationId, assignedToId])
+  @@index([organizationId, testCaseId])
   @@map("test_run_cases")
 }
 
@@ -2481,4 +2487,28 @@ model ExploratorySessionDefect {
   @@id([sessionId, defectId])
   @@index([defectId])
   @@map("exploratory_session_defects")
+}
+
+/// Flaky test detection (S7-F6). The detected status is derived on read from
+/// the results; this append-only table only records what people decided: a
+/// confirmation, a dismissal or clearing the previous mark. The newest row is
+/// the current mark.
+model TestCaseFlakyMark {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  testCaseId     String
+  /// `flaky`, `not_flaky` or `cleared`.
+  state          String
+  reason         String
+  markedById     String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCase     TestCase     @relation(fields: [testCaseId, projectId], references: [id, projectId], onDelete: Cascade)
+  markedBy     User?        @relation("TestCaseFlakyMarkAuthor", fields: [markedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, projectId, testCaseId, createdAt])
+  @@map("test_case_flaky_marks")
 }

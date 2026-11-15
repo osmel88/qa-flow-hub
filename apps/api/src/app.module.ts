@@ -33,6 +33,7 @@ import { TestDesignModule } from './modules/test-design/test-design.module';
 import { TestRunsModule } from './modules/test-runs/test-runs.module';
 import { TestPlansModule } from './modules/test-plans/test-plans.module';
 import { ExploratoryModule } from './modules/exploratory/exploratory.module';
+import { FlakyModule } from './modules/flaky/flaky.module';
 import { TraceabilityModule } from './modules/traceability/traceability.module';
 
 /**
@@ -63,6 +64,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     TestRunsModule,
     TestPlansModule,
     ExploratoryModule,
+    FlakyModule,
     DefectsModule,
     TraceabilityModule,
     DashboardModule,

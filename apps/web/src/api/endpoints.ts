@@ -1,4 +1,9 @@
 import type {
+  FlakyDetailQuery,
+  FlakyTestDetailView,
+  FlakyTestView,
+  ListFlakyTestsQuery,
+  MarkFlakyInput,
   CreateExploratorySessionInput,
   CreateFindingInput,
   ExploratoryAction,
@@ -1054,4 +1059,13 @@ export const exploratoryApi = {
       method: 'POST',
       body: { workItemId },
     }),
+};
+
+export const flakyApi = {
+  list: (params: Partial<ListFlakyTestsQuery> & { projectId: string }) =>
+    apiFetch<Paginated<FlakyTestView>>(`/flaky-tests${query({ pageSize: 100, ...params })}`),
+  get: (testCaseId: string, params: Partial<FlakyDetailQuery> = {}) =>
+    apiFetch<FlakyTestDetailView>(`/flaky-tests/${testCaseId}${query(params)}`),
+  mark: (testCaseId: string, body: MarkFlakyInput) =>
+    apiFetch<FlakyTestDetailView>(`/flaky-tests/${testCaseId}/marks`, { method: 'POST', body }),
 };

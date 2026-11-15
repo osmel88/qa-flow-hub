@@ -162,3 +162,50 @@ local; no external provider is involved.
 - Web: Exploratory testing page (filters, new session) and session page
   (actions, notes, risks, links, findings, defects, work items, timeline,
   metrics).
+
+## S7-F6 — Flaky Test Detection
+
+- 1 migration `20270425100000_flaky_test_detection`: `test_case_flaky_marks`
+  (append-only manual marks: `flaky`, `not_flaky`, `cleared`, with reason,
+  author and time; composite `(testCaseId, projectId)` foreign key; RLS;
+  `UPDATE`/`DELETE` revoked from `qaflow_app`) and an index
+  `test_run_cases(organizationId, testCaseId)` for the window query. No
+  derived state is stored.
+- Rules (constants in `packages/shared/src/flaky/flaky.contracts.ts`, no
+  environment variable):
+  - **Signal:** only `passed` and `failed` results. `blocked`, `skipped` and
+    `untested` say nothing about the test and are ignored.
+  - **Window:** the latest **20** signal results of the test case, over runs
+    that are not deleted, manual and automated alike (a run is automated
+    when an ingestion report created it). Deleted test cases are left out.
+  - **Minimum:** fewer than **5** signal results → `insufficient_data`,
+    never flaky.
+  - **Comparisons and flips:** each result is compared with the previous one
+    of the same dataset row (`iterationKey`) and the same case version. A
+    flip is a comparison whose outcome differs. Outcome changes across a
+    version change are explained by the edit and are not compared; dataset
+    rows never compare with each other. `flipRate = flips / comparisons`.
+  - **Classification**, in this order:
+    1. `insufficient_data`: fewer than 5 results;
+    2. `stable`: no failure;
+    3. `flaky`: at least **2** flips and a flip rate of at least **0.25**;
+    4. `failing` (stable failure): the last **3** results of the case, or of
+       one dataset row, failed;
+    5. `stable`: at most one flip and the last result passed (a fix);
+    6. `suspect`: any other mix of passes and failures.
+  - **Manual marks:** the newest mark is current. `flaky` always reads
+    flaky (confirmed). `not_flaky` turns a detected `flaky` or `suspect` into
+    `stable` (dismissed) until a flip happens after the mark. `cleared`
+    removes the effect. The detected status is always returned too.
+  - **Recalculation:** on every read, from the results at that moment. A new
+    manual result, an ingestion or a deleted run changes the status at once;
+    there is no job, cache or stored status to drift.
+- API `/flaky-tests`: list (filters `status`, `source=all|manual|automation`,
+  `suiteId`, `q`, `marked`; sort `status|flipRate|failRate|executions|
+lastExecutedAt|key`, `order`), detail with rules, history (result, run,
+  run case, source, version, dataset row, flip) and mark history, and
+  `POST /flaky-tests/:testCaseId/marks`. Reading `testruns.read`; marking
+  `test_design.write` (audited). A case of another tenant, of a hidden
+  project or deleted answers 404.
+- Web: Flaky tests page (filters, sorting, metrics) and a case stability
+  page (rules, metrics, source filter, history linked to runs, marks).

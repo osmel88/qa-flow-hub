@@ -132,3 +132,33 @@ local; no external provider is involved.
   restore with reason), change reason on save, executed version on runs and
   results with a link to that version, version column in plan and cycle cases
   and in the traceability matrix.
+
+## S7-F5 — Exploratory Testing
+
+- 1 migration: `exploratory_sessions` (title, charter, owner, status,
+  optional environment, release, test plan and test cycle, timebox, notes,
+  risks, link/attachment metadata, start/pause/end and active duration,
+  `version`), `exploratory_session_events` (append-only timeline),
+  `exploratory_findings` (kind, severity, optional defect) and link tables to
+  work items and defects. Composite `projectId` foreign keys, RLS on all;
+  `defects` gains a unique `(id, projectId)`.
+- Lifecycle: `planned` → `active` ⇄ `paused` → `completed` → `archived`;
+  planned, active and paused can be cancelled, planned can be archived.
+  Invalid moves answer 422. A tester runs one active session per project
+  (partial unique index, 409).
+- Immutability: triggers refuse any change to a completed or cancelled
+  session except archiving, any change to an archived one, and findings,
+  notes or links outside an open session. The API answers 409 first.
+- Findings are recorded while the session is active or paused; one can
+  become a new defect (`defects.create`, severity copied, environment name,
+  audited) or point at an existing defect of the same project, once.
+- Metrics, derived on read: active duration (pauses excluded), findings by
+  kind and severity, defects created, defects related, notes.
+- API `/exploratory-sessions`: list (filters), create, view, edit, start,
+  pause, resume, complete, cancel, archive, notes, findings, finding → defect,
+  finding ↔ defect, work item and defect links. Reading `testruns.read`;
+  running and recording `testruns.execute`; cancel and archive
+  `testruns.manage`.
+- Web: Exploratory testing page (filters, new session) and session page
+  (actions, notes, risks, links, findings, defects, work items, timeline,
+  metrics).

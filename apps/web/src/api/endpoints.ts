@@ -1,4 +1,11 @@
 import type {
+  CreateExploratorySessionInput,
+  CreateFindingInput,
+  ExploratoryAction,
+  ExploratorySessionDetailView,
+  ExploratorySessionView,
+  ExploratoryStatus,
+  UpdateExploratorySessionInput,
   RestoreVersionInput,
   TestCaseVersionSummaryView,
   TestCaseVersionView,
@@ -997,4 +1004,54 @@ export const testCyclesApi = {
     apiFetch<TestCycleView>(`/test-cycles/${id}/runs`, { method: 'POST', body: { testRunId } }),
   detachRun: (id: string, testRunId: string) =>
     apiFetch<TestCycleView>(`/test-cycles/${id}/runs/${testRunId}`, { method: 'DELETE' }),
+};
+
+export const exploratoryApi = {
+  list: (params: { projectId: string; status?: ExploratoryStatus }) =>
+    apiFetch<Paginated<ExploratorySessionView>>(
+      `/exploratory-sessions${query({ ...params, pageSize: 100 })}`,
+    ),
+  get: (id: string) => apiFetch<ExploratorySessionDetailView>(`/exploratory-sessions/${id}`),
+  create: (
+    body: Partial<CreateExploratorySessionInput> & {
+      projectId: string;
+      title: string;
+      charter: string;
+    },
+  ) => apiFetch<ExploratorySessionDetailView>('/exploratory-sessions', { method: 'POST', body }),
+  update: (id: string, body: UpdateExploratorySessionInput) =>
+    apiFetch<ExploratorySessionDetailView>(`/exploratory-sessions/${id}`, {
+      method: 'PATCH',
+      body,
+    }),
+  action: (id: string, action: ExploratoryAction, version?: number) =>
+    apiFetch<ExploratorySessionDetailView>(`/exploratory-sessions/${id}/${action}`, {
+      method: 'POST',
+      body: version === undefined ? {} : { version },
+    }),
+  note: (id: string, body: string) =>
+    apiFetch<ExploratorySessionDetailView>(`/exploratory-sessions/${id}/notes`, {
+      method: 'POST',
+      body: { body },
+    }),
+  finding: (id: string, body: Partial<CreateFindingInput> & { title: string }) =>
+    apiFetch<ExploratorySessionDetailView>(`/exploratory-sessions/${id}/findings`, {
+      method: 'POST',
+      body,
+    }),
+  convert: (id: string, findingId: string) =>
+    apiFetch<ExploratorySessionDetailView>(
+      `/exploratory-sessions/${id}/findings/${findingId}/defect`,
+      { method: 'POST', body: {} },
+    ),
+  linkFinding: (id: string, findingId: string, defectId: string) =>
+    apiFetch<ExploratorySessionDetailView>(
+      `/exploratory-sessions/${id}/findings/${findingId}/link-defect`,
+      { method: 'POST', body: { defectId } },
+    ),
+  linkWorkItem: (id: string, workItemId: string) =>
+    apiFetch<ExploratorySessionDetailView>(`/exploratory-sessions/${id}/work-items`, {
+      method: 'POST',
+      body: { workItemId },
+    }),
 };

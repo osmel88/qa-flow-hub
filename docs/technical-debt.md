@@ -1403,3 +1403,12 @@ caller's own tenant, never of another one.
   knows the creator.
 - **No side-by-side text diff**: the diff is per field and per step position,
   so inserting a step in the middle shows every following step as changed.
+
+## 66. Exploratory sessions: what S7-F5 leaves (S7-F5)
+
+- **Attachments are metadata only** (label and URL); uploading files to a
+  session is not wired to the attachments module yet.
+- **A defect created from a finding has no requirement links** and no
+  assignee; it is edited on the Defects page afterwards.
+- **Findings cannot be edited**, only recorded and related to a defect.
+- **The one-active-session rule is per project**, not per organization.

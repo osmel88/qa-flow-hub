@@ -335,3 +335,12 @@ archived projects are read-only; every change is an audited `role_change`.
 | List versions, view one, diff two     | `test_design.read`  |
 | Edit content (creates a version)      | `test_design.write` |
 | Restore an older version as a new one | `test_design.write` |
+
+## Exploratory sessions (S7-F5)
+
+| Action                                                               | Permission         |
+| -------------------------------------------------------------------- | ------------------ |
+| List and view sessions, findings, timeline and metrics               | `testruns.read`    |
+| Create, edit, start, pause, resume, complete; notes, findings, links | `testruns.execute` |
+| Cancel or archive a session                                          | `testruns.manage`  |
+| Turn a finding into a new defect                                     | `defects.create`   |

@@ -32,6 +32,7 @@ import { RequirementLinksModule } from './modules/requirement-links/requirement-
 import { TestDesignModule } from './modules/test-design/test-design.module';
 import { TestRunsModule } from './modules/test-runs/test-runs.module';
 import { TestPlansModule } from './modules/test-plans/test-plans.module';
+import { ExploratoryModule } from './modules/exploratory/exploratory.module';
 import { TraceabilityModule } from './modules/traceability/traceability.module';
 
 /**
@@ -61,6 +62,7 @@ import { TraceabilityModule } from './modules/traceability/traceability.module';
     TestDesignModule,
     TestRunsModule,
     TestPlansModule,
+    ExploratoryModule,
     DefectsModule,
     TraceabilityModule,
     DashboardModule,

@@ -337,3 +337,21 @@ These are real and deliberate, not oversights. Also tracked in
    surface to defend yet — and no antivirus scanning to design.
 8. **Audit log records actions, not denials.** A burst of 403s is a useful
    signal we are not yet capturing.
+
+## Password recovery
+
+- Tokens are 32 random bytes from `crypto.randomBytes`, sent only in the
+  email link; `password_reset_tokens` stores their SHA-256.
+- A link expires after 30 minutes, works once (guarded `updateMany`, so two
+  concurrent submissions cannot both succeed) and dies when a newer one is
+  requested or the password is reset.
+- `POST /auth/password/forgot` answers the same 202 for every address; per
+  account at most 3 links per 15 minutes, extra requests send nothing. Both
+  recovery routes are in the per-IP authentication bucket.
+- A successful reset revokes every session of the account, resets the
+  lockout counters, writes two audit entries (request and reset, organization
+  `null`) and emails "your password was changed".
+- `mockResetUrl` is returned only when `EMAIL_PROVIDER=mock` and
+  `NODE_ENV !== 'production'`. In that mode the response reveals whether an
+  address has an account and lets whoever knows an address reset it; it is a
+  testing aid for local and staging installs, never production.

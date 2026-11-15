@@ -37,6 +37,9 @@ import { PrintableMatrixPage } from '../pages/PrintableMatrixPage';
 import { PrintableRunPage } from '../pages/PrintableRunPage';
 import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { LoginPage } from '../pages/LoginPage';
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '../pages/ResetPasswordPage';
+import { I18nProvider } from '../i18n/i18n';
 import { MembersPage } from '../pages/MembersPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
 import { ProjectAccessPage } from '../pages/ProjectAccessPage';
@@ -66,6 +69,8 @@ export const queryClient = createQueryClient();
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     element: <ProtectedRoute />,
     children: [
@@ -137,12 +142,14 @@ const router = createBrowserRouter([
 
 export function App(): React.JSX.Element {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ProjectProvider>
-          <RouterProvider router={router} />
-        </ProjectProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <I18nProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ProjectProvider>
+            <RouterProvider router={router} />
+          </ProjectProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </I18nProvider>
   );
 }

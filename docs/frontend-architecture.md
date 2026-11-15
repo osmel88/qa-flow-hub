@@ -125,3 +125,27 @@ over a tested endpoint. That is a deliberate allocation of effort, not an oversi
 - [`../README.md`](../README.md) — how to run it
 - [`api-conventions.md`](api-conventions.md) — the API this client consumes
 - [`adr/0011-shared-zod-contracts.md`](adr/0011-shared-zod-contracts.md), [`adr/0012-refresh-token-cookie-transport.md`](adr/0012-refresh-token-cookie-transport.md)
+
+## Internationalization
+
+`apps/web/src/i18n` holds a dependency-free layer:
+
+- `locales.ts` lists the supported languages (`en`, `es`). Adding Portuguese
+  is one entry there plus `messages/pt.ts`; a catalog may be partial because
+  every missing key falls back to English (`messages/en.ts` is the source).
+- `I18nProvider` keeps the locale in state, persists it in `localStorage`
+  (`qaflow.locale`) and sets `<html lang>`. Without a provider (isolated
+  component tests) everything renders in English.
+- `useI18n().t('key', { name })` looks keys up; keys are typed, so a typo is a
+  compile error, and a unit test checks that `es` has every English key.
+- `LanguageSelector` is shown in the app header and in `AuthScreen`, the frame
+  of the public authentication pages. Pages are never duplicated per language.
+
+Translated today: Login (with the MFA step), Register, Forgot/Reset password,
+the main navigation and the header (organization, project, sign out, skip
+link). Still in English and pending migration to keys: every product page
+(dashboard, requirements, backlog, test design, runs, plans, cycles,
+exploratory, flaky tests, defects, releases, environments, pipelines,
+settings, members, billing, notifications, profile), the shared UI package
+defaults (`DataState` messages), validation messages that come from the
+shared Zod schemas, and error messages returned by the API.

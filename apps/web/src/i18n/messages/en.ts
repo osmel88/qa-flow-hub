@@ -1,0 +1,108 @@
+/**
+ * English is the source catalog: every key exists here, and any key another
+ * catalog lacks is rendered in English. `{name}` placeholders are filled by
+ * `t(key, { name })`.
+ */
+export const en = {
+  'common.language': 'Language',
+  'common.signOut': 'Sign out',
+  'common.organization': 'Organization',
+  'common.project': 'Project',
+  'common.noProjectsYet': 'No projects yet',
+  'common.skipToContent': 'Skip to content',
+  'common.mainNavigation': 'Main',
+  'common.showPassword': 'Show password',
+  'common.hidePassword': 'Hide password',
+  'common.email': 'Email',
+  'common.password': 'Password',
+  'common.backToSignIn': 'Back to sign in',
+  'common.genericError': 'Something went wrong. Try again.',
+
+  'nav.dashboard': 'Dashboard',
+  'nav.projects': 'Projects',
+  'nav.requirements': 'Requirements',
+  'nav.backlog': 'Backlog',
+  'nav.hierarchy': 'Hierarchy',
+  'nav.sprints': 'Sprints',
+  'nav.board': 'Board',
+  'nav.kanban': 'Kanban',
+  'nav.development': 'Development',
+  'nav.codeReviews': 'Code reviews',
+  'nav.builds': 'Builds',
+  'nav.deployments': 'Deployments',
+  'nav.environments': 'Environments',
+  'nav.qualityGates': 'Quality gates',
+  'nav.approvalRules': 'Approval rules',
+  'nav.workItems': 'Work items',
+  'nav.testCases': 'Test cases',
+  'nav.imports': 'Import',
+  'nav.releases': 'Releases',
+  'nav.testPlans': 'Test plans',
+  'nav.testRuns': 'Test runs',
+  'nav.exploratory': 'Exploratory testing',
+  'nav.flakyTests': 'Flaky tests',
+  'nav.defects': 'Defects',
+  'nav.traceability': 'Traceability',
+  'nav.customization': 'Customization',
+  'nav.externalReferences': 'External references',
+  'nav.members': 'Members',
+  'nav.projectAccess': 'Project access',
+  'nav.apiKeys': 'API keys',
+  'nav.integrations': 'Integrations',
+  'nav.billing': 'Billing',
+  'nav.notifications': 'Notifications',
+  'nav.profile': 'Profile',
+
+  'login.title': 'Sign in',
+  'login.submit': 'Sign in',
+  'login.noAccount': 'No account?',
+  'login.createOne': 'Create one',
+  'login.forgotPassword': 'Forgot password?',
+  'login.failed': 'Could not sign in. Try again.',
+  'login.mfaTitle': 'Two-step verification',
+  'login.mfaCodeIntro': 'Enter the 6-digit code from your authenticator app.',
+  'login.mfaRecoveryIntro':
+    'Enter one of the recovery codes you saved when you turned on MFA. Each works once.',
+  'login.mfaCode': 'Authentication code',
+  'login.mfaRecoveryCode': 'Recovery code',
+  'login.mfaVerify': 'Verify',
+  'login.mfaUseRecovery': 'Use a recovery code',
+  'login.mfaUseAuthenticator': 'Use an authenticator code',
+  'login.mfaExpired': 'The sign-in attempt expired. Enter your password again.',
+  'login.mfaFailed': 'Could not verify the code.',
+
+  'register.title': 'Create your account',
+  'register.invited': 'You are joining an organization you were invited to.',
+  'register.fullName': 'Full name',
+  'register.passwordHint': 'At least 12 characters, with an uppercase letter and a digit.',
+  'register.submit': 'Create account',
+  'register.alreadyRegistered': 'Already registered?',
+  'register.signIn': 'Sign in',
+  'register.failed': 'Could not create the account.',
+
+  'forgot.title': 'Reset your password',
+  'forgot.intro':
+    'Enter the email of your account and we will send you a link to choose a new password.',
+  'forgot.submit': 'Send reset link',
+  'forgot.sent':
+    'If an account exists for that address, we have sent it a link to reset the password. The link works once and expires in {minutes} minutes.',
+  'forgot.mockNotice':
+    'Mock email provider: no real email is sent, so the link of this request is shown here. Production never shows it.',
+  'forgot.mockLink': 'Open the reset link',
+  'forgot.mockNoLink':
+    'No link was issued: unknown or inactive account, or too many requests in the last minutes.',
+  'forgot.failed': 'Could not send the request. Try again.',
+
+  'reset.title': 'Choose a new password',
+  'reset.newPassword': 'New password',
+  'reset.confirmPassword': 'Confirm new password',
+  'reset.mismatch': 'The passwords do not match.',
+  'reset.submit': 'Set new password',
+  'reset.done':
+    'Your password was changed and every session was signed out. Sign in with the new password.',
+  'reset.invalid': 'This reset link is invalid or has expired.',
+  'reset.missingToken': 'This link has no reset token.',
+  'reset.requestNew': 'Ask for a new link',
+} as const;
+
+export type MessageKey = keyof typeof en;

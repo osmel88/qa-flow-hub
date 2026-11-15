@@ -209,3 +209,42 @@ lastExecutedAt|key`, `order`), detail with rules, history (result, run,
   project or deleted answers 404.
 - Web: Flaky tests page (filters, sorting, metrics) and a case stability
   page (rules, metrics, source filter, history linked to runs, marks).
+
+## Login findings (between S7-F6 and S7-F7)
+
+- **Show/hide password:** `PasswordField` in `packages/ui` (login, register,
+  reset). Only `type` changes; the toggle is a `<button type="button">` with
+  `aria-label` "Show password"/"Hide password", `aria-pressed` and
+  `aria-controls`.
+- **Password recovery:** migration `20270502100000_password_reset`
+  (`password_reset_tokens`, account level like `sessions`, no RLS; enum values
+  `NotificationType.password_reset` and `AuditAction.password_reset`).
+  - `POST /auth/password/forgot` always answers 202 `{ accepted: true }`. A
+    token is 32 random bytes (base64url); only its SHA-256 is stored. It
+    expires in 30 minutes, works once, and a newer request invalidates older
+    ones. At most 3 links per account per 15 minutes (extra requests are
+    silently dropped). Both routes share the per-IP auth rate limit
+    (`AUTH_RATE_LIMIT_MAX`).
+  - The email goes through the notifications ledger (organization `null`, not
+    opt-out). With `EMAIL_PROVIDER=mock` and `NODE_ENV` other than
+    `production`, the response also carries `mockResetUrl` (or `null`) so the
+    flow can be finished without a mailbox, as the invitation link is shown to
+    the inviter. Production never returns it.
+  - `POST /auth/password/reset` spends the token with a guarded `updateMany`
+    (single use, also under concurrency), sets the password, clears the
+    lockout counters, invalidates other links, revokes every session
+    (`revokedReason = 'password_reset'`), audits both steps and sends the
+    "password changed" email. A spent, expired, superseded or unknown token
+    answers 400 with one message.
+  - Web: "Forgot password?" on Login, `/forgot-password`, `/reset-password`
+    (the token is removed from the address bar on load).
+- **i18n:** `apps/web/src/i18n` (provider, `t()`, catalogs `en` and `es`,
+  fallback to English, choice stored in `localStorage` `qaflow.locale`,
+  `<html lang>` follows it). Selector in the app header and on every public
+  auth screen. Translated: Login (incl. MFA step), Register, password
+  recovery, main navigation and header. Pending screens: see
+  `docs/frontend-architecture.md` § Internationalization.
+- **Project key:** `ProjectsPage` validates with the shared `projectKeySchema`
+  while typing and shows `PROJECT_KEY_RULE` ("2 to 8 uppercase letters or
+  digits, starting with a letter.") as hint and error; Create project stays
+  disabled until Name and Key are valid. The API keeps the same schema.

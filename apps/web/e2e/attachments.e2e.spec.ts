@@ -28,7 +28,7 @@ test('a tester attaches evidence to a failed result, previews, downloads and del
     await page.goto('/register');
     await page.getByLabel('Full name').fill('Evidence Tester');
     await page.getByLabel('Email').fill(`e2e-evidence-${unique}@example.com`);
-    await page.getByLabel('Password').fill(password);
+    await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
     await page.getByLabel('Name').fill(`Evidence ${unique}`);

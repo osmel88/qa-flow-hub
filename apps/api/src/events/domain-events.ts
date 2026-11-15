@@ -31,6 +31,15 @@ export interface PasswordChangedEvent {
   changedAt: Date;
 }
 
+/** A recovery link was issued. The URL carries the plaintext token, so the
+ * event is only consumed in-process to render the email. */
+export interface PasswordResetRequestedEvent {
+  userId: string;
+  tokenId: string;
+  resetUrl: string;
+  expiresAt: Date;
+}
+
 export interface TestRunCasesAssignedEvent {
   organizationId: string;
   projectId: string;
@@ -71,6 +80,7 @@ export interface DefectStatusChangedEvent {
 export interface DomainEventMap {
   'organization.invitation.issued': InvitationIssuedEvent;
   'user.password.changed': PasswordChangedEvent;
+  'user.password_reset.requested': PasswordResetRequestedEvent;
   'test_run.cases.assigned': TestRunCasesAssignedEvent;
   'test_run.completed': TestRunCompletedEvent;
   'defect.assigned': DefectAssignedEvent;

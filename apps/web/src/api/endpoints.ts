@@ -1,4 +1,7 @@
 import type {
+  ForgotPasswordInput,
+  ForgotPasswordView,
+  ResetPasswordInput,
   FlakyDetailQuery,
   FlakyTestDetailView,
   FlakyTestView,
@@ -254,6 +257,20 @@ export const authApi = {
     }),
   changePassword: (body: ChangePasswordInput) =>
     apiFetch<void>('/auth/change-password', { method: 'POST', body, withoutOrganization: true }),
+  forgotPassword: (body: ForgotPasswordInput) =>
+    apiFetch<ForgotPasswordView>('/auth/password/forgot', {
+      method: 'POST',
+      body,
+      withoutOrganization: true,
+      skipRefresh: true,
+    }),
+  resetPassword: (body: ResetPasswordInput) =>
+    apiFetch<void>('/auth/password/reset', {
+      method: 'POST',
+      body,
+      withoutOrganization: true,
+      skipRefresh: true,
+    }),
 };
 
 export const mfaApi = {

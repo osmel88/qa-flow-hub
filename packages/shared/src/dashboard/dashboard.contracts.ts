@@ -19,6 +19,7 @@ export const AUDIT_ACTIONS = [
   'accept_invite',
   'revoke_invite',
   'revoke',
+  'password_reset',
   'role_change',
   'execute',
   'export',

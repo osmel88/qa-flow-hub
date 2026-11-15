@@ -20,7 +20,7 @@ test('an owner configures Jira and is told what is not available yet', async ({ 
     await page.goto('/register');
     await page.getByLabel('Full name').fill(account.fullName);
     await page.getByLabel('Email').fill(account.email);
-    await page.getByLabel('Password').fill(account.password);
+    await page.getByLabel('Password', { exact: true }).fill(account.password);
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
 
@@ -143,7 +143,7 @@ test('an owner synchronizes suites, cases, runs and results with the TestRail mo
     await page.goto('/register');
     await page.getByLabel('Full name').fill('TestRail Owner');
     await page.getByLabel('Email').fill(`e2e-testrail-${unique}@example.com`);
-    await page.getByLabel('Password').fill(account.password);
+    await page.getByLabel('Password', { exact: true }).fill(account.password);
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
     await page.getByLabel('Name').fill(`TestRail ${suffix}`);
@@ -238,7 +238,7 @@ test('an owner links a run to a GitHub mock workflow run and imports its results
     await page.goto('/register');
     await page.getByLabel('Full name').fill('GitHub Owner');
     await page.getByLabel('Email').fill(`e2e-github-${unique}@example.com`);
-    await page.getByLabel('Password').fill(account.password);
+    await page.getByLabel('Password', { exact: true }).fill(account.password);
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
     await page.getByLabel('Name').fill(`GitHub ${suffix}`);

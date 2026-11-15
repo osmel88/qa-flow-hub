@@ -28,7 +28,7 @@ test('a project override is enforced by the API, not by hidden buttons', async (
     await ownerPage.goto('/register');
     await ownerPage.getByLabel('Full name').fill(owner.fullName);
     await ownerPage.getByLabel('Email').fill(owner.email);
-    await ownerPage.getByLabel('Password').fill(owner.password);
+    await ownerPage.getByLabel('Password', { exact: true }).fill(owner.password);
     await ownerPage.getByRole('button', { name: 'Create account' }).click();
     await expect(ownerPage.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
 
@@ -57,7 +57,7 @@ test('a project override is enforced by the API, not by hidden buttons', async (
     await leadPage.goto('/register');
     await leadPage.getByLabel('Full name').fill(lead.fullName);
     await leadPage.getByLabel('Email').fill(lead.email);
-    await leadPage.getByLabel('Password').fill(lead.password);
+    await leadPage.getByLabel('Password', { exact: true }).fill(lead.password);
     await leadPage.getByRole('button', { name: 'Create account' }).click();
     await expect(leadPage.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
     await leadPage.getByLabel('Invitation token').fill(token);

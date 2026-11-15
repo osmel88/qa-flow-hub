@@ -28,6 +28,13 @@ export interface OrganizationInvitationVars {
   expiresAt: Date;
 }
 
+export interface PasswordResetVars {
+  fullName: string;
+  /** Carries the single-use token; never logged, cleared from the row once sent. */
+  resetUrl: string;
+  expiresAt: Date;
+}
+
 export interface PasswordChangedVars {
   fullName: string;
   changedAt: Date;
@@ -82,6 +89,7 @@ export interface TestRunFailedVars {
 export interface EmailTemplateVars {
   organization_invitation: OrganizationInvitationVars;
   password_changed: PasswordChangedVars;
+  password_reset: PasswordResetVars;
   test_run_assignment: TestRunAssignmentVars;
   defect_assignment: DefectAssignmentVars;
   defect_status_changed: DefectStatusChangedVars;
@@ -95,6 +103,7 @@ export interface EmailTemplateVars {
 export const TEMPLATE_KEYS: Record<NotificationType, string> = {
   organization_invitation: 'organization_invitation.v1',
   password_changed: 'password_changed.v1',
+  password_reset: 'password_reset.v1',
   test_run_assignment: 'test_run_assignment.v1',
   defect_assignment: 'defect_assignment.v1',
   defect_status_changed: 'defect_status_changed.v1',
@@ -200,6 +209,23 @@ export const emailTemplates: {
           'If this was you, no action is needed. If it was not, sign in with your new credentials as soon as possible and contact your organization owner.',
         ],
         action: { label: 'Sign in', url: vars.loginUrl },
+        footer: NO_REPLY,
+      }),
+    };
+  },
+
+  password_reset: (vars) => {
+    const subject = `Reset your ${PRODUCT} password`;
+    return {
+      subject,
+      ...layout({
+        title: subject,
+        greeting: `Hello ${vars.fullName},`,
+        paragraphs: [
+          `Somebody asked to reset the password of your account. The link below works once and expires on ${formatDate(vars.expiresAt)}.`,
+          'If it was not you, ignore this message: your password stays the same.',
+        ],
+        action: { label: 'Choose a new password', url: vars.resetUrl },
         footer: NO_REPLY,
       }),
     };

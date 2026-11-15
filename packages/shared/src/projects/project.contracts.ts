@@ -10,13 +10,19 @@ export const PROJECT_STATUSES = ['active', 'archived'] as const;
  * creation: changing it would orphan every key anybody has ever written in a
  * ticket, a chat message or a release note.
  */
+export const PROJECT_KEY_PATTERN = /^[A-Z][A-Z0-9]*$/;
+export const PROJECT_KEY_MIN_LENGTH = 2;
+export const PROJECT_KEY_MAX_LENGTH = 8;
+/** The single wording of the rule: the API error and the UI hint both use it. */
+export const PROJECT_KEY_RULE = '2 to 8 uppercase letters or digits, starting with a letter.';
+
 export const projectKeySchema = z
   .string()
   .trim()
   .toUpperCase()
-  .min(2)
-  .max(8)
-  .regex(/^[A-Z][A-Z0-9]*$/, 'Use 2 to 8 characters: letters and digits, starting with a letter');
+  .min(PROJECT_KEY_MIN_LENGTH, PROJECT_KEY_RULE)
+  .max(PROJECT_KEY_MAX_LENGTH, PROJECT_KEY_RULE)
+  .regex(PROJECT_KEY_PATTERN, PROJECT_KEY_RULE);
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(2).max(120),

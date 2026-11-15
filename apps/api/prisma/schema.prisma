@@ -243,11 +243,13 @@ enum AuditAction {
   execute
   export
   revoke
+  password_reset
 }
 
 enum NotificationType {
   organization_invitation
   password_changed
+  password_reset
   test_run_assignment
   defect_assignment
   defect_status_changed
@@ -317,6 +319,7 @@ model User {
   permissionOverrides    ProjectPermissionOverride[] @relation("PermissionOverrideUser")
   permissionsGranted     ProjectPermissionOverride[] @relation("PermissionOverrideGrantedBy")
   sessions               Session[]
+  passwordResetTokens    PasswordResetToken[]
   invitationsSent        OrganizationInvitation[]    @relation("InvitationCreatedBy")
   auditLogs              AuditLog[]
   assignedRunCases       TestRunCase[]               @relation("TestRunCaseAssignee")
@@ -417,6 +420,25 @@ model MfaRecoveryCode {
 }
 
 /// S3-F6. The state between "password accepted" and "second factor accepted".
+/// Password recovery links (account level, no organization, no RLS, like
+/// sessions). Only the SHA-256 of the token is stored; the plaintext exists in
+/// the email alone. A token works once (`consumedAt`) and until `expiresAt`;
+/// issuing a new one or resetting the password invalidates the others.
+model PasswordResetToken {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash     String    @unique
+  expiresAt     DateTime
+  consumedAt    DateTime?
+  invalidatedAt DateTime?
+  requestedIp   String?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@map("password_reset_tokens")
+}
+
 model MfaChallenge {
   id         String    @id @default(cuid())
   userId     String

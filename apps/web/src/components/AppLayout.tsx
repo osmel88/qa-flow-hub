@@ -3,42 +3,44 @@ import { useAuth } from '../auth/auth-context';
 import { BillingBanner } from './BillingBanner';
 import { MfaBanner } from './MfaBanner';
 import { useProject } from '../project/project-context';
+import { LanguageSelector, useI18n } from '../i18n/i18n';
+import type { MessageKey } from '../i18n/messages/en';
 
-const NAV = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/projects', label: 'Projects' },
-  { to: '/requirements', label: 'Requirements' },
-  { to: '/backlog', label: 'Backlog' },
-  { to: '/hierarchy', label: 'Hierarchy' },
-  { to: '/sprints', label: 'Sprints' },
-  { to: '/board', label: 'Board' },
-  { to: '/kanban', label: 'Kanban' },
-  { to: '/development', label: 'Development' },
-  { to: '/code-reviews', label: 'Code reviews' },
-  { to: '/builds', label: 'Builds' },
-  { to: '/deployments', label: 'Deployments' },
-  { to: '/environments', label: 'Environments' },
-  { to: '/quality-gates', label: 'Quality gates' },
-  { to: '/approval-rules', label: 'Approval rules' },
-  { to: '/work-items', label: 'Work items' },
-  { to: '/test-cases', label: 'Test cases' },
-  { to: '/imports', label: 'Import' },
-  { to: '/releases', label: 'Releases' },
-  { to: '/test-plans', label: 'Test plans' },
-  { to: '/test-runs', label: 'Test runs' },
-  { to: '/exploratory-sessions', label: 'Exploratory testing' },
-  { to: '/flaky-tests', label: 'Flaky tests' },
-  { to: '/defects', label: 'Defects' },
-  { to: '/traceability', label: 'Traceability' },
-  { to: '/customization', label: 'Customization' },
-  { to: '/external-traceability', label: 'External references' },
-  { to: '/members', label: 'Members' },
-  { to: '/project-access', label: 'Project access' },
-  { to: '/api-keys', label: 'API keys' },
-  { to: '/settings/integrations', label: 'Integrations' },
-  { to: '/billing', label: 'Billing' },
-  { to: '/notifications', label: 'Notifications' },
-  { to: '/profile', label: 'Profile' },
+const NAV: ReadonlyArray<{ to: string; label: MessageKey }> = [
+  { to: '/dashboard', label: 'nav.dashboard' },
+  { to: '/projects', label: 'nav.projects' },
+  { to: '/requirements', label: 'nav.requirements' },
+  { to: '/backlog', label: 'nav.backlog' },
+  { to: '/hierarchy', label: 'nav.hierarchy' },
+  { to: '/sprints', label: 'nav.sprints' },
+  { to: '/board', label: 'nav.board' },
+  { to: '/kanban', label: 'nav.kanban' },
+  { to: '/development', label: 'nav.development' },
+  { to: '/code-reviews', label: 'nav.codeReviews' },
+  { to: '/builds', label: 'nav.builds' },
+  { to: '/deployments', label: 'nav.deployments' },
+  { to: '/environments', label: 'nav.environments' },
+  { to: '/quality-gates', label: 'nav.qualityGates' },
+  { to: '/approval-rules', label: 'nav.approvalRules' },
+  { to: '/work-items', label: 'nav.workItems' },
+  { to: '/test-cases', label: 'nav.testCases' },
+  { to: '/imports', label: 'nav.imports' },
+  { to: '/releases', label: 'nav.releases' },
+  { to: '/test-plans', label: 'nav.testPlans' },
+  { to: '/test-runs', label: 'nav.testRuns' },
+  { to: '/exploratory-sessions', label: 'nav.exploratory' },
+  { to: '/flaky-tests', label: 'nav.flakyTests' },
+  { to: '/defects', label: 'nav.defects' },
+  { to: '/traceability', label: 'nav.traceability' },
+  { to: '/customization', label: 'nav.customization' },
+  { to: '/external-traceability', label: 'nav.externalReferences' },
+  { to: '/members', label: 'nav.members' },
+  { to: '/project-access', label: 'nav.projectAccess' },
+  { to: '/api-keys', label: 'nav.apiKeys' },
+  { to: '/settings/integrations', label: 'nav.integrations' },
+  { to: '/billing', label: 'nav.billing' },
+  { to: '/notifications', label: 'nav.notifications' },
+  { to: '/profile', label: 'nav.profile' },
 ];
 
 /**
@@ -50,18 +52,19 @@ const NAV = [
 export function AppLayout(): React.JSX.Element {
   const { user, organizations, activeOrganizationId, selectOrganization, logout } = useAuth();
   const { projects, activeProjectId, selectProject } = useProject();
+  const { t } = useI18n();
 
   return (
     <div className="shell">
       <a className="skip-link" href="#main">
-        Skip to content
+        {t('common.skipToContent')}
       </a>
 
       <header className="shell__header">
         <div className="shell__brand">qa-flow-hub</div>
 
         <label className="shell__selector">
-          <span className="shell__selector-label">Organization</span>
+          <span className="shell__selector-label">{t('common.organization')}</span>
           <select
             className="ui-input"
             value={activeOrganizationId ?? ''}
@@ -78,7 +81,7 @@ export function AppLayout(): React.JSX.Element {
         </label>
 
         <label className="shell__selector">
-          <span className="shell__selector-label">Project</span>
+          <span className="shell__selector-label">{t('common.project')}</span>
           <select
             className="ui-input"
             value={activeProjectId ?? ''}
@@ -87,7 +90,7 @@ export function AppLayout(): React.JSX.Element {
               selectProject(event.target.value);
             }}
           >
-            {projects.length === 0 && <option value="">No projects yet</option>}
+            {projects.length === 0 && <option value="">{t('common.noProjectsYet')}</option>}
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.key} — {project.name}
@@ -96,19 +99,21 @@ export function AppLayout(): React.JSX.Element {
           </select>
         </label>
 
+        <LanguageSelector className="shell__selector" labelClassName="shell__selector-label" />
+
         <div className="shell__user">
           <span className="muted">{user?.email}</span>
           <button
             className="ui-button ui-button--ghost ui-button--sm"
             onClick={() => void logout()}
           >
-            Sign out
+            {t('common.signOut')}
           </button>
         </div>
       </header>
 
       <div className="shell__body">
-        <nav className="shell__nav" aria-label="Main">
+        <nav className="shell__nav" aria-label={t('common.mainNavigation')}>
           <ul>
             {NAV.map((item) => (
               <li key={item.to}>
@@ -118,7 +123,7 @@ export function AppLayout(): React.JSX.Element {
                     isActive ? 'nav-link nav-link--active' : 'nav-link'
                   }
                 >
-                  {item.label}
+                  {t(item.label)}
                 </NavLink>
               </li>
             ))}

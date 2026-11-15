@@ -17,7 +17,7 @@ test('release lifecycle with runs filtered by release', async ({ page }) => {
     await page.goto('/register');
     await page.getByLabel('Full name').fill(owner.fullName);
     await page.getByLabel('Email').fill(owner.email);
-    await page.getByLabel('Password').fill(owner.password);
+    await page.getByLabel('Password', { exact: true }).fill(owner.password);
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
     await page.getByLabel('Name').fill(`Release ${unique}`);

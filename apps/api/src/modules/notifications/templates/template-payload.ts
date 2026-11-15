@@ -26,6 +26,7 @@ export const VAR_SHAPES: { readonly [T in NotificationType]: Shape<EmailTemplate
     expiresAt: 'date',
   },
   password_changed: { fullName: 'string', changedAt: 'date', loginUrl: 'string' },
+  password_reset: { fullName: 'string', resetUrl: 'string', expiresAt: 'date' },
   test_run_assignment: {
     assigneeName: 'string',
     assignedByName: 'string',

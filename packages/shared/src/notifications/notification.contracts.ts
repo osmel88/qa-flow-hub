@@ -4,6 +4,7 @@ import { paginationQuerySchema } from '../common/pagination.js';
 export const NOTIFICATION_TYPES = [
   'organization_invitation',
   'password_changed',
+  'password_reset',
   'test_run_assignment',
   'defect_assignment',
   'defect_status_changed',
@@ -31,6 +32,7 @@ export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 export const NOTIFICATION_CATEGORY_BY_TYPE: Record<NotificationType, NotificationCategory> = {
   organization_invitation: 'onboarding',
   password_changed: 'security',
+  password_reset: 'security',
   test_run_assignment: 'test_run_assignments',
   defect_assignment: 'defect_assignments',
   defect_status_changed: 'status_changes',

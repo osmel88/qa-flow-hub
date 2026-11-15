@@ -91,6 +91,37 @@
   border-color: var(--color-danger, #b3261e);
 }
 
+.ui-password {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ui-password__input {
+  padding-right: 2.75rem;
+}
+
+.ui-password__toggle {
+  position: absolute;
+  right: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+}
+
+.ui-password__toggle:focus-visible {
+  outline: 2px solid var(--color-primary, #1a56db);
+  outline-offset: 1px;
+}
+
 .ui-input--textarea {
   min-height: 6rem;
   resize: vertical;

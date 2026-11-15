@@ -1424,3 +1424,22 @@ caller's own tenant, never of another one.
   already folds retries into one outcome hides that flakiness.
 - **Marks have no optimistic locking**: two people marking at once both
   append, and the newest one wins (both stay in the history and audit).
+
+## 68. Password recovery: what the login findings leave
+
+- **The mock link is an account takeover aid outside production**: with
+  `EMAIL_PROVIDER=mock` and `NODE_ENV` not `production`, anyone who knows an
+  address can reset it from the response. Staging must not hold real
+  accounts; a real email provider removes the need for it.
+- **Timing is not equalized**: a known address does a few more writes (token,
+  audit, ledger row) than an unknown one before answering.
+- **Expired and spent tokens are not swept**; they are small and indexed, but
+  a periodic cleanup would keep the table bounded.
+
+## 69. i18n: what is still in English
+
+- Only the authentication screens, the navigation and the header use keys.
+  Every product page, `DataState` defaults, shared Zod validation messages and
+  API error messages are still English (see `docs/frontend-architecture.md`
+  § Internationalization).
+- Dates and numbers are not yet formatted per locale.

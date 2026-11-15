@@ -41,12 +41,18 @@ describe('LoginPage', () => {
   });
 
   const signInWithPassword = async (user: ReturnType<typeof userEvent.setup>) => {
-    login.mockResolvedValueOnce({ mfaRequired: true, challengeToken: 'challenge-token', expiresIn: 300 });
+    login.mockResolvedValueOnce({
+      mfaRequired: true,
+      challengeToken: 'challenge-token',
+      expiresIn: 300,
+    });
     renderScreen(<LoginPage />);
     await user.type(screen.getByLabelText('Email'), 'person@example.com');
     await user.type(screen.getByLabelText('Password'), 'Str0ngPassword!');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByRole('heading', { name: 'Two-step verification' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Two-step verification' }),
+    ).toBeInTheDocument();
   };
 
   it('asks for the authenticator code when the account has MFA', async () => {
@@ -92,5 +98,39 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Verify' }));
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/expired/i);
+  });
+
+  it('shows and hides the password without changing its value', async () => {
+    login.mockClear();
+    const user = userEvent.setup();
+    renderScreen(<LoginPage />);
+
+    const input = screen.getByLabelText('Password');
+    await user.type(input, 'Str0ngPassword!');
+    expect(input).toHaveAttribute('type', 'password');
+
+    const toggle = screen.getByRole('button', { name: 'Show password' });
+    expect(toggle).toHaveAttribute('type', 'button');
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await user.click(toggle);
+    expect(input).toHaveAttribute('type', 'text');
+    expect(input).toHaveValue('Str0ngPassword!');
+    const hide = screen.getByRole('button', { name: 'Hide password' });
+    expect(hide).toHaveAttribute('aria-pressed', 'true');
+
+    // Keyboard: the toggle is focusable and Enter/Space flip it back.
+    hide.focus();
+    await user.keyboard('{Enter}');
+    expect(input).toHaveAttribute('type', 'password');
+    expect(input).toHaveValue('Str0ngPassword!');
+    expect(login).not.toHaveBeenCalled();
+  });
+
+  it('links to password recovery', () => {
+    renderScreen(<LoginPage />);
+    expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute(
+      'href',
+      '/forgot-password',
+    );
   });
 });

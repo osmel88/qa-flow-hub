@@ -1,12 +1,14 @@
 import { loginSchema } from '@qa-flow-hub/shared';
 import type { LoginInput, MfaChallengeView } from '@qa-flow-hub/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, TextField } from '@qa-flow-hub/ui';
+import { Button, PasswordField, TextField } from '@qa-flow-hub/ui';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
+import { AuthScreen } from '../components/AuthScreen';
+import { useI18n } from '../i18n/i18n';
 
 /**
  * Second step for accounts with MFA. The challenge token lives only in this
@@ -21,6 +23,7 @@ function MfaStep({
   onRestart: (message: string) => void;
 }): React.JSX.Element {
   const { verifyMfa } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [useRecovery, setUseRecovery] = useState(false);
   const [value, setValue] = useState('');
@@ -40,10 +43,10 @@ function MfaStep({
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === 'UNAUTHENTICATED') {
         // Expired, spent or out of attempts: only a new password step helps.
-        onRestart('The sign-in attempt expired. Enter your password again.');
+        onRestart(t('login.mfaExpired'));
         return;
       }
-      setError(cause instanceof ApiError ? cause.message : 'Could not verify the code.');
+      setError(cause instanceof ApiError ? cause.message : t('login.mfaFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -58,26 +61,22 @@ function MfaStep({
       }}
       noValidate
     >
-      <h1>Two-step verification</h1>
-      <p className="muted">
-        {useRecovery
-          ? 'Enter one of the recovery codes you saved when you turned on MFA. Each works once.'
-          : 'Enter the 6-digit code from your authenticator app.'}
-      </p>
+      <h1>{t('login.mfaTitle')}</h1>
+      <p className="muted">{useRecovery ? t('login.mfaRecoveryIntro') : t('login.mfaCodeIntro')}</p>
       {error !== null && (
         <p className="ui-field__error" role="alert">
           {error}
         </p>
       )}
       <TextField
-        label={useRecovery ? 'Recovery code' : 'Authentication code'}
+        label={useRecovery ? t('login.mfaRecoveryCode') : t('login.mfaCode')}
         autoComplete="one-time-code"
         inputMode={useRecovery ? 'text' : 'numeric'}
         value={value}
         onChange={(event) => setValue(event.target.value)}
       />
       <Button type="submit" loading={submitting}>
-        Verify
+        {t('login.mfaVerify')}
       </Button>
       <Button
         type="button"
@@ -88,7 +87,7 @@ function MfaStep({
           setError(null);
         }}
       >
-        {useRecovery ? 'Use an authenticator code' : 'Use a recovery code'}
+        {useRecovery ? t('login.mfaUseAuthenticator') : t('login.mfaUseRecovery')}
       </Button>
     </form>
   );
@@ -96,6 +95,7 @@ function MfaStep({
 
 export function LoginPage(): React.JSX.Element {
   const { login, user, isRestoring } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<MfaChallengeView | null>(null);
@@ -122,15 +122,13 @@ export function LoginPage(): React.JSX.Element {
       // The API answers the same way for a wrong password and an unknown
       // account, and so does this screen: saying "no such user" would confirm
       // which addresses are registered.
-      setFormError(
-        error instanceof ApiError ? error.message : 'Could not sign in. Try again.',
-      );
+      setFormError(error instanceof ApiError ? error.message : t('login.failed'));
     }
   });
 
   if (challenge !== null) {
     return (
-      <main className="auth-page">
+      <AuthScreen>
         <MfaStep
           challenge={challenge}
           onRestart={(message) => {
@@ -138,40 +136,44 @@ export function LoginPage(): React.JSX.Element {
             setFormError(message);
           }}
         />
-      </main>
+      </AuthScreen>
     );
   }
 
   return (
-    <main className="auth-page">
+    <AuthScreen>
       <form className="card auth-card" onSubmit={(event) => void onSubmit(event)} noValidate>
-        <h1>Sign in</h1>
+        <h1>{t('login.title')}</h1>
         {formError !== null && (
           <p className="ui-field__error" role="alert">
             {formError}
           </p>
         )}
         <TextField
-          label="Email"
+          label={t('common.email')}
           type="email"
           autoComplete="email"
           error={errors.email?.message}
           {...register('email')}
         />
-        <TextField
-          label="Password"
-          type="password"
+        <PasswordField
+          label={t('common.password')}
           autoComplete="current-password"
+          showLabel={t('common.showPassword')}
+          hideLabel={t('common.hidePassword')}
           error={errors.password?.message}
           {...register('password')}
         />
+        <p className="auth-card__aside">
+          <Link to="/forgot-password">{t('login.forgotPassword')}</Link>
+        </p>
         <Button type="submit" loading={isSubmitting}>
-          Sign in
+          {t('login.submit')}
         </Button>
         <p className="muted">
-          No account? <Link to="/register">Create one</Link>
+          {t('login.noAccount')} <Link to="/register">{t('login.createOne')}</Link>
         </p>
       </form>
-    </main>
+    </AuthScreen>
   );
 }

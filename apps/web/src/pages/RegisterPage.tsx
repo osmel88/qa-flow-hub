@@ -1,15 +1,18 @@
 import { registerSchema } from '@qa-flow-hub/shared';
 import type { RegisterInput } from '@qa-flow-hub/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, TextField } from '@qa-flow-hub/ui';
+import { Button, PasswordField, TextField } from '@qa-flow-hub/ui';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
+import { AuthScreen } from '../components/AuthScreen';
+import { useI18n } from '../i18n/i18n';
 
 export function RegisterPage(): React.JSX.Element {
   const { register: signUp } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const invitationToken = params.get('invitation') ?? undefined;
@@ -34,45 +37,48 @@ export function RegisterPage(): React.JSX.Element {
       });
       void navigate(invitationToken === undefined ? '/organizations' : '/dashboard');
     } catch (error) {
-      setFormError(error instanceof ApiError ? error.message : 'Could not create the account.');
+      setFormError(error instanceof ApiError ? error.message : t('register.failed'));
     }
   });
 
   return (
-    <main className="auth-page">
+    <AuthScreen>
       <form className="card auth-card" onSubmit={(event) => void onSubmit(event)} noValidate>
-        <h1>Create your account</h1>
-        {invitationToken !== undefined && (
-          <p className="muted">You are joining an organization you were invited to.</p>
-        )}
+        <h1>{t('register.title')}</h1>
+        {invitationToken !== undefined && <p className="muted">{t('register.invited')}</p>}
         {formError !== null && (
           <p className="ui-field__error" role="alert">
             {formError}
           </p>
         )}
-        <TextField label="Full name" error={errors.fullName?.message} {...register('fullName')} />
         <TextField
-          label="Email"
+          label={t('register.fullName')}
+          error={errors.fullName?.message}
+          {...register('fullName')}
+        />
+        <TextField
+          label={t('common.email')}
           type="email"
           autoComplete="email"
           error={errors.email?.message}
           {...register('email')}
         />
-        <TextField
-          label="Password"
-          type="password"
+        <PasswordField
+          label={t('common.password')}
           autoComplete="new-password"
-          hint="At least 12 characters, with an uppercase letter and a digit."
+          showLabel={t('common.showPassword')}
+          hideLabel={t('common.hidePassword')}
+          hint={t('register.passwordHint')}
           error={errors.password?.message}
           {...register('password')}
         />
         <Button type="submit" loading={isSubmitting}>
-          Create account
+          {t('register.submit')}
         </Button>
         <p className="muted">
-          Already registered? <Link to="/login">Sign in</Link>
+          {t('register.alreadyRegistered')} <Link to="/login">{t('register.signIn')}</Link>
         </p>
       </form>
-    </main>
+    </AuthScreen>
   );
 }

@@ -1,5 +1,10 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
-import { useId } from 'react';
+import type {
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from 'react';
+import { useId, useState } from 'react';
 
 interface FieldShellProps {
   label: string;
@@ -61,6 +66,67 @@ export function TextField({ label, error, hint, ...rest }: TextFieldProps): Reac
           aria-describedby={describedBy}
           aria-invalid={invalid || undefined}
         />
+      )}
+    </FieldShell>
+  );
+}
+
+export type PasswordFieldProps = Omit<TextFieldProps, 'type'> & {
+  /** Accessible name of the toggle while the password is hidden. */
+  showLabel?: string;
+  /** Accessible name of the toggle while the password is visible. */
+  hideLabel?: string;
+};
+
+/**
+ * A password input with a show/hide toggle. Only `type` changes, so the value,
+ * the form registration and the caret stay as they are. The toggle is a real
+ * `<button type="button">` (keyboard reachable, never submits the form) whose
+ * name says what pressing it does and whose `aria-pressed` says the state.
+ */
+export function PasswordField({
+  label,
+  error,
+  hint,
+  showLabel = 'Show password',
+  hideLabel = 'Hide password',
+  ...rest
+}: PasswordFieldProps): React.JSX.Element {
+  const [visible, setVisible] = useState(false);
+  return (
+    <FieldShell label={label} error={error} hint={hint}>
+      {({ id, describedBy, invalid }) => (
+        <div className="ui-password">
+          <input
+            {...rest}
+            id={id}
+            type={visible ? 'text' : 'password'}
+            className="ui-input ui-password__input"
+            aria-describedby={describedBy}
+            aria-invalid={invalid || undefined}
+          />
+          <button
+            type="button"
+            className="ui-password__toggle"
+            aria-label={visible ? hideLabel : showLabel}
+            aria-pressed={visible}
+            aria-controls={id}
+            onClick={() => {
+              setVisible((current) => !current);
+            }}
+          >
+            <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24">
+              <path
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"
+              />
+              <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
+              {visible && <path stroke="currentColor" strokeWidth="2" d="M3 3l18 18" />}
+            </svg>
+          </button>
+        </div>
       )}
     </FieldShell>
   );

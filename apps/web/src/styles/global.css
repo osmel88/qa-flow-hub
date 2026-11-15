@@ -203,6 +203,7 @@ body {
 /* --- Pages ---------------------------------------------------------------- */
 
 .auth-page {
+  position: relative;
   min-height: 100vh;
   display: grid;
   place-items: center;
@@ -211,6 +212,23 @@ body {
 
 .auth-card {
   width: min(26rem, 100%);
+}
+
+.auth-page__language {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+}
+
+.language-selector {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.auth-card__aside {
+  margin: 0;
+  text-align: right;
 }
 
 .page-header {

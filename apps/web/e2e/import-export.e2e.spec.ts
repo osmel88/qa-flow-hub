@@ -59,7 +59,7 @@ test('dry run, atomic import, TestRail file, CSV exports and printable views', a
     await ownerPage.goto('/register');
     await ownerPage.getByLabel('Full name').fill(owner.fullName);
     await ownerPage.getByLabel('Email').fill(owner.email);
-    await ownerPage.getByLabel('Password').fill(owner.password);
+    await ownerPage.getByLabel('Password', { exact: true }).fill(owner.password);
     await ownerPage.getByRole('button', { name: 'Create account' }).click();
     await expect(ownerPage.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
     await ownerPage.getByLabel('Name').fill(`Import ${unique}`);
@@ -222,7 +222,7 @@ test('dry run, atomic import, TestRail file, CSV exports and printable views', a
     await viewerPage.goto('/register');
     await viewerPage.getByLabel('Full name').fill(viewer.fullName);
     await viewerPage.getByLabel('Email').fill(viewer.email);
-    await viewerPage.getByLabel('Password').fill(viewer.password);
+    await viewerPage.getByLabel('Password', { exact: true }).fill(viewer.password);
     await viewerPage.getByRole('button', { name: 'Create account' }).click();
     await expect(viewerPage.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
     await viewerPage.getByLabel('Invitation token').fill(token);

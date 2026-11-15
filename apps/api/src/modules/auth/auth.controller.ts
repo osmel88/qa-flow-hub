@@ -1,16 +1,32 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   AuthSession,
   AuthTokens,
   ChangePasswordInput,
+  ForgotPasswordInput,
+  ForgotPasswordView,
+  ResetPasswordInput,
   LoginInput,
   MfaChallengeView,
   RefreshInput,
   RegisterInput,
   UpdateProfileInput,
   changePasswordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
@@ -20,6 +36,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { zodBody } from '../../common/pipes/zod-validation.pipe';
 import { UnauthenticatedError } from '../../errors';
 import { AuthService } from './auth.service';
+import { PasswordResetService } from './password-reset.service';
 import { RefreshCookieService } from './refresh-cookie.service';
 import { CurrentUser, CurrentUserContext } from './decorators/current-user.decorator';
 import { SkipOrganization } from './decorators/skip-organization.decorator';
@@ -36,6 +53,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly refreshCookie: RefreshCookieService,
+    private readonly passwordReset: PasswordResetService,
   ) {}
 
   @Public()
@@ -99,6 +117,29 @@ export class AuthController {
     // without a credential it can present again.
     this.refreshCookie.clear(reply);
     await this.auth.logout(this.presentedToken(body, request));
+  }
+
+  /** Same answer whether or not the address has an account. */
+  @Public()
+  @Post('password/forgot')
+  @HttpCode(202)
+  @ApiOperation({ summary: 'Email a single-use password reset link' })
+  forgotPassword(
+    @Body(zodBody(forgotPasswordSchema)) body: ForgotPasswordInput,
+  ): Promise<ForgotPasswordView> {
+    return this.passwordReset.request(body.email);
+  }
+
+  @Public()
+  @Post('password/reset')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Set a new password with a reset link and revoke every session' })
+  async resetPassword(
+    @Body(zodBody(resetPasswordSchema)) body: ResetPasswordInput,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<void> {
+    this.refreshCookie.clear(reply);
+    await this.passwordReset.reset(body);
   }
 
   /**

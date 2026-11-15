@@ -1,3 +1,4 @@
+import { PROJECT_KEY_RULE, createProjectSchema, projectKeySchema } from '@qa-flow-hub/shared';
 import { Badge, Button, DataState, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -6,6 +7,23 @@ import { ApiError } from '../api/http-client';
 import { PlanLimitAlert } from '../components/PlanLimitAlert';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
+
+const PROJECT_NAME_RULE = 'Use 2 to 120 characters.';
+
+/**
+ * The API's own schema decides, so the form and the server cannot disagree.
+ * Whitespace is refused here even though the schema trims it: the rule says
+ * letters and digits, and a key typed with a space is a typo.
+ */
+export function projectKeyError(key: string): string | undefined {
+  if (key === '') return undefined;
+  return /\s/.test(key) || !projectKeySchema.safeParse(key).success ? PROJECT_KEY_RULE : undefined;
+}
+
+export function projectNameError(name: string): string | undefined {
+  if (name === '') return undefined;
+  return createProjectSchema.shape.name.safeParse(name).success ? undefined : PROJECT_NAME_RULE;
+}
 
 export function ProjectsPage(): React.JSX.Element {
   const queryClient = useQueryClient();
@@ -28,8 +46,12 @@ export function ProjectsPage(): React.JSX.Element {
     await queryClient.invalidateQueries({ queryKey: ['billing'] });
   };
 
+  const keyError = projectKeyError(key);
+  const nameError = projectNameError(name);
+  const canCreate = name !== '' && key !== '' && keyError === undefined && nameError === undefined;
+
   const create = useMutation({
-    mutationFn: () => projectsApi.create({ name, key: key.toUpperCase() }),
+    mutationFn: () => projectsApi.create({ name: name.trim(), key }),
     onSuccess: async () => {
       setName('');
       setKey('');
@@ -71,14 +93,16 @@ export function ProjectsPage(): React.JSX.Element {
           <TextField
             label="Name"
             value={name}
+            error={nameError}
             onChange={(event) => {
               setName(event.target.value);
             }}
           />
           <TextField
             label="Key"
-            hint="Two to ten uppercase letters. It prefixes every readable id and cannot change."
+            hint={`${PROJECT_KEY_RULE} It prefixes every readable id and cannot change.`}
             value={key}
+            error={keyError}
             onChange={(event) => {
               setKey(event.target.value.toUpperCase());
             }}
@@ -86,7 +110,7 @@ export function ProjectsPage(): React.JSX.Element {
         </div>
         <Button
           loading={create.isPending}
-          disabled={name.trim() === '' || key.trim() === ''}
+          disabled={!canCreate}
           onClick={() => {
             create.mutate();
           }}

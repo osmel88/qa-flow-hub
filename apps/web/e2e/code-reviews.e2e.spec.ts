@@ -30,7 +30,7 @@ test('a local code review is approved by its reviewer and drives merge readiness
     await ownerPage.goto('/register');
     await ownerPage.getByLabel('Full name').fill(owner.fullName);
     await ownerPage.getByLabel('Email').fill(owner.email);
-    await ownerPage.getByLabel('Password').fill(owner.password);
+    await ownerPage.getByLabel('Password', { exact: true }).fill(owner.password);
     await ownerPage.getByRole('button', { name: 'Create account' }).click();
     await expect(ownerPage.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
     await ownerPage.getByLabel('Name').fill(`Reviews ${unique}`);
@@ -69,7 +69,7 @@ test('a local code review is approved by its reviewer and drives merge readiness
     await reviewerPage.goto('/register');
     await reviewerPage.getByLabel('Full name').fill(reviewer.fullName);
     await reviewerPage.getByLabel('Email').fill(reviewer.email);
-    await reviewerPage.getByLabel('Password').fill(reviewer.password);
+    await reviewerPage.getByLabel('Password', { exact: true }).fill(reviewer.password);
     await reviewerPage.getByRole('button', { name: 'Create account' }).click();
     await expect(reviewerPage.getByRole('heading', { name: 'Your organizations' })).toBeVisible();
     await reviewerPage.getByLabel('Invitation token').fill(token);

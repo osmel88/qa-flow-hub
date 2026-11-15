@@ -25,6 +25,7 @@ import {
   DefectStatusChangedEvent,
   InvitationIssuedEvent,
   PasswordChangedEvent,
+  PasswordResetRequestedEvent,
   TestRunCasesAssignedEvent,
   TestRunCompletedEvent,
 } from '../../events/domain-events';
@@ -122,6 +123,11 @@ export class NotificationsService {
     return this.tenant.runForOrganization(null, () => this.handlePasswordChanged(event));
   }
 
+  @OnEvent('user.password_reset.requested', { promisify: true })
+  onPasswordResetRequested(event: PasswordResetRequestedEvent): Promise<void> {
+    return this.tenant.runForOrganization(null, () => this.handlePasswordResetRequested(event));
+  }
+
   @OnEvent('test_run.cases.assigned', { promisify: true })
   onTestRunCasesAssigned(event: TestRunCasesAssignedEvent): Promise<void> {
     return this.tenant.runForOrganization(event.organizationId, () =>
@@ -180,6 +186,19 @@ export class NotificationsService {
         resendCount: String(event.resendCount),
         actorUserId: event.invitedByUserId,
       },
+    });
+  }
+
+  private async handlePasswordResetRequested(event: PasswordResetRequestedEvent): Promise<void> {
+    const user = await this.notifications.findUser(event.userId);
+    if (user === null) return;
+    await this.deliver({
+      type: 'password_reset',
+      organizationId: null,
+      recipient: asRecipient(user),
+      dedupeKey: `password_reset:${event.tokenId}`,
+      vars: { fullName: user.fullName, resetUrl: event.resetUrl, expiresAt: event.expiresAt },
+      metadata: { entityType: 'user', entityId: user.id },
     });
   }
 

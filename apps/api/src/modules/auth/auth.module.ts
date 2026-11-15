@@ -13,6 +13,7 @@ import { RolesGuard } from './guards/roles.guard';
 import { ProjectScopeContractInterceptor } from './interceptors/project-scope-contract.interceptor';
 import { MfaController } from './mfa/mfa.controller';
 import { MfaService } from './mfa/mfa.service';
+import { PasswordResetService } from './password-reset.service';
 import { PasswordService } from './password.service';
 import { RefreshCookieService } from './refresh-cookie.service';
 import { SessionsRepository } from './sessions.repository';
@@ -36,6 +37,7 @@ import { UsersRepository } from './users.repository';
     AuthService,
     MfaService,
     PasswordService,
+    PasswordResetService,
     RefreshCookieService,
     TokenService,
     UsersRepository,

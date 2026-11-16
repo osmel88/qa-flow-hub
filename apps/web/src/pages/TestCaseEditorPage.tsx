@@ -11,6 +11,7 @@ import type { CustomFieldDraft } from '../components/CustomFieldInputs';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { TestCaseHistory } from './TestCaseHistory';
 import { TestCaseParameters } from './TestCaseParameters';
+import { t } from '../i18n/i18n';
 
 interface DraftStep {
   action: string;
@@ -84,7 +85,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
     },
     onError: (cause) => {
       setSavedVersion(null);
-      setError(cause instanceof ApiError ? cause.message : 'Could not save the case.');
+      setError(cause instanceof ApiError ? cause.message : t('testCaseEditor.couldNotSaveTheCase'));
     },
   });
 
@@ -97,9 +98,13 @@ export function TestCaseEditorPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title={detail.data === undefined ? 'Test case' : `${detail.data.key} — editor`}
-        description="Saving a content change creates a new version; runs already created keep the version they executed."
-        actions={<Link to="/test-cases">Back to cases</Link>}
+        title={
+          detail.data === undefined
+            ? t('testCaseEditor.testCase')
+            : t('testCaseEditor.editor', { key: detail.data.key })
+        }
+        description={t('testCaseEditor.savingAContentChangeCreates')}
+        actions={<Link to="/test-cases">{t('testCaseEditor.backToCases')}</Link>}
       />
 
       <DataState isPending={detail.isPending} error={detail.error}>
@@ -111,12 +116,12 @@ export function TestCaseEditorPage(): React.JSX.Element {
           )}
           {savedVersion !== null && (
             <p className="ui-state" role="status">
-              Saved as version {savedVersion}.
+              {t('testCaseEditor.savedAsVersion')} {savedVersion}.
             </p>
           )}
 
           <TextField
-            label="Title"
+            label={t('testCaseEditor.title')}
             value={title}
             onChange={(event) => {
               setTitle(event.target.value);
@@ -124,8 +129,8 @@ export function TestCaseEditorPage(): React.JSX.Element {
             }}
           />
 
-          <h2>Steps</h2>
-          {steps.length === 0 && <p className="muted">No steps yet. Add the first one.</p>}
+          <h2>{t('testCaseEditor.steps')}</h2>
+          {steps.length === 0 && <p className="muted">{t('testCaseEditor.noStepsYetAddThe')}</p>}
 
           <ol className="step-list">
             {steps.map((step, index) => (
@@ -133,7 +138,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
               // a whole, so the position is the identity here.
               <li key={index} className="step">
                 <TextAreaField
-                  label={`Step ${index + 1} action`}
+                  label={t('testCaseEditor.stepAction', { value: index + 1 })}
                   value={step.action}
                   onChange={(event) => {
                     updateStep(index, { action: event.target.value });
@@ -141,7 +146,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
                   }}
                 />
                 <TextAreaField
-                  label={`Step ${index + 1} expected result`}
+                  label={t('testCaseEditor.stepExpectedResult', { value: index + 1 })}
                   value={step.expectedResult}
                   onChange={(event) => {
                     updateStep(index, { expectedResult: event.target.value });
@@ -156,7 +161,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
                     setSavedVersion(null);
                   }}
                 >
-                  Remove step {index + 1}
+                  {t('testCaseEditor.removeStep')} {index + 1}
                 </Button>
               </li>
             ))}
@@ -173,7 +178,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
           />
 
           <TextField
-            label="Change reason (optional)"
+            label={t('testCaseEditor.changeReasonOptional')}
             value={changeReason}
             onChange={(event) => {
               setChangeReason(event.target.value);
@@ -189,7 +194,7 @@ export function TestCaseEditorPage(): React.JSX.Element {
                 setSavedVersion(null);
               }}
             >
-              Add step
+              {t('testCaseEditor.addStep')}
             </Button>
             <Button
               loading={save.isPending}
@@ -198,11 +203,13 @@ export function TestCaseEditorPage(): React.JSX.Element {
                 save.mutate();
               }}
             >
-              Save case
+              {t('testCaseEditor.saveCase')}
             </Button>
           </div>
           {steps.length >= MAX_STEPS && (
-            <p className="muted">A case is capped at {MAX_STEPS} steps.</p>
+            <p className="muted">
+              {t('testCaseEditor.aCaseIsCappedAt')} {MAX_STEPS} {t('testCaseEditor.steps2')}
+            </p>
           )}
         </section>
 

@@ -18,6 +18,7 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 const STATUS_TONES: Record<ExternalSyncStatus, BadgeTone> = {
   synced: 'success',
@@ -28,9 +29,15 @@ const STATUS_TONES: Record<ExternalSyncStatus, BadgeTone> = {
 };
 
 const PROVIDER_LABELS: Record<SyncProvider, string> = {
-  jira: 'Jira',
-  testrail: 'TestRail',
-  github: 'GitHub',
+  get jira() {
+    return t('externalTraceability.jira');
+  },
+  get testrail() {
+    return t('externalTraceability.testrail');
+  },
+  get github() {
+    return t('externalTraceability.github');
+  },
 };
 
 function formatDate(value: string | null): string {
@@ -48,7 +55,7 @@ function resync(row: ExternalTraceabilityRow): Promise<unknown> {
       return jiraApi.sync(row.entityType === 'defect' ? 'defect' : 'requirement', row.entityId);
     case 'testrail':
       if (row.entityType === 'requirement' || row.entityType === 'defect') {
-        return Promise.reject(new Error('TestRail does not track this entity.'));
+        return Promise.reject(new Error(t('externalTraceability.testrailDoesNotTrack')));
       }
       return testRailApi.sync(row.entityType, row.entityId);
     case 'github':
@@ -100,7 +107,11 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
       await invalidate();
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not verify the references.');
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : t('externalTraceability.couldNotVerifyTheReferences'),
+      );
     },
   });
 
@@ -111,7 +122,7 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
       await invalidate();
     },
     onError: (cause) => {
-      setError(cause instanceof Error ? cause.message : 'Could not re-sync.');
+      setError(cause instanceof Error ? cause.message : t('externalTraceability.couldNotReSync'));
     },
   });
 
@@ -122,8 +133,8 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="External traceability"
-        description="Every link from this project into Jira, TestRail and GitHub, and whether it still holds."
+        title={t('externalTraceability.externalTraceability')}
+        description={t('externalTraceability.everyLinkFromThisProject')}
         actions={
           <Button
             variant="secondary"
@@ -132,14 +143,14 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
               verify.mutate();
             }}
           >
-            Verify with providers
+            {t('externalTraceability.verifyWithProviders')}
           </Button>
         }
       />
 
-      <section className="card filters" aria-label="Filters">
+      <section className="card filters" aria-label={t('externalTraceability.filters')}>
         <label className="ui-field">
-          <span className="ui-field__label">Provider</span>
+          <span className="ui-field__label">{t('externalTraceability.provider')}</span>
           <select
             className="ui-input"
             value={provider}
@@ -147,7 +158,7 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
               setProvider(event.target.value as SyncProvider | '');
             }}
           >
-            <option value="">All providers</option>
+            <option value="">{t('externalTraceability.allProviders')}</option>
             {SYNC_PROVIDERS.map((value) => (
               <option key={value} value={value}>
                 {PROVIDER_LABELS[value]}
@@ -156,7 +167,7 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
           </select>
         </label>
         <label className="ui-field">
-          <span className="ui-field__label">Entity type</span>
+          <span className="ui-field__label">{t('externalTraceability.entityType')}</span>
           <select
             className="ui-input"
             value={entityType}
@@ -164,7 +175,7 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
               setEntityType(event.target.value as SyncableEntity | '');
             }}
           >
-            <option value="">All entities</option>
+            <option value="">{t('externalTraceability.allEntities')}</option>
             {SYNCABLE_ENTITIES.map((value) => (
               <option key={value} value={value}>
                 {humanize(value)}
@@ -173,7 +184,7 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
           </select>
         </label>
         <label className="ui-field">
-          <span className="ui-field__label">Status</span>
+          <span className="ui-field__label">{t('externalTraceability.status')}</span>
           <select
             className="ui-input"
             value={status}
@@ -181,7 +192,7 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
               setStatus(event.target.value as ExternalSyncStatus | '');
             }}
           >
-            <option value="">All statuses</option>
+            <option value="">{t('externalTraceability.allStatuses')}</option>
             {EXTERNAL_SYNC_STATUSES.map((value) => (
               <option key={value} value={value}>
                 {humanize(value)}
@@ -197,12 +208,12 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
               setIncludeMissing(event.target.checked);
             }}
           />
-          Show entities not linked yet
+          {t('externalTraceability.showEntitiesNotLinkedYet')}
         </label>
       </section>
 
       {view.data !== undefined && (
-        <section className="card" aria-label="Summary">
+        <section className="card" aria-label={t('externalTraceability.summary')}>
           <p className="row-actions">
             {EXTERNAL_SYNC_STATUSES.map((value) => (
               <Badge key={value} tone={STATUS_TONES[value]}>
@@ -219,7 +230,7 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
                     {humanize(summary.connectionStatus ?? 'disconnected')}
                   </Badge>
                 ) : (
-                  <Badge tone="neutral">Not configured</Badge>
+                  <Badge tone="neutral">{t('externalTraceability.notConfigured')}</Badge>
                 )}
                 {summary.lastError !== null && (
                   <span className="muted"> — {summary.lastError}</span>
@@ -229,8 +240,10 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
           </ul>
           {verification !== null && (
             <p role="status">
-              Verified {verification.checked} references: {verification.present} present,{' '}
-              {verification.lost} lost
+              {t('externalTraceability.verified')} {verification.checked}{' '}
+              {t('externalTraceability.references')} {verification.present}{' '}
+              {t('externalTraceability.present')} {verification.lost}{' '}
+              {t('externalTraceability.lost')}
               {verification.failed.length > 0 &&
                 `, ${verification.failed.map((f) => `${PROVIDER_LABELS[f.provider]}: ${f.error}`).join('; ')}`}
               .
@@ -249,19 +262,19 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
         isPending={view.isPending}
         error={view.error}
         isEmpty={(view.data?.rows.length ?? 0) === 0}
-        emptyMessage="No external references match. Connect a provider under Settings → Integrations and sync an entity."
+        emptyMessage={t('externalTraceability.noExternalReferencesMatchConnect')}
       >
         <table className="table card">
           <thead>
             <tr>
-              <th scope="col">Internal entity</th>
-              <th scope="col">Provider</th>
-              <th scope="col">External entity</th>
-              <th scope="col">External ID</th>
-              <th scope="col">Sync status</th>
-              <th scope="col">Last sync</th>
-              <th scope="col">Error</th>
-              <th scope="col">Actions</th>
+              <th scope="col">{t('externalTraceability.internalEntity')}</th>
+              <th scope="col">{t('externalTraceability.provider')}</th>
+              <th scope="col">{t('externalTraceability.externalEntity')}</th>
+              <th scope="col">{t('externalTraceability.externalId')}</th>
+              <th scope="col">{t('externalTraceability.syncStatus')}</th>
+              <th scope="col">{t('externalTraceability.lastSync')}</th>
+              <th scope="col">{t('externalTraceability.error')}</th>
+              <th scope="col">{t('externalTraceability.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -295,7 +308,10 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
                       </a>
                     )}
                     {row.previousExternalId !== null && (
-                      <span className="muted"> (was {row.previousExternalId})</span>
+                      <span className="muted">
+                        {' '}
+                        {t('externalTraceability.was')} {row.previousExternalId})
+                      </span>
                     )}
                   </td>
                   <td>
@@ -307,7 +323,10 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
                   <td>
                     {formatDate(row.lastSyncAt)}
                     {row.lastVerifiedAt !== null && (
-                      <span className="muted"> · verified {formatDate(row.lastVerifiedAt)}</span>
+                      <span className="muted">
+                        {' '}
+                        {t('externalTraceability.verified2')} {formatDate(row.lastVerifiedAt)}
+                      </span>
                     )}
                   </td>
                   <td>{row.error === null ? <span className="muted">—</span> : row.error}</td>
@@ -321,7 +340,9 @@ export function ExternalTraceabilityPage(): React.JSX.Element {
                           sync.mutate(row);
                         }}
                       >
-                        {row.referenceId === null ? 'Sync' : 'Re-sync'}
+                        {row.referenceId === null
+                          ? t('externalTraceability.sync')
+                          : t('externalTraceability.reSync')}
                       </Button>
                     )}
                   </td>

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api/http-client';
+import { t } from '../i18n/i18n';
 
 /**
  * The 402 a plan limit produces, with the way out. Renders nothing for any
@@ -11,7 +12,9 @@ export function PlanLimitAlert({ error }: { error: unknown }): React.JSX.Element
   }
   return (
     <p className="callout" role="alert">
-      {error.message}. Nothing existing was removed. <Link to="/billing">See plans and usage</Link>
+      {error.message}
+      {t('c_planLimitAlert.nothingExistingWasRemoved')}{' '}
+      <Link to="/billing">{t('c_planLimitAlert.seePlansAndUsage')}</Link>
     </p>
   );
 }

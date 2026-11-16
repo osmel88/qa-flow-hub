@@ -12,6 +12,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export const RELEASE_TONE: Record<ReleaseStatus, BadgeTone> = {
   planned: 'neutral',
@@ -60,7 +61,7 @@ export function ReleasesPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['releases'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the release.');
+      setError(cause instanceof ApiError ? cause.message : t('releases.couldNotCreateTheRelease'));
     },
   });
 
@@ -71,41 +72,41 @@ export function ReleasesPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Releases"
-        description="A release groups the runs that decide whether a version can ship. Archiving one keeps every run and result."
+        title={t('releases.releases')}
+        description={t('releases.aReleaseGroupsTheRuns')}
       />
 
       {can('releases.manage') && (
         <section className="card" aria-labelledby="new-release">
-          <h2 id="new-release">New release</h2>
+          <h2 id="new-release">{t('releases.newRelease')}</h2>
           {error !== null && (
             <p className="ui-field__error" role="alert">
               {error}
             </p>
           )}
           <TextField
-            label="Release name"
+            label={t('releases.releaseName')}
             value={name}
             onChange={(event) => {
               setName(event.target.value);
             }}
           />
           <TextField
-            label="Version"
+            label={t('releases.version')}
             value={version}
             onChange={(event) => {
               setVersion(event.target.value);
             }}
           />
           <TextField
-            label="Tag (optional)"
+            label={t('releases.tagOptional')}
             value={tag}
             onChange={(event) => {
               setTag(event.target.value);
             }}
           />
           <TextField
-            label="Start date"
+            label={t('releases.startDate')}
             type="date"
             value={startDate}
             onChange={(event) => {
@@ -113,7 +114,7 @@ export function ReleasesPage(): React.JSX.Element {
             }}
           />
           <TextField
-            label="Target date"
+            label={t('releases.targetDate')}
             type="date"
             value={targetDate}
             onChange={(event) => {
@@ -127,13 +128,13 @@ export function ReleasesPage(): React.JSX.Element {
               create.mutate();
             }}
           >
-            Create release
+            {t('releases.createRelease')}
           </Button>
         </section>
       )}
 
       <label className="ui-field">
-        <span className="ui-field__label">Status</span>
+        <span className="ui-field__label">{t('releases.status')}</span>
         <select
           className="ui-input"
           value={status}
@@ -141,7 +142,7 @@ export function ReleasesPage(): React.JSX.Element {
             setStatus(event.target.value as ReleaseStatus | '');
           }}
         >
-          <option value="">Any status</option>
+          <option value="">{t('releases.anyStatus')}</option>
           {RELEASE_STATUSES.map((value) => (
             <option key={value} value={value}>
               {humanize(value)}
@@ -154,16 +155,16 @@ export function ReleasesPage(): React.JSX.Element {
         isPending={releases.isPending}
         error={releases.error}
         isEmpty={(releases.data?.data.length ?? 0) === 0}
-        emptyMessage="No release yet."
+        emptyMessage={t('releases.noReleaseYet')}
       >
         <table className="table card">
           <thead>
             <tr>
-              <th scope="col">Release</th>
-              <th scope="col">Version</th>
-              <th scope="col">Status</th>
-              <th scope="col">Target date</th>
-              <th scope="col">Runs</th>
+              <th scope="col">{t('releases.release')}</th>
+              <th scope="col">{t('releases.version')}</th>
+              <th scope="col">{t('releases.status')}</th>
+              <th scope="col">{t('releases.targetDate')}</th>
+              <th scope="col">{t('releases.runs')}</th>
             </tr>
           </thead>
           <tbody>

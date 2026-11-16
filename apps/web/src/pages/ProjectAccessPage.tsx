@@ -11,6 +11,7 @@ import { PageHeader } from '../components/PageHeader';
 import { NoProject } from './NoProject';
 import { useProject } from '../project/project-context';
 import { humanize, toneFor } from '../components/status';
+import { t } from '../i18n/i18n';
 
 /**
  * Per-project roles.
@@ -34,15 +35,16 @@ function reasonBlocked(
   isSelf: boolean,
 ): string | null {
   if (isSelf) {
-    return 'You cannot change your own role in a project.';
+    return t('projectAccess.youCannotChangeYourOwn');
   }
   if (member.organizationRole === 'organization_owner') {
-    return 'An organization owner keeps full access to every project.';
+    return t('projectAccess.anOrganizationOwnerKeepsFull');
   }
   if (!outranksOrEquals(actor, member.organizationRole)) {
-    return `Your role here (${humanize(actor)}) cannot change somebody who is ${humanize(
-      member.organizationRole,
-    )}.`;
+    return t('projectAccess.yourRoleHereCannotChange', {
+      value: humanize(actor),
+      value2: humanize(member.organizationRole),
+    });
   }
   return null;
 }
@@ -77,7 +79,9 @@ export function ProjectAccessPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['member-permissions'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not change the role.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('projectAccess.couldNotChangeTheRole'),
+      );
     },
   });
 
@@ -89,7 +93,9 @@ export function ProjectAccessPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['member-permissions'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not revoke the role.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('projectAccess.couldNotRevokeTheRole'),
+      );
     },
   });
 
@@ -114,8 +120,8 @@ export function ProjectAccessPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title={`Access to ${activeProject?.key ?? 'this project'}`}
-        description="Owners and admins see every project; everybody else sees it only after being given access here. A project role overrides the organization role, but only inside this project. Overrides then grant or revoke single permissions on top of that role. Whatever is shown here, the API checks the same rules on every call."
+        title={t('projectAccess.accessTo', { value: activeProject?.key ?? 'this project' })}
+        description={t('projectAccess.ownersAndAdminsSeeEvery')}
       />
 
       {error !== null && (
@@ -130,22 +136,24 @@ export function ProjectAccessPage(): React.JSX.Element {
         isEmpty={(members.data?.data.length ?? 0) === 0}
       >
         <table className="table card">
-          <caption className="visually-hidden">Effective roles in this project</caption>
+          <caption className="visually-hidden">
+            {t('projectAccess.effectiveRolesInThisProject')}
+          </caption>
           <thead>
             <tr>
-              <th scope="col">Member</th>
-              <th scope="col">In the organization</th>
-              <th scope="col">In this project</th>
-              <th scope="col">Enforced</th>
-              <th scope="col">Permissions</th>
-              {canManage && <th scope="col">Change</th>}
+              <th scope="col">{t('projectAccess.member')}</th>
+              <th scope="col">{t('projectAccess.inTheOrganization')}</th>
+              <th scope="col">{t('projectAccess.inThisProject')}</th>
+              <th scope="col">{t('projectAccess.enforced')}</th>
+              <th scope="col">{t('projectAccess.permissions')}</th>
+              {canManage && <th scope="col">{t('projectAccess.change')}</th>}
             </tr>
           </thead>
           <tbody>
             {members.data?.data.map((member) => {
               const reason = canManage
                 ? reasonBlocked(actorRole, member, member.userId === user?.id)
-                : 'Only members who may manage access here change project roles.';
+                : t('projectAccess.onlyManagersChangeRoles');
               const hintId = `project-role-hint-${member.userId}`;
               const isExpanded = expanded === member.userId;
               const columns = canManage ? 6 : 5;
@@ -160,9 +168,9 @@ export function ProjectAccessPage(): React.JSX.Element {
                     <td>{humanize(member.organizationRole)}</td>
                     <td>
                       {!member.hasAccess ? (
-                        <span className="muted">No access</span>
+                        <span className="muted">{t('projectAccess.noAccess')}</span>
                       ) : member.projectRole === null ? (
-                        <span className="muted">Inherited</span>
+                        <span className="muted">{t('projectAccess.inherited')}</span>
                       ) : (
                         <Badge tone={toneFor(member.projectRole)}>
                           {humanize(member.projectRole)}
@@ -171,7 +179,7 @@ export function ProjectAccessPage(): React.JSX.Element {
                     </td>
                     <td>
                       {member.effectiveRole === null ? (
-                        <span className="muted">Cannot see this project</span>
+                        <span className="muted">{t('projectAccess.cannotSeeThisProject')}</span>
                       ) : (
                         humanize(member.effectiveRole)
                       )}
@@ -181,19 +189,24 @@ export function ProjectAccessPage(): React.JSX.Element {
                         size="sm"
                         variant="ghost"
                         aria-expanded={isExpanded}
-                        aria-label={`${isExpanded ? 'Hide' : 'Show'} the permissions of ${member.email}`}
+                        aria-label={t('projectAccess.thePermissionsOf', {
+                          value: isExpanded ? 'Hide' : 'Show',
+                          email: member.email,
+                        })}
                         onClick={() => {
                           setExpanded(isExpanded ? null : member.userId);
                         }}
                       >
-                        {isExpanded ? 'Hide' : 'Show'}
+                        {isExpanded ? t('projectAccess.hide') : t('projectAccess.show')}
                       </Button>
                     </td>
                     {canManage && (
                       <td>
                         <select
                           className="ui-input"
-                          aria-label={`Set the project role of ${member.email}`}
+                          aria-label={t('projectAccess.setTheProjectRoleOf', {
+                            email: member.email,
+                          })}
                           value=""
                           disabled={reason !== null}
                           {...(reason === null ? {} : { 'aria-describedby': hintId })}
@@ -205,10 +218,10 @@ export function ProjectAccessPage(): React.JSX.Element {
                             });
                           }}
                         >
-                          <option value="">Choose…</option>
+                          <option value="">{t('projectAccess.choose')}</option>
                           {(!member.hasAccess || member.projectRole !== null) && (
                             <option value={ORGANIZATION_ROLE_OPTION}>
-                              Access with their organization role
+                              {t('projectAccess.accessWithTheirOrganizationRole')}
                             </option>
                           )}
                           {ORGANIZATION_ROLES.filter(
@@ -228,7 +241,9 @@ export function ProjectAccessPage(): React.JSX.Element {
                               revoke.mutate(member.userId);
                             }}
                           >
-                            {seesEveryProject(member.organizationRole) ? 'Revoke' : 'Remove access'}
+                            {seesEveryProject(member.organizationRole)
+                              ? t('projectAccess.revoke')
+                              : t('projectAccess.removeAccess')}
                           </Button>
                         )}
                         {reason !== null && (

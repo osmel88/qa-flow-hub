@@ -1,0 +1,56 @@
+import type { billing as source } from '../en/billing';
+
+export const billing: Partial<Record<keyof typeof source, string>> = {
+  'billing.unlimited': 'Ilimitado',
+  'billing.trialOfUntil': 'Prueba de {value} hasta el {value2}.',
+  'billing.theTrialHasEndedYou': 'La prueba ha terminado. Estás en el plan Free.',
+  'billing.cancelsOnAfterThatThe': 'Se cancela el {value}; después se aplica el plan Free.',
+  'billing.changesToOn': 'Cambia a {value} el {value2}.',
+  'billing.renewsOn': 'Se renueva el {value}.',
+  'billing.theLastPaymentFailedThe': 'El último pago falló. El plan sigue activo hasta el {value}.',
+  'billing.theGracePeriodAfterA':
+    'El periodo de gracia tras un pago fallido ha terminado. Estás en el plan Free.',
+  'billing.theSubscriptionWasCanceledYou': 'La suscripción se canceló. Estás en el plan Free.',
+  'billing.thePaymentDidNotComplete': 'El pago no se completó. Estás en el plan Free.',
+  'billing.theBillingPeriodEndedWithout':
+    'El periodo de facturación terminó sin renovación. Estás en el plan Free.',
+  'billing.noSubscriptionYouAreOn': 'Sin suscripción. Estás en el plan Free.',
+  'billing.current': 'Actual',
+  'billing.month': '/ mes',
+  'billing.to': 'a',
+  'billing.theBillingRequestFailed': 'La petición de facturación falló.',
+  'billing.billing': 'Facturación',
+  'billing.onlyOrganizationOwnersAndAdmins':
+    'Solo los owners y admins de la organización pueden ver la facturación.',
+  'billing.planUsageAndInvoicesOf': 'Plan, uso y facturas de esta organización.',
+  'billing.planUsageAndInvoicesOf2':
+    'Plan, uso y facturas de esta organización. Solo los owners pueden cambiar el plan.',
+  'billing.plan': 'plan',
+  'billing.usageIsAboveThisPlan': 'El uso supera este plan en',
+  'billing.nothingIsDeletedOrHidden':
+    '. No se elimina ni se oculta nada; solo se bloquean los elementos nuevos.',
+  'billing.cancelAtPeriodEnd': 'Cancelar al final del periodo',
+  'billing.endTrial': 'Terminar la prueba',
+  'billing.keepSubscription': 'Mantener la suscripción',
+  'billing.mockProviderSimulateTheEnd':
+    'Proveedor mock: simula el final del periodo de facturación.',
+  'billing.renewPaymentSucceeds': 'Renovar (el pago funciona)',
+  'billing.renewPaymentFails': 'Renovar (el pago falla)',
+  'billing.usage': 'Uso',
+  'billing.plans': 'Planes',
+  'billing.invoices': 'Facturas',
+  'billing.noInvoicesYet': 'Todavía no hay facturas.',
+  'billing.number': 'Número',
+  'billing.issued': 'Emitida',
+  'billing.plan2': 'Plan',
+  'billing.amount': 'Importe',
+  'billing.status': 'Estado',
+  'billing.previous': 'Anterior',
+  'billing.page': 'Página',
+  'billing.of': 'de',
+  'billing.next': 'Siguiente',
+  'billing.overTheLimit': 'Por encima del límite',
+  'billing.approachingTheLimit': 'Cerca del límite',
+  'billing.directionUpgrade': 'Mejorar',
+  'billing.directionDowngrade': 'Bajar de plan',
+};

@@ -1,0 +1,28 @@
+import type { c_gitHubRunPanel as source } from '../en/c_gitHubRunPanel';
+
+export const c_gitHubRunPanel: Partial<Record<keyof typeof source, string>> = {
+  'c_gitHubRunPanel.couldNotRefreshTheWorkflow': 'No se pudo actualizar el workflow run.',
+  'c_gitHubRunPanel.couldNotImportTheResults': 'No se pudieron importar los resultados.',
+  'c_gitHubRunPanel.githubWorkflowRun': 'Workflow run de GitHub',
+  'c_gitHubRunPanel.github': 'GitHub',
+  'c_gitHubRunPanel.noWorkflowRunLinked': 'No hay ningún workflow run vinculado.',
+  'c_gitHubRunPanel.linkWorkflowRun': 'Vincular workflow run',
+  'c_gitHubRunPanel.reLink': 'Volver a vincular',
+  'c_gitHubRunPanel.refreshStatus': 'Actualizar estado',
+  'c_gitHubRunPanel.importResults': 'Importar resultados',
+  'c_gitHubRunPanel.repository': 'Repositorio',
+  'c_gitHubRunPanel.loading': 'Cargando…',
+  'c_gitHubRunPanel.chooseARepository': 'Elige un repositorio',
+  'c_gitHubRunPanel.workflowRun': 'Workflow run',
+  'c_gitHubRunPanel.chooseARun': 'Elige un run',
+  'c_gitHubRunPanel.couldNotReachGithub': 'No se pudo contactar con GitHub.',
+  'c_gitHubRunPanel.link': 'Vincular',
+  'c_gitHubRunPanel.noCNTagIn': 'no hay etiqueta @C-n en el título',
+  'c_gitHubRunPanel.caseIsNotPartOf': 'el caso no forma parte de este run',
+  'c_gitHubRunPanel.theWorkflowRunHasNot': 'el workflow run no ha terminado',
+  'c_gitHubRunPanel.alreadyImported': 'ya importado',
+  'c_gitHubRunPanel.imported': 'Importados',
+  'c_gitHubRunPanel.result': 'resultado',
+  'c_gitHubRunPanel.fromGithub': 'Desde GitHub:',
+  'c_gitHubRunPanel.couldNotLinkTheWorkflowRun': 'No se pudo vincular el workflow run.',
+};

@@ -23,6 +23,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 import { WORK_ITEM_TONE } from './WorkItemsPage';
+import { t } from '../i18n/i18n';
 
 /** "2/3 done (66.7%) · 8 estimated", or nothing for a leaf. */
 export function rollupText(rollup: WorkItemRollup): string {
@@ -31,7 +32,12 @@ export function rollupText(rollup: WorkItemRollup): string {
   }
   const countable = rollup.count - rollup.byStatus.cancelled;
   const progress = rollup.progress === null ? '' : ` (${rollup.progress}%)`;
-  return `${rollup.byStatus.done}/${countable} done${progress} · ${rollup.estimate} estimated`;
+  return t('hierarchy.doneEstimated', {
+    done: rollup.byStatus.done,
+    countable,
+    progress,
+    estimate: rollup.estimate,
+  });
 }
 
 /** Every item of the tree, flattened, for the "move under" choices. */
@@ -82,7 +88,7 @@ export function HierarchyPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['backlog'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not move the work item.');
+      setError(cause instanceof ApiError ? cause.message : t('hierarchy.couldNotMoveTheWork'));
     },
   });
 
@@ -127,7 +133,11 @@ export function HierarchyPage(): React.JSX.Element {
               size="sm"
               variant="ghost"
               aria-expanded={open}
-              aria-label={`${open ? 'Collapse' : 'Expand'} ${item.key}`}
+              aria-label={
+                open
+                  ? t('hierarchy.collapseItem', { key: item.key })
+                  : t('hierarchy.expandItem', { key: item.key })
+              }
               onClick={() => {
                 toggle(item.id);
               }}
@@ -147,7 +157,7 @@ export function HierarchyPage(): React.JSX.Element {
           {editable && (
             <select
               className="ui-input ui-select"
-              aria-label={`Move ${item.key} under`}
+              aria-label={t('hierarchy.moveUnder', { key: item.key })}
               value={item.parentId ?? ''}
               disabled={reparent.isPending}
               onChange={(event) => {
@@ -157,7 +167,7 @@ export function HierarchyPage(): React.JSX.Element {
                 });
               }}
             >
-              <option value="">Top level</option>
+              <option value="">{t('hierarchy.topLevel')}</option>
               {parents.map((parent) => (
                 <option key={parent.id} value={parent.id}>
                   {parent.key} {parent.title}
@@ -178,12 +188,12 @@ export function HierarchyPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Hierarchy"
-        description="Epics, features, stories and tasks as a tree, with the progress and estimates of everything below each item."
+        title={t('hierarchy.hierarchy')}
+        description={t('hierarchy.epicsFeaturesStoriesAndTasks')}
       />
-      <section className="card filters" aria-label="Hierarchy filters">
+      <section className="card filters" aria-label={t('hierarchy.hierarchyFilters')}>
         <SelectField
-          label="Development filter"
+          label={t('hierarchy.developmentFilter')}
           value={developmentStatus}
           options={DEVELOPMENT_STATUS_OPTIONS}
           onChange={(event) => {
@@ -191,10 +201,10 @@ export function HierarchyPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Type filter"
+          label={t('hierarchy.typeFilter')}
           value={type}
           options={[
-            { value: '', label: 'Any type' },
+            { value: '', label: t('hierarchy.anyType') },
             ...WORK_ITEM_TYPES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -202,10 +212,10 @@ export function HierarchyPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Status filter"
+          label={t('hierarchy.statusFilter')}
           value={status}
           options={[
-            { value: '', label: 'Any status' },
+            { value: '', label: t('hierarchy.anyStatus') },
             ...WORK_ITEM_STATUSES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -213,7 +223,7 @@ export function HierarchyPage(): React.JSX.Element {
           }}
         />
         <TextField
-          label="Search tree"
+          label={t('hierarchy.searchTree')}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
@@ -227,7 +237,7 @@ export function HierarchyPage(): React.JSX.Element {
               setCollapsed(new Set());
             }}
           >
-            Expand all
+            {t('hierarchy.expandAll')}
           </Button>
           <Button
             size="sm"
@@ -236,7 +246,7 @@ export function HierarchyPage(): React.JSX.Element {
               setCollapsed(new Set(allParents));
             }}
           >
-            Collapse all
+            {t('hierarchy.collapseAll')}
           </Button>
         </div>
       </section>
@@ -247,18 +257,18 @@ export function HierarchyPage(): React.JSX.Element {
       )}
       {tree.data !== undefined && (
         <p className="muted" data-testid="tree-totals">
-          {tree.data.totals.count} items · {tree.data.totals.byStatus.done} done ·{' '}
-          {tree.data.totals.estimate} estimated
-          {tree.data.truncated && ' · showing the first 2000'}
+          {tree.data.totals.count} {t('hierarchy.items')} {tree.data.totals.byStatus.done}{' '}
+          {t('hierarchy.done')} {tree.data.totals.estimate} {t('hierarchy.estimated')}
+          {tree.data.truncated && t('hierarchy.showingTheFirst2000')}
         </p>
       )}
       <DataState
         isPending={tree.isPending}
         error={tree.error}
         isEmpty={roots.length === 0}
-        emptyMessage="No work item matches."
+        emptyMessage={t('hierarchy.noWorkItemMatches')}
       >
-        <ul className="tree card" role="tree" aria-label="Work item hierarchy">
+        <ul className="tree card" role="tree" aria-label={t('hierarchy.workItemHierarchy')}>
           {roots.map((node) => renderNode(node, 1))}
         </ul>
       </DataState>

@@ -24,6 +24,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { formatDuration } from './BuildsPage';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export const DEPLOYMENT_TONE: Record<DeploymentStatus, BadgeTone> = {
   pending: 'neutral',
@@ -47,12 +48,12 @@ export function DeploymentList({
     <table className="table" aria-label={label}>
       <thead>
         <tr>
-          <th>Deployment</th>
-          <th>Status</th>
-          <th>Environment</th>
-          <th>Build</th>
-          <th>Release</th>
-          <th>Duration</th>
+          <th>{t('deployments.deployment')}</th>
+          <th>{t('deployments.status')}</th>
+          <th>{t('deployments.environment')}</th>
+          <th>{t('deployments.build')}</th>
+          <th>{t('deployments.release')}</th>
+          <th>{t('deployments.duration')}</th>
         </tr>
       </thead>
       <tbody>
@@ -70,14 +71,14 @@ export function DeploymentList({
             <td>{deployment.environmentRef?.name ?? deployment.environment ?? '—'}</td>
             <td>
               {deployment.build === null ? (
-                <span className="muted">none</span>
+                <span className="muted">{t('deployments.none')}</span>
               ) : (
                 <Link to={`/builds/${deployment.build.id}`}>{deployment.build.identifier}</Link>
               )}
             </td>
             <td>
               {deployment.release === null ? (
-                <span className="muted">none</span>
+                <span className="muted">{t('deployments.none')}</span>
               ) : (
                 <Link to={`/releases/${deployment.release.id}`}>{deployment.release.version}</Link>
               )}
@@ -109,11 +110,14 @@ export function DeploymentsOf({
   });
   return (
     <section className="card" aria-labelledby="deployments-of">
-      <h2 id="deployments-of">Deployments</h2>
+      <h2 id="deployments-of">{t('deployments.deployments')}</h2>
       {(deployments.data?.data.length ?? 0) === 0 ? (
-        <p>No deployment yet.</p>
+        <p>{t('deployments.noDeploymentYet')}</p>
       ) : (
-        <DeploymentList deployments={deployments.data?.data ?? []} label="Related deployments" />
+        <DeploymentList
+          deployments={deployments.data?.data ?? []}
+          label={t('deployments.relatedDeployments')}
+        />
       )}
     </section>
   );
@@ -187,7 +191,7 @@ export function DeploymentsPage(): React.JSX.Element {
     enabled: enabled && writable,
   });
   const onError = (cause: unknown) => {
-    setError(cause instanceof ApiError ? cause.message : 'Something went wrong.');
+    setError(cause instanceof ApiError ? cause.message : t('deployments.somethingWentWrong'));
   };
   const create = useMutation({
     mutationFn: () =>
@@ -214,7 +218,7 @@ export function DeploymentsPage(): React.JSX.Element {
     .filter((env) => env.status === 'active')
     .map((env) => ({
       value: env.id,
-      label: env.protected ? `${env.name} (protected)` : env.name,
+      label: env.protected ? t('deployments.protected', { name: env.name }) : env.name,
     }));
   const buildOptions = (builds.data?.data ?? []).map((build) => ({
     value: build.id,
@@ -231,8 +235,8 @@ export function DeploymentsPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Deployments"
-        description="Local deployments of builds to environments, with rollback."
+        title={t('deployments.deployments')}
+        description={t('deployments.localDeploymentsOfBuildsTo')}
       />
       {error !== null && (
         <p role="alert" className="error">
@@ -240,15 +244,15 @@ export function DeploymentsPage(): React.JSX.Element {
         </p>
       )}
       <section className="card" aria-labelledby="environments">
-        <h2 id="environments">Environments</h2>
-        <ul aria-label="Environments">
+        <h2 id="environments">{t('deployments.environments')}</h2>
+        <ul aria-label={t('deployments.environments')}>
           {(environments.data ?? []).map((env) => (
             <li key={env.id} data-testid={`environment-${env.name}`}>
               <Link to={`/environments/${env.id}`}>{env.name}</Link>{' '}
               <span className="muted">{env.kind}</span>{' '}
-              {env.protected && <Badge tone="warning">protected</Badge>} ·{' '}
+              {env.protected && <Badge tone="warning">{t('deployments.protected2')}</Badge>} ·{' '}
               {env.current === null ? (
-                'nothing deployed'
+                t('deployments.nothingDeployed')
               ) : (
                 <Link to={`/deployments/${env.current.deploymentId}`}>
                   {env.current.identifier}
@@ -258,69 +262,71 @@ export function DeploymentsPage(): React.JSX.Element {
           ))}
         </ul>
         <p>
-          <Link to="/environments">Manage environments</Link>
+          <Link to="/environments">{t('deployments.manageEnvironments')}</Link>
         </p>
       </section>
       {metrics.data !== undefined && (
         <section className="card" aria-labelledby="deployment-metrics">
-          <h2 id="deployment-metrics">Last {metrics.data.windowDays} days</h2>
+          <h2 id="deployment-metrics">
+            {t('deployments.last')} {metrics.data.windowDays} {t('deployments.days')}
+          </h2>
           <dl className="kpis">
             <div>
-              <dt>Deployments</dt>
+              <dt>{t('deployments.deployments')}</dt>
               <dd data-testid="deployment-metric-total">{metrics.data.total}</dd>
             </div>
             <div>
-              <dt>Success rate</dt>
+              <dt>{t('deployments.successRate')}</dt>
               <dd data-testid="deployment-metric-success">{percent(metrics.data.successRate)}</dd>
             </div>
             <div>
-              <dt>Failure rate</dt>
+              <dt>{t('deployments.failureRate')}</dt>
               <dd>{percent(metrics.data.failureRate)}</dd>
             </div>
             <div>
-              <dt>Rollbacks</dt>
+              <dt>{t('deployments.rollbacks')}</dt>
               <dd data-testid="deployment-metric-rollbacks">{metrics.data.rollbacks}</dd>
             </div>
             <div>
-              <dt>Median duration</dt>
+              <dt>{t('deployments.medianDuration')}</dt>
               <dd>{formatDuration(metrics.data.durationMs.median)}</dd>
             </div>
           </dl>
         </section>
       )}
-      <section className="card filters" aria-label="Deployment filters">
+      <section className="card filters" aria-label={t('deployments.deploymentFilters')}>
         <SelectField
-          label="Status filter"
+          label={t('deployments.statusFilter')}
           value={filters.status}
           options={[
-            { value: '', label: 'Any status' },
+            { value: '', label: t('deployments.anyStatus') },
             ...DEPLOYMENT_STATUSES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={setFilter('status')}
         />
         <SelectField
-          label="Environment filter"
+          label={t('deployments.environmentFilter')}
           value={filters.environmentId}
-          options={[{ value: '', label: 'Any environment' }, ...envOptions]}
+          options={[{ value: '', label: t('deployments.anyEnvironment') }, ...envOptions]}
           onChange={setFilter('environmentId')}
         />
         <SelectField
-          label="Release filter"
+          label={t('deployments.releaseFilter')}
           value={filters.releaseId}
-          options={[{ value: '', label: 'Any release' }, ...releaseOptions]}
+          options={[{ value: '', label: t('deployments.anyRelease') }, ...releaseOptions]}
           onChange={setFilter('releaseId')}
         />
         <SelectField
-          label="Build filter"
+          label={t('deployments.buildFilter')}
           value={filters.buildId}
-          options={[{ value: '', label: 'Any build' }, ...buildOptions]}
+          options={[{ value: '', label: t('deployments.anyBuild') }, ...buildOptions]}
           onChange={setFilter('buildId')}
         />
         <SelectField
-          label="Provider filter"
+          label={t('deployments.providerFilter')}
           value={filters.provider}
           options={[
-            { value: '', label: 'Any provider' },
+            { value: '', label: t('deployments.anyProvider') },
             ...DEVELOPMENT_PROVIDERS.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={setFilter('provider')}
@@ -329,16 +335,16 @@ export function DeploymentsPage(): React.JSX.Element {
       {writable && envOptions.length > 0 && (
         <form
           className="card"
-          aria-label="Report a deployment"
+          aria-label={t('deployments.reportADeployment')}
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
             create.mutate();
           }}
         >
-          <h2>Report a deployment</h2>
+          <h2>{t('deployments.reportADeployment')}</h2>
           <TextField
-            label="Deployment identifier"
+            label={t('deployments.deploymentIdentifier')}
             value={identifier}
             required
             onChange={(event) => {
@@ -346,34 +352,34 @@ export function DeploymentsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Target environment"
+            label={t('deployments.targetEnvironment')}
             value={environmentId}
-            options={[{ value: '', label: 'Choose an environment' }, ...envOptions]}
+            options={[{ value: '', label: t('deployments.chooseAnEnvironment') }, ...envOptions]}
             onChange={(event) => {
               setEnvironmentId(event.target.value);
             }}
           />
           <SelectField
-            label="Deployed build"
+            label={t('deployments.deployedBuild')}
             value={buildId}
-            options={[{ value: '', label: 'No build' }, ...buildOptions]}
+            options={[{ value: '', label: t('deployments.noBuild') }, ...buildOptions]}
             onChange={(event) => {
               setBuildId(event.target.value);
             }}
           />
           <SelectField
-            label="Deployment release"
+            label={t('deployments.deploymentRelease')}
             value={releaseId}
-            options={[{ value: '', label: 'No release' }, ...releaseOptions]}
+            options={[{ value: '', label: t('deployments.noRelease') }, ...releaseOptions]}
             onChange={(event) => {
               setReleaseId(event.target.value);
             }}
           />
           <SelectField
-            label="Deployed work item"
+            label={t('deployments.deployedWorkItem')}
             value={workItemId}
             options={[
-              { value: '', label: 'No work item' },
+              { value: '', label: t('deployments.noWorkItem') },
               ...(workItems.data?.data ?? []).map((item) => ({
                 value: item.id,
                 label: `${item.key} · ${item.title}`,
@@ -384,7 +390,7 @@ export function DeploymentsPage(): React.JSX.Element {
             }}
           />
           <Button type="submit" disabled={create.isPending || environmentId === ''}>
-            Report deployment
+            {t('deployments.reportDeployment')}
           </Button>
         </form>
       )}
@@ -392,10 +398,13 @@ export function DeploymentsPage(): React.JSX.Element {
         isPending={deployments.isPending}
         error={deployments.error}
         isEmpty={(deployments.data?.data.length ?? 0) === 0}
-        emptyMessage="No deployments match."
+        emptyMessage={t('deployments.noDeploymentsMatch')}
       >
         <section className="card">
-          <DeploymentList deployments={deployments.data?.data ?? []} label="Deployments" />
+          <DeploymentList
+            deployments={deployments.data?.data ?? []}
+            label={t('deployments.deployments')}
+          />
         </section>
       </DataState>
     </>

@@ -11,6 +11,8 @@ import { useEffect, useState } from 'react';
 import { testDesignApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { ExportButton } from '../components/ExportButton';
+import { t } from '../i18n/i18n';
+import { validationMessage } from '../i18n/validation';
 
 interface DraftParameter {
   name: string;
@@ -53,7 +55,10 @@ function toInput(
   for (const parameter of parameters) {
     const parsed = parseParameterCell(parameter.type, parameter.defaultText);
     if ('error' in parsed) {
-      return `The default of ${parameter.name || 'a parameter'} ${parsed.error}`;
+      return t('testCaseParameters.theDefaultOf', {
+        value: parameter.name || t('validation.aParameter'),
+        error: validationMessage(parsed.error),
+      });
     }
     typed.push({
       name: parameter.name.trim(),
@@ -68,7 +73,11 @@ function toInput(
     for (const parameter of parameters) {
       const parsed = parseParameterCell(parameter.type, row.cells[parameter.name] ?? '');
       if ('error' in parsed) {
-        return `Row ${index + 1}: ${parameter.name} ${parsed.error}`;
+        return t('testCaseParameters.row', {
+          value: index + 1,
+          name: parameter.name,
+          error: validationMessage(parsed.error),
+        });
       }
       values[parameter.name.trim()] = parsed.value;
     }
@@ -108,25 +117,27 @@ export function TestCaseParameters({
 
   const onSaved = async (updated: TestCaseDetailView, what: string) => {
     setError(null);
-    setSaved(`${what} as version ${updated.version}.`);
+    setSaved(t('testCaseParameters.savedAsVersion', { what, version: updated.version }));
     queryClient.setQueryData(['case', detail.id], updated);
     await queryClient.invalidateQueries({ queryKey: ['cases'] });
   };
   const onError = (cause: unknown) => {
     setSaved(null);
-    setError(cause instanceof ApiError ? describe(cause) : 'Could not save the dataset.');
+    setError(
+      cause instanceof ApiError ? describe(cause) : t('testCaseParameters.couldNotSaveTheDataset'),
+    );
   };
 
   const save = useMutation({
     mutationFn: (input: ReplaceParametersInput) =>
       testDesignApi.replaceParameters(detail.id, input),
-    onSuccess: (updated) => onSaved(updated, 'Parameters saved'),
+    onSuccess: (updated) => onSaved(updated, t('testCaseParameters.parametersSaved')),
     onError,
   });
   const importCsv = useMutation({
     mutationFn: (csv: string) =>
       testDesignApi.importDataset(detail.id, { csv, version: detail.version }),
-    onSuccess: (updated) => onSaved(updated, 'Dataset imported'),
+    onSuccess: (updated) => onSaved(updated, t('testCaseParameters.datasetImported')),
     onError,
   });
 
@@ -151,11 +162,9 @@ export function TestCaseParameters({
   };
 
   return (
-    <section className="card" aria-label="Parameters and dataset">
-      <h2>Parameters and dataset</h2>
-      <p className="muted">
-        A run executes this case once per dataset row and keeps the values it used.
-      </p>
+    <section className="card" aria-label={t('testCaseParameters.parametersAndDataset')}>
+      <h2>{t('testCaseParameters.parametersAndDataset')}</h2>
+      <p className="muted">{t('testCaseParameters.aRunExecutesThisCase')}</p>
       {error !== null && (
         <p className="ui-field__error" role="alert">
           {error}
@@ -167,12 +176,14 @@ export function TestCaseParameters({
         </p>
       )}
 
-      {parameters.length === 0 && <p className="muted">No parameters: the case runs once.</p>}
+      {parameters.length === 0 && (
+        <p className="muted">{t('testCaseParameters.noParametersTheCaseRuns')}</p>
+      )}
       <ul className="plain-list">
         {parameters.map((parameter, index) => (
           <li key={index} className="row-actions">
             <TextField
-              label={`Parameter ${index + 1} name`}
+              label={t('testCaseParameters.parameterName', { value: index + 1 })}
               value={parameter.name}
               onChange={(event) => {
                 const previous = parameter.name;
@@ -187,7 +198,9 @@ export function TestCaseParameters({
               }}
             />
             <label className="ui-field">
-              <span className="ui-field__label">{`Parameter ${index + 1} type`}</span>
+              <span className="ui-field__label">
+                {t('testCaseParameters.parameterType', { value: index + 1 })}
+              </span>
               <select
                 value={parameter.type}
                 onChange={(event) => {
@@ -209,10 +222,10 @@ export function TestCaseParameters({
                   updateParameter(index, { required: event.target.checked });
                 }}
               />{' '}
-              {`Parameter ${index + 1} required`}
+              {t('testCaseParameters.parameterRequired', { value: index + 1 })}
             </label>
             <TextField
-              label={`Parameter ${index + 1} default`}
+              label={t('testCaseParameters.parameterDefault', { value: index + 1 })}
               value={parameter.defaultText}
               onChange={(event) => {
                 updateParameter(index, { defaultText: event.target.value });
@@ -226,17 +239,17 @@ export function TestCaseParameters({
                 setParameters((current) => current.filter((_, position) => position !== index));
               }}
             >
-              Remove parameter {index + 1}
+              {t('testCaseParameters.removeParameter')} {index + 1}
             </Button>
           </li>
         ))}
       </ul>
 
       {parameters.length > 0 && (
-        <table aria-label="Dataset">
+        <table aria-label={t('testCaseParameters.dataset')}>
           <thead>
             <tr>
-              <th>Row</th>
+              <th>{t('testCaseParameters.row2')}</th>
               {parameters.map((parameter, index) => (
                 <th key={index}>
                   {parameter.name} <span className="muted">({parameter.type})</span>
@@ -250,7 +263,7 @@ export function TestCaseParameters({
               <tr key={row.id ?? `new-${index}`}>
                 <td>
                   <input
-                    aria-label={`Row ${index + 1} label`}
+                    aria-label={t('testCaseParameters.rowLabel', { value: index + 1 })}
                     value={row.label}
                     onChange={(event) => {
                       touch();
@@ -265,7 +278,10 @@ export function TestCaseParameters({
                 {parameters.map((parameter, column) => (
                   <td key={column}>
                     <input
-                      aria-label={`Row ${index + 1} ${parameter.name}`}
+                      aria-label={t('testCaseParameters.row3', {
+                        value: index + 1,
+                        name: parameter.name,
+                      })}
                       value={row.cells[parameter.name] ?? ''}
                       onChange={(event) => {
                         updateCell(index, parameter.name, event.target.value);
@@ -282,7 +298,7 @@ export function TestCaseParameters({
                       setRows((current) => current.filter((_, position) => position !== index));
                     }}
                   >
-                    Remove row {index + 1}
+                    {t('testCaseParameters.removeRow')} {index + 1}
                   </Button>
                 </td>
               </tr>
@@ -302,7 +318,7 @@ export function TestCaseParameters({
             ]);
           }}
         >
-          Add parameter
+          {t('testCaseParameters.addParameter')}
         </Button>
         <Button
           variant="secondary"
@@ -312,7 +328,7 @@ export function TestCaseParameters({
             setRows((current) => [...current, { label: '', cells: {} }]);
           }}
         >
-          Add row
+          {t('testCaseParameters.addRow')}
         </Button>
         <Button
           loading={save.isPending}
@@ -326,22 +342,22 @@ export function TestCaseParameters({
             }
           }}
         >
-          Save parameters
+          {t('testCaseParameters.saveParameters')}
         </Button>
         {canExport && detail.parameters.length > 0 && (
           <ExportButton
-            label="Export dataset CSV"
+            label={t('testCaseParameters.exportDatasetCsv')}
             fallbackName={`${detail.key}-dataset.csv`}
             download={() => testDesignApi.exportDataset(detail.id)}
           />
         )}
         {canImport && detail.parameters.length > 0 && (
           <label>
-            Import dataset CSV{' '}
+            {t('testCaseParameters.importDatasetCsv')}{' '}
             <input
               type="file"
               accept=".csv,text/csv"
-              aria-label="Import dataset CSV"
+              aria-label={t('testCaseParameters.importDatasetCsv')}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = '';

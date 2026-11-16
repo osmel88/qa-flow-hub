@@ -3,7 +3,9 @@
  * catalog lacks is rendered in English. `{name}` placeholders are filled by
  * `t(key, { name })`.
  */
-export const en = {
+import { screens } from './en/index';
+
+export const core = {
   'common.language': 'Language',
   'common.signOut': 'Sign out',
   'common.organization': 'Organization',
@@ -17,6 +19,8 @@ export const en = {
   'common.password': 'Password',
   'common.backToSignIn': 'Back to sign in',
   'common.genericError': 'Something went wrong. Try again.',
+  'common.loading': 'Loading…',
+  'common.nothingHereYet': 'Nothing here yet',
 
   'nav.dashboard': 'Dashboard',
   'nav.projects': 'Projects',
@@ -103,6 +107,22 @@ export const en = {
   'reset.invalid': 'This reset link is invalid or has expired.',
   'reset.missingToken': 'This link has no reset token.',
   'reset.requestNew': 'Ask for a new link',
+  'validation.passwordMin': 'Password must be at least {min} characters',
+  'validation.passwordMax': 'Password must be at most {max} characters',
+  'validation.passwordLowercase': 'Password must contain a lowercase letter',
+  'validation.passwordUppercase': 'Password must contain an uppercase letter',
+  'validation.passwordDigit': 'Password must contain a digit',
+  'validation.expectsNumber': 'expects a number',
+  'validation.expectsBoolean': 'expects true or false',
+  'validation.expectsDate': 'expects a YYYY-MM-DD date',
+  'validation.required': 'Required',
+  'validation.invalidEmail': 'Invalid email',
+  'validation.tooShort': 'Must contain at least {min} character(s)',
+  'validation.tooLong': 'Must contain at most {max} character(s)',
+  'validation.projectName': 'Use 2 to 120 characters.',
+  'validation.aParameter': 'a parameter',
 } as const;
+
+export const en = { ...core, ...screens } as const;
 
 export type MessageKey = keyof typeof en;

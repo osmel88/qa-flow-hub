@@ -1,4 +1,5 @@
 import type { LimitedResource } from '@qa-flow-hub/shared';
+import { intlLocale, t } from '../i18n/i18n';
 
 export function formatMoney(cents: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {
@@ -20,13 +21,21 @@ export function formatUsage(resource: LimitedResource, value: number): string {
 }
 
 export function formatDate(iso: string | null): string {
-  return iso === null ? '—' : new Date(iso).toLocaleDateString('en-US', { dateStyle: 'medium' });
+  return iso === null
+    ? '—'
+    : new Date(iso).toLocaleDateString(intlLocale(), { dateStyle: 'medium' });
 }
 
 export const RESOURCE_LABELS: Record<LimitedResource, string> = {
-  projects: 'Projects',
-  members: 'Members and pending invitations',
-  storage: 'Evidence storage',
+  get projects() {
+    return t('c_billingFormat.projects');
+  },
+  get members() {
+    return t('c_billingFormat.members');
+  },
+  get storage() {
+    return t('c_billingFormat.storage');
+  },
 };
 
 /** A meter turns into a warning at 80% of the limit. */

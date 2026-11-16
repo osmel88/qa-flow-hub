@@ -1,0 +1,17 @@
+export const projects = {
+  'projects.couldNotCreateTheProject': 'Could not create the project.',
+  'projects.projects': 'Projects',
+  'projects.aProjectOwnsItsOwn': 'A project owns its own key sequence: WEB-R-1, WEB-C-1, WEB-D-1.',
+  'projects.newProject': 'New project',
+  'projects.name': 'Name',
+  'projects.key': 'Key',
+  'projects.itPrefixesEveryReadableId': '{rule} It prefixes every readable id and cannot change.',
+  'projects.createProject': 'Create project',
+  'projects.noProjectsYetCreateThe': 'No projects yet. Create the first one above.',
+  'projects.projectsInThisOrganization': 'Projects in this organization',
+  'projects.status': 'Status',
+  'projects.actions': 'Actions',
+  'projects.restore': 'Restore',
+  'projects.archive': 'Archive',
+  'projects.keyRule': '2 to 8 uppercase letters or digits, starting with a letter.',
+} as const;

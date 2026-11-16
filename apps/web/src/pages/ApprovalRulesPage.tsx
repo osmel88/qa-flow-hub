@@ -9,6 +9,7 @@ import { PageHeader } from '../components/PageHeader';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 /** Which approvals a release needs, project-wide or per environment (S6-F4). */
 export function ApprovalRulesPage(): React.JSX.Element {
@@ -39,7 +40,9 @@ export function ApprovalRulesPage(): React.JSX.Element {
     await queryClient.invalidateQueries({ queryKey: ['approval-rules'] });
   };
   const onError = (cause: unknown) => {
-    setError(cause instanceof ApiError ? cause.message : 'Could not save the approval rule.');
+    setError(
+      cause instanceof ApiError ? cause.message : t('approvalRules.couldNotSaveTheApproval'),
+    );
   };
   const create = useMutation({
     mutationFn: () =>
@@ -65,8 +68,8 @@ export function ApprovalRulesPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Approval rules"
-        description="Approvals a release needs; protected environments refuse deployments until they are complete."
+        title={t('approvalRules.approvalRules')}
+        description={t('approvalRules.approvalsAReleaseNeedsProtected')}
       />
       {error !== null && (
         <p role="alert" className="error">
@@ -76,14 +79,14 @@ export function ApprovalRulesPage(): React.JSX.Element {
       {manage && (
         <form
           className="card"
-          aria-label="Add an approval rule"
+          aria-label={t('approvalRules.addAnApprovalRule')}
           onSubmit={(event) => {
             event.preventDefault();
             create.mutate();
           }}
         >
           <SelectField
-            label="Approval type"
+            label={t('approvalRules.approvalType')}
             value={type}
             options={APPROVAL_TYPES.map((value) => ({
               value,
@@ -94,10 +97,10 @@ export function ApprovalRulesPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Approval environment"
+            label={t('approvalRules.approvalEnvironment')}
             value={environmentId}
             options={[
-              { value: '', label: 'Every environment' },
+              { value: '', label: t('approvalRules.everyEnvironment') },
               ...(environments.data ?? []).map((env) => ({ value: env.id, label: env.name })),
             ]}
             onChange={(event) => {
@@ -105,7 +108,7 @@ export function ApprovalRulesPage(): React.JSX.Element {
             }}
           />
           <label>
-            Approvals needed{' '}
+            {t('approvalRules.approvalsNeeded')}{' '}
             <input
               type="number"
               min={1}
@@ -124,10 +127,10 @@ export function ApprovalRulesPage(): React.JSX.Element {
                 setAllowSelf(event.target.checked);
               }}
             />{' '}
-            The release creator may approve
+            {t('approvalRules.theReleaseCreatorMayApprove')}
           </label>
           <Button type="submit" disabled={create.isPending}>
-            Add approval rule
+            {t('approvalRules.addApprovalRule')}
           </Button>
         </form>
       )}
@@ -135,15 +138,19 @@ export function ApprovalRulesPage(): React.JSX.Element {
         isPending={rules.isPending}
         error={rules.error}
         isEmpty={(rules.data?.length ?? 0) === 0}
-        emptyMessage="No approval rule yet."
+        emptyMessage={t('approvalRules.noApprovalRuleYet')}
       >
         <section className="card">
-          <ul aria-label="Approval rules">
+          <ul aria-label={t('approvalRules.approvalRules')}>
             {(rules.data ?? []).map((rule) => (
               <li key={rule.id} data-testid={`approval-rule-${rule.type}`}>
                 <strong>{APPROVAL_TYPE_LABELS[rule.type]}</strong> × {rule.requiredApprovals}{' '}
-                <span className="muted">{rule.environment?.name ?? 'every environment'}</span>{' '}
-                {rule.allowSelfApproval && <Badge tone="neutral">self-approval allowed</Badge>}
+                <span className="muted">
+                  {rule.environment?.name ?? t('approvalRules.everyEnvironment2')}
+                </span>{' '}
+                {rule.allowSelfApproval && (
+                  <Badge tone="neutral">{t('approvalRules.selfApprovalAllowed')}</Badge>
+                )}
                 {manage && (
                   <>
                     {' '}
@@ -154,7 +161,8 @@ export function ApprovalRulesPage(): React.JSX.Element {
                         remove.mutate(rule.id);
                       }}
                     >
-                      Delete {APPROVAL_TYPE_LABELS[rule.type]} rule
+                      {t('approvalRules.delete')} {APPROVAL_TYPE_LABELS[rule.type]}{' '}
+                      {t('approvalRules.rule')}
                     </Button>
                   </>
                 )}

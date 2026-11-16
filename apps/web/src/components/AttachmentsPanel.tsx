@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { attachmentsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { t } from '../i18n/i18n';
 
 interface AttachmentsPanelProps {
   entityType: AttachableEntity;
@@ -28,7 +29,7 @@ export function AttachmentsPanel({
   entityType,
   entityId,
   readOnly = false,
-  title = 'Evidence',
+  title = t('c_attachmentsPanel.evidence'),
 }: AttachmentsPanelProps): React.JSX.Element {
   const queryClient = useQueryClient();
   const queryKey = ['attachments', entityType, entityId];
@@ -68,7 +69,9 @@ export function AttachmentsPanel({
       await queryClient.invalidateQueries({ queryKey: ['billing'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not delete the file.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('c_attachmentsPanel.couldNotDeleteTheFile'),
+      );
     },
   });
 
@@ -78,7 +81,9 @@ export function AttachmentsPanel({
       saveBlob(blob, fileName ?? attachment.fileName);
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not download the file.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('c_attachmentsPanel.couldNotDownloadTheFile'),
+      );
     },
   });
 
@@ -96,7 +101,9 @@ export function AttachmentsPanel({
       });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not open the file.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('c_attachmentsPanel.couldNotOpenTheFile'),
+      );
     },
   });
 
@@ -117,13 +124,18 @@ export function AttachmentsPanel({
     }
     if (!isAllowedName(file.name)) {
       setError(
-        `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.map((e) => `.${e}`).join(', ')}.`,
+        t('c_attachmentsPanel.unsupportedFileTypeAllowed', {
+          value: ALLOWED_EXTENSIONS.map((e) => `.${e}`).join(', '),
+        }),
       );
       return;
     }
     if (maxSizeBytes !== undefined && file.size > maxSizeBytes) {
       setError(
-        `File too large: ${formatBytes(file.size)} exceeds the ${formatBytes(maxSizeBytes)} limit.`,
+        t('c_attachmentsPanel.fileTooLargeExceedsThe', {
+          value: formatBytes(file.size),
+          value2: formatBytes(maxSizeBytes),
+        }),
       );
       return;
     }
@@ -141,7 +153,7 @@ export function AttachmentsPanel({
             ref={fileInput}
             type="file"
             accept={ACCEPT}
-            aria-label={`Choose a file for ${title.toLowerCase()}`}
+            aria-label={t('c_attachmentsPanel.chooseAFileFor', { value: title.toLowerCase() })}
             disabled={upload.isPending}
             onChange={(event) => {
               onFileChosen(event.target.files?.[0]);
@@ -149,12 +161,12 @@ export function AttachmentsPanel({
           />
           {upload.isPending && (
             <span className="muted" role="status">
-              Uploading…
+              {t('c_attachmentsPanel.uploading')}
             </span>
           )}
           {maxSizeBytes !== undefined && (
             <span className="muted">
-              Images, .txt/.log, .json or .pdf up to {formatBytes(maxSizeBytes)}.
+              {t('c_attachmentsPanel.imagesTxtLogJsonOr')} {formatBytes(maxSizeBytes)}.
             </span>
           )}
         </div>
@@ -170,7 +182,7 @@ export function AttachmentsPanel({
         isPending={list.isPending}
         error={list.error}
         isEmpty={(list.data?.data.length ?? 0) === 0}
-        emptyMessage="No evidence attached yet."
+        emptyMessage={t('c_attachmentsPanel.noEvidenceAttachedYet')}
       >
         <ul className="plain-list attachments__list">
           {list.data?.data.map((attachment) => {
@@ -196,7 +208,9 @@ export function AttachmentsPanel({
                         open.mutate(attachment);
                       }}
                     >
-                      {kind === 'image' ? 'Preview' : 'Open'}
+                      {kind === 'image'
+                        ? t('c_attachmentsPanel.preview')
+                        : t('c_attachmentsPanel.open')}
                     </Button>
                   )}
                   <Button
@@ -207,7 +221,7 @@ export function AttachmentsPanel({
                       download.mutate(attachment);
                     }}
                   >
-                    Download
+                    {t('c_attachmentsPanel.download')}
                   </Button>
                   {!readOnly && (
                     <Button
@@ -218,7 +232,7 @@ export function AttachmentsPanel({
                         remove.mutate(attachment.id);
                       }}
                     >
-                      Delete
+                      {t('c_attachmentsPanel.delete')}
                     </Button>
                   )}
                 </div>
@@ -249,7 +263,7 @@ export function AttachmentsPanel({
                 setPreview(null);
               }}
             >
-              Close preview
+              {t('c_attachmentsPanel.closePreview')}
             </Button>
           </figcaption>
         </figure>
@@ -269,17 +283,17 @@ function isAllowedName(fileName: string): boolean {
 
 function describeUploadError(cause: unknown): string {
   if (!(cause instanceof ApiError)) {
-    return 'Could not upload the file.';
+    return t('c_attachmentsPanel.couldNotUploadTheFile');
   }
   switch (cause.code) {
     case 'UNSUPPORTED_FILE_TYPE':
-      return `Unsupported file type: ${cause.message}`;
+      return t('c_attachmentsPanel.unsupportedFileType', { message: cause.message });
     case 'FILE_TOO_LARGE':
-      return `File too large: ${cause.message}`;
+      return t('c_attachmentsPanel.fileTooLarge', { message: cause.message });
     case 'PLAN_LIMIT_REACHED':
-      return `${cause.message}. Nothing existing was removed; see Billing to upgrade.`;
+      return t('c_attachmentsPanel.nothingExistingWasRemovedSee', { message: cause.message });
     case 'STORAGE_ERROR':
-      return 'Storage is unavailable right now. Try again in a moment.';
+      return t('c_attachmentsPanel.storageIsUnavailableRightNow');
     default:
       return cause.message;
   }
@@ -290,9 +304,11 @@ export function formatBytes(bytes: number): string {
     return `${bytes} B`;
   }
   if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KiB`;
+    return t('c_attachmentsPanel.kib', {
+      value: (bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0),
+    });
   }
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+  return t('c_attachmentsPanel.mib', { value: (bytes / (1024 * 1024)).toFixed(1) });
 }
 
 function saveBlob(blob: Blob, fileName: string): void {

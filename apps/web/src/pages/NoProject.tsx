@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { t } from '../i18n/i18n';
 
 /**
  * Shown instead of an empty table when no project is selected. A screen that
@@ -7,9 +8,9 @@ import { Link } from 'react-router-dom';
 export function NoProject(): React.JSX.Element {
   return (
     <div className="ui-state ui-state--empty">
-      <p>This screen works inside a project, and there is none selected yet.</p>
+      <p>{t('noProject.thisScreenWorksInsideA')}</p>
       <Link className="ui-button ui-button--primary ui-button--sm" to="/projects">
-        Create a project
+        {t('noProject.createAProject')}
       </Link>
     </div>
   );

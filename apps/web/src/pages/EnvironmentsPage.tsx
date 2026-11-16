@@ -17,6 +17,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export const HEALTH_TONE: Record<EnvironmentHealth, BadgeTone> = {
   healthy: 'success',
@@ -34,7 +35,7 @@ export function EnvironmentBadges({ env }: { env: EnvironmentView }): React.JSX.
       {env.protected && (
         <>
           {' '}
-          <Badge tone="warning">protected</Badge>
+          <Badge tone="warning">{t('environments.protected')}</Badge>
         </>
       )}
     </span>
@@ -84,7 +85,9 @@ export function EnvironmentsPage(): React.JSX.Element {
       void navigate(`/environments/${created.id}`);
     },
     onError: (cause: unknown) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the environment.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('environments.couldNotCreateTheEnvironment'),
+      );
     },
   });
 
@@ -98,43 +101,43 @@ export function EnvironmentsPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Environments"
-        description="Where the project is deployed, what runs there and how it is doing."
+        title={t('environments.environments')}
+        description={t('environments.whereTheProjectIsDeployed')}
       />
       {error !== null && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      <section className="card filters" aria-label="Environment filters">
+      <section className="card filters" aria-label={t('environments.environmentFilters')}>
         <TextField
-          label="Search environments"
+          label={t('environments.searchEnvironments')}
           value={filters.search}
           onChange={setFilter('search')}
         />
         <SelectField
-          label="Environment status"
+          label={t('environments.environmentStatus')}
           value={filters.status}
           options={[
-            { value: '', label: 'Active and inactive' },
+            { value: '', label: t('environments.activeAndInactive') },
             ...ENVIRONMENT_STATUSES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={setFilter('status')}
         />
         <SelectField
-          label="Environment type"
+          label={t('environments.environmentType')}
           value={filters.kind}
           options={[
-            { value: '', label: 'Any type' },
+            { value: '', label: t('environments.anyType') },
             ...ENVIRONMENT_KINDS.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={setFilter('kind')}
         />
         <SelectField
-          label="Environment health"
+          label={t('environments.environmentHealth')}
           value={filters.health}
           options={[
-            { value: '', label: 'Any health' },
+            { value: '', label: t('environments.anyHealth') },
             ...ENVIRONMENT_HEALTHS.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={setFilter('health')}
@@ -143,16 +146,16 @@ export function EnvironmentsPage(): React.JSX.Element {
       {manage && (
         <form
           className="card"
-          aria-label="Add an environment"
+          aria-label={t('environments.addAnEnvironment')}
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
             create.mutate();
           }}
         >
-          <h2>Add an environment</h2>
+          <h2>{t('environments.addAnEnvironment')}</h2>
           <TextField
-            label="Environment name"
+            label={t('environments.environmentName')}
             value={name}
             required
             onChange={(event) => {
@@ -160,7 +163,7 @@ export function EnvironmentsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Environment kind"
+            label={t('environments.environmentKind')}
             value={kind}
             options={ENVIRONMENT_KINDS.map((value) => ({ value, label: humanize(value) }))}
             onChange={(event) => {
@@ -168,22 +171,22 @@ export function EnvironmentsPage(): React.JSX.Element {
             }}
           />
           <TextField
-            label="Environment description"
+            label={t('environments.environmentDescription')}
             value={description}
             onChange={(event) => {
               setDescription(event.target.value);
             }}
           />
           <TextField
-            label="Environment URL"
+            label={t('environments.environmentUrl')}
             value={url}
             onChange={(event) => {
               setUrl(event.target.value);
             }}
           />
-          <p className="muted">Production environments start protected.</p>
+          <p className="muted">{t('environments.productionEnvironmentsStartProtected')}</p>
           <Button type="submit" disabled={create.isPending}>
-            Add environment
+            {t('environments.addEnvironment')}
           </Button>
         </form>
       )}
@@ -191,17 +194,17 @@ export function EnvironmentsPage(): React.JSX.Element {
         isPending={environments.isPending}
         error={environments.error}
         isEmpty={(environments.data?.length ?? 0) === 0}
-        emptyMessage="No environments match."
+        emptyMessage={t('environments.noEnvironmentsMatch')}
       >
         <section className="card">
-          <table className="table" aria-label="Environments">
+          <table className="table" aria-label={t('environments.environments')}>
             <thead>
               <tr>
-                <th>Environment</th>
-                <th>Health</th>
-                <th>Running</th>
-                <th>Release</th>
-                <th>Deployments</th>
+                <th>{t('environments.environment')}</th>
+                <th>{t('environments.health')}</th>
+                <th>{t('environments.running')}</th>
+                <th>{t('environments.release')}</th>
+                <th>{t('environments.deployments')}</th>
               </tr>
             </thead>
             <tbody>
@@ -219,14 +222,18 @@ export function EnvironmentsPage(): React.JSX.Element {
                   </td>
                   <td>
                     {env.current === null ? (
-                      <span className="muted">nothing deployed</span>
+                      <span className="muted">{t('environments.nothingDeployed')}</span>
                     ) : (
                       <Link to={`/deployments/${env.current.deploymentId}`}>
                         {env.current.identifier}
                       </Link>
                     )}
                   </td>
-                  <td>{env.current?.release?.version ?? <span className="muted">none</span>}</td>
+                  <td>
+                    {env.current?.release?.version ?? (
+                      <span className="muted">{t('environments.none')}</span>
+                    )}
+                  </td>
                   <td>{env.deploymentCount}</td>
                 </tr>
               ))}

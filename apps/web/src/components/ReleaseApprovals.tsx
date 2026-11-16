@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { releaseApprovalsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { humanize } from './status';
+import { t } from '../i18n/i18n';
 
 export const APPROVAL_TONE: Record<ApprovalState, BadgeTone> = {
   approved: 'success',
@@ -43,7 +44,9 @@ export function ReleaseApprovals({
     await queryClient.invalidateQueries({ queryKey: ['release-pipeline'] });
   };
   const onError = async (cause: unknown) => {
-    setError(cause instanceof ApiError ? cause.message : 'Could not record the decision.');
+    setError(
+      cause instanceof ApiError ? cause.message : t('c_releaseApprovals.couldNotRecordTheDecision'),
+    );
     await queryClient.invalidateQueries({ queryKey: ['release-approvals'] });
   };
   const decide = useMutation({
@@ -65,12 +68,12 @@ export function ReleaseApprovals({
   const view = approvals.data;
   return (
     <section className="card" aria-labelledby="release-approvals">
-      <h2 id="release-approvals">Approvals</h2>
+      <h2 id="release-approvals">{t('c_releaseApprovals.approvals')}</h2>
       <SelectField
-        label="Approvals for environment"
+        label={t('c_releaseApprovals.approvalsForEnvironment')}
         value={environmentId}
         options={[
-          { value: '', label: 'Release-wide' },
+          { value: '', label: t('c_releaseApprovals.releaseWide') },
           ...environments.map((env) => ({ value: env.id, label: env.name })),
         ]}
         onChange={(event) => {
@@ -85,15 +88,15 @@ export function ReleaseApprovals({
       {view !== undefined && (
         <>
           <p>
-            Approval state:{' '}
+            {t('c_releaseApprovals.approvalState')}{' '}
             <span data-testid="approvals-state">
               <Badge tone={APPROVAL_TONE[view.state]}>{humanize(view.state)}</Badge>
             </span>
           </p>
           {view.requirements.length === 0 ? (
-            <p className="muted">No approval is required here.</p>
+            <p className="muted">{t('c_releaseApprovals.noApprovalIsRequiredHere')}</p>
           ) : (
-            <ul aria-label="Approval requirements">
+            <ul aria-label={t('c_releaseApprovals.approvalRequirements')}>
               {view.requirements.map((requirement) => (
                 <li key={requirement.type} data-testid={`approval-${requirement.type}`}>
                   {APPROVAL_TYPE_LABELS[requirement.type]}: {requirement.approvals}/
@@ -107,14 +110,14 @@ export function ReleaseApprovals({
           )}
           {view.actions.decide && (
             <form
-              aria-label="Approval decision"
+              aria-label={t('c_releaseApprovals.approvalDecision')}
               onSubmit={(event) => {
                 event.preventDefault();
                 decide.mutate();
               }}
             >
               <SelectField
-                label="Approve as"
+                label={t('c_releaseApprovals.approveAs')}
                 value={type}
                 options={APPROVAL_TYPES.map((value) => ({
                   value,
@@ -125,7 +128,7 @@ export function ReleaseApprovals({
                 }}
               />
               <SelectField
-                label="Approval action"
+                label={t('c_releaseApprovals.approvalAction')}
                 value={action}
                 options={APPROVAL_ACTIONS.map((value) => ({ value, label: humanize(value) }))}
                 onChange={(event) => {
@@ -133,7 +136,7 @@ export function ReleaseApprovals({
                 }}
               />
               <TextField
-                label="Decision comment"
+                label={t('c_releaseApprovals.decisionComment')}
                 value={comment}
                 required={action !== 'approve'}
                 onChange={(event) => {
@@ -141,21 +144,22 @@ export function ReleaseApprovals({
                 }}
               />
               {view.actions.selfApprovalBlocked.includes(type) && action === 'approve' && (
-                <p className="muted">You created this release, so you cannot give this approval.</p>
+                <p className="muted">{t('c_releaseApprovals.youCreatedThisReleaseSo')}</p>
               )}
               <Button type="submit" disabled={decide.isPending}>
-                Record decision
+                {t('c_releaseApprovals.recordDecision')}
               </Button>
             </form>
           )}
-          <h3>History</h3>
+          <h3>{t('c_releaseApprovals.history')}</h3>
           {view.history.length === 0 ? (
-            <p className="muted">No decision yet.</p>
+            <p className="muted">{t('c_releaseApprovals.noDecisionYet')}</p>
           ) : (
-            <ul aria-label="Approval history">
+            <ul aria-label={t('c_releaseApprovals.approvalHistory')}>
               {view.history.map((entry) => (
                 <li key={entry.id} data-testid={`approval-entry-${entry.id}`}>
-                  {entry.approver?.fullName ?? 'Someone'} {humanize(entry.decision)} as{' '}
+                  {entry.approver?.fullName ?? t('c_releaseApprovals.someone')}{' '}
+                  {humanize(entry.decision)} {t('c_releaseApprovals.as')}{' '}
                   {APPROVAL_TYPE_LABELS[entry.type]}
                   {entry.environment !== null && ` for ${entry.environment.name}`}
                   {entry.comment !== null && `: ${entry.comment}`}{' '}
@@ -163,7 +167,8 @@ export function ReleaseApprovals({
                   {entry.revokedAt !== null ? (
                     <span className="muted">
                       {' '}
-                      · revoked by {entry.revokedBy?.fullName ?? 'someone'}
+                      {t('c_releaseApprovals.revokedBy')}{' '}
+                      {entry.revokedBy?.fullName ?? t('c_releaseApprovals.someone2')}
                     </span>
                   ) : (
                     view.actions.decide && (
@@ -176,7 +181,7 @@ export function ReleaseApprovals({
                             revoke.mutate(entry.id);
                           }}
                         >
-                          Revoke
+                          {t('c_releaseApprovals.revoke')}
                         </Button>
                       </>
                     )

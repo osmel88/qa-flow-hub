@@ -9,6 +9,7 @@ import { useAuth } from '../auth/auth-context';
 import { PageHeader } from '../components/PageHeader';
 import { PlanLimitAlert } from '../components/PlanLimitAlert';
 import { humanize, toneFor } from '../components/status';
+import { t } from '../i18n/i18n';
 
 /**
  * The rules the API enforces, mirrored here so the screen stops offering moves
@@ -25,10 +26,13 @@ function blockedReason(
   isSelf: boolean,
 ): string | null {
   if (isSelf) {
-    return 'You cannot change your own role; ask another owner or admin.';
+    return t('members.youCannotChangeYourOwn');
   }
   if (!outranksOrEquals(actor, member.role)) {
-    return `Your role (${humanize(actor)}) cannot change a member who is ${humanize(member.role)}.`;
+    return t('members.yourRoleCannotChangeA', {
+      value: humanize(actor),
+      value2: humanize(member.role),
+    });
   }
   return null;
 }
@@ -51,7 +55,7 @@ function RoleCell({
     <>
       <select
         className="ui-input"
-        aria-label={`Change role of ${member.email}`}
+        aria-label={t('members.changeRoleOf', { email: member.email })}
         value=""
         disabled={reason !== null}
         {...(reason === null ? {} : { 'aria-describedby': hintId })}
@@ -59,7 +63,7 @@ function RoleCell({
           onChange(event.target.value);
         }}
       >
-        <option value="">Choose…</option>
+        <option value="">{t('members.choose')}</option>
         {assignableRoles(actorRole)
           .filter((value) => value !== member.role)
           .map((value) => (
@@ -93,13 +97,13 @@ function MfaPolicy(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['members'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not change the policy.');
+      setError(cause instanceof ApiError ? cause.message : t('members.couldNotChangeThePolicy'));
     },
   });
 
   return (
     <section className="card" aria-labelledby="mfa-policy-heading">
-      <h2 id="mfa-policy-heading">Security</h2>
+      <h2 id="mfa-policy-heading">{t('members.security')}</h2>
       {error !== null && (
         <p className="ui-field__error" role="alert">
           {error}
@@ -112,12 +116,9 @@ function MfaPolicy(): React.JSX.Element {
           disabled={update.isPending}
           onChange={(event) => update.mutate(event.target.checked)}
         />
-        Require multi-factor authentication
+        {t('members.requireMultiFactorAuthentication')}
       </label>
-      <p className="muted">
-        Members whose session did not pass MFA lose access to this organization until they set it
-        up and sign in again. The column below shows who already has it.
-      </p>
+      <p className="muted">{t('members.membersWhoseSessionDidNot')}</p>
     </section>
   );
 }
@@ -161,7 +162,7 @@ export function MembersPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['billing'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not send the invitation.');
+      setError(cause instanceof ApiError ? cause.message : t('members.couldNotSendTheInvitation'));
     },
   });
 
@@ -173,7 +174,7 @@ export function MembersPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['members'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not change the role.');
+      setError(cause instanceof ApiError ? cause.message : t('members.couldNotChangeTheRole'));
     },
   });
 
@@ -188,8 +189,8 @@ export function MembersPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Members and roles"
-        description="Nobody can grant a role above their own, and the last owner cannot be demoted."
+        title={t('members.membersAndRoles')}
+        description={t('members.nobodyCanGrantARole')}
       />
 
       {error !== null && (
@@ -202,20 +203,20 @@ export function MembersPage(): React.JSX.Element {
 
       {canManage && (
         <section className="card" aria-labelledby="invite-heading">
-          <h2 id="invite-heading">Invite someone</h2>
+          <h2 id="invite-heading">{t('members.inviteSomeone')}</h2>
           <PlanLimitAlert error={invite.error} />
           <TextField
-            label="Email"
+            label={t('members.email')}
             type="email"
-            hint="The person does not need an account yet."
+            hint={t('members.thePersonDoesNotNeed')}
             value={email}
             onChange={(event) => {
               setEmail(event.target.value);
             }}
           />
           <SelectField
-            label="Role"
-            hint="You can only invite somebody at your own level or below."
+            label={t('members.role')}
+            hint={t('members.youCanOnlyInviteSomebody')}
             options={invitable.map((value) => ({ value, label: humanize(value) }))}
             value={role}
             onChange={(event) => {
@@ -229,15 +230,12 @@ export function MembersPage(): React.JSX.Element {
               invite.mutate();
             }}
           >
-            Send invitation
+            {t('members.sendInvitation')}
           </Button>
 
           {issuedToken !== null && (
             <div className="callout" role="status">
-              <p>
-                Copy this token and pass it to the invited person. It is shown once and cannot be
-                recovered.
-              </p>
+              <p>{t('members.copyThisTokenAndPass')}</p>
               <code className="token">{issuedToken}</code>
             </div>
           )}
@@ -250,14 +248,14 @@ export function MembersPage(): React.JSX.Element {
         isEmpty={(members.data?.data.length ?? 0) === 0}
       >
         <table className="table card">
-          <caption className="visually-hidden">Members of this organization</caption>
+          <caption className="visually-hidden">{t('members.membersOfThisOrganization')}</caption>
           <thead>
             <tr>
-              <th scope="col">Member</th>
-              <th scope="col">Role</th>
-              <th scope="col">Status</th>
-              <th scope="col">MFA</th>
-              {canManage && <th scope="col">Change role</th>}
+              <th scope="col">{t('members.member')}</th>
+              <th scope="col">{t('members.role')}</th>
+              <th scope="col">{t('members.status')}</th>
+              <th scope="col">{t('members.mfa')}</th>
+              {canManage && <th scope="col">{t('members.changeRole')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -271,7 +269,7 @@ export function MembersPage(): React.JSX.Element {
                 <td>
                   <Badge tone={toneFor(member.status)}>{humanize(member.status)}</Badge>
                 </td>
-                <td>{member.mfaEnabled ? 'Enabled' : 'Off'}</td>
+                <td>{member.mfaEnabled ? t('members.enabled') : t('members.off')}</td>
                 {canManage && actorRole !== null && (
                   <td>
                     <RoleCell
@@ -292,12 +290,12 @@ export function MembersPage(): React.JSX.Element {
 
       {canManage && (
         <section className="card" aria-labelledby="pending-heading">
-          <h2 id="pending-heading">Pending invitations</h2>
+          <h2 id="pending-heading">{t('members.pendingInvitations')}</h2>
           <DataState
             isPending={invitations.isPending}
             error={invitations.error}
             isEmpty={(invitations.data?.length ?? 0) === 0}
-            emptyMessage="No invitation is pending."
+            emptyMessage={t('members.noInvitationIsPending')}
           >
             <ul className="plain-list">
               {invitations.data?.map((invitation) => (
@@ -312,7 +310,7 @@ export function MembersPage(): React.JSX.Element {
                         revoke.mutate(invitation.id);
                       }}
                     >
-                      Revoke
+                      {t('members.revoke')}
                     </Button>
                   )}
                 </li>

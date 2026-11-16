@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { testRailApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { t } from '../i18n/i18n';
 
 /**
  * One query for the whole table, not one per row: the TestRail references of
@@ -51,7 +52,11 @@ export function TestRailSyncCell({
       await queryClient.invalidateQueries({ queryKey: ['testrail-references'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not sync with TestRail.');
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : t('c_testRailSyncCell.couldNotSyncWithTestrail'),
+      );
     },
   });
 
@@ -75,7 +80,9 @@ export function TestRailSyncCell({
           sync.mutate();
         }}
       >
-        {reference === undefined ? 'Sync to TestRail' : 'Re-sync'}
+        {reference === undefined
+          ? t('c_testRailSyncCell.syncToTestrail')
+          : t('c_testRailSyncCell.reSync')}
       </Button>
       {error !== null && (
         <p className="ui-field__error" role="alert">

@@ -11,6 +11,7 @@ import { TestRailSyncCell, useTestRailReferences } from '../components/TestRailS
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 /**
  * Suites, sections and cases share one screen because they are one mental
@@ -89,7 +90,7 @@ export function TestCasesPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['suites'] });
     },
     onError: (cause) => {
-      fail(cause, 'Could not create the suite.');
+      fail(cause, t('testCases.couldNotCreateTheSuite'));
     },
   });
 
@@ -107,7 +108,7 @@ export function TestCasesPage(): React.JSX.Element {
     onError: (cause) => {
       // Sections are capped at five levels: deeper trees are a filing system
       // nobody navigates, and the API says so rather than the client guessing.
-      fail(cause, 'Could not create the section.');
+      fail(cause, t('testCases.couldNotCreateTheSection'));
     },
   });
 
@@ -130,7 +131,7 @@ export function TestCasesPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['suites'] });
     },
     onError: (cause) => {
-      fail(cause, 'Could not create the test case.');
+      fail(cause, t('testCases.couldNotCreateTheTest'));
     },
   });
 
@@ -145,7 +146,7 @@ export function TestCasesPage(): React.JSX.Element {
     mutationFn: (id: string) => testDesignApi.archive(id),
     onSuccess: refreshAfterLifecycleChange,
     onError: (cause) => {
-      fail(cause, 'Could not archive the case.');
+      fail(cause, t('testCases.couldNotArchiveTheCase'));
     },
   });
 
@@ -153,7 +154,7 @@ export function TestCasesPage(): React.JSX.Element {
     mutationFn: (id: string) => testDesignApi.restore(id),
     onSuccess: refreshAfterLifecycleChange,
     onError: (cause) => {
-      fail(cause, 'Could not restore the case.');
+      fail(cause, t('testCases.couldNotRestoreTheCase'));
     },
   });
 
@@ -181,14 +182,14 @@ export function TestCasesPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Test cases"
-        description="Suites hold sections; sections hold cases."
+        title={t('testCases.testCases')}
+        description={t('testCases.suitesHoldSectionsSectionsHold')}
         actions={
           <>
-            {can('test_design.import') && <Link to="/imports">Import CSV</Link>}
+            {can('test_design.import') && <Link to="/imports">{t('testCases.importCsv')}</Link>}
             {can('data.export') && (
               <ExportButton
-                label="Export CSV"
+                label={t('testCases.exportCsv')}
                 fallbackName="test-cases.csv"
                 download={() => exportsApi.testCases(activeProjectId)}
               />
@@ -204,13 +205,13 @@ export function TestCasesPage(): React.JSX.Element {
       )}
 
       <div className="split">
-        <aside className="card" aria-label="Suites and sections">
-          <h2>Suites</h2>
+        <aside className="card" aria-label={t('testCases.suitesAndSections')}>
+          <h2>{t('testCases.suites')}</h2>
           <DataState
             isPending={suites.isPending}
             error={suites.error}
             isEmpty={(suites.data?.length ?? 0) === 0}
-            emptyMessage="No suite yet."
+            emptyMessage={t('testCases.noSuiteYet')}
           >
             <ul className="plain-list">
               {suites.data?.map((suite) => (
@@ -231,7 +232,7 @@ export function TestCasesPage(): React.JSX.Element {
           </DataState>
 
           <TextField
-            label="New suite"
+            label={t('testCases.newSuite')}
             value={suiteName}
             onChange={(event) => {
               setSuiteName(event.target.value);
@@ -246,29 +247,29 @@ export function TestCasesPage(): React.JSX.Element {
               createSuite.mutate();
             }}
           >
-            Add suite
+            {t('testCases.addSuite')}
           </Button>
 
           {selectedSuite !== null && (
             <>
-              <h2>TestRail</h2>
+              <h2>{t('testCases.testrail')}</h2>
               <TestRailSyncCell
                 entityType="test_suite"
                 entityId={selectedSuite}
                 reference={suiteReferences.data?.get(selectedSuite)}
               />
 
-              <h2>Sections</h2>
+              <h2>{t('testCases.sections')}</h2>
               <SelectField
-                label="Parent section"
-                options={[{ value: '', label: 'Suite root' }, ...flatSections]}
+                label={t('testCases.parentSection')}
+                options={[{ value: '', label: t('testCases.suiteRoot') }, ...flatSections]}
                 value={sectionId}
                 onChange={(event) => {
                   setSectionId(event.target.value);
                 }}
               />
               <TextField
-                label="New section"
+                label={t('testCases.newSection')}
                 value={sectionName}
                 onChange={(event) => {
                   setSectionName(event.target.value);
@@ -283,7 +284,7 @@ export function TestCasesPage(): React.JSX.Element {
                   createSection.mutate();
                 }}
               >
-                Add section
+                {t('testCases.addSection')}
               </Button>
             </>
           )}
@@ -299,14 +300,14 @@ export function TestCasesPage(): React.JSX.Element {
                   setIncludeArchived(event.target.checked);
                 }}
               />
-              Show archived cases
+              {t('testCases.showArchivedCases')}
             </label>
           </section>
 
           <section className="card" aria-labelledby="new-case">
-            <h2 id="new-case">New test case</h2>
+            <h2 id="new-case">{t('testCases.newTestCase')}</h2>
             <TextField
-              label="Title"
+              label={t('testCases.title')}
               value={caseTitle}
               onChange={(event) => {
                 setCaseTitle(event.target.value);
@@ -319,7 +320,7 @@ export function TestCasesPage(): React.JSX.Element {
                 createCase.mutate();
               }}
             >
-              Create case
+              {t('testCases.createCase')}
             </Button>
           </section>
 
@@ -327,17 +328,17 @@ export function TestCasesPage(): React.JSX.Element {
             isPending={cases.isPending}
             error={cases.error}
             isEmpty={(cases.data?.data.length ?? 0) === 0}
-            emptyMessage="This suite has no cases yet."
+            emptyMessage={t('testCases.thisSuiteHasNoCases')}
           >
             <table className="table card">
               <thead>
                 <tr>
-                  <th scope="col">Key</th>
-                  <th scope="col">Title</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Version</th>
-                  <th scope="col">TestRail</th>
-                  <th scope="col">Actions</th>
+                  <th scope="col">{t('testCases.key')}</th>
+                  <th scope="col">{t('testCases.title')}</th>
+                  <th scope="col">{t('testCases.status')}</th>
+                  <th scope="col">{t('testCases.version')}</th>
+                  <th scope="col">{t('testCases.testrail')}</th>
+                  <th scope="col">{t('testCases.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -361,7 +362,9 @@ export function TestCasesPage(): React.JSX.Element {
                       />
                     </td>
                     <td className="row-actions">
-                      {testCase.archivedAt !== null && <Badge tone="neutral">Archived</Badge>}
+                      {testCase.archivedAt !== null && (
+                        <Badge tone="neutral">{t('testCases.archived')}</Badge>
+                      )}
                       <Button
                         size="sm"
                         variant="secondary"
@@ -369,7 +372,7 @@ export function TestCasesPage(): React.JSX.Element {
                           duplicate.mutate(testCase.id);
                         }}
                       >
-                        Duplicate
+                        {t('testCases.duplicate')}
                       </Button>
                       {testCase.archivedAt === null ? (
                         <Button
@@ -379,7 +382,7 @@ export function TestCasesPage(): React.JSX.Element {
                             archive.mutate(testCase.id);
                           }}
                         >
-                          Archive
+                          {t('testCases.archive')}
                         </Button>
                       ) : (
                         <Button
@@ -389,7 +392,7 @@ export function TestCasesPage(): React.JSX.Element {
                             restore.mutate(testCase.id);
                           }}
                         >
-                          Restore
+                          {t('testCases.restore')}
                         </Button>
                       )}
                     </td>

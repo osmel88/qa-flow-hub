@@ -1438,8 +1438,23 @@ caller's own tenant, never of another one.
 
 ## 69. i18n: what is still in English
 
-- Only the authentication screens, the navigation and the header use keys.
-  Every product page, `DataState` defaults, shared Zod validation messages and
-  API error messages are still English (see `docs/frontend-architecture.md`
-  § Internationalization).
-- Dates and numbers are not yet formatted per locale.
+Every product page, the navigation, the auth screens and the `packages/ui`
+defaults use catalog keys in English and Spanish. What remains:
+
+- **API error messages.** Errors keep their current contract (`statusCode`,
+  `error`, `message`) and the message is English. There is no stable
+  per-error code to translate on, and inventing one on the Web by matching
+  message text would break whenever the API rewords a message. Fix: add an
+  `errorCode` to the API error body and a `apiError.<code>` catalog.
+- **Validation messages** are mapped only for the messages the Web shows
+  today (password policy, parameter cell types, Zod length/required/email
+  defaults) in `apps/web/src/i18n/validation.ts`. A new schema message
+  appears in English until it is added there.
+- **Dates and numbers** are still formatted with the browser default;
+  `intlLocale()` exists but the formatters do not use it yet.
+- **Plurals** use neutral forms ("elemento(s)") instead of plural rules.
+- **Technical terms** such as Release, Build, Sprint, Backlog, Work item and
+  Quality gate are kept in English on purpose in Spanish, as is common in
+  Spanish-speaking teams.
+- **Bundle size:** both catalogs ship in the main chunk (~2,000 keys each);
+  loading the non-default catalog lazily would trim the first load.

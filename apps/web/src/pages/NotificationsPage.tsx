@@ -13,6 +13,7 @@ import { notificationsApi } from '../api/endpoints';
 import { useAuth } from '../auth/auth-context';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
+import { t } from '../i18n/i18n';
 
 const STATUS_TONES: Record<NotificationStatus, BadgeTone> = {
   pending: 'info',
@@ -31,8 +32,8 @@ function outcomeOf(row: NotificationView): string {
   if (row.status === 'failed') {
     const reason = humanize(row.failureReason ?? 'rejected');
     return row.nextAttemptAt === null
-      ? `${reason} — no more automatic retries`
-      : `${reason} — retry ${formatMoment(row.nextAttemptAt)}`;
+      ? t('notifications.noMoreAutomaticRetries', { reason })
+      : t('notifications.retry', { reason, value: formatMoment(row.nextAttemptAt) });
   }
   if (row.status === 'skipped') {
     return humanize(row.skipReason ?? 'skipped');
@@ -57,17 +58,15 @@ function MockOutbox(): React.JSX.Element {
   return (
     <section className="card" aria-labelledby="mock-outbox-title">
       <h2 id="mock-outbox-title">
-        Mock outbox <Badge tone="warning">development only</Badge>
+        {t('notifications.mockOutbox')}{' '}
+        <Badge tone="warning">{t('notifications.developmentOnly')}</Badge>
       </h2>
-      <p className="muted">
-        Messages the mock provider captured for this organization instead of sending them. Links
-        that carry a token are redacted.
-      </p>
+      <p className="muted">{t('notifications.messagesTheMockProviderCaptured')}</p>
       <DataState
         isPending={outbox.isPending}
         error={outbox.error}
         isEmpty={outbox.data?.data.length === 0}
-        emptyMessage="No captured emails yet. Invite someone or assign a run to see one."
+        emptyMessage={t('notifications.noCapturedEmailsYetInvite')}
       >
         <ul className="plain-list">
           {outbox.data?.data.map((mail) => (
@@ -121,22 +120,24 @@ export function NotificationsPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Notifications"
-        description="Every email qa-flow-hub decided to send you in this organization, and what happened to it. Change what you receive in your profile."
+        title={t('notifications.notifications')}
+        description={t('notifications.everyEmailQaFlowHub')}
       />
 
       {provider.data !== undefined && (
         <p className="muted" role="status">
-          Email provider: <strong>{provider.data.provider}</strong> ({provider.data.mode}
-          {provider.data.inspectable ? ', nothing is actually delivered' : ''}) from{' '}
-          {provider.data.fromAddress}. <Link to="/profile">Notification preferences</Link>
+          {t('notifications.emailProvider')} <strong>{provider.data.provider}</strong> (
+          {provider.data.mode}
+          {provider.data.inspectable ? t('notifications.nothingIsActuallyDelivered') : ''}
+          {t('notifications.from')} {provider.data.fromAddress}.{' '}
+          <Link to="/profile">{t('notifications.notificationPreferences')}</Link>
         </p>
       )}
 
-      <section className="card filters" aria-label="Filters">
+      <section className="card filters" aria-label={t('notifications.filters')}>
         {canInspect && (
           <label className="ui-field">
-            <span className="ui-field__label">Scope</span>
+            <span className="ui-field__label">{t('notifications.scope')}</span>
             <select
               className="ui-input"
               value={scope}
@@ -144,13 +145,13 @@ export function NotificationsPage(): React.JSX.Element {
                 setScope(event.target.value as Scope);
               }}
             >
-              <option value="mine">Addressed to me</option>
-              <option value="organization">Whole organization</option>
+              <option value="mine">{t('notifications.addressedToMe')}</option>
+              <option value="organization">{t('notifications.wholeOrganization')}</option>
             </select>
           </label>
         )}
         <label className="ui-field">
-          <span className="ui-field__label">Type</span>
+          <span className="ui-field__label">{t('notifications.type')}</span>
           <select
             className="ui-input"
             value={type}
@@ -158,7 +159,7 @@ export function NotificationsPage(): React.JSX.Element {
               setType(event.target.value as NotificationType | '');
             }}
           >
-            <option value="">All types</option>
+            <option value="">{t('notifications.allTypes')}</option>
             {NOTIFICATION_TYPES.map((value) => (
               <option key={value} value={value}>
                 {humanize(value)}
@@ -167,7 +168,7 @@ export function NotificationsPage(): React.JSX.Element {
           </select>
         </label>
         <label className="ui-field">
-          <span className="ui-field__label">Status</span>
+          <span className="ui-field__label">{t('notifications.status')}</span>
           <select
             className="ui-input"
             value={status}
@@ -175,7 +176,7 @@ export function NotificationsPage(): React.JSX.Element {
               setStatus(event.target.value as NotificationStatus | '');
             }}
           >
-            <option value="">All statuses</option>
+            <option value="">{t('notifications.allStatuses')}</option>
             {NOTIFICATION_STATUSES.map((value) => (
               <option key={value} value={value}>
                 {humanize(value)}
@@ -190,24 +191,24 @@ export function NotificationsPage(): React.JSX.Element {
           isPending={ledger.isPending}
           error={ledger.error}
           isEmpty={ledger.data?.data.length === 0}
-          emptyMessage="No notifications yet."
+          emptyMessage={t('notifications.noNotificationsYet')}
         >
           {retry.error !== null && (
             <p className="ui-field__error" role="alert">
-              {retry.error instanceof Error ? retry.error.message : 'Retry failed'}
+              {retry.error instanceof Error ? retry.error.message : t('notifications.retryFailed')}
             </p>
           )}
           <table className="table">
             <thead>
               <tr>
-                <th>When</th>
-                <th>Type</th>
-                <th>Subject</th>
-                {scope === 'organization' && <th>Recipient</th>}
-                <th>Status</th>
-                <th>Outcome</th>
-                <th>Delivered</th>
-                {canRetry && <th aria-label="Actions" />}
+                <th>{t('notifications.when')}</th>
+                <th>{t('notifications.type')}</th>
+                <th>{t('notifications.subject')}</th>
+                {scope === 'organization' && <th>{t('notifications.recipient')}</th>}
+                <th>{t('notifications.status')}</th>
+                <th>{t('notifications.outcome')}</th>
+                <th>{t('notifications.delivered')}</th>
+                {canRetry && <th aria-label={t('notifications.actions')} />}
               </tr>
             </thead>
             <tbody>
@@ -227,13 +228,13 @@ export function NotificationsPage(): React.JSX.Element {
                       {row.status === 'failed' && (
                         <Button
                           variant="secondary"
-                          aria-label={`Retry ${row.subject}`}
+                          aria-label={t('notifications.retry2', { subject: row.subject })}
                           disabled={retry.isPending}
                           onClick={() => {
                             retry.mutate(row.id);
                           }}
                         >
-                          Retry now
+                          {t('notifications.retryNow')}
                         </Button>
                       )}
                     </td>

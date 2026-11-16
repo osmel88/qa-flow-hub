@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { jiraApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { t } from '../i18n/i18n';
 
 /**
  * One query for the whole table, not one per row: the references of every
@@ -46,7 +47,9 @@ export function JiraSyncCell({
       await queryClient.invalidateQueries({ queryKey: ['jira-references'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not sync with Jira.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('c_jiraSyncCell.couldNotSyncWithJira'),
+      );
     },
   });
 
@@ -68,7 +71,7 @@ export function JiraSyncCell({
           sync.mutate();
         }}
       >
-        {reference === undefined ? 'Sync to Jira' : 'Re-sync'}
+        {reference === undefined ? t('c_jiraSyncCell.syncToJira') : t('c_jiraSyncCell.reSync')}
       </Button>
       {error !== null && (
         <p className="ui-field__error" role="alert">

@@ -21,6 +21,7 @@ import {
   formatUsage,
 } from '../components/billing-format';
 import { humanize } from '../components/status';
+import { t } from '../i18n/i18n';
 
 const planLabel = (plan: OrganizationPlanName): string => PLAN_CATALOG[plan].label;
 
@@ -54,9 +55,9 @@ function UsageMeter({
     limit === null
       ? null
       : ratio > 1
-        ? 'Over the limit'
+        ? t('billing.overTheLimit')
         : ratio >= APPROACHING_RATIO
-          ? 'Approaching the limit'
+          ? t('billing.approachingTheLimit')
           : null;
   return (
     <div className="usage-meter" data-testid={id}>
@@ -64,7 +65,7 @@ function UsageMeter({
         <span id={id}>{RESOURCE_LABELS[resource]}</span>
         <span>
           {formatUsage(resource, used)} /{' '}
-          {limit === null ? 'Unlimited' : formatUsage(resource, limit)}
+          {limit === null ? t('billing.unlimited') : formatUsage(resource, limit)}
         </span>
       </div>
       {limit !== null && (
@@ -79,29 +80,35 @@ function subscriptionSummary(view: BillingOverviewView): string {
   const sub = view.subscription;
   switch (view.reason) {
     case 'trial':
-      return `Trial of ${planLabel(sub?.plan ?? 'team')} until ${formatDate(view.until)}.`;
+      return t('billing.trialOfUntil', {
+        value: planLabel(sub?.plan ?? 'team'),
+        value2: formatDate(view.until),
+      });
     case 'trial_expired':
-      return 'The trial has ended. You are on the Free plan.';
+      return t('billing.theTrialHasEndedYou');
     case 'active':
       if (sub?.cancelAtPeriodEnd === true) {
-        return `Cancels on ${formatDate(view.until)}; after that the Free plan applies.`;
+        return t('billing.cancelsOnAfterThatThe', { value: formatDate(view.until) });
       }
       if (sub?.pendingPlan != null) {
-        return `Changes to ${planLabel(sub.pendingPlan)} on ${formatDate(view.until)}.`;
+        return t('billing.changesToOn', {
+          value: planLabel(sub.pendingPlan),
+          value2: formatDate(view.until),
+        });
       }
-      return `Renews on ${formatDate(view.until)}.`;
+      return t('billing.renewsOn', { value: formatDate(view.until) });
     case 'past_due_grace':
-      return `The last payment failed. The plan stays active until ${formatDate(view.until)}.`;
+      return t('billing.theLastPaymentFailedThe', { value: formatDate(view.until) });
     case 'past_due_expired':
-      return 'The grace period after a failed payment has ended. You are on the Free plan.';
+      return t('billing.theGracePeriodAfterA');
     case 'canceled':
-      return 'The subscription was canceled. You are on the Free plan.';
+      return t('billing.theSubscriptionWasCanceledYou');
     case 'incomplete':
-      return 'The payment did not complete. You are on the Free plan.';
+      return t('billing.thePaymentDidNotComplete');
     case 'period_ended':
-      return 'The billing period ended without a renewal. You are on the Free plan.';
+      return t('billing.theBillingPeriodEndedWithout');
     case 'no_subscription':
-      return 'No subscription. You are on the Free plan.';
+      return t('billing.noSubscriptionYouAreOn');
   }
 }
 
@@ -119,22 +126,27 @@ function PlanCard({
   onChoose: (plan: OrganizationPlanName) => void;
 }): React.JSX.Element {
   const current = descriptor.plan === view.effectivePlan;
-  const direction = RANK[descriptor.plan] > RANK[view.effectivePlan] ? 'Upgrade' : 'Downgrade';
+  const direction =
+    RANK[descriptor.plan] > RANK[view.effectivePlan]
+      ? t('billing.directionUpgrade')
+      : t('billing.directionDowngrade');
   return (
     <section
       className={current ? 'card plan-card--current' : 'card'}
       aria-labelledby={`plan-${descriptor.plan}`}
     >
       <h3 id={`plan-${descriptor.plan}`}>
-        {descriptor.label} {current && <Badge tone="info">Current</Badge>}
+        {descriptor.label} {current && <Badge tone="info">{t('billing.current')}</Badge>}
       </h3>
-      <p>{formatMoney(descriptor.monthlyPriceCents, descriptor.currency)} / month</p>
+      <p>
+        {formatMoney(descriptor.monthlyPriceCents, descriptor.currency)} {t('billing.month')}
+      </p>
       <ul>
         {LIMITED_RESOURCES.map((resource) => (
           <li key={resource}>
             {RESOURCE_LABELS[resource]}:{' '}
             {descriptor.limits[resource] === null
-              ? 'Unlimited'
+              ? t('billing.unlimited')
               : formatUsage(resource, descriptor.limits[resource])}
           </li>
         ))}
@@ -147,7 +159,7 @@ function PlanCard({
             onChoose(descriptor.plan);
           }}
         >
-          {direction} to {descriptor.label}
+          {direction} {t('billing.to')} {descriptor.label}
         </Button>
       )}
     </section>
@@ -182,7 +194,7 @@ export function BillingPage(): React.JSX.Element {
     await queryClient.invalidateQueries({ queryKey: ['billing-invoices', organizationId] });
   };
   const onError = (cause: unknown): void => {
-    setError(cause instanceof ApiError ? cause.message : 'The billing request failed.');
+    setError(cause instanceof ApiError ? cause.message : t('billing.theBillingRequestFailed'));
   };
 
   const choose = useMutation({
@@ -227,9 +239,9 @@ export function BillingPage(): React.JSX.Element {
   if (!canRead) {
     return (
       <>
-        <PageHeader title="Billing" />
+        <PageHeader title={t('billing.billing')} />
         <p className="muted" role="status">
-          Only organization owners and admins can see billing.
+          {t('billing.onlyOrganizationOwnersAndAdmins')}
         </p>
       </>
     );
@@ -244,11 +256,9 @@ export function BillingPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Billing"
+        title={t('billing.billing')}
         description={
-          canManage
-            ? 'Plan, usage and invoices of this organization.'
-            : 'Plan, usage and invoices of this organization. Only owners can change the plan.'
+          canManage ? t('billing.planUsageAndInvoicesOf') : t('billing.planUsageAndInvoicesOf2')
         }
       />
 
@@ -263,7 +273,7 @@ export function BillingPage(): React.JSX.Element {
           <>
             <section className="card" aria-labelledby="subscription-heading">
               <h2 id="subscription-heading">
-                {planLabel(view.effectivePlan)} plan{' '}
+                {planLabel(view.effectivePlan)} {t('billing.plan')}{' '}
                 {sub !== null && (
                   <Badge tone={STATUS_TONE[sub.status] ?? 'neutral'}>{humanize(sub.status)}</Badge>
                 )}
@@ -271,9 +281,9 @@ export function BillingPage(): React.JSX.Element {
               <p data-testid="billing-summary">{subscriptionSummary(view)}</p>
               {view.overLimit.length > 0 && (
                 <p className="ui-field__error" role="status">
-                  Usage is above this plan for{' '}
-                  {view.overLimit.map((r) => RESOURCE_LABELS[r].toLowerCase()).join(', ')}. Nothing
-                  is deleted or hidden; only new items are blocked.
+                  {t('billing.usageIsAboveThisPlan')}{' '}
+                  {view.overLimit.map((r) => RESOURCE_LABELS[r].toLowerCase()).join(', ')}
+                  {t('billing.nothingIsDeletedOrHidden')}
                 </p>
               )}
               {canManage && live && sub.cancelAtPeriodEnd !== true && sub.status !== 'trialing' && (
@@ -284,7 +294,7 @@ export function BillingPage(): React.JSX.Element {
                     cancel.mutate();
                   }}
                 >
-                  Cancel at period end
+                  {t('billing.cancelAtPeriodEnd')}
                 </Button>
               )}
               {canManage && sub?.status === 'trialing' && (
@@ -295,7 +305,7 @@ export function BillingPage(): React.JSX.Element {
                     cancel.mutate();
                   }}
                 >
-                  End trial
+                  {t('billing.endTrial')}
                 </Button>
               )}
               {canManage && sub?.cancelAtPeriodEnd === true && (
@@ -305,14 +315,14 @@ export function BillingPage(): React.JSX.Element {
                     resume.mutate();
                   }}
                 >
-                  Keep subscription
+                  {t('billing.keepSubscription')}
                 </Button>
               )}
               {canManage &&
                 view.provider === 'mock' &&
                 (sub?.status === 'active' || sub?.status === 'past_due') && (
                   <div className="callout">
-                    <p className="muted">Mock provider: simulate the end of the billing period.</p>
+                    <p className="muted">{t('billing.mockProviderSimulateTheEnd')}</p>
                     <Button
                       variant="secondary"
                       loading={endPeriod.isPending}
@@ -320,7 +330,7 @@ export function BillingPage(): React.JSX.Element {
                         endPeriod.mutate('succeeded');
                       }}
                     >
-                      Renew (payment succeeds)
+                      {t('billing.renewPaymentSucceeds')}
                     </Button>{' '}
                     <Button
                       variant="secondary"
@@ -329,14 +339,14 @@ export function BillingPage(): React.JSX.Element {
                         endPeriod.mutate('failed');
                       }}
                     >
-                      Renew (payment fails)
+                      {t('billing.renewPaymentFails')}
                     </Button>
                   </div>
                 )}
             </section>
 
             <section className="card" aria-labelledby="usage-heading">
-              <h2 id="usage-heading">Usage</h2>
+              <h2 id="usage-heading">{t('billing.usage')}</h2>
               {LIMITED_RESOURCES.map((resource) => (
                 <UsageMeter
                   key={resource}
@@ -348,7 +358,7 @@ export function BillingPage(): React.JSX.Element {
             </section>
 
             <section aria-labelledby="plans-heading">
-              <h2 id="plans-heading">Plans</h2>
+              <h2 id="plans-heading">{t('billing.plans')}</h2>
               <div className="plan-grid">
                 {view.plans.map((descriptor) => (
                   <PlanCard
@@ -369,21 +379,21 @@ export function BillingPage(): React.JSX.Element {
       </DataState>
 
       <section className="card" aria-labelledby="invoices-heading">
-        <h2 id="invoices-heading">Invoices</h2>
+        <h2 id="invoices-heading">{t('billing.invoices')}</h2>
         <DataState
           isPending={invoices.isPending}
           error={invoices.error}
           isEmpty={(invoices.data?.data.length ?? 0) === 0}
-          emptyMessage="No invoices yet."
+          emptyMessage={t('billing.noInvoicesYet')}
         >
           <table className="table">
             <thead>
               <tr>
-                <th scope="col">Number</th>
-                <th scope="col">Issued</th>
-                <th scope="col">Plan</th>
-                <th scope="col">Amount</th>
-                <th scope="col">Status</th>
+                <th scope="col">{t('billing.number')}</th>
+                <th scope="col">{t('billing.issued')}</th>
+                <th scope="col">{t('billing.plan2')}</th>
+                <th scope="col">{t('billing.amount')}</th>
+                <th scope="col">{t('billing.status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -411,10 +421,10 @@ export function BillingPage(): React.JSX.Element {
                   setPage(page - 1);
                 }}
               >
-                Previous
+                {t('billing.previous')}
               </Button>
               <span className="muted">
-                Page {page} of {invoices.data?.meta.totalPages}
+                {t('billing.page')} {page} {t('billing.of')} {invoices.data?.meta.totalPages}
               </span>
               <Button
                 variant="secondary"
@@ -423,7 +433,7 @@ export function BillingPage(): React.JSX.Element {
                   setPage(page + 1);
                 }}
               >
-                Next
+                {t('billing.next')}
               </Button>
             </div>
           )}

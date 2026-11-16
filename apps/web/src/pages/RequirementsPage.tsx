@@ -23,6 +23,7 @@ import type { CustomFieldDraft } from '../components/CustomFieldInputs';
 import { humanize, toneFor } from '../components/status';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 const options = (values: readonly string[]) =>
   values.map((value) => ({ value, label: humanize(value) }));
@@ -76,7 +77,9 @@ export function RequirementsPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['requirements'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the requirement.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('requirements.couldNotCreateTheRequirement'),
+      );
     },
   });
 
@@ -89,7 +92,9 @@ export function RequirementsPage(): React.JSX.Element {
     onError: (cause) => {
       // The API refuses illegal transitions; surfacing its message is more
       // useful than duplicating the state machine in the client.
-      setError(cause instanceof ApiError ? cause.message : 'Could not change the status.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('requirements.couldNotChangeTheStatus'),
+      );
     },
   });
 
@@ -99,24 +104,27 @@ export function RequirementsPage(): React.JSX.Element {
 
   return (
     <>
-      <PageHeader title="Requirements" description="What the product must do, and its coverage." />
+      <PageHeader
+        title={t('requirements.requirements')}
+        description={t('requirements.whatTheProductMustDo')}
+      />
 
       <section className="card" aria-labelledby="new-requirement">
-        <h2 id="new-requirement">New requirement</h2>
+        <h2 id="new-requirement">{t('requirements.newRequirement')}</h2>
         {error !== null && (
           <p className="ui-field__error" role="alert">
             {error}
           </p>
         )}
         <TextField
-          label="Title"
+          label={t('requirements.title')}
           value={title}
           onChange={(event) => {
             setTitle(event.target.value);
           }}
         />
         <TextAreaField
-          label="Description"
+          label={t('requirements.description')}
           value={description}
           onChange={(event) => {
             setDescription(event.target.value);
@@ -124,7 +132,7 @@ export function RequirementsPage(): React.JSX.Element {
         />
         <div className="grid-2">
           <SelectField
-            label="Type"
+            label={t('requirements.type')}
             options={options(REQUIREMENT_TYPES)}
             value={type}
             onChange={(event) => {
@@ -132,7 +140,7 @@ export function RequirementsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Priority"
+            label={t('requirements.priority')}
             options={options(PRIORITIES)}
             value={priority}
             onChange={(event) => {
@@ -153,29 +161,35 @@ export function RequirementsPage(): React.JSX.Element {
             create.mutate();
           }}
         >
-          Create requirement
+          {t('requirements.createRequirement')}
         </Button>
       </section>
 
-      <section className="card filters" aria-label="Filters">
+      <section className="card filters" aria-label={t('requirements.filters')}>
         <TextField
-          label="Search"
+          label={t('requirements.search')}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
           }}
         />
         <SelectField
-          label="Status"
-          options={[{ value: '', label: 'Any status' }, ...options(REQUIREMENT_STATUSES)]}
+          label={t('requirements.status')}
+          options={[
+            { value: '', label: t('requirements.anyStatus') },
+            ...options(REQUIREMENT_STATUSES),
+          ]}
           value={status}
           onChange={(event) => {
             setStatus(event.target.value);
           }}
         />
         <SelectField
-          label="Implementation"
-          options={[{ value: '', label: 'Any implementation' }, ...options(IMPLEMENTATION_STATES)]}
+          label={t('requirements.implementation')}
+          options={[
+            { value: '', label: t('requirements.anyImplementation') },
+            ...options(IMPLEMENTATION_STATES),
+          ]}
           value={implementation}
           onChange={(event) => {
             setImplementation(event.target.value);
@@ -187,19 +201,19 @@ export function RequirementsPage(): React.JSX.Element {
         isPending={list.isPending}
         error={list.error}
         isEmpty={(list.data?.data.length ?? 0) === 0}
-        emptyMessage="No requirement matches these filters."
+        emptyMessage={t('requirements.noRequirementMatchesTheseFilters')}
       >
         <table className="table card">
           <thead>
             <tr>
-              <th scope="col">Key</th>
-              <th scope="col">Title</th>
-              <th scope="col">Priority</th>
-              <th scope="col">Status</th>
-              <th scope="col">Implementation</th>
-              <th scope="col">Move to</th>
-              <th scope="col">Coverage</th>
-              <th scope="col">Jira</th>
+              <th scope="col">{t('requirements.key')}</th>
+              <th scope="col">{t('requirements.title')}</th>
+              <th scope="col">{t('requirements.priority')}</th>
+              <th scope="col">{t('requirements.status')}</th>
+              <th scope="col">{t('requirements.implementation')}</th>
+              <th scope="col">{t('requirements.moveTo')}</th>
+              <th scope="col">{t('requirements.coverage')}</th>
+              <th scope="col">{t('requirements.jira')}</th>
             </tr>
           </thead>
           <tbody>
@@ -224,13 +238,13 @@ export function RequirementsPage(): React.JSX.Element {
                   <td>
                     <select
                       className="ui-input"
-                      aria-label={`Change status of ${requirement.key}`}
+                      aria-label={t('requirements.changeStatusOf', { key: requirement.key })}
                       value=""
                       onChange={(event) => {
                         changeStatus.mutate({ id: requirement.id, status: event.target.value });
                       }}
                     >
-                      <option value="">Choose…</option>
+                      <option value="">{t('requirements.choose')}</option>
                       {REQUIREMENT_STATUSES.filter((value) => value !== requirement.status).map(
                         (value) => (
                           <option key={value} value={value}>
@@ -250,7 +264,9 @@ export function RequirementsPage(): React.JSX.Element {
                         );
                       }}
                     >
-                      {coverageFor === requirement.id ? 'Hide test cases' : 'Test cases'}
+                      {coverageFor === requirement.id
+                        ? t('requirements.hideTestCases')
+                        : t('requirements.testCases')}
                     </Button>
                   </td>
                   <td>

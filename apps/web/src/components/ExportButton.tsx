@@ -1,6 +1,7 @@
 import { Button } from '@qa-flow-hub/ui';
 import { useMutation } from '@tanstack/react-query';
 import { saveBlob } from './download';
+import { t } from '../i18n/i18n';
 
 /**
  * Downloads a CSV export through the authenticated fetch (a plain link would
@@ -32,7 +33,7 @@ export function ExportButton({
           exportCsv.mutate();
         }}
       >
-        {exportCsv.isPending ? 'Exporting…' : label}
+        {exportCsv.isPending ? t('c_exportButton.exporting') : label}
       </Button>
       {exportCsv.error !== null && (
         <span className="ui-field__error" role="alert">

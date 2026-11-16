@@ -1,0 +1,31 @@
+import type { defects as source } from '../en/defects';
+
+export const defects: Partial<Record<keyof typeof source, string>> = {
+  'defects.couldNotCreateTheDefect': 'No se pudo crear el defecto.',
+  'defects.couldNotChangeTheStatus': 'No se pudo cambiar el estado.',
+  'defects.defects': 'Defectos',
+  'defects.defectsRaisedFromAFailed':
+    'Los defectos creados desde un resultado fallido mantienen un vínculo con la ejecución que los encontró.',
+  'defects.reportADefect': 'Reportar un defecto',
+  'defects.title': 'Título',
+  'defects.description': 'Descripción',
+  'defects.severity': 'Severidad',
+  'defects.severityIsHowBadlyIt':
+    'La severidad indica cuánto rompe; la prioridad, cuándo lo arreglaremos. No son el mismo campo.',
+  'defects.reportDefect': 'Reportar defecto',
+  'defects.filters': 'Filtros',
+  'defects.status': 'Estado',
+  'defects.anyStatus': 'Cualquier estado',
+  'defects.noDefectMatchesTheseFilters': 'Ningún defecto coincide con estos filtros.',
+  'defects.key': 'Clave',
+  'defects.origin': 'Origen',
+  'defects.moveTo': 'Mover a',
+  'defects.jira': 'Jira',
+  'defects.evidence': 'Evidencias',
+  'defects.reportedManually': 'Reportado manualmente',
+  'defects.fromATestResult': 'Desde un resultado de prueba',
+  'defects.changeStatusOf': 'Cambiar el estado de {key}',
+  'defects.choose': 'Elige…',
+  'defects.hideEvidence': 'Ocultar evidencias',
+  'defects.evidenceFor': 'Evidencias de {key}',
+};

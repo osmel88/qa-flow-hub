@@ -8,6 +8,7 @@ import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
 import { PageHeader } from '../components/PageHeader';
 import { formatMoney } from '../components/billing-format';
+import { t } from '../i18n/i18n';
 
 /**
  * Stands in for the provider's hosted checkout while the mock provider is
@@ -37,15 +38,15 @@ export function MockCheckoutPage(): React.JSX.Element {
       void navigate('/billing');
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'The payment could not be simulated.');
+      setError(cause instanceof ApiError ? cause.message : t('mockCheckout.thePaymentCouldNotBe'));
     },
   });
 
   return (
     <>
       <PageHeader
-        title="Checkout (mock provider)"
-        description="No card is charged. Choose the simulated outcome."
+        title={t('mockCheckout.checkoutMockProvider')}
+        description={t('mockCheckout.noCardIsChargedChoose')}
       />
       {error !== null && (
         <p className="ui-field__error" role="alert">
@@ -57,7 +58,8 @@ export function MockCheckoutPage(): React.JSX.Element {
           <section className="card" aria-labelledby="checkout-heading">
             <h2 id="checkout-heading">
               {PLAN_CATALOG[session.data.plan].label} —{' '}
-              {formatMoney(session.data.amountCents, session.data.currency)} / month
+              {formatMoney(session.data.amountCents, session.data.currency)}{' '}
+              {t('mockCheckout.month')}
             </h2>
             {session.data.status === 'open' ? (
               <>
@@ -67,7 +69,7 @@ export function MockCheckoutPage(): React.JSX.Element {
                     complete.mutate('succeeded');
                   }}
                 >
-                  Pay
+                  {t('mockCheckout.pay')}
                 </Button>{' '}
                 <Button
                   variant="secondary"
@@ -76,11 +78,13 @@ export function MockCheckoutPage(): React.JSX.Element {
                     complete.mutate('failed');
                   }}
                 >
-                  Simulate a declined card
+                  {t('mockCheckout.simulateADeclinedCard')}
                 </Button>
               </>
             ) : (
-              <p className="muted">This checkout is {session.data.status}.</p>
+              <p className="muted">
+                {t('mockCheckout.thisCheckoutIs')} {session.data.status}.
+              </p>
             )}
           </section>
         )}

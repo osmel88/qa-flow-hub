@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { testDesignApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { t } from '../i18n/i18n';
 
 interface TestCaseHistoryProps {
   detail: TestCaseDetailView;
@@ -54,13 +55,17 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
     onSuccess: async (updated, version) => {
       setError(null);
       setReason('');
-      setMessage(`Restored version ${version} as version ${updated.version}.`);
+      setMessage(
+        t('testCaseHistory.restoredVersionAsVersion', { version, version2: updated.version }),
+      );
       await queryClient.invalidateQueries({ queryKey: ['case', detail.id] });
       await queryClient.invalidateQueries({ queryKey: ['case-versions', detail.id] });
     },
     onError: (cause) => {
       setMessage(null);
-      setError(cause instanceof ApiError ? cause.message : 'Could not restore the version.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('testCaseHistory.couldNotRestoreTheVersion'),
+      );
     },
   });
 
@@ -68,10 +73,10 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
 
   return (
     <section className="card" aria-labelledby="case-history-heading">
-      <h2 id="case-history-heading">Version history</h2>
+      <h2 id="case-history-heading">{t('testCaseHistory.versionHistory')}</h2>
       <p className="muted">
-        Current version: {detail.version}. Runs, results and frozen plans keep the version they
-        used.
+        {t('testCaseHistory.currentVersion')} {detail.version}
+        {t('testCaseHistory.runsResultsAndFrozenPlans')}
       </p>
       {error !== null && (
         <p className="ui-field__error" role="alert">
@@ -83,14 +88,14 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
           {message}
         </p>
       )}
-      <table className="table" aria-label="Versions">
+      <table className="table" aria-label={t('testCaseHistory.versions')}>
         <thead>
           <tr>
-            <th scope="col">Version</th>
-            <th scope="col">Author</th>
-            <th scope="col">Date</th>
-            <th scope="col">Reason</th>
-            <th scope="col">Actions</th>
+            <th scope="col">{t('testCaseHistory.version')}</th>
+            <th scope="col">{t('testCaseHistory.author')}</th>
+            <th scope="col">{t('testCaseHistory.date')}</th>
+            <th scope="col">{t('testCaseHistory.reason')}</th>
+            <th scope="col">{t('testCaseHistory.actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -98,10 +103,11 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
             <tr key={row.id} data-testid={`case-version-${row.version}`}>
               <td>
                 v{row.version}
-                {row.current && ' (current)'}
-                {row.restoredFromVersion !== null && ` · restored from v${row.restoredFromVersion}`}
+                {row.current && t('testCaseHistory.currentSuffix')}
+                {row.restoredFromVersion !== null &&
+                  t('testCaseHistory.restoredFrom', { version: row.restoredFromVersion })}
               </td>
-              <td>{row.author?.fullName ?? 'unknown'}</td>
+              <td>{row.author?.fullName ?? t('testCaseHistory.unknown')}</td>
               <td>{new Date(row.createdAt).toLocaleString()}</td>
               <td>{show(row.changeReason)}</td>
               <td className="row-actions">
@@ -112,7 +118,7 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
                     setViewing(row.version);
                   }}
                 >
-                  View version {row.version}
+                  {t('testCaseHistory.viewVersion')} {row.version}
                 </Button>
                 {canWrite && !row.current && (
                   <Button
@@ -123,7 +129,7 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
                       restore.mutate(row.version);
                     }}
                   >
-                    Restore version {row.version}
+                    {t('testCaseHistory.restoreVersion')} {row.version}
                   </Button>
                 )}
               </td>
@@ -133,7 +139,7 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
       </table>
       {canWrite && (
         <TextField
-          label="Restore reason (optional)"
+          label={t('testCaseHistory.restoreReasonOptional')}
           value={reason}
           onChange={(event) => {
             setReason(event.target.value);
@@ -141,17 +147,17 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
         />
       )}
 
-      <h3>Compare versions</h3>
+      <h3>{t('testCaseHistory.compareVersions')}</h3>
       <div className="row-actions">
         <label>
-          Compare from
+          {t('testCaseHistory.compareFrom')}
           <select
             value={from ?? ''}
             onChange={(event) => {
               setFrom(event.target.value === '' ? null : Number(event.target.value));
             }}
           >
-            <option value="">Choose</option>
+            <option value="">{t('testCaseHistory.choose')}</option>
             {rows.map((row) => (
               <option key={row.id} value={row.version}>
                 v{row.version}
@@ -160,14 +166,14 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
           </select>
         </label>
         <label>
-          Compare to
+          {t('testCaseHistory.compareTo')}
           <select
             value={to ?? ''}
             onChange={(event) => {
               setTo(event.target.value === '' ? null : Number(event.target.value));
             }}
           >
-            <option value="">Choose</option>
+            <option value="">{t('testCaseHistory.choose')}</option>
             {rows.map((row) => (
               <option key={row.id} value={row.version}>
                 v{row.version}
@@ -179,29 +185,29 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
       {diff.data !== undefined && <VersionDiff diff={diff.data} />}
 
       {viewing !== null && viewed.data !== undefined && (
-        <div aria-label={`Version ${viewing} content`}>
+        <div aria-label={t('testCaseHistory.versionContent', { viewing })}>
           <h3>
-            Version {viewed.data.version}
-            {viewed.data.current ? ' (current)' : ''}
+            {t('testCaseHistory.version')} {viewed.data.version}
+            {viewed.data.current ? t('testCaseHistory.current') : ''}
           </h3>
           <dl>
-            <dt>Title</dt>
+            <dt>{t('testCaseHistory.title')}</dt>
             <dd>{viewed.data.content.title}</dd>
-            <dt>Description</dt>
+            <dt>{t('testCaseHistory.description')}</dt>
             <dd>{show(viewed.data.content.description)}</dd>
-            <dt>Preconditions</dt>
+            <dt>{t('testCaseHistory.preconditions')}</dt>
             <dd>{show(viewed.data.content.preconditions)}</dd>
-            <dt>Expected result</dt>
+            <dt>{t('testCaseHistory.expectedResult')}</dt>
             <dd>{show(viewed.data.content.expectedResult)}</dd>
-            <dt>Type and priority</dt>
+            <dt>{t('testCaseHistory.typeAndPriority')}</dt>
             <dd>
               {viewed.data.content.type} · {viewed.data.content.priority}
             </dd>
-            <dt>Parameters</dt>
+            <dt>{t('testCaseHistory.parameters')}</dt>
             <dd>
               {viewed.data.content.parameters.map((parameter) => parameter.name).join(', ') ||
-                'none'}{' '}
-              ({viewed.data.content.dataset.length} dataset rows)
+                t('testCaseHistory.none')}{' '}
+              ({viewed.data.content.dataset.length} {t('testCaseHistory.datasetRows')}
             </dd>
           </dl>
           <ol>
@@ -209,7 +215,9 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
               <li key={step.position}>
                 {step.action}
                 {step.expectedResult !== null && (
-                  <div className="muted">Expected: {step.expectedResult}</div>
+                  <div className="muted">
+                    {t('testCaseHistory.expected')} {step.expectedResult}
+                  </div>
                 )}
               </li>
             ))}
@@ -224,12 +232,13 @@ function VersionDiff({ diff }: { diff: VersionDiffView }): React.JSX.Element {
   if (diff.identical) {
     return (
       <p className="muted">
-        Versions {diff.from} and {diff.to} have the same content.
+        {t('testCaseHistory.versions')} {diff.from} {t('testCaseHistory.and')} {diff.to}{' '}
+        {t('testCaseHistory.haveTheSameContent')}
       </p>
     );
   }
   return (
-    <ul className="plain-list" aria-label="Differences">
+    <ul className="plain-list" aria-label={t('testCaseHistory.differences')}>
       {diff.fields.map((change) => (
         <li key={change.field}>
           <strong>{change.field}</strong>: <del>{show(change.before)}</del> →{' '}
@@ -239,7 +248,7 @@ function VersionDiff({ diff }: { diff: VersionDiffView }): React.JSX.Element {
       {diff.steps.map((change) => (
         <li key={`step-${change.position}`}>
           <strong>
-            Step {change.position} {change.change}
+            {t('testCaseHistory.step')} {change.position} {change.change}
           </strong>
           : <del>{change.before?.action ?? '—'}</del> → <ins>{change.after?.action ?? '—'}</ins>
         </li>
@@ -247,13 +256,14 @@ function VersionDiff({ diff }: { diff: VersionDiffView }): React.JSX.Element {
       {diff.parameters.map((change) => (
         <li key={`parameter-${change.name}`}>
           <strong>
-            Parameter {change.name} {change.change}
+            {t('testCaseHistory.parameter')} {change.name} {change.change}
           </strong>
         </li>
       ))}
       {diff.dataset.changed && (
         <li>
-          <strong>Dataset changed</strong>: {diff.dataset.before} → {diff.dataset.after} rows
+          <strong>{t('testCaseHistory.datasetChanged')}</strong>: {diff.dataset.before} →{' '}
+          {diff.dataset.after} {t('testCaseHistory.rows')}
         </li>
       )}
     </ul>

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useUiStrings } from './UiStrings';
 
 export interface DataStateProps {
   isPending: boolean;
@@ -9,8 +10,8 @@ export interface DataStateProps {
   children: ReactNode;
 }
 
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong';
+function messageOf(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 /**
@@ -24,14 +25,15 @@ export function DataState({
   isPending,
   error,
   isEmpty = false,
-  emptyMessage = 'Nothing here yet',
+  emptyMessage,
   emptyAction,
   children,
 }: DataStateProps): React.JSX.Element {
+  const strings = useUiStrings();
   if (isPending) {
     return (
       <p className="ui-state" role="status">
-        Loading…
+        {strings.loading}
       </p>
     );
   }
@@ -39,7 +41,7 @@ export function DataState({
   if (error !== null && error !== undefined) {
     return (
       <p className="ui-state ui-state--error" role="alert">
-        {messageOf(error)}
+        {messageOf(error, strings.genericError)}
       </p>
     );
   }
@@ -47,7 +49,7 @@ export function DataState({
   if (isEmpty) {
     return (
       <div className="ui-state ui-state--empty">
-        <p>{emptyMessage}</p>
+        <p>{emptyMessage ?? strings.empty}</p>
         {emptyAction}
       </div>
     );

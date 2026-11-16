@@ -12,6 +12,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export const EXPLORATORY_TONE: Record<ExploratoryStatus, BadgeTone> = {
   planned: 'neutral',
@@ -24,7 +25,7 @@ export const EXPLORATORY_TONE: Record<ExploratoryStatus, BadgeTone> = {
 
 export function formatDuration(seconds: number | null): string {
   if (seconds === null) {
-    return 'not started';
+    return t('exploratorySessions.notStarted');
   }
   const minutes = Math.floor(seconds / 60);
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m ${seconds % 60}s`;
@@ -78,7 +79,11 @@ export function ExploratorySessionsPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['exploratory-sessions'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the session.');
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : t('exploratorySessions.couldNotCreateTheSession'),
+      );
     },
   });
   if (activeProjectId === null) {
@@ -88,13 +93,13 @@ export function ExploratorySessionsPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Exploratory testing"
-        description="Time-boxed sessions with a charter. Completed sessions are kept as immutable history."
+        title={t('exploratorySessions.exploratoryTesting')}
+        description={t('exploratorySessions.timeBoxedSessionsWithA')}
       />
       {can('testruns.execute') && (
         <form
           className="card"
-          aria-label="New exploratory session"
+          aria-label={t('exploratorySessions.newExploratorySession')}
           onSubmit={(event) => {
             event.preventDefault();
             create.mutate();
@@ -106,24 +111,24 @@ export function ExploratorySessionsPage(): React.JSX.Element {
             </p>
           )}
           <TextField
-            label="Session title"
+            label={t('exploratorySessions.sessionTitle')}
             value={title}
             onChange={(event) => {
               setTitle(event.target.value);
             }}
           />
           <TextAreaField
-            label="Charter"
+            label={t('exploratorySessions.charter')}
             value={charter}
             onChange={(event) => {
               setCharter(event.target.value);
             }}
           />
           <SelectField
-            label="Session environment"
+            label={t('exploratorySessions.sessionEnvironment')}
             value={environmentId}
             options={[
-              { value: '', label: 'No environment' },
+              { value: '', label: t('exploratorySessions.noEnvironment') },
               ...(environments.data ?? []).map((entry) => ({ value: entry.id, label: entry.name })),
             ]}
             onChange={(event) => {
@@ -131,10 +136,10 @@ export function ExploratorySessionsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Session release"
+            label={t('exploratorySessions.sessionRelease')}
             value={releaseId}
             options={[
-              { value: '', label: 'No release' },
+              { value: '', label: t('exploratorySessions.noRelease') },
               ...(releases.data?.data ?? []).map((entry) => ({
                 value: entry.id,
                 label: `${entry.version} · ${entry.name}`,
@@ -145,7 +150,7 @@ export function ExploratorySessionsPage(): React.JSX.Element {
             }}
           />
           <TextField
-            label="Timebox (minutes)"
+            label={t('exploratorySessions.timeboxMinutes')}
             type="number"
             value={timebox}
             onChange={(event) => {
@@ -157,17 +162,17 @@ export function ExploratorySessionsPage(): React.JSX.Element {
             loading={create.isPending}
             disabled={title.trim().length < 3 || charter.trim() === ''}
           >
-            Create session
+            {t('exploratorySessions.createSession')}
           </Button>
         </form>
       )}
       <section className="card" aria-labelledby="sessions-heading">
-        <h2 id="sessions-heading">Sessions</h2>
+        <h2 id="sessions-heading">{t('exploratorySessions.sessions')}</h2>
         <SelectField
-          label="Filter by status"
+          label={t('exploratorySessions.filterByStatus')}
           value={status}
           options={[
-            { value: '', label: 'All but archived' },
+            { value: '', label: t('exploratorySessions.allButArchived') },
             ...EXPLORATORY_STATUSES.map((entry) => ({ value: entry, label: humanize(entry) })),
           ]}
           onChange={(event) => {
@@ -178,17 +183,17 @@ export function ExploratorySessionsPage(): React.JSX.Element {
           isPending={sessions.isPending}
           error={sessions.error}
           isEmpty={rows.length === 0}
-          emptyMessage="No session yet."
+          emptyMessage={t('exploratorySessions.noSessionYet')}
         >
-          <table className="table" aria-label="Exploratory sessions">
+          <table className="table" aria-label={t('exploratorySessions.exploratorySessions')}>
             <thead>
               <tr>
-                <th scope="col">Session</th>
-                <th scope="col">Status</th>
-                <th scope="col">Owner</th>
-                <th scope="col">Environment</th>
-                <th scope="col">Findings</th>
-                <th scope="col">Duration</th>
+                <th scope="col">{t('exploratorySessions.session')}</th>
+                <th scope="col">{t('exploratorySessions.status')}</th>
+                <th scope="col">{t('exploratorySessions.owner')}</th>
+                <th scope="col">{t('exploratorySessions.environment')}</th>
+                <th scope="col">{t('exploratorySessions.findings')}</th>
+                <th scope="col">{t('exploratorySessions.duration')}</th>
               </tr>
             </thead>
             <tbody>
@@ -200,8 +205,8 @@ export function ExploratorySessionsPage(): React.JSX.Element {
                   <td>
                     <Badge tone={EXPLORATORY_TONE[row.status]}>{humanize(row.status)}</Badge>
                   </td>
-                  <td>{row.owner?.fullName ?? 'nobody'}</td>
-                  <td>{row.environment?.name ?? 'none'}</td>
+                  <td>{row.owner?.fullName ?? t('exploratorySessions.nobody')}</td>
+                  <td>{row.environment?.name ?? t('exploratorySessions.none')}</td>
                   <td>{row.findingCount}</td>
                   <td>{formatDuration(row.durationSeconds)}</td>
                 </tr>

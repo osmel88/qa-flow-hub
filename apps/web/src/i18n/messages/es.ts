@@ -1,6 +1,8 @@
-import type { MessageKey } from './en';
+import type { MessageKey, core as enCore } from './en';
+import { screens } from './es/index';
+import { values } from './es/values';
 
-export const es: Record<MessageKey, string> = {
+const core: Record<keyof typeof enCore, string> = {
   'common.language': 'Idioma',
   'common.signOut': 'Cerrar sesión',
   'common.organization': 'Organización',
@@ -14,6 +16,8 @@ export const es: Record<MessageKey, string> = {
   'common.password': 'Contraseña',
   'common.backToSignIn': 'Volver a iniciar sesión',
   'common.genericError': 'Algo salió mal. Inténtalo de nuevo.',
+  'common.loading': 'Cargando…',
+  'common.nothingHereYet': 'Todavía no hay nada aquí',
 
   'nav.dashboard': 'Panel',
   'nav.projects': 'Proyectos',
@@ -100,4 +104,25 @@ export const es: Record<MessageKey, string> = {
   'reset.invalid': 'Este enlace de restablecimiento no es válido o ha caducado.',
   'reset.missingToken': 'Este enlace no tiene token de restablecimiento.',
   'reset.requestNew': 'Pedir un enlace nuevo',
+  'validation.passwordMin': 'La contraseña debe tener al menos {min} caracteres',
+  'validation.passwordMax': 'La contraseña debe tener como mucho {max} caracteres',
+  'validation.passwordLowercase': 'La contraseña debe contener una letra minúscula',
+  'validation.passwordUppercase': 'La contraseña debe contener una letra mayúscula',
+  'validation.passwordDigit': 'La contraseña debe contener un dígito',
+  'validation.expectsNumber': 'espera un número',
+  'validation.expectsBoolean': 'espera true o false',
+  'validation.expectsDate': 'espera una fecha AAAA-MM-DD',
+  'validation.required': 'Obligatorio',
+  'validation.invalidEmail': 'Email no válido',
+  'validation.tooShort': 'Debe tener al menos {min} carácter(es)',
+  'validation.tooLong': 'Debe tener como mucho {max} carácter(es)',
+  'validation.projectName': 'Usa de 2 a 120 caracteres.',
+  'validation.aParameter': 'un parámetro',
 };
+
+/** Partial on purpose: a missing key renders in English. A unit test checks coverage. */
+export const es = {
+  ...core,
+  ...screens,
+  ...values,
+} as Partial<Record<MessageKey, string>> & Record<string, string | undefined>;

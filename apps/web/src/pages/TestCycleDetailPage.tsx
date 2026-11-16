@@ -9,6 +9,7 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { TEST_CYCLE_TONE } from './TestCyclesSection';
+import { t } from '../i18n/i18n';
 
 const ACTION_OF = {
   active: 'start',
@@ -53,7 +54,9 @@ export function TestCycleDetailPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['test-cycles'] });
     },
     onError: async (cause: unknown) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not update the cycle.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('testCycleDetail.couldNotUpdateTheCycle'),
+      );
       await queryClient.invalidateQueries({ queryKey: ['test-cycle'] });
     },
   });
@@ -65,9 +68,14 @@ export function TestCycleDetailPage(): React.JSX.Element {
     <DataState isPending={cycle.isPending} error={cycle.error} isEmpty={false}>
       {data !== undefined && (
         <>
-          <PageHeader title={`Test cycle ${data.name}`} description={data.description ?? ''} />
+          <PageHeader
+            title={t('testCycleDetail.testCycle', { name: data.name })}
+            description={data.description ?? ''}
+          />
           <p>
-            <Link to={`/test-plans/${data.testPlan.id}`}>← Plan {data.testPlan.name}</Link>
+            <Link to={`/test-plans/${data.testPlan.id}`}>
+              {t('testCycleDetail.plan')} {data.testPlan.name}
+            </Link>
           </p>
           {error !== null && (
             <p role="alert" className="error">
@@ -75,32 +83,36 @@ export function TestCycleDetailPage(): React.JSX.Element {
             </p>
           )}
           <section className="card" aria-labelledby="cycle-summary">
-            <h2 id="cycle-summary">Summary</h2>
+            <h2 id="cycle-summary">{t('testCycleDetail.summary')}</h2>
             <p>
               <span data-testid="cycle-status">
                 <Badge tone={TEST_CYCLE_TONE[data.status]}>{humanize(data.status)}</Badge>
               </span>{' '}
               <span className="muted" data-testid="cycle-scope">
-                {data.scope.caseCount} cases
+                {data.scope.caseCount} {t('testCycleDetail.cases')}
                 {data.scope.frozen
-                  ? ` · scope frozen from plan v${data.scope.planVersion ?? 0}`
-                  : ' · follows the plan scope'}
+                  ? t('testCycleDetail.scopeFrozenFromPlanV', {
+                      value: data.scope.planVersion ?? 0,
+                    })
+                  : t('testCycleDetail.followsThePlanScope')}
               </span>
             </p>
-            <ul aria-label="Cycle facts">
-              <li>Owner: {data.owner?.fullName ?? 'nobody'}</li>
+            <ul aria-label={t('testCycleDetail.cycleFacts')}>
               <li>
-                Environment:{' '}
+                {t('testCycleDetail.owner')} {data.owner?.fullName ?? t('testCycleDetail.nobody')}
+              </li>
+              <li>
+                {t('testCycleDetail.environment')}{' '}
                 {data.environment === null ? (
-                  'any'
+                  t('testCycleDetail.any')
                 ) : (
                   <Link to={`/environments/${data.environment.id}`}>{data.environment.name}</Link>
                 )}
               </li>
               <li>
-                Release:{' '}
+                {t('testCycleDetail.release')}{' '}
                 {data.release === null ? (
-                  'none'
+                  t('testCycleDetail.none')
                 ) : (
                   <Link to={`/releases/${data.release.id}`}>
                     {data.release.version} · {data.release.name}
@@ -108,7 +120,7 @@ export function TestCycleDetailPage(): React.JSX.Element {
                 )}
               </li>
               <li>
-                Dates: {data.startDate ?? '—'} → {data.endDate ?? '—'}
+                {t('testCycleDetail.dates')} {data.startDate ?? '—'} → {data.endDate ?? '—'}
               </li>
             </ul>
             {can('testruns.manage') && (
@@ -127,7 +139,7 @@ export function TestCycleDetailPage(): React.JSX.Element {
                         );
                       }}
                     >
-                      {humanize(ACTION_OF[next])} cycle
+                      {humanize(ACTION_OF[next])} {t('testCycleDetail.cycle')}
                     </Button>
                   ))}
               </p>
@@ -135,9 +147,9 @@ export function TestCycleDetailPage(): React.JSX.Element {
           </section>
           {canEdit && (
             <section className="card" aria-labelledby="cycle-edit">
-              <h2 id="cycle-edit">Edit</h2>
+              <h2 id="cycle-edit">{t('testCycleDetail.edit')}</h2>
               <TextField
-                label="Cycle description"
+                label={t('testCycleDetail.cycleDescription')}
                 value={description ?? data.description ?? ''}
                 onChange={(event) => {
                   setDescription(event.target.value);
@@ -156,16 +168,16 @@ export function TestCycleDetailPage(): React.JSX.Element {
                   );
                 }}
               >
-                Save cycle description
+                {t('testCycleDetail.saveCycleDescription')}
               </Button>
             </section>
           )}
           <section className="card" aria-labelledby="cycle-runs">
-            <h2 id="cycle-runs">Runs</h2>
+            <h2 id="cycle-runs">{t('testCycleDetail.runs')}</h2>
             {data.runs.length === 0 ? (
-              <p className="muted">No run attached.</p>
+              <p className="muted">{t('testCycleDetail.noRunAttached')}</p>
             ) : (
-              <ul aria-label="Cycle runs">
+              <ul aria-label={t('testCycleDetail.cycleRuns')}>
                 {data.runs.map((entry) => (
                   <li key={entry.id}>
                     <Link to={`/test-runs/${entry.id}`}>{entry.name}</Link> ·{' '}
@@ -180,7 +192,7 @@ export function TestCycleDetailPage(): React.JSX.Element {
                             mutate.mutate(() => testCyclesApi.detachRun(data.id, entry.id));
                           }}
                         >
-                          Detach
+                          {t('testCycleDetail.detach')}
                         </Button>
                       </>
                     )}
@@ -191,10 +203,10 @@ export function TestCycleDetailPage(): React.JSX.Element {
             {canEdit && (
               <>
                 <SelectField
-                  label="Attach run to cycle"
+                  label={t('testCycleDetail.attachRunToCycle')}
                   value={runId}
                   options={[
-                    { value: '', label: 'Choose a run' },
+                    { value: '', label: t('testCycleDetail.chooseARun') },
                     ...(runs.data?.data ?? [])
                       .filter((entry) => !data.runs.some((own) => own.id === entry.id))
                       .map((entry) => ({ value: entry.id, label: entry.name })),
@@ -213,37 +225,42 @@ export function TestCycleDetailPage(): React.JSX.Element {
                     });
                   }}
                 >
-                  Attach run to cycle
+                  {t('testCycleDetail.attachRunToCycle')}
                 </Button>
               </>
             )}
           </section>
           {stats !== undefined && (
             <section className="card" aria-labelledby="cycle-progress">
-              <h2 id="cycle-progress">Progress</h2>
-              <ul aria-label="Cycle metrics">
-                <li data-testid="cycle-completion">Completion: {stats.completion}%</li>
+              <h2 id="cycle-progress">{t('testCycleDetail.progress')}</h2>
+              <ul aria-label={t('testCycleDetail.cycleMetrics')}>
+                <li data-testid="cycle-completion">
+                  {t('testCycleDetail.completion')} {stats.completion}%
+                </li>
                 <li data-testid="cycle-pass-rate">
-                  Pass rate: {stats.passRate === null ? 'n/a' : `${stats.passRate}%`}
+                  {t('testCycleDetail.passRate')}{' '}
+                  {stats.passRate === null ? 'n/a' : `${stats.passRate}%`}
                 </li>
                 <li data-testid="cycle-coverage">
-                  Coverage: {stats.coverage.planned}/{stats.coverage.total} (
+                  {t('testCycleDetail.coverage')} {stats.coverage.planned}/{stats.coverage.total} (
                   {stats.coverage.percent}%)
                 </li>
                 <li data-testid="cycle-counts">
-                  passed {stats.counts.passed} · failed {stats.counts.failed} · blocked{' '}
-                  {stats.counts.blocked} · untested {stats.counts.untested}
+                  {t('testCycleDetail.passed')} {stats.counts.passed} {t('testCycleDetail.failed')}{' '}
+                  {stats.counts.failed} {t('testCycleDetail.blocked')} {stats.counts.blocked}{' '}
+                  {t('testCycleDetail.untested')} {stats.counts.untested}
                 </li>
                 <li data-testid="cycle-defects">
-                  Defects found: {stats.defects.open} open of {stats.defects.total}
+                  {t('testCycleDetail.defectsFound')} {stats.defects.open}{' '}
+                  {t('testCycleDetail.openOf')} {stats.defects.total}
                 </li>
               </ul>
-              <table className="table" aria-label="Cycle cases">
+              <table className="table" aria-label={t('testCycleDetail.cycleCases')}>
                 <thead>
                   <tr>
-                    <th scope="col">Case</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Run</th>
+                    <th scope="col">{t('testCycleDetail.case')}</th>
+                    <th scope="col">{t('testCycleDetail.status')}</th>
+                    <th scope="col">{t('testCycleDetail.run')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -256,7 +273,7 @@ export function TestCycleDetailPage(): React.JSX.Element {
                       <td>{humanize(entry.status)}</td>
                       <td>
                         {entry.run === null ? (
-                          'not planned'
+                          t('testCycleDetail.notPlanned')
                         ) : (
                           <Link to={`/test-runs/${entry.run.id}`}>{entry.run.name}</Link>
                         )}
@@ -266,7 +283,7 @@ export function TestCycleDetailPage(): React.JSX.Element {
                 </tbody>
               </table>
               {stats.defects.items.length > 0 && (
-                <ul aria-label="Cycle defects">
+                <ul aria-label={t('testCycleDetail.cycleDefects')}>
                   {stats.defects.items.map((entry) => (
                     <li key={entry.id}>
                       <Link to="/defects">{entry.key}</Link> {entry.title} ·{' '}

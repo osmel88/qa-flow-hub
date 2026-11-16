@@ -11,3 +11,5 @@ export { Badge } from './Badge';
 export type { BadgeTone } from './Badge';
 export { DataState } from './DataState';
 export type { DataStateProps } from './DataState';
+export { UiStringsProvider, useUiStrings, DEFAULT_UI_STRINGS } from './UiStrings';
+export type { UiStrings } from './UiStrings';

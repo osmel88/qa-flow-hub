@@ -25,6 +25,7 @@ import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 import { SPRINT_TONE, formatPoints } from './SprintsPage';
 import { WORK_ITEM_TONE } from './WorkItemsPage';
+import { t } from '../i18n/i18n';
 
 type Placement = Pick<MoveBoardCardInput, 'beforeId' | 'afterId'>;
 
@@ -96,7 +97,7 @@ export function BoardPage(): React.JSX.Element {
       setError(null);
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not move the card.');
+      setError(cause instanceof ApiError ? cause.message : t('board.couldNotMoveTheCard'));
     },
     onSettled: async () => {
       await Promise.all(
@@ -128,16 +129,13 @@ export function BoardPage(): React.JSX.Element {
 
   return (
     <>
-      <PageHeader
-        title="Board"
-        description="The Scrum board of the active sprint. Drag cards between columns, or use the controls on each card."
-      />
-      <section className="card filters" aria-label="Board filters">
+      <PageHeader title={t('board.board')} description={t('board.theScrumBoardOfThe')} />
+      <section className="card filters" aria-label={t('board.boardFilters')}>
         <SelectField
-          label="Sprint"
+          label={t('board.sprint')}
           value={sprintId}
           options={[
-            { value: '', label: 'Active sprint' },
+            { value: '', label: t('board.activeSprint') },
             ...(sprints.data?.data ?? []).map((row) => ({
               value: row.id,
               label: `${row.name} (${humanize(row.status)})`,
@@ -148,12 +146,12 @@ export function BoardPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Assignee"
+          label={t('board.assignee')}
           value={assigneeId}
           options={[
-            { value: '', label: 'Anyone' },
-            { value: 'me', label: 'Me' },
-            { value: 'none', label: 'Unassigned' },
+            { value: '', label: t('board.anyone') },
+            { value: 'me', label: t('board.me') },
+            { value: 'none', label: t('board.unassigned') },
             ...uniqueAssignees(view).map((entry) => ({ value: entry.id, label: entry.fullName })),
           ]}
           onChange={(event) => {
@@ -161,10 +159,10 @@ export function BoardPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Priority"
+          label={t('board.priority')}
           value={priority}
           options={[
-            { value: '', label: 'Any priority' },
+            { value: '', label: t('board.anyPriority') },
             ...PRIORITIES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -172,10 +170,10 @@ export function BoardPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Type"
+          label={t('board.type')}
           value={type}
           options={[
-            { value: '', label: 'Any type' },
+            { value: '', label: t('board.anyType') },
             ...WORK_ITEM_TYPES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -183,11 +181,11 @@ export function BoardPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Epic"
+          label={t('board.epic')}
           value={epicId}
           options={[
-            { value: '', label: 'Any epic' },
-            { value: 'none', label: 'No epic' },
+            { value: '', label: t('board.anyEpic') },
+            { value: 'none', label: t('board.noEpic') },
             ...(view?.epics ?? []).map((ref) => ({
               value: ref.id,
               label: `${ref.key} ${ref.title}`,
@@ -198,11 +196,11 @@ export function BoardPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Feature"
+          label={t('board.feature')}
           value={featureId}
           options={[
-            { value: '', label: 'Any feature' },
-            { value: 'none', label: 'No feature' },
+            { value: '', label: t('board.anyFeature') },
+            { value: 'none', label: t('board.noFeature') },
             ...(view?.features ?? []).map((ref) => ({
               value: ref.id,
               label: `${ref.key} ${ref.title}`,
@@ -213,14 +211,14 @@ export function BoardPage(): React.JSX.Element {
           }}
         />
         <TextField
-          label="Search the board"
+          label={t('board.searchTheBoard')}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
           }}
         />
         <SelectField
-          label="Development filter"
+          label={t('board.developmentFilter')}
           value={developmentStatus}
           options={DEVELOPMENT_STATUS_OPTIONS}
           onChange={(event) => {
@@ -228,11 +226,11 @@ export function BoardPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Swimlanes"
+          label={t('board.swimlanes')}
           value={swimlane}
           options={BOARD_SWIMLANES.map((value) => ({
             value,
-            label: value === 'none' ? 'No swimlanes' : `By ${value}`,
+            label: value === 'none' ? t('board.noSwimlanes') : t('board.by', { value }),
           }))}
           onChange={(event) => {
             setSwimlane(event.target.value as BoardSwimlane);
@@ -249,7 +247,8 @@ export function BoardPage(): React.JSX.Element {
       <DataState isPending={board.isPending} error={board.error} isEmpty={false}>
         {view !== undefined && sprint === null && (
           <p className="card">
-            No active sprint in this project. <Link to="/sprints">Plan and start a sprint</Link>.
+            {t('board.noActiveSprintInThis')}{' '}
+            <Link to="/sprints">{t('board.planAndStartASprint')}</Link>.
           </p>
         )}
         {view !== undefined && sprint !== null && view.metrics !== null && (
@@ -261,42 +260,47 @@ export function BoardPage(): React.JSX.Element {
               </h2>
               <dl className="kpis">
                 <div>
-                  <dt>Capacity</dt>
+                  <dt>{t('board.capacity')}</dt>
                   <dd>{formatPoints(view.metrics.capacity)}</dd>
                 </div>
                 <div>
-                  <dt>Committed</dt>
+                  <dt>{t('board.committed')}</dt>
                   <dd data-testid="board-committed">{view.metrics.committedEstimate}</dd>
                 </div>
                 <div>
-                  <dt>Completed</dt>
+                  <dt>{t('board.completed')}</dt>
                   <dd data-testid="board-completed">{view.metrics.completedEstimate}</dd>
                 </div>
                 <div>
-                  <dt>Progress</dt>
+                  <dt>{t('board.progress')}</dt>
                   <dd data-testid="board-progress">
                     {view.metrics.progress === null ? '—' : `${view.metrics.progress}%`}
                   </dd>
                 </div>
                 <div>
-                  <dt>Velocity</dt>
+                  <dt>{t('board.velocity')}</dt>
                   <dd>{formatPoints(view.velocity.velocity)}</dd>
                 </div>
               </dl>
               <p className="muted" data-testid="board-shown">
-                {view.shown} of {view.total} cards shown
-                {view.truncated ? ' (board truncated)' : ''}
+                {view.shown} {t('board.of')} {view.total} {t('board.cardsShown')}
+                {view.truncated ? t('board.boardTruncated') : ''}
               </p>
-              {!writable && <p role="note">Read-only: you do not have permission to move cards.</p>}
+              {!writable && <p role="note">{t('board.readOnlyYouDoNot')}</p>}
               {writable && sprint.status !== 'active' && (
-                <p role="note">This sprint is {humanize(sprint.status)}; its board is read-only.</p>
+                <p role="note">
+                  {t('board.thisSprintIs')} {humanize(sprint.status)}
+                  {t('board.itsBoardIsReadOnly')}
+                </p>
               )}
             </section>
             {lanesOf(view).map((lane) => (
               <section
                 key={lane.id ?? 'none'}
                 className="board-lane"
-                aria-label={lane.title === '' ? 'Board' : `Swimlane ${lane.title}`}
+                aria-label={
+                  lane.title === '' ? t('board.board') : t('board.swimlane', { title: lane.title })
+                }
               >
                 {lane.title !== '' && <h2>{lane.title}</h2>}
                 <div className="board">
@@ -316,7 +320,7 @@ export function BoardPage(): React.JSX.Element {
                       <section
                         key={column.id}
                         className="board-column"
-                        aria-label={`${column.label} column`}
+                        aria-label={t('board.column', { label: column.label })}
                         data-testid={`board-column-${column.id}`}
                         onDragOver={(event) => {
                           if (editable) {
@@ -331,7 +335,7 @@ export function BoardPage(): React.JSX.Element {
                         <h3>
                           {column.label}{' '}
                           <span className="muted">
-                            ({cards.length} · {column.estimate} pts)
+                            ({cards.length} · {column.estimate} {t('board.pts')}
                           </span>
                         </h3>
                         <ul>
@@ -368,22 +372,24 @@ export function BoardPage(): React.JSX.Element {
                                 <DevelopmentStatusBadge status={card.developmentStatus} />
                                 <Badge tone="info">{humanize(card.priority)}</Badge>
                                 {card.status === 'blocked' && (
-                                  <Badge tone={WORK_ITEM_TONE.blocked}>Blocked</Badge>
+                                  <Badge tone={WORK_ITEM_TONE.blocked}>{t('board.blocked')}</Badge>
                                 )}
                                 <span>
-                                  {card.estimate === null ? '— pts' : `${card.estimate} pts`}
+                                  {card.estimate === null
+                                    ? t('board.pts2')
+                                    : t('board.pts3', { estimate: card.estimate })}
                                 </span>
-                                <span>{card.assignee?.fullName ?? 'Unassigned'}</span>
+                                <span>{card.assignee?.fullName ?? t('board.unassigned')}</span>
                                 <span title={card.requirements.keys.join(', ')}>
                                   {card.requirements.count === 0
-                                    ? 'No requirement'
-                                    : `${card.requirements.count} requirement(s)`}
+                                    ? t('board.noRequirement')
+                                    : t('board.requirementS', { count: card.requirements.count })}
                                 </span>
                               </div>
                               {editable && (
                                 <div className="row-actions">
                                   <select
-                                    aria-label={`Move ${card.key} to column`}
+                                    aria-label={t('board.moveToColumn', { key: card.key })}
                                     value={column.id}
                                     onChange={(event) => {
                                       const target = event.target.value as BoardColumnId;
@@ -401,7 +407,7 @@ export function BoardPage(): React.JSX.Element {
                                   </select>
                                   <button
                                     type="button"
-                                    aria-label={`Move ${card.key} up`}
+                                    aria-label={t('board.moveUp', { key: card.key })}
                                     disabled={index === 0 || move.isPending}
                                     onClick={() => {
                                       send(card, column.id, { beforeId: ids[index - 1] ?? '' });
@@ -411,7 +417,7 @@ export function BoardPage(): React.JSX.Element {
                                   </button>
                                   <button
                                     type="button"
-                                    aria-label={`Move ${card.key} down`}
+                                    aria-label={t('board.moveDown', { key: card.key })}
                                     disabled={index === ids.length - 1 || move.isPending}
                                     onClick={() => {
                                       send(card, column.id, { afterId: ids[index + 1] ?? '' });

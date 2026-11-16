@@ -12,6 +12,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export const TEST_PLAN_TONE: Record<TestPlanStatus, BadgeTone> = {
   draft: 'neutral',
@@ -83,7 +84,7 @@ export function TestPlansPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['test-plans'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the test plan.');
+      setError(cause instanceof ApiError ? cause.message : t('testPlans.couldNotCreateTheTest'));
     },
   });
   if (activeProjectId === null) {
@@ -100,13 +101,13 @@ export function TestPlansPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Test plans"
-        description="Plan QA work above suites and runs. Starting a plan freezes its scope."
+        title={t('testPlans.testPlans')}
+        description={t('testPlans.planQaWorkAboveSuites')}
       />
       {can('testruns.create') && (
         <form
           className="card"
-          aria-label="New test plan"
+          aria-label={t('testPlans.newTestPlan')}
           onSubmit={(event) => {
             event.preventDefault();
             create.mutate();
@@ -118,25 +119,25 @@ export function TestPlansPage(): React.JSX.Element {
             </p>
           )}
           <TextField
-            label="Plan name"
+            label={t('testPlans.planName')}
             value={name}
             onChange={(event) => {
               setName(event.target.value);
             }}
           />
           <SelectField
-            label="Plan release"
+            label={t('testPlans.planRelease')}
             value={releaseId}
-            options={[{ value: '', label: 'No release' }, ...releaseOptions]}
+            options={[{ value: '', label: t('testPlans.noRelease') }, ...releaseOptions]}
             onChange={(event) => {
               setReleaseId(event.target.value);
             }}
           />
           <SelectField
-            label="Plan suite"
+            label={t('testPlans.planSuite')}
             value={suiteId}
             options={[
-              { value: '', label: 'No suite yet' },
+              { value: '', label: t('testPlans.noSuiteYet') },
               ...(suites.data ?? []).map((entry) => ({ value: entry.id, label: entry.name })),
             ]}
             onChange={(event) => {
@@ -144,15 +145,15 @@ export function TestPlansPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Plan environment"
+            label={t('testPlans.planEnvironment')}
             value={environmentId}
-            options={[{ value: '', label: 'No environment' }, ...environmentOptions]}
+            options={[{ value: '', label: t('testPlans.noEnvironment') }, ...environmentOptions]}
             onChange={(event) => {
               setEnvironmentId(event.target.value);
             }}
           />
           <TextField
-            label="Plan start date"
+            label={t('testPlans.planStartDate')}
             type="date"
             value={startDate}
             onChange={(event) => {
@@ -160,7 +161,7 @@ export function TestPlansPage(): React.JSX.Element {
             }}
           />
           <TextField
-            label="Plan end date"
+            label={t('testPlans.planEndDate')}
             type="date"
             value={endDate}
             onChange={(event) => {
@@ -168,16 +169,16 @@ export function TestPlansPage(): React.JSX.Element {
             }}
           />
           <Button type="submit" disabled={create.isPending || name.trim().length < 3}>
-            Create test plan
+            {t('testPlans.createTestPlan')}
           </Button>
         </form>
       )}
-      <section className="card filters" aria-label="Test plan filters">
+      <section className="card filters" aria-label={t('testPlans.testPlanFilters')}>
         <SelectField
-          label="Plan status filter"
+          label={t('testPlans.planStatusFilter')}
           value={status}
           options={[
-            { value: '', label: 'Not archived' },
+            { value: '', label: t('testPlans.notArchived') },
             ...TEST_PLAN_STATUSES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -185,17 +186,17 @@ export function TestPlansPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Plan release filter"
+          label={t('testPlans.planReleaseFilter')}
           value={releaseFilter}
-          options={[{ value: '', label: 'Any release' }, ...releaseOptions]}
+          options={[{ value: '', label: t('testPlans.anyRelease') }, ...releaseOptions]}
           onChange={(event) => {
             setReleaseFilter(event.target.value);
           }}
         />
         <SelectField
-          label="Plan environment filter"
+          label={t('testPlans.planEnvironmentFilter')}
           value={environmentFilter}
-          options={[{ value: '', label: 'Any environment' }, ...environmentOptions]}
+          options={[{ value: '', label: t('testPlans.anyEnvironment') }, ...environmentOptions]}
           onChange={(event) => {
             setEnvironmentFilter(event.target.value);
           }}
@@ -205,16 +206,16 @@ export function TestPlansPage(): React.JSX.Element {
         isPending={plans.isPending}
         error={plans.error}
         isEmpty={(plans.data?.data.length ?? 0) === 0}
-        emptyMessage="No test plan yet."
+        emptyMessage={t('testPlans.noTestPlanYet')}
       >
-        <table className="table card" aria-label="Test plans">
+        <table className="table card" aria-label={t('testPlans.testPlans')}>
           <thead>
             <tr>
-              <th scope="col">Plan</th>
-              <th scope="col">Status</th>
-              <th scope="col">Owner</th>
-              <th scope="col">Release</th>
-              <th scope="col">Cases</th>
+              <th scope="col">{t('testPlans.plan')}</th>
+              <th scope="col">{t('testPlans.status')}</th>
+              <th scope="col">{t('testPlans.owner')}</th>
+              <th scope="col">{t('testPlans.release')}</th>
+              <th scope="col">{t('testPlans.cases')}</th>
             </tr>
           </thead>
           <tbody>
@@ -226,8 +227,8 @@ export function TestPlansPage(): React.JSX.Element {
                 <td>
                   <Badge tone={TEST_PLAN_TONE[entry.status]}>{humanize(entry.status)}</Badge>
                 </td>
-                <td>{entry.owner?.fullName ?? 'nobody'}</td>
-                <td>{entry.release?.version ?? 'none'}</td>
+                <td>{entry.owner?.fullName ?? t('testPlans.nobody')}</td>
+                <td>{entry.release?.version ?? t('testPlans.none')}</td>
                 <td>
                   {entry.scope.caseCount}
                   {entry.scope.frozen && ` (frozen v${entry.scope.version})`}

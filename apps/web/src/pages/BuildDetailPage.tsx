@@ -11,6 +11,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { BUILD_TONE, formatDuration } from './BuildsPage';
 import { DeploymentsOf } from './DeploymentsPage';
+import { t } from '../i18n/i18n';
 
 /** A build: lifecycle, release, work items and related branch/commit (S5-F4). */
 export function BuildDetailPage(): React.JSX.Element {
@@ -49,7 +50,7 @@ export function BuildDetailPage(): React.JSX.Element {
       ]);
     },
     onError: (cause: unknown) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not update the build.');
+      setError(cause instanceof ApiError ? cause.message : t('buildDetail.couldNotUpdateTheBuild'));
     },
   });
 
@@ -60,9 +61,12 @@ export function BuildDetailPage(): React.JSX.Element {
     <DataState isPending={build.isPending} error={build.error} isEmpty={false}>
       {data !== undefined && (
         <>
-          <PageHeader title={`Build ${data.identifier ?? ''}`} description="Build detail." />
+          <PageHeader
+            title={t('buildDetail.build', { value: data.identifier ?? '' })}
+            description={t('buildDetail.buildDetail')}
+          />
           <p>
-            <Link to="/builds">← All builds</Link>
+            <Link to="/builds">{t('buildDetail.allBuilds')}</Link>
           </p>
           {error !== null && (
             <p role="alert" className="error">
@@ -70,7 +74,7 @@ export function BuildDetailPage(): React.JSX.Element {
             </p>
           )}
           <section className="card" aria-labelledby="build-summary">
-            <h2 id="build-summary">Summary</h2>
+            <h2 id="build-summary">{t('buildDetail.summary')}</h2>
             <p>
               <span data-testid="build-status">
                 <Badge tone={BUILD_TONE[status]}>{humanize(status)}</Badge>
@@ -82,24 +86,24 @@ export function BuildDetailPage(): React.JSX.Element {
             </p>
             <dl className="kpis">
               <div>
-                <dt>Started</dt>
+                <dt>{t('buildDetail.started')}</dt>
                 <dd>{data.startedAt === null ? '—' : new Date(data.startedAt).toLocaleString()}</dd>
               </div>
               <div>
-                <dt>Finished</dt>
+                <dt>{t('buildDetail.finished')}</dt>
                 <dd>
                   {data.finishedAt === null ? '—' : new Date(data.finishedAt).toLocaleString()}
                 </dd>
               </div>
               <div>
-                <dt>Duration</dt>
+                <dt>{t('buildDetail.duration')}</dt>
                 <dd data-testid="build-duration">{formatDuration(data.durationMs)}</dd>
               </div>
             </dl>
             <p>
-              Branch:{' '}
+              {t('buildDetail.branch')}{' '}
               {data.branchName === null ? (
-                'none'
+                t('buildDetail.none')
               ) : data.related.branchId === null ? (
                 <code>{data.branchName}</code>
               ) : (
@@ -107,14 +111,18 @@ export function BuildDetailPage(): React.JSX.Element {
                   <code>{data.branchName}</code>
                 </Link>
               )}{' '}
-              · Commit:{' '}
-              {data.commitSha === null ? 'none' : <code>{data.commitSha.slice(0, 7)}</code>}
+              {t('buildDetail.commit')}{' '}
+              {data.commitSha === null ? (
+                t('buildDetail.none')
+              ) : (
+                <code>{data.commitSha.slice(0, 7)}</code>
+              )}
               {data.url !== null && (
                 <>
                   {' '}
                   ·{' '}
                   <a href={data.url} target="_blank" rel="noopener noreferrer">
-                    Open in CI
+                    {t('buildDetail.openInCi')}
                   </a>
                 </>
               )}
@@ -130,7 +138,7 @@ export function BuildDetailPage(): React.JSX.Element {
                       act.mutate(() => buildsApi.transition(data.id, { status: next }));
                     }}
                   >
-                    Mark {humanize(next)}
+                    {t('buildDetail.mark')} {humanize(next)}
                   </Button>
                 ))}
               </p>
@@ -138,13 +146,13 @@ export function BuildDetailPage(): React.JSX.Element {
           </section>
 
           <section className="card" aria-labelledby="build-release">
-            <h2 id="build-release">Release</h2>
+            <h2 id="build-release">{t('buildDetail.release')}</h2>
             {writable ? (
               <SelectField
-                label="Release of the build"
+                label={t('buildDetail.releaseOfTheBuild')}
                 value={data.release?.id ?? ''}
                 options={[
-                  { value: '', label: 'No release' },
+                  { value: '', label: t('buildDetail.noRelease') },
                   ...(releases.data?.data ?? []).map((release) => ({
                     value: release.id,
                     label: `${release.version} · ${release.name}`,
@@ -158,7 +166,7 @@ export function BuildDetailPage(): React.JSX.Element {
                 }}
               />
             ) : data.release === null ? (
-              <p>No release.</p>
+              <p>{t('buildDetail.noRelease2')}</p>
             ) : null}
             {data.release !== null && (
               <p>
@@ -170,8 +178,8 @@ export function BuildDetailPage(): React.JSX.Element {
           </section>
 
           <section className="card" aria-labelledby="build-work-items">
-            <h2 id="build-work-items">Work items</h2>
-            <ul aria-label="Built work items">
+            <h2 id="build-work-items">{t('buildDetail.workItems')}</h2>
+            <ul aria-label={t('buildDetail.builtWorkItems')}>
               {data.workItems.map((item) => (
                 <li key={item.workItemId}>
                   <Link to={`/work-items/${item.workItemId}`}>
@@ -181,12 +189,12 @@ export function BuildDetailPage(): React.JSX.Element {
                     <Button
                       size="sm"
                       variant="ghost"
-                      aria-label={`Unlink ${item.key}`}
+                      aria-label={t('buildDetail.unlink', { key: item.key })}
                       onClick={() => {
                         act.mutate(() => developmentApi.unlink(item.workItemId, data.id));
                       }}
                     >
-                      Unlink
+                      {t('buildDetail.unlink2')}
                     </Button>
                   )}
                 </li>
@@ -202,10 +210,10 @@ export function BuildDetailPage(): React.JSX.Element {
                 }}
               >
                 <SelectField
-                  label="Link work item"
+                  label={t('buildDetail.linkWorkItem')}
                   value={workItemId}
                   options={[
-                    { value: '', label: 'Choose a work item' },
+                    { value: '', label: t('buildDetail.chooseAWorkItem') },
                     ...(workItems.data?.data ?? [])
                       .filter(
                         (item) => !data.workItems.some((linked) => linked.workItemId === item.id),
@@ -217,7 +225,7 @@ export function BuildDetailPage(): React.JSX.Element {
                   }}
                 />
                 <Button type="submit" size="sm">
-                  Link
+                  {t('buildDetail.link')}
                 </Button>
               </form>
             )}
@@ -227,9 +235,9 @@ export function BuildDetailPage(): React.JSX.Element {
 
           {(data.metadata !== null || data.logSummary !== null) && (
             <section className="card" aria-labelledby="build-output">
-              <h2 id="build-output">Output</h2>
+              <h2 id="build-output">{t('buildDetail.output')}</h2>
               {data.metadata !== null && data.metadata.artifacts.length > 0 && (
-                <ul aria-label="Build artifacts">
+                <ul aria-label={t('buildDetail.buildArtifacts')}>
                   {data.metadata.artifacts.map((artifact) => (
                     <li key={artifact.name}>
                       {artifact.url === undefined ? (

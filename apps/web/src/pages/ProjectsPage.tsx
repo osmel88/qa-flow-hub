@@ -1,4 +1,4 @@
-import { PROJECT_KEY_RULE, createProjectSchema, projectKeySchema } from '@qa-flow-hub/shared';
+import { createProjectSchema, projectKeySchema } from '@qa-flow-hub/shared';
 import { Badge, Button, DataState, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -7,8 +7,7 @@ import { ApiError } from '../api/http-client';
 import { PlanLimitAlert } from '../components/PlanLimitAlert';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
-
-const PROJECT_NAME_RULE = 'Use 2 to 120 characters.';
+import { t } from '../i18n/i18n';
 
 /**
  * The API's own schema decides, so the form and the server cannot disagree.
@@ -17,12 +16,16 @@ const PROJECT_NAME_RULE = 'Use 2 to 120 characters.';
  */
 export function projectKeyError(key: string): string | undefined {
   if (key === '') return undefined;
-  return /\s/.test(key) || !projectKeySchema.safeParse(key).success ? PROJECT_KEY_RULE : undefined;
+  return /\s/.test(key) || !projectKeySchema.safeParse(key).success
+    ? t('projects.keyRule')
+    : undefined;
 }
 
 export function projectNameError(name: string): string | undefined {
   if (name === '') return undefined;
-  return createProjectSchema.shape.name.safeParse(name).success ? undefined : PROJECT_NAME_RULE;
+  return createProjectSchema.shape.name.safeParse(name).success
+    ? undefined
+    : t('validation.projectName');
 }
 
 export function ProjectsPage(): React.JSX.Element {
@@ -59,7 +62,7 @@ export function ProjectsPage(): React.JSX.Element {
       await invalidate();
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the project.');
+      setError(cause instanceof ApiError ? cause.message : t('projects.couldNotCreateTheProject'));
     },
   });
 
@@ -73,13 +76,10 @@ export function ProjectsPage(): React.JSX.Element {
 
   return (
     <>
-      <PageHeader
-        title="Projects"
-        description="A project owns its own key sequence: WEB-R-1, WEB-C-1, WEB-D-1."
-      />
+      <PageHeader title={t('projects.projects')} description={t('projects.aProjectOwnsItsOwn')} />
 
       <section className="card" aria-labelledby="new-project">
-        <h2 id="new-project">New project</h2>
+        <h2 id="new-project">{t('projects.newProject')}</h2>
         {create.error instanceof ApiError && create.error.code === 'PLAN_LIMIT_REACHED' ? (
           <PlanLimitAlert error={create.error} />
         ) : (
@@ -91,7 +91,7 @@ export function ProjectsPage(): React.JSX.Element {
         )}
         <div className="grid-2">
           <TextField
-            label="Name"
+            label={t('projects.name')}
             value={name}
             error={nameError}
             onChange={(event) => {
@@ -99,8 +99,8 @@ export function ProjectsPage(): React.JSX.Element {
             }}
           />
           <TextField
-            label="Key"
-            hint={`${PROJECT_KEY_RULE} It prefixes every readable id and cannot change.`}
+            label={t('projects.key')}
+            hint={t('projects.itPrefixesEveryReadableId', { rule: t('projects.keyRule') })}
             value={key}
             error={keyError}
             onChange={(event) => {
@@ -115,7 +115,7 @@ export function ProjectsPage(): React.JSX.Element {
             create.mutate();
           }}
         >
-          Create project
+          {t('projects.createProject')}
         </Button>
       </section>
 
@@ -123,16 +123,16 @@ export function ProjectsPage(): React.JSX.Element {
         isPending={isPending}
         error={loadError}
         isEmpty={(data?.data.length ?? 0) === 0}
-        emptyMessage="No projects yet. Create the first one above."
+        emptyMessage={t('projects.noProjectsYetCreateThe')}
       >
         <table className="table card">
-          <caption className="visually-hidden">Projects in this organization</caption>
+          <caption className="visually-hidden">{t('projects.projectsInThisOrganization')}</caption>
           <thead>
             <tr>
-              <th scope="col">Key</th>
-              <th scope="col">Name</th>
-              <th scope="col">Status</th>
-              <th scope="col">Actions</th>
+              <th scope="col">{t('projects.key')}</th>
+              <th scope="col">{t('projects.name')}</th>
+              <th scope="col">{t('projects.status')}</th>
+              <th scope="col">{t('projects.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -153,7 +153,7 @@ export function ProjectsPage(): React.JSX.Element {
                       toggleArchive.mutate(project);
                     }}
                   >
-                    {project.status === 'archived' ? 'Restore' : 'Archive'}
+                    {project.status === 'archived' ? t('projects.restore') : t('projects.archive')}
                   </Button>
                 </td>
               </tr>

@@ -5,6 +5,7 @@ import type {
   TextareaHTMLAttributes,
 } from 'react';
 import { useId, useState } from 'react';
+import { useUiStrings } from './UiStrings';
 
 interface FieldShellProps {
   label: string;
@@ -88,11 +89,12 @@ export function PasswordField({
   label,
   error,
   hint,
-  showLabel = 'Show password',
-  hideLabel = 'Hide password',
+  showLabel,
+  hideLabel,
   ...rest
 }: PasswordFieldProps): React.JSX.Element {
   const [visible, setVisible] = useState(false);
+  const strings = useUiStrings();
   return (
     <FieldShell label={label} error={error} hint={hint}>
       {({ id, describedBy, invalid }) => (
@@ -108,7 +110,9 @@ export function PasswordField({
           <button
             type="button"
             className="ui-password__toggle"
-            aria-label={visible ? hideLabel : showLabel}
+            aria-label={
+              visible ? (hideLabel ?? strings.hidePassword) : (showLabel ?? strings.showPassword)
+            }
             aria-pressed={visible}
             aria-controls={id}
             onClick={() => {

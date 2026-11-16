@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { testRunsApi } from '../api/endpoints';
 import { humanize } from '../components/status';
 import { PrintToolbar } from './PrintableMatrixPage';
+import { t } from '../i18n/i18n';
 
 /** Print-friendly run summary, built from the run's case snapshots. */
 export function PrintableRunPage(): React.JSX.Element {
@@ -20,30 +21,34 @@ export function PrintableRunPage(): React.JSX.Element {
       <DataState isPending={run.isPending || cases.isPending} error={run.error ?? cases.error}>
         {run.data !== undefined && (
           <>
-            <h1>Test run — {run.data.name}</h1>
+            <h1>
+              {t('printableRun.testRun')} {run.data.name}
+            </h1>
             <p className="muted">
               {humanize(run.data.status)}
               {run.data.milestone === null ? '' : ` · ${run.data.milestone}`}
-              {run.data.environment === null ? '' : ` · ${run.data.environment}`} · Generated{' '}
-              {new Date().toLocaleString()}
+              {run.data.environment === null ? '' : ` · ${run.data.environment}`}{' '}
+              {t('printableRun.generated')} {new Date().toLocaleString()}
             </p>
             <p>
-              {run.data.progress.executed} of {run.data.progress.total} executed (
-              {run.data.progress.completion}%): {run.data.progress.passed} passed,{' '}
-              {run.data.progress.failed} failed, {run.data.progress.blocked} blocked,{' '}
-              {run.data.progress.skipped} skipped.
+              {run.data.progress.executed} {t('printableRun.of')} {run.data.progress.total}{' '}
+              {t('printableRun.executed')}
+              {run.data.progress.completion}%): {run.data.progress.passed}{' '}
+              {t('printableRun.passed')} {run.data.progress.failed} {t('printableRun.failed')}{' '}
+              {run.data.progress.blocked} {t('printableRun.blocked')} {run.data.progress.skipped}{' '}
+              {t('printableRun.skipped')}
             </p>
           </>
         )}
         {cases.data !== undefined && (
-          <table className="print-table" aria-label="Run cases">
+          <table className="print-table" aria-label={t('printableRun.runCases')}>
             <thead>
               <tr>
-                <th scope="col">Key</th>
-                <th scope="col">Title</th>
-                <th scope="col">Priority</th>
-                <th scope="col">Version</th>
-                <th scope="col">Status</th>
+                <th scope="col">{t('printableRun.key')}</th>
+                <th scope="col">{t('printableRun.title')}</th>
+                <th scope="col">{t('printableRun.priority')}</th>
+                <th scope="col">{t('printableRun.version')}</th>
+                <th scope="col">{t('printableRun.status')}</th>
               </tr>
             </thead>
             <tbody>

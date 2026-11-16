@@ -6,6 +6,7 @@ import type {
 } from '@qa-flow-hub/shared';
 import { useQuery } from '@tanstack/react-query';
 import { customFieldsApi } from '../api/endpoints';
+import { t } from '../i18n/i18n';
 
 /** Values being edited: `null` marks a field the user cleared. */
 export type CustomFieldDraft = Record<string, CustomFieldValue | null>;
@@ -28,7 +29,8 @@ export function formatCustomValue(field: CustomFieldView, value: CustomFieldValu
     field.options.find((option) => option.id === id)?.label ?? id;
   if (Array.isArray(value)) return value.map(label).join(', ');
   if (field.type === 'select' && typeof value === 'string') return label(value);
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'boolean')
+    return value ? t('c_customFieldInputs.yes') : t('c_customFieldInputs.no');
   return String(value);
 }
 
@@ -79,7 +81,7 @@ export function CustomFieldInputs({
 
   return (
     <fieldset className="custom-fields">
-      <legend>Custom fields</legend>
+      <legend>{t('c_customFieldInputs.customFields')}</legend>
       {fields.map((field) => {
         const value = current(field.id);
         const inputId = `cf-${field.id}`;
@@ -103,8 +105,8 @@ export function CustomFieldInputs({
                 }}
               >
                 <option value="">—</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="true">{t('c_customFieldInputs.yes')}</option>
+                <option value="false">{t('c_customFieldInputs.no')}</option>
               </select>
             ) : field.type === 'select' ? (
               <select

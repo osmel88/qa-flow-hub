@@ -24,20 +24,21 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 /** The label of the field that identifies an artifact of this kind. */
 export function referenceLabel(kind: DevelopmentArtifactKind): string {
   switch (kind) {
     case 'branch':
-      return 'Branch name';
+      return t('development.branchName');
     case 'commit':
-      return 'Commit SHA';
+      return t('development.commitSha');
     case 'pull_request':
-      return 'Pull request number';
+      return t('development.pullRequestNumber');
     case 'build':
-      return 'Build identifier';
+      return t('development.buildIdentifier');
     default:
-      return 'Deployment identifier';
+      return t('development.deploymentIdentifier');
   }
 }
 
@@ -160,7 +161,7 @@ export function DevelopmentPage(): React.JSX.Element {
   };
   const onError = (cause: unknown): void => {
     setNotice(null);
-    setError(cause instanceof ApiError ? cause.message : 'Could not save the change.');
+    setError(cause instanceof ApiError ? cause.message : t('development.couldNotSaveTheChange'));
   };
   const create = useMutation({
     mutationFn: () =>
@@ -179,7 +180,9 @@ export function DevelopmentPage(): React.JSX.Element {
       }),
     onSuccess: async (row) => {
       setError(null);
-      setNotice(`Recorded ${humanize(row.kind)} ${artifactReference(row)}.`);
+      setNotice(
+        t('development.recorded', { value: humanize(row.kind), value2: artifactReference(row) }),
+      );
       setDraft({ ...draft, reference: '', title: '', status: '', environment: '', url: '' });
       await refresh();
     },
@@ -189,7 +192,7 @@ export function DevelopmentPage(): React.JSX.Element {
     mutationFn: (id: string) => developmentApi.remove(id),
     onSuccess: async () => {
       setError(null);
-      setNotice('Development artifact deleted.');
+      setNotice(t('development.developmentArtifactDeleted'));
       await refresh();
     },
     onError,
@@ -206,12 +209,12 @@ export function DevelopmentPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Development"
-        description="Branches, commits, pull requests, builds and deployments of the project and the work items they relate to. Recorded locally; no provider is connected."
+        title={t('development.development')}
+        description={t('development.branchesCommitsPullRequestsBuilds')}
       />
       {summary.data !== undefined && (
         <section className="card" aria-labelledby="development-summary">
-          <h2 id="development-summary">Work items by development status</h2>
+          <h2 id="development-summary">{t('development.workItemsByDevelopmentStatus')}</h2>
           <dl className="kpis">
             {DEVELOPMENT_STATUS_VALUES.filter((value) => summary.data.workItems[value] > 0).map(
               (value) => (
@@ -226,12 +229,12 @@ export function DevelopmentPage(): React.JSX.Element {
           </dl>
         </section>
       )}
-      <section className="card filters" aria-label="Development filters">
+      <section className="card filters" aria-label={t('development.developmentFilters')}>
         <SelectField
-          label="Filter by kind"
+          label={t('development.filterByKind')}
           value={kind}
           options={[
-            { value: '', label: 'Any kind' },
+            { value: '', label: t('development.anyKind') },
             ...DEVELOPMENT_ARTIFACT_KINDS.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -239,10 +242,10 @@ export function DevelopmentPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Filter by provider"
+          label={t('development.filterByProvider')}
           value={provider}
           options={[
-            { value: '', label: 'Any provider' },
+            { value: '', label: t('development.anyProvider') },
             ...DEVELOPMENT_PROVIDERS.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -250,10 +253,10 @@ export function DevelopmentPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Filter by status"
+          label={t('development.filterByStatus')}
           value={status}
           options={[
-            { value: '', label: 'Any status' },
+            { value: '', label: t('development.anyStatus') },
             ...ALL_DEVELOPMENT_STATUSES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -261,11 +264,11 @@ export function DevelopmentPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Filter by work item"
+          label={t('development.filterByWorkItem')}
           value={workItemId}
           options={[
-            { value: '', label: 'Any work item' },
-            { value: 'none', label: 'Not linked' },
+            { value: '', label: t('development.anyWorkItem') },
+            { value: 'none', label: t('development.notLinked') },
             ...items.map((entry) => ({ value: entry.id, label: `${entry.key} ${entry.title}` })),
           ]}
           onChange={(event) => {
@@ -273,7 +276,7 @@ export function DevelopmentPage(): React.JSX.Element {
           }}
         />
         <TextField
-          label="Search development"
+          label={t('development.searchDevelopment')}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
@@ -284,15 +287,15 @@ export function DevelopmentPage(): React.JSX.Element {
       {writable && (
         <form
           className="card form-grid"
-          aria-label="Record development activity"
+          aria-label={t('development.recordDevelopmentActivity')}
           onSubmit={(event) => {
             event.preventDefault();
             create.mutate();
           }}
         >
-          <h2>Record development activity</h2>
+          <h2>{t('development.recordDevelopmentActivity')}</h2>
           <SelectField
-            label="Artifact kind"
+            label={t('development.artifactKind')}
             value={draft.kind}
             options={DEVELOPMENT_ARTIFACT_KINDS.map((value) => ({
               value,
@@ -316,7 +319,7 @@ export function DevelopmentPage(): React.JSX.Element {
             }}
           />
           <TextField
-            label="Title"
+            label={t('development.title')}
             value={draft.title}
             onChange={(event) => {
               setDraft({ ...draft, title: event.target.value });
@@ -324,10 +327,10 @@ export function DevelopmentPage(): React.JSX.Element {
           />
           {statusesFor(draft.kind).length > 0 && (
             <SelectField
-              label="Artifact status"
+              label={t('development.artifactStatus')}
               value={draft.status}
               options={[
-                { value: '', label: 'No status' },
+                { value: '', label: t('development.noStatus') },
                 ...statusesFor(draft.kind).map((value) => ({ value, label: humanize(value) })),
               ]}
               onChange={(event) => {
@@ -337,7 +340,7 @@ export function DevelopmentPage(): React.JSX.Element {
           )}
           {draft.kind === 'deployment' && (
             <TextField
-              label="Environment"
+              label={t('development.environment')}
               value={draft.environment}
               onChange={(event) => {
                 setDraft({ ...draft, environment: event.target.value });
@@ -345,7 +348,7 @@ export function DevelopmentPage(): React.JSX.Element {
             />
           )}
           <TextField
-            label="URL"
+            label={t('development.url')}
             type="url"
             value={draft.url}
             onChange={(event) => {
@@ -353,7 +356,7 @@ export function DevelopmentPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Artifact provider"
+            label={t('development.artifactProvider')}
             value={draft.provider}
             options={DEVELOPMENT_PROVIDERS.map((value) => ({ value, label: humanize(value) }))}
             onChange={(event) => {
@@ -361,10 +364,10 @@ export function DevelopmentPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Link to work item"
+            label={t('development.linkToWorkItem')}
             value={draft.workItemId}
             options={[
-              { value: '', label: 'No work item' },
+              { value: '', label: t('development.noWorkItem') },
               ...items.map((entry) => ({ value: entry.id, label: `${entry.key} ${entry.title}` })),
             ]}
             onChange={(event) => {
@@ -372,7 +375,7 @@ export function DevelopmentPage(): React.JSX.Element {
             }}
           />
           <Button type="submit" disabled={draft.reference.trim() === ''} loading={create.isPending}>
-            Record activity
+            {t('development.recordActivity')}
           </Button>
         </form>
       )}
@@ -388,16 +391,16 @@ export function DevelopmentPage(): React.JSX.Element {
         isPending={artifacts.isPending}
         error={artifacts.error}
         isEmpty={rows.length === 0}
-        emptyMessage="No development activity matches."
+        emptyMessage={t('development.noDevelopmentActivityMatches')}
       >
-        <table className="table card" aria-label="Development activity">
+        <table className="table card" aria-label={t('development.developmentActivity')}>
           <thead>
             <tr>
-              <th scope="col">Artifact</th>
-              <th scope="col">Provider</th>
-              <th scope="col">When</th>
-              <th scope="col">Work items</th>
-              {manager && <th scope="col">Actions</th>}
+              <th scope="col">{t('development.artifact')}</th>
+              <th scope="col">{t('development.provider')}</th>
+              <th scope="col">{t('development.when')}</th>
+              <th scope="col">{t('development.workItems')}</th>
+              {manager && <th scope="col">{t('development.actions')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -411,7 +414,7 @@ export function DevelopmentPage(): React.JSX.Element {
                 <td>{new Date(row.occurredAt ?? row.createdAt).toLocaleString()}</td>
                 <td>
                   {row.workItems.length === 0 ? (
-                    <span className="muted">Not linked</span>
+                    <span className="muted">{t('development.notLinked')}</span>
                   ) : (
                     row.workItems.map((entry) => (
                       <Link key={entry.linkId} to={`/work-items/${entry.workItemId}`}>
@@ -425,12 +428,15 @@ export function DevelopmentPage(): React.JSX.Element {
                     <Button
                       size="sm"
                       variant="secondary"
-                      aria-label={`Delete ${row.kind} ${artifactReference(row)}`}
+                      aria-label={t('development.delete', {
+                        kind: row.kind,
+                        value: artifactReference(row),
+                      })}
                       onClick={() => {
                         remove.mutate(row.id);
                       }}
                     >
-                      Delete
+                      {t('development.delete2')}
                     </Button>
                   </td>
                 )}
@@ -440,7 +446,9 @@ export function DevelopmentPage(): React.JSX.Element {
         </table>
         {artifacts.data !== undefined && artifacts.data.meta.total > rows.length && (
           <p className="muted">
-            Showing {rows.length} of {artifacts.data.meta.total}; narrow the filters.
+            {t('development.showing')} {rows.length} {t('development.of')}{' '}
+            {artifacts.data.meta.total}
+            {t('development.narrowTheFilters')}
           </p>
         )}
       </DataState>

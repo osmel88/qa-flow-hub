@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { gitHubApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { humanize, toneFor } from './status';
+import { t } from '../i18n/i18n';
 
 /**
  * One query for the whole screen: the GitHub references of every run in the
@@ -105,7 +106,11 @@ export function GitHubRunPanel({
       await invalidate();
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not refresh the workflow run.');
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : t('c_gitHubRunPanel.couldNotRefreshTheWorkflow'),
+      );
     },
   });
 
@@ -117,18 +122,20 @@ export function GitHubRunPanel({
       await Promise.all([invalidate(), onImported()]);
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not import the results.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('c_gitHubRunPanel.couldNotImportTheResults'),
+      );
     },
   });
 
   const closed = runStatus === 'completed' || runStatus === 'aborted';
 
   return (
-    <section className="card" aria-label="GitHub workflow run">
+    <section className="card" aria-label={t('c_gitHubRunPanel.githubWorkflowRun')}>
       <div className="external-sync">
-        <strong>GitHub</strong>
+        <strong>{t('c_gitHubRunPanel.github')}</strong>
         {reference === undefined ? (
-          <span className="muted">No workflow run linked.</span>
+          <span className="muted">{t('c_gitHubRunPanel.noWorkflowRunLinked')}</span>
         ) : (
           <>
             <GitHubRunCell reference={reference} />
@@ -147,7 +154,9 @@ export function GitHubRunPanel({
             setPicking((open) => !open);
           }}
         >
-          {reference === undefined ? 'Link workflow run' : 'Re-link'}
+          {reference === undefined
+            ? t('c_gitHubRunPanel.linkWorkflowRun')
+            : t('c_gitHubRunPanel.reLink')}
         </Button>
         {reference !== undefined && (
           <>
@@ -159,7 +168,7 @@ export function GitHubRunPanel({
                 refresh.mutate();
               }}
             >
-              Refresh status
+              {t('c_gitHubRunPanel.refreshStatus')}
             </Button>
             <Button
               size="sm"
@@ -169,7 +178,7 @@ export function GitHubRunPanel({
                 importResults.mutate();
               }}
             >
-              Import results
+              {t('c_gitHubRunPanel.importResults')}
             </Button>
           </>
         )}
@@ -224,7 +233,11 @@ function WorkflowRunPicker({
     mutationFn: () => gitHubApi.linkRun(testRunId, { repositoryExternalId, runExternalId }),
     onSuccess: onLinked,
     onError: (cause) => {
-      onError(cause instanceof ApiError ? cause.message : 'Could not link the workflow run.');
+      onError(
+        cause instanceof ApiError
+          ? cause.message
+          : t('c_gitHubRunPanel.couldNotLinkTheWorkflowRun'),
+      );
     },
   });
 
@@ -239,14 +252,19 @@ function WorkflowRunPicker({
       }}
     >
       <SelectField
-        label="Repository"
+        label={t('c_gitHubRunPanel.repository')}
         value={repositoryExternalId}
         onChange={(event) => {
           setRepository(event.target.value);
           setRun('');
         }}
         options={[
-          { value: '', label: repositories.isPending ? 'Loading…' : 'Choose a repository' },
+          {
+            value: '',
+            label: repositories.isPending
+              ? t('c_gitHubRunPanel.loading')
+              : t('c_gitHubRunPanel.chooseARepository'),
+          },
           ...(repositories.data ?? []).map((repository) => ({
             value: repository.externalId,
             label: repository.fullName,
@@ -254,14 +272,20 @@ function WorkflowRunPicker({
         ]}
       />
       <SelectField
-        label="Workflow run"
+        label={t('c_gitHubRunPanel.workflowRun')}
         value={runExternalId}
         disabled={repositoryExternalId === ''}
         onChange={(event) => {
           setRun(event.target.value);
         }}
         options={[
-          { value: '', label: runs.isPending && runs.isFetching ? 'Loading…' : 'Choose a run' },
+          {
+            value: '',
+            label:
+              runs.isPending && runs.isFetching
+                ? t('c_gitHubRunPanel.loading')
+                : t('c_gitHubRunPanel.chooseARun'),
+          },
           ...(runs.data ?? []).map((run) => ({
             value: run.externalId,
             label: `#${run.runNumber} ${run.workflowName} · ${run.headBranch} · ${
@@ -272,12 +296,14 @@ function WorkflowRunPicker({
       />
       {loadError !== null && loadError !== undefined && (
         <p className="ui-field__error" role="alert">
-          {loadError instanceof ApiError ? loadError.message : 'Could not reach GitHub.'}
+          {loadError instanceof ApiError
+            ? loadError.message
+            : t('c_gitHubRunPanel.couldNotReachGithub')}
         </p>
       )}
       <div className="row-actions">
         <Button size="sm" type="submit" disabled={runExternalId === ''} loading={link.isPending}>
-          Link
+          {t('c_gitHubRunPanel.link')}
         </Button>
       </div>
     </form>
@@ -285,17 +311,26 @@ function WorkflowRunPicker({
 }
 
 const SKIP_REASONS: Record<ImportAutomatedResultsView['skipped'][number]['reason'], string> = {
-  no_case_tag: 'no @C-n tag in the title',
-  case_not_in_run: 'case is not part of this run',
-  run_not_completed: 'the workflow run has not finished',
-  already_imported: 'already imported',
+  get no_case_tag() {
+    return t('c_gitHubRunPanel.noCNTagIn');
+  },
+  get case_not_in_run() {
+    return t('c_gitHubRunPanel.caseIsNotPartOf');
+  },
+  get run_not_completed() {
+    return t('c_gitHubRunPanel.theWorkflowRunHasNot');
+  },
+  get already_imported() {
+    return t('c_gitHubRunPanel.alreadyImported');
+  },
 };
 
 function ImportReport({ report }: { report: ImportAutomatedResultsView }): React.JSX.Element {
   return (
     <div role="status" className="stack">
       <p>
-        Imported {report.imported.length} result{report.imported.length === 1 ? '' : 's'}
+        {t('c_gitHubRunPanel.imported')} {report.imported.length} {t('c_gitHubRunPanel.result')}
+        {report.imported.length === 1 ? '' : 's'}
         {report.skipped.length > 0 && `, skipped ${report.skipped.length}`}.
       </p>
       {report.skipped.length > 0 && (
@@ -325,7 +360,7 @@ export function GitHubResultOrigin({
   }`;
   return (
     <span className="muted">
-      From GitHub:{' '}
+      {t('c_gitHubRunPanel.fromGithub')}{' '}
       {reference.externalUrl === null ? (
         <code>{label}</code>
       ) : (

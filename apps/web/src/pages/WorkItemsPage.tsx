@@ -12,6 +12,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export const WORK_ITEM_TONE: Record<WorkItemStatus, BadgeTone> = {
   backlog: 'neutral',
@@ -79,7 +80,7 @@ export function WorkItemsPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the work item.');
+      setError(cause instanceof ApiError ? cause.message : t('workItems.couldNotCreateTheWork'));
     },
   });
 
@@ -90,13 +91,13 @@ export function WorkItemsPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Work items"
-        description="The project backlog: epics, features, stories, tasks, bugs, improvements and spikes."
+        title={t('workItems.workItems')}
+        description={t('workItems.theProjectBacklogEpicsFeatures')}
       />
 
       {can('work_items.write') && (
         <section className="card" aria-labelledby="new-work-item">
-          <h2 id="new-work-item">New work item</h2>
+          <h2 id="new-work-item">{t('workItems.newWorkItem')}</h2>
           {error !== null && (
             <p className="ui-field__error" role="alert">
               {error}
@@ -104,14 +105,14 @@ export function WorkItemsPage(): React.JSX.Element {
           )}
           <div className="form-grid">
             <TextField
-              label="Title"
+              label={t('workItems.title')}
               value={title}
               onChange={(event) => {
                 setTitle(event.target.value);
               }}
             />
             <SelectField
-              label="Type"
+              label={t('workItems.type')}
               value={type}
               options={WORK_ITEM_TYPES.map((value) => ({ value, label: humanize(value) }))}
               onChange={(event) => {
@@ -119,7 +120,7 @@ export function WorkItemsPage(): React.JSX.Element {
               }}
             />
             <SelectField
-              label="Priority"
+              label={t('workItems.priority')}
               value={priority}
               options={PRIORITIES.map((value) => ({ value, label: humanize(value) }))}
               onChange={(event) => {
@@ -127,7 +128,7 @@ export function WorkItemsPage(): React.JSX.Element {
               }}
             />
             <TextField
-              label="Estimate"
+              label={t('workItems.estimate')}
               type="number"
               min={0}
               step={0.5}
@@ -137,8 +138,8 @@ export function WorkItemsPage(): React.JSX.Element {
               }}
             />
             <TextField
-              label="Labels"
-              hint="Comma separated"
+              label={t('workItems.labels')}
+              hint={t('workItems.commaSeparated')}
               value={labels}
               onChange={(event) => {
                 setLabels(event.target.value);
@@ -152,17 +153,17 @@ export function WorkItemsPage(): React.JSX.Element {
               create.mutate();
             }}
           >
-            Add work item
+            {t('workItems.addWorkItem')}
           </Button>
         </section>
       )}
 
-      <section className="card filters" aria-label="Filters">
+      <section className="card filters" aria-label={t('workItems.filters')}>
         <SelectField
-          label="Filter by type"
+          label={t('workItems.filterByType')}
           value={filterType}
           options={[
-            { value: '', label: 'Any type' },
+            { value: '', label: t('workItems.anyType') },
             ...WORK_ITEM_TYPES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -170,10 +171,10 @@ export function WorkItemsPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Filter by status"
+          label={t('workItems.filterByStatus')}
           value={filterStatus}
           options={[
-            { value: '', label: 'Any status' },
+            { value: '', label: t('workItems.anyStatus') },
             ...WORK_ITEM_STATUSES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -181,7 +182,7 @@ export function WorkItemsPage(): React.JSX.Element {
           }}
         />
         <TextField
-          label="Search"
+          label={t('workItems.search')}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
@@ -193,18 +194,18 @@ export function WorkItemsPage(): React.JSX.Element {
         isPending={items.isPending}
         error={items.error}
         isEmpty={(items.data?.data.length ?? 0) === 0}
-        emptyMessage="No work item matches."
+        emptyMessage={t('workItems.noWorkItemMatches')}
       >
         <table className="table card">
           <thead>
             <tr>
-              <th scope="col">Key</th>
-              <th scope="col">Title</th>
-              <th scope="col">Type</th>
-              <th scope="col">Status</th>
-              <th scope="col">Priority</th>
-              <th scope="col">Estimate</th>
-              <th scope="col">Labels</th>
+              <th scope="col">{t('workItems.key')}</th>
+              <th scope="col">{t('workItems.title')}</th>
+              <th scope="col">{t('workItems.type')}</th>
+              <th scope="col">{t('workItems.status')}</th>
+              <th scope="col">{t('workItems.priority')}</th>
+              <th scope="col">{t('workItems.estimate')}</th>
+              <th scope="col">{t('workItems.labels')}</th>
             </tr>
           </thead>
           <tbody>
@@ -221,7 +222,7 @@ export function WorkItemsPage(): React.JSX.Element {
                   <Badge tone={WORK_ITEM_TONE[item.status]}>{humanize(item.status)}</Badge>
                 </td>
                 <td>{humanize(item.priority)}</td>
-                <td>{item.estimate ?? 'None'}</td>
+                <td>{item.estimate ?? t('workItems.none')}</td>
                 <td className="muted">{item.labels.join(', ')}</td>
               </tr>
             ))}

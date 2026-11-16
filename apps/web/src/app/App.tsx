@@ -39,7 +39,7 @@ import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { LoginPage } from '../pages/LoginPage';
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
-import { I18nProvider } from '../i18n/i18n';
+import { I18nProvider, useI18n } from '../i18n/i18n';
 import { MembersPage } from '../pages/MembersPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
 import { ProjectAccessPage } from '../pages/ProjectAccessPage';
@@ -140,13 +140,19 @@ const router = createBrowserRouter([
   { path: '*', element: <Navigate to="/dashboard" replace /> },
 ]);
 
+/** Remounts the routed tree when the language changes, so every screen re-renders in it. */
+function LocalizedRouter(): React.JSX.Element {
+  const { locale } = useI18n();
+  return <RouterProvider key={locale} router={router} />;
+}
+
 export function App(): React.JSX.Element {
   return (
     <I18nProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ProjectProvider>
-            <RouterProvider router={router} />
+            <LocalizedRouter />
           </ProjectProvider>
         </AuthProvider>
       </QueryClientProvider>

@@ -28,6 +28,7 @@ import { ArtifactSummary } from './DevelopmentPage';
 import { rollupText } from './HierarchyPage';
 import { WORK_ITEM_TONE, parseLabels } from './WorkItemsPage';
 import { DeploymentsOf } from './DeploymentsPage';
+import { t } from '../i18n/i18n';
 
 interface Draft {
   title: string;
@@ -139,7 +140,7 @@ function WorkItemEditor({
       await queryClient.invalidateQueries({ queryKey: ['work-items'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not save the work item.');
+      setError(cause instanceof ApiError ? cause.message : t('workItemDetail.couldNotSaveTheWork'));
     },
   });
 
@@ -150,7 +151,9 @@ function WorkItemEditor({
       await navigate('/work-items');
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not delete the work item.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('workItemDetail.couldNotDeleteTheWork'),
+      );
     },
   });
 
@@ -166,7 +169,7 @@ function WorkItemEditor({
     <>
       <PageHeader title={`${item.key} · ${item.title}`} description={humanize(item.type)} />
       {item.ancestors.length > 0 && (
-        <nav aria-label="Ancestors" className="muted">
+        <nav aria-label={t('workItemDetail.ancestors')} className="muted">
           {item.ancestors.map((ancestor, index) => (
             <span key={ancestor.id}>
               {index > 0 && ' › '}
@@ -180,9 +183,14 @@ function WorkItemEditor({
       <p>
         <Badge tone={WORK_ITEM_TONE[item.status]}>{humanize(item.status)}</Badge>{' '}
         <span className="muted">
-          Priority {humanize(item.priority)} · Estimate {item.estimate ?? 'none'} · Version{' '}
-          {item.version}
-          {item.rollup.count > 0 && <> · Children {rollupText(item.rollup)}</>}
+          {t('workItemDetail.priority')} {humanize(item.priority)} {t('workItemDetail.estimate')}{' '}
+          {item.estimate ?? t('workItemDetail.none')} {t('workItemDetail.version')} {item.version}
+          {item.rollup.count > 0 && (
+            <>
+              {' '}
+              {t('workItemDetail.children')} {rollupText(item.rollup)}
+            </>
+          )}
         </span>
       </p>
       {error !== null && (
@@ -190,13 +198,13 @@ function WorkItemEditor({
           {error}
         </p>
       )}
-      {saved && <p role="status">Work item saved.</p>}
+      {saved && <p role="status">{t('workItemDetail.workItemSaved')}</p>}
 
       <section className="card" aria-labelledby="work-item-edit">
-        <h2 id="work-item-edit">Details</h2>
+        <h2 id="work-item-edit">{t('workItemDetail.details')}</h2>
         <div className="form-grid">
           <TextField
-            label="Title"
+            label={t('workItemDetail.title')}
             value={draft.title}
             disabled={!editable}
             onChange={(event) => {
@@ -204,7 +212,7 @@ function WorkItemEditor({
             }}
           />
           <TextField
-            label="Description"
+            label={t('workItemDetail.description')}
             value={draft.description}
             disabled={!editable}
             onChange={(event) => {
@@ -212,7 +220,7 @@ function WorkItemEditor({
             }}
           />
           <SelectField
-            label="Type"
+            label={t('workItemDetail.type')}
             value={draft.type}
             disabled={!editable}
             options={WORK_ITEM_TYPES.map((value) => ({ value, label: humanize(value) }))}
@@ -221,7 +229,7 @@ function WorkItemEditor({
             }}
           />
           <SelectField
-            label="Status"
+            label={t('workItemDetail.status')}
             value={draft.status}
             disabled={!editable}
             options={WORK_ITEM_STATUSES.map((value) => ({ value, label: humanize(value) }))}
@@ -230,7 +238,7 @@ function WorkItemEditor({
             }}
           />
           <SelectField
-            label="Priority"
+            label={t('workItemDetail.priority')}
             value={draft.priority}
             disabled={!editable}
             options={PRIORITIES.map((value) => ({ value, label: humanize(value) }))}
@@ -239,7 +247,7 @@ function WorkItemEditor({
             }}
           />
           <TextField
-            label="Estimate"
+            label={t('workItemDetail.estimate2')}
             type="number"
             min={0}
             step={0.5}
@@ -250,8 +258,8 @@ function WorkItemEditor({
             }}
           />
           <TextField
-            label="Labels"
-            hint="Comma separated"
+            label={t('workItemDetail.labels')}
+            hint={t('workItemDetail.commaSeparated')}
             value={draft.labels}
             disabled={!editable}
             onChange={(event) => {
@@ -259,11 +267,11 @@ function WorkItemEditor({
             }}
           />
           <SelectField
-            label="Assignee"
+            label={t('workItemDetail.assignee')}
             value={draft.assigneeId}
             disabled={!editable}
             options={[
-              { value: '', label: 'Unassigned' },
+              { value: '', label: t('workItemDetail.unassigned') },
               ...(members.data?.data ?? [])
                 .filter((member) => member.hasAccess)
                 .map((member) => ({ value: member.userId, label: member.fullName })),
@@ -273,11 +281,11 @@ function WorkItemEditor({
             }}
           />
           <SelectField
-            label="Parent"
+            label={t('workItemDetail.parent')}
             value={draft.parentId}
             disabled={!editable}
             options={[
-              { value: '', label: 'No parent' },
+              { value: '', label: t('workItemDetail.noParent') },
               ...parents.map((parent) => ({
                 value: parent.id,
                 label: `${parent.key} ${parent.title}`,
@@ -288,11 +296,11 @@ function WorkItemEditor({
             }}
           />
           <SelectField
-            label="Release"
+            label={t('workItemDetail.release')}
             value={draft.releaseId}
             disabled={!editable}
             options={[
-              { value: '', label: 'No release' },
+              { value: '', label: t('workItemDetail.noRelease') },
               ...openReleases.map((release) => ({
                 value: release.id,
                 label: `${release.name} (${release.version})`,
@@ -312,7 +320,7 @@ function WorkItemEditor({
                 save.mutate();
               }}
             >
-              Save changes
+              {t('workItemDetail.saveChanges')}
             </Button>
             {can('work_items.manage') && (
               <Button
@@ -322,7 +330,7 @@ function WorkItemEditor({
                   remove.mutate();
                 }}
               >
-                Delete work item
+                {t('workItemDetail.deleteWorkItem')}
               </Button>
             )}
           </div>
@@ -337,9 +345,9 @@ function WorkItemEditor({
       <DeploymentsOf projectId={item.projectId} filter={{ workItemId: item.id }} />
 
       <section className="card" aria-labelledby="work-item-children">
-        <h2 id="work-item-children">Children</h2>
+        <h2 id="work-item-children">{t('workItemDetail.children2')}</h2>
         {item.children.length === 0 ? (
-          <p className="muted">No child items.</p>
+          <p className="muted">{t('workItemDetail.noChildItems')}</p>
         ) : (
           <ul>
             {item.children.map((child) => (
@@ -381,7 +389,7 @@ function ImplementsSection({
     await queryClient.invalidateQueries({ queryKey: ['requirements'] });
   };
   const onError = (cause: unknown) => {
-    setError(cause instanceof ApiError ? cause.message : 'Could not update the link.');
+    setError(cause instanceof ApiError ? cause.message : t('workItemDetail.couldNotUpdateTheLink'));
   };
   const link = useMutation({
     mutationFn: (requirementId: string) => workItemsApi.linkRequirement(item.id, requirementId),
@@ -401,9 +409,9 @@ function ImplementsSection({
 
   return (
     <section className="card" aria-labelledby="work-item-requirements">
-      <h2 id="work-item-requirements">Implements</h2>
+      <h2 id="work-item-requirements">{t('workItemDetail.implements')}</h2>
       {item.requirements.length === 0 ? (
-        <p className="muted">This item does not implement any requirement yet.</p>
+        <p className="muted">{t('workItemDetail.thisItemDoesNotImplement')}</p>
       ) : (
         <ul className="link-list">
           {item.requirements.map((requirement) => (
@@ -415,12 +423,12 @@ function ImplementsSection({
                 <Button
                   size="sm"
                   variant="secondary"
-                  aria-label={`Unlink ${requirement.key}`}
+                  aria-label={t('workItemDetail.unlink', { key: requirement.key })}
                   onClick={() => {
                     unlink.mutate(requirement.requirementId);
                   }}
                 >
-                  Unlink
+                  {t('workItemDetail.unlink2')}
                 </Button>
               )}
             </li>
@@ -438,10 +446,10 @@ function ImplementsSection({
           }}
         >
           <SelectField
-            label="Link requirement"
+            label={t('workItemDetail.linkRequirement')}
             value={choice}
             options={[
-              { value: '', label: 'Choose a requirement…' },
+              { value: '', label: t('workItemDetail.chooseARequirement') },
               ...options.map((requirement) => ({
                 value: requirement.id,
                 label: `${requirement.key} · ${requirement.title}`,
@@ -452,7 +460,7 @@ function ImplementsSection({
             }}
           />
           <Button type="submit" disabled={choice === '' || link.isPending}>
-            Link requirement
+            {t('workItemDetail.linkRequirement')}
           </Button>
         </form>
       )}
@@ -476,11 +484,11 @@ function CodeReviewsSection({ item }: { item: WorkItemDetailView }): React.JSX.E
   });
   return (
     <section className="card" aria-labelledby="work-item-code-reviews">
-      <h2 id="work-item-code-reviews">Code reviews</h2>
+      <h2 id="work-item-code-reviews">{t('workItemDetail.codeReviews')}</h2>
       {(reviews.data ?? []).length === 0 ? (
-        <p className="muted">No code review yet.</p>
+        <p className="muted">{t('workItemDetail.noCodeReviewYet')}</p>
       ) : (
-        <ul aria-label="Code reviews of the work item">
+        <ul aria-label={t('workItemDetail.codeReviewsOfTheWork')}>
           {(reviews.data ?? []).map((review) => (
             <li key={review.id}>
               <CodeReviewRow review={review} />
@@ -488,7 +496,7 @@ function CodeReviewsSection({ item }: { item: WorkItemDetailView }): React.JSX.E
           ))}
         </ul>
       )}
-      <Link to="/code-reviews">Open or browse code reviews</Link>
+      <Link to="/code-reviews">{t('workItemDetail.openOrBrowseCodeReviews')}</Link>
     </section>
   );
 }
@@ -519,7 +527,7 @@ function DevelopmentSection({
     await queryClient.invalidateQueries({ queryKey: ['development'] });
   };
   const onError = (cause: unknown) => {
-    setError(cause instanceof ApiError ? cause.message : 'Could not update the link.');
+    setError(cause instanceof ApiError ? cause.message : t('workItemDetail.couldNotUpdateTheLink'));
   };
   const link = useMutation({
     mutationFn: (artifactId: string) => developmentApi.link(item.id, artifactId),
@@ -540,15 +548,15 @@ function DevelopmentSection({
 
   return (
     <section className="card" aria-labelledby="work-item-development">
-      <h2 id="work-item-development">Development</h2>
+      <h2 id="work-item-development">{t('workItemDetail.development')}</h2>
       {development.data !== undefined && (
         <p>
-          Status:{' '}
+          {t('workItemDetail.status2')}{' '}
           <span data-testid="development-status">{humanize(development.data.summary.status)}</span>
           {development.data.summary.evidence.length > 0 && (
             <>
               {' '}
-              from{' '}
+              {t('workItemDetail.from')}{' '}
               {artifacts
                 .filter((artifact) => development.data.summary.evidence.includes(artifact.id))
                 .map((artifact) => (
@@ -568,7 +576,7 @@ function DevelopmentSection({
         isPending={development.isPending}
         error={development.error}
         isEmpty={artifacts.length === 0}
-        emptyMessage="No development activity is linked to this item yet."
+        emptyMessage={t('workItemDetail.noDevelopmentActivityIsLinked')}
       >
         <ul className="link-list">
           {artifacts.map((artifact) => (
@@ -576,7 +584,7 @@ function DevelopmentSection({
               <ArtifactSummary artifact={artifact} />{' '}
               {artifact.workItems.length > 1 && (
                 <span className="muted">
-                  also{' '}
+                  {t('workItemDetail.also')}{' '}
                   {artifact.workItems
                     .filter((entry) => entry.workItemId !== item.id)
                     .map((entry) => (
@@ -590,12 +598,15 @@ function DevelopmentSection({
                 <Button
                   size="sm"
                   variant="secondary"
-                  aria-label={`Unlink ${artifact.kind} ${artifactReference(artifact)}`}
+                  aria-label={t('workItemDetail.unlink3', {
+                    kind: artifact.kind,
+                    value: artifactReference(artifact),
+                  })}
                   onClick={() => {
                     unlink.mutate(artifact.id);
                   }}
                 >
-                  Unlink
+                  {t('workItemDetail.unlink2')}
                 </Button>
               )}
             </li>
@@ -603,7 +614,9 @@ function DevelopmentSection({
         </ul>
       </DataState>
       <p>
-        <Link to={`/development?workItemId=${item.id}`}>Record or browse development activity</Link>
+        <Link to={`/development?workItemId=${item.id}`}>
+          {t('workItemDetail.recordOrBrowseDevelopmentActivity')}
+        </Link>
       </p>
       {editable && (
         <form
@@ -616,10 +629,10 @@ function DevelopmentSection({
           }}
         >
           <SelectField
-            label="Link development artifact"
+            label={t('workItemDetail.linkDevelopmentArtifact')}
             value={choice}
             options={[
-              { value: '', label: 'Choose an artifact…' },
+              { value: '', label: t('workItemDetail.chooseAnArtifact') },
               ...options.map((artifact) => ({
                 value: artifact.id,
                 label: `${humanize(artifact.kind)} ${artifactReference(artifact)}${
@@ -632,7 +645,7 @@ function DevelopmentSection({
             }}
           />
           <Button type="submit" disabled={choice === '' || link.isPending}>
-            Link artifact
+            {t('workItemDetail.linkArtifact')}
           </Button>
         </form>
       )}

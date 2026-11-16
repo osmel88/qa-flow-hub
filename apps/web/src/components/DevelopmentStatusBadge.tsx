@@ -3,6 +3,7 @@ import type { DevelopmentStatus } from '@qa-flow-hub/shared';
 import type { BadgeTone } from '@qa-flow-hub/ui';
 import { Badge } from '@qa-flow-hub/ui';
 import { humanize } from './status';
+import { t } from '../i18n/i18n';
 
 export const DEVELOPMENT_STATUS_TONE: Record<DevelopmentStatus, BadgeTone> = {
   no_development: 'neutral',
@@ -19,7 +20,12 @@ export const DEVELOPMENT_STATUS_TONE: Record<DevelopmentStatus, BadgeTone> = {
 
 /** Options of a development status filter (S5-F2). */
 export const DEVELOPMENT_STATUS_OPTIONS = [
-  { value: '', label: 'Any development' },
+  {
+    value: '',
+    get label() {
+      return t('c_developmentStatusBadge.anyDevelopment');
+    },
+  },
   ...DEVELOPMENT_STATUS_VALUES.map((value) => ({ value, label: humanize(value) })),
 ];
 
@@ -35,7 +41,7 @@ export function DevelopmentStatusBadge({
     return null;
   }
   return (
-    <span data-testid={testId} title="Development status">
+    <span data-testid={testId} title={t('c_developmentStatusBadge.developmentStatus')}>
       <Badge tone={DEVELOPMENT_STATUS_TONE[status]}>{humanize(status)}</Badge>
     </span>
   );

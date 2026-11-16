@@ -23,6 +23,7 @@ import type { CustomFieldDraft } from '../components/CustomFieldInputs';
 import { humanize, toneFor } from '../components/status';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export function DefectsPage(): React.JSX.Element {
   const { activeProjectId } = useProject();
@@ -71,7 +72,7 @@ export function DefectsPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['defects'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the defect.');
+      setError(cause instanceof ApiError ? cause.message : t('defects.couldNotCreateTheDefect'));
     },
   });
 
@@ -85,7 +86,7 @@ export function DefectsPage(): React.JSX.Element {
     onError: (cause) => {
       // The menu offers the project's workflow, but the API decides: the
       // workflow may have changed, or the move may need a field or a role.
-      setError(cause instanceof ApiError ? cause.message : 'Could not change the status.');
+      setError(cause instanceof ApiError ? cause.message : t('defects.couldNotChangeTheStatus'));
     },
   });
 
@@ -96,34 +97,34 @@ export function DefectsPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Defects"
-        description="Defects raised from a failed result keep a link back to the execution that found them."
+        title={t('defects.defects')}
+        description={t('defects.defectsRaisedFromAFailed')}
       />
 
       <section className="card" aria-labelledby="new-defect">
-        <h2 id="new-defect">Report a defect</h2>
+        <h2 id="new-defect">{t('defects.reportADefect')}</h2>
         {error !== null && (
           <p className="ui-field__error" role="alert">
             {error}
           </p>
         )}
         <TextField
-          label="Title"
+          label={t('defects.title')}
           value={title}
           onChange={(event) => {
             setTitle(event.target.value);
           }}
         />
         <TextAreaField
-          label="Description"
+          label={t('defects.description')}
           value={description}
           onChange={(event) => {
             setDescription(event.target.value);
           }}
         />
         <SelectField
-          label="Severity"
-          hint="Severity is how badly it breaks; priority is when we will fix it. They are not the same field."
+          label={t('defects.severity')}
+          hint={t('defects.severityIsHowBadlyIt')}
           options={DEFECT_SEVERITIES.map((value) => ({ value, label: humanize(value) }))}
           value={severity}
           onChange={(event) => {
@@ -143,15 +144,15 @@ export function DefectsPage(): React.JSX.Element {
             create.mutate();
           }}
         >
-          Report defect
+          {t('defects.reportDefect')}
         </Button>
       </section>
 
-      <section className="card filters" aria-label="Filters">
+      <section className="card filters" aria-label={t('defects.filters')}>
         <SelectField
-          label="Status"
+          label={t('defects.status')}
           options={[
-            { value: '', label: 'Any status' },
+            { value: '', label: t('defects.anyStatus') },
             ...DEFECT_STATUSES.map((value) => ({ value, label: humanize(value) })),
           ]}
           value={status}
@@ -165,19 +166,19 @@ export function DefectsPage(): React.JSX.Element {
         isPending={list.isPending}
         error={list.error}
         isEmpty={(list.data?.data.length ?? 0) === 0}
-        emptyMessage="No defect matches these filters."
+        emptyMessage={t('defects.noDefectMatchesTheseFilters')}
       >
         <table className="table card">
           <thead>
             <tr>
-              <th scope="col">Key</th>
-              <th scope="col">Title</th>
-              <th scope="col">Severity</th>
-              <th scope="col">Status</th>
-              <th scope="col">Origin</th>
-              <th scope="col">Move to</th>
-              <th scope="col">Jira</th>
-              <th scope="col">Evidence</th>
+              <th scope="col">{t('defects.key')}</th>
+              <th scope="col">{t('defects.title')}</th>
+              <th scope="col">{t('defects.severity')}</th>
+              <th scope="col">{t('defects.status')}</th>
+              <th scope="col">{t('defects.origin')}</th>
+              <th scope="col">{t('defects.moveTo')}</th>
+              <th scope="col">{t('defects.jira')}</th>
+              <th scope="col">{t('defects.evidence')}</th>
             </tr>
           </thead>
           <tbody>
@@ -245,18 +246,20 @@ function DefectRow({
           <Badge tone={toneFor(defect.status)}>{humanize(defect.status)}</Badge>
         </td>
         <td className="muted">
-          {defect.testResultId === null ? 'Reported manually' : 'From a test result'}
+          {defect.testResultId === null
+            ? t('defects.reportedManually')
+            : t('defects.fromATestResult')}
         </td>
         <td>
           <select
             className="ui-input"
-            aria-label={`Change status of ${defect.key}`}
+            aria-label={t('defects.changeStatusOf', { key: defect.key })}
             value=""
             onChange={(event) => {
               onChangeStatus(event.target.value);
             }}
           >
-            <option value="">Choose…</option>
+            <option value="">{t('defects.choose')}</option>
             {targets.map((value) => (
               <option key={value} value={value}>
                 {humanize(value)}
@@ -269,7 +272,7 @@ function DefectRow({
         </td>
         <td>
           <Button size="sm" variant="ghost" aria-expanded={evidenceOpen} onClick={onToggleEvidence}>
-            {evidenceOpen ? 'Hide evidence' : 'Evidence'}
+            {evidenceOpen ? t('defects.hideEvidence') : t('defects.evidence')}
           </Button>
         </td>
       </tr>
@@ -279,7 +282,7 @@ function DefectRow({
             <AttachmentsPanel
               entityType="defect"
               entityId={defect.id}
-              title={`Evidence for ${defect.key}`}
+              title={t('defects.evidenceFor', { key: defect.key })}
             />
           </td>
         </tr>

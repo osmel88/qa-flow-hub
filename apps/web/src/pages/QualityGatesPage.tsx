@@ -14,6 +14,7 @@ import { PageHeader } from '../components/PageHeader';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 type Draft = Record<QualityGateRuleType, { on: boolean; threshold: string }>;
 const emptyDraft = (): Draft =>
@@ -53,7 +54,7 @@ export function QualityGatesPage(): React.JSX.Element {
     await queryClient.invalidateQueries({ queryKey: ['quality-gates'] });
   };
   const onError = (cause: unknown) => {
-    setError(cause instanceof ApiError ? cause.message : 'Could not save the quality gate.');
+    setError(cause instanceof ApiError ? cause.message : t('qualityGates.couldNotSaveTheQuality'));
   };
   const create = useMutation({
     mutationFn: () =>
@@ -93,8 +94,8 @@ export function QualityGatesPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Quality gates"
-        description="Rules a release must meet; required gates guard protected environments."
+        title={t('qualityGates.qualityGates')}
+        description={t('qualityGates.rulesAReleaseMustMeet')}
       />
       {error !== null && (
         <p role="alert" className="error">
@@ -104,15 +105,15 @@ export function QualityGatesPage(): React.JSX.Element {
       {manage && (
         <form
           className="card"
-          aria-label="Add a quality gate"
+          aria-label={t('qualityGates.addAQualityGate')}
           onSubmit={(event) => {
             event.preventDefault();
             create.mutate();
           }}
         >
-          <h2>Add a quality gate</h2>
+          <h2>{t('qualityGates.addAQualityGate')}</h2>
           <TextField
-            label="Gate name"
+            label={t('qualityGates.gateName')}
             value={name}
             required
             onChange={(event) => {
@@ -120,10 +121,10 @@ export function QualityGatesPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Gate environment"
+            label={t('qualityGates.gateEnvironment')}
             value={environmentId}
             options={[
-              { value: '', label: 'Every environment' },
+              { value: '', label: t('qualityGates.everyEnvironment') },
               ...(environments.data ?? []).map((env) => ({ value: env.id, label: env.name })),
             ]}
             onChange={(event) => {
@@ -138,10 +139,10 @@ export function QualityGatesPage(): React.JSX.Element {
                 setRequired(event.target.checked);
               }}
             />{' '}
-            Required (blocks protected environments)
+            {t('qualityGates.requiredBlocksProtectedEnvironments')}
           </label>
           <fieldset>
-            <legend>Rules</legend>
+            <legend>{t('qualityGates.rules')}</legend>
             {QUALITY_GATE_RULE_TYPES.map((type) => (
               <div key={type}>
                 <label>
@@ -162,7 +163,9 @@ export function QualityGatesPage(): React.JSX.Element {
                     type="number"
                     min={0}
                     max={PERCENT_RULES.includes(type) ? 100 : undefined}
-                    aria-label={`${QUALITY_GATE_RULE_LABELS[type]} threshold`}
+                    aria-label={t('qualityGates.threshold', {
+                      value: QUALITY_GATE_RULE_LABELS[type],
+                    })}
                     value={draft[type].threshold}
                     onChange={(event) => {
                       setDraft((current) => ({
@@ -176,7 +179,7 @@ export function QualityGatesPage(): React.JSX.Element {
             ))}
           </fieldset>
           <Button type="submit" disabled={create.isPending}>
-            Add quality gate
+            {t('qualityGates.addQualityGate')}
           </Button>
         </form>
       )}
@@ -184,18 +187,20 @@ export function QualityGatesPage(): React.JSX.Element {
         isPending={gates.isPending}
         error={gates.error}
         isEmpty={(gates.data?.length ?? 0) === 0}
-        emptyMessage="No quality gate yet."
+        emptyMessage={t('qualityGates.noQualityGateYet')}
       >
         <section className="card">
-          <ul aria-label="Quality gates">
+          <ul aria-label={t('qualityGates.qualityGates')}>
             {(gates.data ?? []).map((gate) => (
               <li key={gate.id} data-testid={`quality-gate-${gate.name}`}>
                 <strong>{gate.name}</strong>{' '}
-                <span className="muted">{gate.environment?.name ?? 'every environment'}</span>{' '}
+                <span className="muted">
+                  {gate.environment?.name ?? t('qualityGates.everyEnvironment2')}
+                </span>{' '}
                 <Badge tone={gate.required ? 'warning' : 'neutral'}>
-                  {gate.required ? 'required' : 'advisory'}
+                  {gate.required ? t('qualityGates.required') : t('qualityGates.advisory')}
                 </Badge>{' '}
-                {!gate.enabled && <Badge tone="neutral">disabled</Badge>}
+                {!gate.enabled && <Badge tone="neutral">{t('qualityGates.disabled')}</Badge>}
                 <ul>
                   {gate.rules.map((rule) => (
                     <li key={rule.type}>
@@ -213,7 +218,8 @@ export function QualityGatesPage(): React.JSX.Element {
                         toggle.mutate(gate);
                       }}
                     >
-                      {gate.enabled ? 'Disable' : 'Enable'} {gate.name}
+                      {gate.enabled ? t('qualityGates.disable') : t('qualityGates.enable')}{' '}
+                      {gate.name}
                     </Button>{' '}
                     <Button
                       size="sm"
@@ -222,7 +228,7 @@ export function QualityGatesPage(): React.JSX.Element {
                         remove.mutate(gate.id);
                       }}
                     >
-                      Delete {gate.name}
+                      {t('qualityGates.delete')} {gate.name}
                     </Button>
                   </p>
                 )}

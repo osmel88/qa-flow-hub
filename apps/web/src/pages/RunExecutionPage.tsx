@@ -22,6 +22,7 @@ import {
   useGitHubReferences,
 } from '../components/GitHubRunPanel';
 import { TestRailSyncCell, useTestRailReferences } from '../components/TestRailSyncCell';
+import { t } from '../i18n/i18n';
 
 /**
  * The execution screen.
@@ -81,7 +82,9 @@ export function RunExecutionPage(): React.JSX.Element {
       await refresh();
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not record the result.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('runExecution.couldNotRecordTheResult'),
+      );
     },
   });
 
@@ -104,7 +107,9 @@ export function RunExecutionPage(): React.JSX.Element {
     mutationFn: () => testRunsApi.complete(runId),
     onSuccess: refresh,
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not complete the run.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('runExecution.couldNotCompleteTheRun'),
+      );
     },
   });
 
@@ -112,7 +117,7 @@ export function RunExecutionPage(): React.JSX.Element {
     mutationFn: (input: { resultId: string; title: string }) =>
       defectsApi.create({
         projectId: run.data?.projectId ?? '',
-        title: `${input.title} fails`,
+        title: t('runExecution.fails', { title: input.title }),
         severity: 'major',
         priority: 'high',
         testResultId: input.resultId,
@@ -123,30 +128,32 @@ export function RunExecutionPage(): React.JSX.Element {
       setDefectFor(null);
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not raise the defect.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('runExecution.couldNotRaiseTheDefect'),
+      );
     },
   });
 
   return (
     <>
       <PageHeader
-        title={run.data?.name ?? 'Run'}
-        description="Results are append-only: a re-execution adds a row, it never overwrites one."
+        title={run.data?.name ?? t('runExecution.run')}
+        description={t('runExecution.resultsAreAppendOnlyA')}
         actions={
           <>
             {can('data.export') && (
               <>
                 <ExportButton
-                  label="Export CSV"
+                  label={t('runExecution.exportCsv')}
                   fallbackName="test-run.csv"
                   download={() => exportsApi.testRun(runId)}
                 />
                 <Link to={`/print/test-runs/${runId}`} target="_blank" rel="noopener">
-                  Printable view
+                  {t('runExecution.printableView')}
                 </Link>
               </>
             )}
-            <Link to="/test-runs">Back to runs</Link>
+            <Link to="/test-runs">{t('runExecution.backToRuns')}</Link>
           </>
         }
       />
@@ -162,8 +169,8 @@ export function RunExecutionPage(): React.JSX.Element {
           <section className="card">
             <p>
               <Badge tone={toneFor(run.data.status)}>{humanize(run.data.status)}</Badge>{' '}
-              {run.data.progress.executed} of {run.data.progress.total} executed —{' '}
-              {run.data.progress.completion}%
+              {run.data.progress.executed} {t('runExecution.of')} {run.data.progress.total}{' '}
+              {t('runExecution.executed')} {run.data.progress.completion}%
             </p>
             <div className="row-actions">
               <Button
@@ -174,7 +181,7 @@ export function RunExecutionPage(): React.JSX.Element {
                   start.mutate();
                 }}
               >
-                Start run
+                {t('runExecution.startRun')}
               </Button>
               <Button
                 variant="secondary"
@@ -184,7 +191,7 @@ export function RunExecutionPage(): React.JSX.Element {
                   complete.mutate();
                 }}
               >
-                Complete run
+                {t('runExecution.completeRun')}
               </Button>
               <TestRailSyncCell
                 entityType="test_run"
@@ -192,7 +199,11 @@ export function RunExecutionPage(): React.JSX.Element {
                 reference={runReferences.data?.get(runId)}
               />
             </div>
-            <AttachmentsPanel entityType="test_run" entityId={runId} title="Run evidence" />
+            <AttachmentsPanel
+              entityType="test_run"
+              entityId={runId}
+              title={t('runExecution.runEvidence')}
+            />
           </section>
         )}
       </DataState>
@@ -208,7 +219,7 @@ export function RunExecutionPage(): React.JSX.Element {
 
       {defectFor !== null && (
         <section className="card" role="status">
-          <p>The result was not a pass. Raise a defect linked to it?</p>
+          <p>{t('runExecution.theResultWasNotA')}</p>
           <div className="row-actions">
             <Button
               loading={raiseDefect.isPending}
@@ -216,7 +227,7 @@ export function RunExecutionPage(): React.JSX.Element {
                 raiseDefect.mutate(defectFor);
               }}
             >
-              Raise defect
+              {t('runExecution.raiseDefect')}
             </Button>
             <Button
               variant="ghost"
@@ -224,7 +235,7 @@ export function RunExecutionPage(): React.JSX.Element {
                 setDefectFor(null);
               }}
             >
-              Dismiss
+              {t('runExecution.dismiss')}
             </Button>
           </div>
         </section>
@@ -234,19 +245,19 @@ export function RunExecutionPage(): React.JSX.Element {
         isPending={cases.isPending}
         error={cases.error}
         isEmpty={(cases.data?.data.length ?? 0) === 0}
-        emptyMessage="This run has no cases."
+        emptyMessage={t('runExecution.thisRunHasNoCases')}
       >
         {datasetLabels.length > 0 && (
           <label className="ui-field">
-            <span className="ui-field__label">Dataset row</span>
+            <span className="ui-field__label">{t('runExecution.datasetRow')}</span>
             <select
               value={datasetFilter}
               onChange={(event) => {
                 setDatasetFilter(event.target.value);
               }}
             >
-              <option value="">All executions</option>
-              <option value="__plain">Without dataset</option>
+              <option value="">{t('runExecution.allExecutions')}</option>
+              <option value="__plain">{t('runExecution.withoutDataset')}</option>
               {datasetLabels.map((label) => (
                 <option key={label} value={label}>
                   {label}
@@ -277,7 +288,7 @@ export function RunExecutionPage(): React.JSX.Element {
               {openCase === runCase.id && (
                 <div>
                   <p className="muted">
-                    Executed version:{' '}
+                    {t('runExecution.executedVersion')}{' '}
                     <Link to={`/test-cases/${runCase.testCaseId}?version=${runCase.caseVersion}`}>
                       v{runCase.caseVersion}
                     </Link>
@@ -285,15 +296,21 @@ export function RunExecutionPage(): React.JSX.Element {
                   </p>
                   {runCase.iteration !== null && <ParameterValues runCase={runCase} />}
                   {runCase.snapshot.steps.length === 0 ? (
-                    <p className="muted">This case had no steps when the run was created.</p>
+                    <p className="muted">{t('runExecution.thisCaseHadNoSteps')}</p>
                   ) : (
                     <ol>
                       {runCase.snapshot.steps.map((step) => (
                         <li key={step.position}>
                           {step.action}
-                          {step.data !== null && <div className="muted">Data: {step.data}</div>}
+                          {step.data !== null && (
+                            <div className="muted">
+                              {t('runExecution.data')} {step.data}
+                            </div>
+                          )}
                           {step.expectedResult !== null && (
-                            <div className="muted">Expected: {step.expectedResult}</div>
+                            <div className="muted">
+                              {t('runExecution.expected')} {step.expectedResult}
+                            </div>
                           )}
                         </li>
                       ))}
@@ -308,7 +325,7 @@ export function RunExecutionPage(): React.JSX.Element {
                   />
 
                   <TextAreaField
-                    label="Comment"
+                    label={t('runExecution.comment')}
                     value={comment}
                     onChange={(event) => {
                       setComment(event.target.value);
@@ -370,9 +387,12 @@ function LatestResult({
     <>
       <div className="external-sync">
         <span className="muted">
-          Latest result: {humanize(latest.status)} ({new Date(latest.executedAt).toLocaleString()})
-          {runCase.iteration !== null && ` with ${runCase.iteration.label}`}
-          {latest.caseVersion !== null && ` on version ${latest.caseVersion}`}
+          {t('runExecution.latestResult')} {humanize(latest.status)} (
+          {new Date(latest.executedAt).toLocaleString()})
+          {runCase.iteration !== null &&
+            t('runExecution.withIteration', { label: runCase.iteration.label })}
+          {latest.caseVersion !== null &&
+            t('runExecution.onVersion', { version: latest.caseVersion })}
         </span>
         <GitHubResultOrigin reference={gitHubReferences?.get(latest.id)} />
         <TestRailSyncCell
@@ -384,7 +404,7 @@ function LatestResult({
       <AttachmentsPanel
         entityType="test_result"
         entityId={latest.id}
-        title={`Evidence for latest result (${humanize(latest.status)})`}
+        title={t('runExecution.evidenceForLatestResult', { value: humanize(latest.status) })}
       />
     </>
   );
@@ -394,7 +414,7 @@ function LatestResult({
 function ParameterValues({ runCase }: { runCase: RunCaseView }): React.JSX.Element {
   const values = runCase.iteration?.values ?? {};
   return (
-    <dl className="parameter-values" aria-label="Parameters used">
+    <dl className="parameter-values" aria-label={t('runExecution.parametersUsed')}>
       {Object.entries(values).map(([name, value]) => (
         <div key={name}>
           <dt>{name}</dt>

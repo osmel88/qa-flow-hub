@@ -16,29 +16,46 @@ import { useAuth } from '../auth/auth-context';
 import { MfaSettings } from '../components/MfaSettings';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
+import { t } from '../i18n/i18n';
 
 type PreferenceKey = keyof UpdateNotificationPreferencesInput;
 
 const PREFERENCES: ReadonlyArray<{ key: PreferenceKey; label: string; hint: string }> = [
   {
     key: 'emailEnabled',
-    label: 'Email notifications',
-    hint: 'Master switch for optional emails. Security notices such as password changes and organization invitations are always sent.',
+    get label() {
+      return t('profile.emailNotifications');
+    },
+    get hint() {
+      return t('profile.masterSwitchForOptionalEmails');
+    },
   },
   {
     key: 'testRunAssignments',
-    label: 'Test run assignments',
-    hint: 'When someone assigns test cases in a run to you.',
+    get label() {
+      return t('profile.testRunAssignments');
+    },
+    get hint() {
+      return t('profile.whenSomeoneAssignsTestCases');
+    },
   },
   {
     key: 'defectAssignments',
-    label: 'Defect assignments',
-    hint: 'When a defect is assigned to you.',
+    get label() {
+      return t('profile.defectAssignments');
+    },
+    get hint() {
+      return t('profile.whenADefectIsAssigned');
+    },
   },
   {
     key: 'statusChanges',
-    label: 'Important status changes',
-    hint: 'When a defect you reported or own is resolved, closed, rejected or reopened.',
+    get label() {
+      return t('profile.importantStatusChanges');
+    },
+    get hint() {
+      return t('profile.whenADefectYouReported');
+    },
   },
 ];
 
@@ -75,16 +92,16 @@ function NotificationPreferences(): React.JSX.Element {
       if (context?.previous !== undefined) {
         queryClient.setQueryData(['notification-preferences'], context.previous);
       }
-      setError(cause instanceof ApiError ? cause.message : 'Could not save the preference.');
+      setError(cause instanceof ApiError ? cause.message : t('profile.couldNotSaveThePreference'));
     },
   });
 
   return (
     <section className="card" aria-labelledby="notification-preferences-title">
-      <h2 id="notification-preferences-title">Notification preferences</h2>
+      <h2 id="notification-preferences-title">{t('profile.notificationPreferences')}</h2>
       <p className="muted">
-        These apply to your account in every organization. See what was sent to you in{' '}
-        <Link to="/notifications">Notifications</Link>.
+        {t('profile.theseApplyToYourAccount')}{' '}
+        <Link to="/notifications">{t('profile.notifications')}</Link>.
       </p>
       <DataState isPending={preferences.isPending} error={preferences.error}>
         {error !== null && (
@@ -139,26 +156,29 @@ export function ProfilePage(): React.JSX.Element {
       reset();
       // Changing the password revokes every session, including this one, so
       // the honest thing is to send the user back to the login screen.
-      setMessage('Password changed. Every session was closed; sign in again.');
+      setMessage(t('profile.passwordChangedEverySessionWas'));
       window.setTimeout(() => void logout(), 1500);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : 'Could not change the password.');
+      setError(cause instanceof ApiError ? cause.message : t('profile.couldNotChangeThePassword'));
     }
   });
 
   return (
     <>
-      <PageHeader title="Profile" description="Your account and the organizations you belong to." />
+      <PageHeader
+        title={t('profile.profile')}
+        description={t('profile.yourAccountAndTheOrganizations')}
+      />
 
       <section className="card">
-        <h2>Account</h2>
+        <h2>{t('profile.account')}</h2>
         <dl className="details">
-          <dt>Name</dt>
+          <dt>{t('profile.name')}</dt>
           <dd>{user?.fullName}</dd>
-          <dt>Email</dt>
+          <dt>{t('profile.email')}</dt>
           <dd>{user?.email}</dd>
         </dl>
-        <h3>Memberships</h3>
+        <h3>{t('profile.memberships')}</h3>
         <ul className="plain-list">
           {organizations.map((organization) => (
             <li key={organization.id}>
@@ -173,7 +193,7 @@ export function ProfilePage(): React.JSX.Element {
       <NotificationPreferences />
 
       <section className="card">
-        <h2>Change password</h2>
+        <h2>{t('profile.changePassword')}</h2>
         <form onSubmit={(event) => void onSubmit(event)} noValidate>
           {error !== null && (
             <p className="ui-field__error" role="alert">
@@ -186,21 +206,21 @@ export function ProfilePage(): React.JSX.Element {
             </p>
           )}
           <TextField
-            label="Current password"
+            label={t('profile.currentPassword')}
             type="password"
             autoComplete="current-password"
             error={errors.currentPassword?.message}
             {...register('currentPassword')}
           />
           <TextField
-            label="New password"
+            label={t('profile.newPassword')}
             type="password"
             autoComplete="new-password"
             error={errors.newPassword?.message}
             {...register('newPassword')}
           />
           <Button type="submit" loading={isSubmitting}>
-            Change password
+            {t('profile.changePassword')}
           </Button>
         </form>
       </section>

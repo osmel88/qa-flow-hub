@@ -20,12 +20,33 @@ import {
 } from '../components/analytics/charts';
 import { humanize, toneFor } from '../components/status';
 import { useProject } from '../project/project-context';
+import { t } from '../i18n/i18n';
 
 const WINDOWS = [
-  { days: 7, label: 'Last 7 days' },
-  { days: 30, label: 'Last 30 days' },
-  { days: 90, label: 'Last 90 days' },
-  { days: 365, label: 'Last 12 months' },
+  {
+    days: 7,
+    get label() {
+      return t('dashboard.last7Days');
+    },
+  },
+  {
+    days: 30,
+    get label() {
+      return t('dashboard.last30Days');
+    },
+  },
+  {
+    days: 90,
+    get label() {
+      return t('dashboard.last90Days');
+    },
+  },
+  {
+    days: 365,
+    get label() {
+      return t('dashboard.last12Months');
+    },
+  },
 ] as const;
 
 type View = 'project' | 'organization';
@@ -34,14 +55,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 function deltaText(comparison: PeriodComparison, unit: string): string {
   if (comparison.delta === null) {
-    return 'No previous window to compare';
+    return t('dashboard.noPreviousWindowToCompare');
   }
   const sign = comparison.delta > 0 ? '+' : '';
-  return `${sign}${comparison.delta}${unit} vs previous window`;
+  return t('dashboard.vsPreviousWindow', { sign, delta: comparison.delta, unit });
 }
 
 function periodText(period: { from: string; to: string; bucket: string }): string {
-  return `${period.from.slice(0, 10)} → ${period.to.slice(0, 10)}, by ${period.bucket}`;
+  return t('dashboard.by', {
+    value: period.from.slice(0, 10),
+    value2: period.to.slice(0, 10),
+    bucket: period.bucket,
+  });
 }
 
 function ProjectAnalytics({
@@ -77,65 +102,78 @@ function ProjectAnalytics({
   return (
     <>
       <section className="dashboard-section" aria-labelledby="kpi-heading">
-        <h2 id="kpi-heading">Key indicators</h2>
+        <h2 id="kpi-heading">{t('dashboard.keyIndicators')}</h2>
         <DataState isPending={summary.isPending} error={summary.error}>
           {summary.data !== undefined && (
             <>
               <p className="muted small">
-                {periodText(summary.data.period)} · computed{' '}
+                {periodText(summary.data.period)} {t('dashboard.computed')}{' '}
                 {new Date(summary.data.computedAt).toLocaleString()}
               </p>
               <div className="metrics">
                 <Kpi
-                  label="Pass rate"
+                  label={t('dashboard.passRate')}
                   value={formatPercent(summary.data.execution.passRate)}
                   detail={deltaText(summary.data.comparison.passRate, ' pts')}
                 />
-                <Kpi label="Failed rate" value={formatPercent(summary.data.execution.failedRate)} />
                 <Kpi
-                  label="Blocked rate"
+                  label={t('dashboard.failedRate')}
+                  value={formatPercent(summary.data.execution.failedRate)}
+                />
+                <Kpi
+                  label={t('dashboard.blockedRate')}
                   value={formatPercent(summary.data.execution.blockedRate)}
                 />
                 <Kpi
-                  label="Skipped / untested"
+                  label={t('dashboard.skippedUntested')}
                   value={`${formatPercent(summary.data.execution.skippedRate)} / ${formatPercent(summary.data.execution.untestedRate)}`}
                 />
                 <Kpi
-                  label="Execution progress"
+                  label={t('dashboard.executionProgress')}
                   value={formatPercent(summary.data.execution.progress)}
                 />
                 <Kpi
-                  label="Executed vs pending"
+                  label={t('dashboard.executedVsPending')}
                   value={`${summary.data.execution.executed} / ${summary.data.execution.pending}`}
                   detail={`${summary.data.execution.planned} planned`}
                 />
                 <Kpi
-                  label="Coverage"
+                  label={t('dashboard.coverage')}
                   value={formatPercent(summary.data.coverage.percentage)}
-                  detail={`${summary.data.coverage.covered} of ${summary.data.coverage.requirements} requirements`}
+                  detail={t('dashboard.coveredOfRequirements', {
+                    covered: summary.data.coverage.covered,
+                    requirements: summary.data.coverage.requirements,
+                  })}
                 />
                 <Kpi
-                  label="Uncovered requirements"
+                  label={t('dashboard.uncoveredRequirements')}
                   value={String(summary.data.coverage.uncovered)}
                 />
                 <Kpi
-                  label="Open defects"
+                  label={t('dashboard.openDefects')}
                   value={String(summary.data.defects.open)}
-                  detail={`${summary.data.defects.openCritical} blocker or critical`}
+                  detail={t('dashboard.blockerOrCritical', {
+                    count: summary.data.defects.openCritical,
+                  })}
                 />
                 <Kpi
-                  label="Defects per executed case"
+                  label={t('dashboard.defectsPerExecutedCase')}
                   value={formatNumber(summary.data.defects.perExecutedCase)}
-                  detail={deltaText(summary.data.comparison.defectsCreated, ' created')}
+                  detail={deltaText(
+                    summary.data.comparison.defectsCreated,
+                    t('dashboard.createdUnit'),
+                  )}
                 />
                 <Kpi
-                  label="Mean time to resolve"
+                  label={t('dashboard.meanTimeToResolve')}
                   value={
                     summary.data.meanTimeToResolve.hours === null
                       ? '—'
                       : `${summary.data.meanTimeToResolve.hours} h`
                   }
-                  detail={`${summary.data.meanTimeToResolve.sampleSize} resolved in window`}
+                  detail={t('dashboard.resolvedInWindow', {
+                    count: summary.data.meanTimeToResolve.sampleSize,
+                  })}
                 />
               </div>
             </>
@@ -144,25 +182,25 @@ function ProjectAnalytics({
       </section>
 
       <section className="dashboard-section" aria-labelledby="trends-heading">
-        <h2 id="trends-heading">Trends</h2>
+        <h2 id="trends-heading">{t('dashboard.trends')}</h2>
         <DataState isPending={trends.isPending} error={trends.error}>
           {trends.data !== undefined && (
             <div className="grid-2">
               <TrendChart
-                title="Pass rate and coverage"
+                title={t('dashboard.passRateAndCoverage')}
                 points={trends.data.points}
                 series={[
-                  { key: 'passRate', label: 'Pass rate', unit: 'percent' },
-                  { key: 'coverage', label: 'Coverage', unit: 'percent' },
+                  { key: 'passRate', label: t('dashboard.passRate'), unit: 'percent' },
+                  { key: 'coverage', label: t('dashboard.coverage'), unit: 'percent' },
                 ]}
               />
               <TrendChart
-                title="Defects over time"
+                title={t('dashboard.defectsOverTime')}
                 points={trends.data.points}
                 series={[
-                  { key: 'defectsOpen', label: 'Open', unit: 'count' },
-                  { key: 'defectsCreated', label: 'Created', unit: 'count' },
-                  { key: 'defectsClosed', label: 'Closed', unit: 'count' },
+                  { key: 'defectsOpen', label: t('dashboard.open'), unit: 'count' },
+                  { key: 'defectsCreated', label: t('dashboard.created'), unit: 'count' },
+                  { key: 'defectsClosed', label: t('dashboard.closed'), unit: 'count' },
                 ]}
               />
             </div>
@@ -171,43 +209,46 @@ function ProjectAnalytics({
       </section>
 
       <section className="dashboard-section" aria-labelledby="execution-heading">
-        <h2 id="execution-heading">Execution</h2>
+        <h2 id="execution-heading">{t('dashboard.execution')}</h2>
         <DataState isPending={results.isPending} error={results.error}>
           {results.data !== undefined && (
             <>
               <div className="grid-2">
                 <ExecutionDistribution
-                  title="Result distribution"
+                  title={t('dashboard.resultDistribution')}
                   execution={results.data.execution}
                 />
                 <BarList
-                  title="Pass rate by milestone"
+                  title={t('dashboard.passRateByMilestone')}
                   rows={results.data.milestones.map((row) => ({
                     key: row.milestone ?? '__none__',
-                    label: row.milestone ?? 'No milestone',
+                    label: row.milestone ?? t('dashboard.noMilestone'),
                     value: row.execution.passRate ?? 0,
-                    display: `${formatPercent(row.execution.passRate)} · ${row.runs} runs`,
+                    display: t('dashboard.passRateRuns', {
+                      rate: formatPercent(row.execution.passRate),
+                      runs: row.runs,
+                    }),
                   }))}
                   max={100}
-                  empty="No run in this window."
+                  empty={t('dashboard.noRunInThisWindow')}
                 />
               </div>
               <section className="card" aria-labelledby="runs-heading">
-                <h3 id="runs-heading">Runs in this window</h3>
+                <h3 id="runs-heading">{t('dashboard.runsInThisWindow')}</h3>
                 {results.data.runs.length === 0 ? (
-                  <p className="muted">No run in this window.</p>
+                  <p className="muted">{t('dashboard.noRunInThisWindow')}</p>
                 ) : (
                   <div className="table-scroll">
                     <table className="table">
                       <thead>
                         <tr>
-                          <th scope="col">Run</th>
-                          <th scope="col">Milestone</th>
-                          <th scope="col">Status</th>
-                          <th scope="col">Progress</th>
-                          <th scope="col">Pass rate</th>
-                          <th scope="col">Defects</th>
-                          <th scope="col">Per executed case</th>
+                          <th scope="col">{t('dashboard.run')}</th>
+                          <th scope="col">{t('dashboard.milestone')}</th>
+                          <th scope="col">{t('dashboard.status')}</th>
+                          <th scope="col">{t('dashboard.progress')}</th>
+                          <th scope="col">{t('dashboard.passRate')}</th>
+                          <th scope="col">{t('dashboard.defects')}</th>
+                          <th scope="col">{t('dashboard.perExecutedCase')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -238,12 +279,12 @@ function ProjectAnalytics({
       </section>
 
       <section className="dashboard-section" aria-labelledby="coverage-heading">
-        <h2 id="coverage-heading">Coverage</h2>
+        <h2 id="coverage-heading">{t('dashboard.coverage')}</h2>
         <DataState isPending={coverage.isPending} error={coverage.error}>
           {coverage.data !== undefined && (
             <div className="grid-2">
               <BarList
-                title="Coverage by requirement priority"
+                title={t('dashboard.coverageByRequirementPriority')}
                 rows={coverage.data.byPriority.map((row) => ({
                   key: row.priority,
                   label: humanize(row.priority),
@@ -253,17 +294,17 @@ function ProjectAnalytics({
                 max={100}
               />
               <section className="card" aria-labelledby="uncovered-heading">
-                <h3 id="uncovered-heading">Requirements without coverage</h3>
+                <h3 id="uncovered-heading">{t('dashboard.requirementsWithoutCoverage')}</h3>
                 {coverage.data.uncoveredRequirements.length === 0 ? (
-                  <p className="muted">Every active requirement is linked to a test case.</p>
+                  <p className="muted">{t('dashboard.everyActiveRequirementIsLinked')}</p>
                 ) : (
                   <div className="table-scroll">
                     <table className="table table--compact">
                       <thead>
                         <tr>
-                          <th scope="col">Key</th>
-                          <th scope="col">Title</th>
-                          <th scope="col">Priority</th>
+                          <th scope="col">{t('dashboard.key')}</th>
+                          <th scope="col">{t('dashboard.title')}</th>
+                          <th scope="col">{t('dashboard.priority')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -287,12 +328,12 @@ function ProjectAnalytics({
       </section>
 
       <section className="dashboard-section" aria-labelledby="defects-heading">
-        <h2 id="defects-heading">Defects</h2>
+        <h2 id="defects-heading">{t('dashboard.defects')}</h2>
         <DataState isPending={defects.isPending} error={defects.error}>
           {defects.data !== undefined && (
             <div className="grid-2">
               <BarList
-                title="Open defects by severity"
+                title={t('dashboard.openDefectsBySeverity')}
                 rows={DEFECT_SEVERITIES.map((severity) => ({
                   key: severity,
                   label: <Badge tone={toneFor(severity)}>{humanize(severity)}</Badge>,
@@ -300,7 +341,7 @@ function ProjectAnalytics({
                 }))}
               />
               <BarList
-                title="Open defects by priority"
+                title={t('dashboard.openDefectsByPriority')}
                 rows={PRIORITIES.map((priority) => ({
                   key: priority,
                   label: humanize(priority),
@@ -308,24 +349,28 @@ function ProjectAnalytics({
                 }))}
               />
               <BarList
-                title="Open vs closed"
+                title={t('dashboard.openVsClosed')}
                 rows={[
-                  { key: 'open', label: 'Open', value: defects.data.open },
-                  { key: 'closed', label: 'Closed or rejected', value: defects.data.closed },
+                  { key: 'open', label: t('dashboard.open'), value: defects.data.open },
+                  {
+                    key: 'closed',
+                    label: t('dashboard.closedOrRejected'),
+                    value: defects.data.closed,
+                  },
                   {
                     key: 'created',
-                    label: 'Created in window',
+                    label: t('dashboard.createdInWindow'),
                     value: defects.data.createdInPeriod,
                   },
                   {
                     key: 'closed-window',
-                    label: 'Closed in window',
+                    label: t('dashboard.closedInWindow'),
                     value: defects.data.closedInPeriod,
                   },
                 ]}
               />
               <BarList
-                title="Defects by status"
+                title={t('dashboard.defectsByStatus')}
                 rows={DEFECT_STATUSES.map((status) => ({
                   key: status,
                   label: humanize(status),
@@ -353,43 +398,53 @@ function OrganizationAnalytics({ window }: { window: AnalyticsWindow }): React.J
       {data !== undefined && (
         <>
           <section className="dashboard-section" aria-labelledby="health-heading">
-            <h2 id="health-heading">Overall QA health</h2>
+            <h2 id="health-heading">{t('dashboard.overallQaHealth')}</h2>
             <p className="muted small">
-              {periodText(data.period)} · computed {new Date(data.computedAt).toLocaleString()}
+              {periodText(data.period)} {t('dashboard.computed')}{' '}
+              {new Date(data.computedAt).toLocaleString()}
             </p>
             <div className="metrics">
-              <Kpi label="Projects" value={String(data.health.projects)} />
-              <Kpi label="Pass rate" value={formatPercent(data.health.execution.passRate)} />
+              <Kpi label={t('dashboard.projects')} value={String(data.health.projects)} />
               <Kpi
-                label="Execution progress"
+                label={t('dashboard.passRate')}
+                value={formatPercent(data.health.execution.passRate)}
+              />
+              <Kpi
+                label={t('dashboard.executionProgress')}
                 value={formatPercent(data.health.execution.progress)}
-                detail={`${data.health.execution.executed} of ${data.health.execution.planned} cases`}
+                detail={t('dashboard.executedOfCases', {
+                  executed: data.health.execution.executed,
+                  planned: data.health.execution.planned,
+                })}
               />
               <Kpi
-                label="Coverage"
+                label={t('dashboard.coverage')}
                 value={formatPercent(data.health.coverage.percentage)}
-                detail={`${data.health.coverage.uncovered} uncovered requirements`}
+                detail={t('dashboard.uncoveredCount', { count: data.health.coverage.uncovered })}
               />
-              <Kpi label="Open defects" value={String(data.health.openDefects)} />
-              <Kpi label="Open critical defects" value={String(data.health.openCritical)} />
+              <Kpi label={t('dashboard.openDefects')} value={String(data.health.openDefects)} />
+              <Kpi
+                label={t('dashboard.openCriticalDefects')}
+                value={String(data.health.openCritical)}
+              />
             </div>
           </section>
 
           <section className="dashboard-section" aria-labelledby="rankings-heading">
-            <h2 id="rankings-heading">Projects needing attention</h2>
+            <h2 id="rankings-heading">{t('dashboard.projectsNeedingAttention')}</h2>
             <div className="grid-2">
               <BarList
-                title="Most failures"
+                title={t('dashboard.mostFailures')}
                 rows={data.mostFailures.map((row) => ({
                   key: row.projectId,
                   label: `${row.key} — ${row.name}`,
                   value: row.value,
-                  display: `${row.value} failed`,
+                  display: t('dashboard.failedCount', { count: row.value }),
                 }))}
-                empty="No failed case in this window."
+                empty={t('dashboard.noFailedCaseInThisWindow')}
               />
               <BarList
-                title="Least coverage"
+                title={t('dashboard.leastCoverage')}
                 rows={data.leastCoverage.map((row) => ({
                   key: row.projectId,
                   label: `${row.key} — ${row.name}`,
@@ -397,24 +452,24 @@ function OrganizationAnalytics({ window }: { window: AnalyticsWindow }): React.J
                   display: `${row.value}%`,
                 }))}
                 max={100}
-                empty="No project has requirements yet."
+                empty={t('dashboard.noProjectHasRequirementsYet')}
               />
             </div>
             <section className="card" aria-labelledby="projects-heading">
-              <h3 id="projects-heading">Projects</h3>
+              <h3 id="projects-heading">{t('dashboard.projects')}</h3>
               {data.projects.length === 0 ? (
-                <p className="muted">No project you can analyse.</p>
+                <p className="muted">{t('dashboard.noProjectYouCanAnalyse')}</p>
               ) : (
                 <div className="table-scroll">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th scope="col">Project</th>
-                        <th scope="col">Pass rate</th>
-                        <th scope="col">Progress</th>
-                        <th scope="col">Coverage</th>
-                        <th scope="col">Open defects</th>
-                        <th scope="col">Critical</th>
+                        <th scope="col">{t('dashboard.project')}</th>
+                        <th scope="col">{t('dashboard.passRate')}</th>
+                        <th scope="col">{t('dashboard.progress')}</th>
+                        <th scope="col">{t('dashboard.coverage')}</th>
+                        <th scope="col">{t('dashboard.openDefects')}</th>
+                        <th scope="col">{t('dashboard.critical')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -438,32 +493,32 @@ function OrganizationAnalytics({ window }: { window: AnalyticsWindow }): React.J
           </section>
 
           <section className="dashboard-section" aria-labelledby="global-trends-heading">
-            <h2 id="global-trends-heading">Global trends</h2>
+            <h2 id="global-trends-heading">{t('dashboard.globalTrends')}</h2>
             <div className="grid-2">
               <TrendChart
-                title="Pass rate and coverage across projects"
+                title={t('dashboard.passRateAndCoverageAcross')}
                 points={data.trends}
                 series={[
-                  { key: 'passRate', label: 'Pass rate', unit: 'percent' },
-                  { key: 'coverage', label: 'Coverage', unit: 'percent' },
+                  { key: 'passRate', label: t('dashboard.passRate'), unit: 'percent' },
+                  { key: 'coverage', label: t('dashboard.coverage'), unit: 'percent' },
                 ]}
               />
               <TrendChart
-                title="Defects across projects"
+                title={t('dashboard.defectsAcrossProjects')}
                 points={data.trends}
                 series={[
-                  { key: 'defectsOpen', label: 'Open', unit: 'count' },
-                  { key: 'defectsCreated', label: 'Created', unit: 'count' },
-                  { key: 'defectsClosed', label: 'Closed', unit: 'count' },
+                  { key: 'defectsOpen', label: t('dashboard.open'), unit: 'count' },
+                  { key: 'defectsCreated', label: t('dashboard.created'), unit: 'count' },
+                  { key: 'defectsClosed', label: t('dashboard.closed'), unit: 'count' },
                 ]}
               />
             </div>
           </section>
 
           <section className="card" aria-labelledby="activity-heading">
-            <h2 id="activity-heading">Recent activity</h2>
+            <h2 id="activity-heading">{t('dashboard.recentActivity')}</h2>
             {data.recentActivity.length === 0 ? (
-              <p className="muted">Nothing happened in this window.</p>
+              <p className="muted">{t('dashboard.nothingHappenedInThisWindow')}</p>
             ) : (
               <ul className="activity-list">
                 {data.recentActivity.map((item) => (
@@ -500,16 +555,16 @@ export function DashboardPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Dashboard"
+        title={t('dashboard.dashboard')}
         description={
           view === 'organization' || activeProject === null
-            ? 'Quality across every project you can analyse in this organization.'
-            : `Quality of ${activeProject.key} — ${activeProject.name}.`
+            ? t('dashboard.qualityAcrossEveryProjectYou')
+            : t('dashboard.qualityOf', { key: activeProject.key, name: activeProject.name })
         }
       />
 
       <div className="card dashboard-toolbar">
-        <div className="segmented" role="group" aria-label="Dashboard scope">
+        <div className="segmented" role="group" aria-label={t('dashboard.dashboardScope')}>
           <button
             type="button"
             aria-pressed={view === 'project'}
@@ -518,7 +573,7 @@ export function DashboardPage(): React.JSX.Element {
               setView('project');
             }}
           >
-            Project
+            {t('dashboard.project')}
           </button>
           <button
             type="button"
@@ -527,11 +582,11 @@ export function DashboardPage(): React.JSX.Element {
               setView('organization');
             }}
           >
-            Organization
+            {t('dashboard.organization')}
           </button>
         </div>
         <label className="ui-field">
-          <span className="ui-field__label">Window</span>
+          <span className="ui-field__label">{t('dashboard.window')}</span>
           <select
             className="ui-input"
             value={days}

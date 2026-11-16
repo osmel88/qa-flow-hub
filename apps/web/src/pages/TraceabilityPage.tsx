@@ -10,6 +10,7 @@ import { humanize, toneFor } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 /**
  * The traceability matrix.
@@ -37,13 +38,13 @@ export function TraceabilityPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Traceability"
-        description="Every requirement, the cases that verify it, and the defects against it."
+        title={t('traceability.traceability')}
+        description={t('traceability.everyRequirementTheCasesThat')}
         actions={
           can('data.export') ? (
             <>
               <ExportButton
-                label="Export CSV"
+                label={t('traceability.exportCsv')}
                 fallbackName="traceability-matrix.csv"
                 download={() => exportsApi.matrix(activeProjectId, uncoveredOnly)}
               />
@@ -52,7 +53,7 @@ export function TraceabilityPage(): React.JSX.Element {
                 target="_blank"
                 rel="noopener"
               >
-                Printable view
+                {t('traceability.printableView')}
               </Link>
             </>
           ) : undefined
@@ -68,14 +69,16 @@ export function TraceabilityPage(): React.JSX.Element {
               setUncoveredOnly(event.target.checked);
             }}
           />
-          Show only requirements with no test case
+          {t('traceability.showOnlyRequirementsWithNo')}
         </label>
 
         {matrix.data !== undefined && (
           <p>
-            {matrix.data.summary.covered} of {matrix.data.summary.requirements} covered (
-            {matrix.data.summary.coverage}%), {matrix.data.summary.verified} verified,{' '}
-            {matrix.data.summary.openDefects} open defects.
+            {matrix.data.summary.covered} {t('traceability.of')} {matrix.data.summary.requirements}{' '}
+            {t('traceability.covered')}
+            {matrix.data.summary.coverage}%), {matrix.data.summary.verified}{' '}
+            {t('traceability.verified')} {matrix.data.summary.openDefects}{' '}
+            {t('traceability.openDefects')}
           </p>
         )}
       </section>
@@ -84,17 +87,17 @@ export function TraceabilityPage(): React.JSX.Element {
         isPending={matrix.isPending}
         error={matrix.error}
         isEmpty={(matrix.data?.rows.length ?? 0) === 0}
-        emptyMessage="Nothing to trace yet. Add requirements and link cases to them."
+        emptyMessage={t('traceability.nothingToTraceYetAdd')}
       >
         <table className="table card">
           <thead>
             <tr>
-              <th scope="col">Requirement</th>
-              <th scope="col">Work items</th>
-              <th scope="col">Cases</th>
-              <th scope="col">Covered</th>
-              <th scope="col">Verified</th>
-              <th scope="col">Defects</th>
+              <th scope="col">{t('traceability.requirement')}</th>
+              <th scope="col">{t('traceability.workItems')}</th>
+              <th scope="col">{t('traceability.cases')}</th>
+              <th scope="col">{t('traceability.covered2')}</th>
+              <th scope="col">{t('traceability.verified2')}</th>
+              <th scope="col">{t('traceability.defects')}</th>
             </tr>
           </thead>
           <tbody>
@@ -118,7 +121,7 @@ export function TraceabilityPage(): React.JSX.Element {
                 </td>
                 <td>
                   {row.cases.length === 0 ? (
-                    <span className="muted">None</span>
+                    <span className="muted">{t('traceability.none')}</span>
                   ) : (
                     <ul className="plain-list">
                       {row.cases.map((testCase) => (
@@ -130,14 +133,16 @@ export function TraceabilityPage(): React.JSX.Element {
                           {testCase.lastExecutedVersion !== null && (
                             <span className="muted">v{testCase.lastExecutedVersion} </span>
                           )}
-                          {testCase.archived ? <Badge tone="neutral">Archived</Badge> : null}
+                          {testCase.archived ? (
+                            <Badge tone="neutral">{t('traceability.archived')}</Badge>
+                          ) : null}
                         </li>
                       ))}
                     </ul>
                   )}
                 </td>
-                <td>{row.covered ? 'Yes' : 'No'}</td>
-                <td>{row.verified ? 'Yes' : 'No'}</td>
+                <td>{row.covered ? t('traceability.yes') : t('traceability.no')}</td>
+                <td>{row.verified ? t('traceability.yes') : t('traceability.no')}</td>
                 <td>{row.defectIds.length}</td>
               </tr>
             ))}

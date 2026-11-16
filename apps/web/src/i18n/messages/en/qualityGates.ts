@@ -1,0 +1,22 @@
+export const qualityGates = {
+  'qualityGates.couldNotSaveTheQuality': 'Could not save the quality gate.',
+  'qualityGates.qualityGates': 'Quality gates',
+  'qualityGates.rulesAReleaseMustMeet':
+    'Rules a release must meet; required gates guard protected environments.',
+  'qualityGates.addAQualityGate': 'Add a quality gate',
+  'qualityGates.gateName': 'Gate name',
+  'qualityGates.gateEnvironment': 'Gate environment',
+  'qualityGates.everyEnvironment': 'Every environment',
+  'qualityGates.requiredBlocksProtectedEnvironments': 'Required (blocks protected environments)',
+  'qualityGates.rules': 'Rules',
+  'qualityGates.threshold': '{value} threshold',
+  'qualityGates.addQualityGate': 'Add quality gate',
+  'qualityGates.noQualityGateYet': 'No quality gate yet.',
+  'qualityGates.everyEnvironment2': 'every environment',
+  'qualityGates.required': 'required',
+  'qualityGates.advisory': 'advisory',
+  'qualityGates.disabled': 'disabled',
+  'qualityGates.disable': 'Disable',
+  'qualityGates.enable': 'Enable',
+  'qualityGates.delete': 'Delete',
+} as const;

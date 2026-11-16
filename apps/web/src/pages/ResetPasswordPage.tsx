@@ -1,4 +1,5 @@
 import { passwordSchema } from '@qa-flow-hub/shared';
+import { validationMessage } from '../i18n/validation';
 import { Button, PasswordField } from '@qa-flow-hub/ui';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -29,7 +30,10 @@ export function ResetPasswordPage(): React.JSX.Element {
   }, [params]);
 
   const policy = passwordSchema.safeParse(password);
-  const passwordError = submitted && !policy.success ? policy.error.issues[0]?.message : undefined;
+  const passwordError =
+    submitted && !policy.success
+      ? validationMessage(policy.error.issues[0]?.message ?? '')
+      : undefined;
   const confirmationError =
     submitted && confirmation !== password ? t('reset.mismatch') : undefined;
 

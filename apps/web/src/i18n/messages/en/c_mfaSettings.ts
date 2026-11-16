@@ -1,0 +1,30 @@
+export const c_mfaSettings = {
+  'c_mfaSettings.saveTheseRecoveryCodesSomewhere':
+    'Save these recovery codes somewhere safe. Each one signs you in once if you lose your authenticator. They will not be shown again.',
+  'c_mfaSettings.iSavedThem': 'I saved them',
+  'c_mfaSettings.couldNotStartTheSetup': 'Could not start the setup.',
+  'c_mfaSettings.couldNotConfirmTheCode': 'Could not confirm the code.',
+  'c_mfaSettings.couldNotRegenerateTheCodes': 'Could not regenerate the codes.',
+  'c_mfaSettings.couldNotTurnMfaOff': 'Could not turn MFA off.',
+  'c_mfaSettings.multiFactorAuthentication': 'Multi-factor authentication',
+  'c_mfaSettings.protectYourAccountWithA':
+    'Protect your account with a code from an authenticator app. It applies in every organization you belong to.',
+  'c_mfaSettings.currentPassword': 'Current password',
+  'c_mfaSettings.setUpMfa': 'Set up MFA',
+  'c_mfaSettings.addThisKeyToYour':
+    'Add this key to your authenticator app, then enter the code it shows.',
+  'c_mfaSettings.setupKey': 'Setup key',
+  'c_mfaSettings.setupLink': 'Setup link',
+  'c_mfaSettings.openInAuthenticator': 'Open in authenticator',
+  'c_mfaSettings.authenticationCode': 'Authentication code',
+  'c_mfaSettings.turnOnMfa': 'Turn on MFA',
+  'c_mfaSettings.status': 'Status',
+  'c_mfaSettings.enabled': 'Enabled',
+  'c_mfaSettings.recoveryCodesLeft': 'Recovery codes left',
+  'c_mfaSettings.thisSession': 'This session',
+  'c_mfaSettings.verifiedWithMfa': 'Verified with MFA',
+  'c_mfaSettings.notVerifiedWithMfa': 'Not verified with MFA',
+  'c_mfaSettings.newRecoveryCodes': 'New recovery codes',
+  'c_mfaSettings.passwordToTurnMfaOff': 'Password to turn MFA off',
+  'c_mfaSettings.turnOffMfa': 'Turn off MFA',
+} as const;

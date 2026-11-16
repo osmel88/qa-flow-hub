@@ -7,6 +7,7 @@ import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
+import { t } from '../i18n/i18n';
 
 function formatMoment(value: string | null): string {
   return value === null ? 'never' : new Date(value).toLocaleString();
@@ -72,7 +73,7 @@ function IntegrationCard({
     mutationFn: () => {
       const parsed = parseLines(settings);
       if (parsed === null) {
-        return Promise.reject(new Error('Use one key=value pair per line.'));
+        return Promise.reject(new Error(t('integrations.useOneKeyValuePerLine')));
       }
       return integrationsApi.save(provider, {
         mode,
@@ -82,11 +83,11 @@ function IntegrationCard({
     },
     onSuccess: async () => {
       setError(null);
-      setNotice('Configuration saved.');
+      setNotice(t('integrations.configurationSaved'));
       await refresh();
     },
     onError: (cause) => {
-      fail(cause, 'Could not save the configuration.');
+      fail(cause, t('integrations.couldNotSaveTheConfiguration'));
     },
   });
 
@@ -96,13 +97,13 @@ function IntegrationCard({
       setError(null);
       setNotice(
         updated.status === 'pending'
-          ? (updated.unavailableReason ?? 'Enabled, waiting for a provider implementation.')
-          : 'Connected.',
+          ? (updated.unavailableReason ?? t('integrations.enabledWaitingForAProvider'))
+          : t('integrations.connected'),
       );
       await refresh();
     },
     onError: (cause) => {
-      fail(cause, 'Could not connect.');
+      fail(cause, t('integrations.couldNotConnect'));
     },
   });
 
@@ -110,11 +111,11 @@ function IntegrationCard({
     mutationFn: () => integrationsApi.disconnect(provider),
     onSuccess: async () => {
       setError(null);
-      setNotice('Disconnected. The configuration and its references were kept.');
+      setNotice(t('integrations.disconnectedTheConfigurationAndIts'));
       await refresh();
     },
     onError: (cause) => {
-      fail(cause, 'Could not disconnect.');
+      fail(cause, t('integrations.couldNotDisconnect'));
     },
   });
 
@@ -126,7 +127,7 @@ function IntegrationCard({
       await refresh();
     },
     onError: (cause) => {
-      fail(cause, 'Could not test the connection.');
+      fail(cause, t('integrations.couldNotTestTheConnection'));
     },
   });
 
@@ -138,9 +139,11 @@ function IntegrationCard({
       <h2 id={`integration-${provider}`}>{connection.displayName}</h2>
       <p>
         <Badge tone={toneFor(connection.status)}>{humanize(connection.status)}</Badge>{' '}
-        <Badge tone="neutral">{connection.mode === 'mock' ? 'Mock' : 'Real'}</Badge>{' '}
+        <Badge tone="neutral">
+          {connection.mode === 'mock' ? t('integrations.mock') : t('integrations.real')}
+        </Badge>{' '}
         <Badge tone={connection.enabled ? 'success' : 'neutral'}>
-          {connection.enabled ? 'Enabled' : 'Disabled'}
+          {connection.enabled ? t('integrations.enabled') : t('integrations.disabled')}
         </Badge>
       </p>
 
@@ -149,12 +152,12 @@ function IntegrationCard({
       )}
 
       <dl className="detail-list">
-        <dt>Last synchronised</dt>
+        <dt>{t('integrations.lastSynchronised')}</dt>
         <dd>{formatMoment(connection.lastSyncedAt)}</dd>
-        <dt>Last connection test</dt>
+        <dt>{t('integrations.lastConnectionTest')}</dt>
         <dd>{formatMoment(connection.lastConnectionTestAt)}</dd>
-        <dt>Credential</dt>
-        <dd>{connection.hasCredential ? 'Stored' : 'None'}</dd>
+        <dt>{t('integrations.credential')}</dt>
+        <dd>{connection.hasCredential ? t('integrations.stored') : t('integrations.none')}</dd>
         {Object.entries(connection.accountMetadata).map(([key, value]) => (
           <div key={key}>
             <dt>{humanize(key)}</dt>
@@ -172,11 +175,11 @@ function IntegrationCard({
       {canManage && (
         <>
           <SelectField
-            label="Mode"
-            hint="Which side of the provider this organization talks to."
+            label={t('integrations.mode')}
+            hint={t('integrations.whichSideOfTheProvider')}
             options={connection.availableModes.map((value) => ({
               value,
-              label: value === 'mock' ? 'Mock' : 'Real',
+              label: value === 'mock' ? t('integrations.mock') : t('integrations.real'),
             }))}
             value={mode}
             onChange={(event) => {
@@ -185,8 +188,8 @@ function IntegrationCard({
           />
           {provider !== 'github' && (
             <TextField
-              label="Base URL"
-              hint="Absolute http(s) URL of the provider instance."
+              label={t('integrations.baseUrl')}
+              hint={t('integrations.absoluteHttpSUrlOf')}
               value={baseUrl}
               onChange={(event) => {
                 setBaseUrl(event.target.value);
@@ -194,8 +197,8 @@ function IntegrationCard({
             />
           )}
           <TextAreaField
-            label="Configuration"
-            hint="One key=value pair per line. Credentials are not accepted here."
+            label={t('integrations.configuration')}
+            hint={t('integrations.oneKeyValuePairPer')}
             rows={3}
             value={settings}
             onChange={(event) => {
@@ -211,7 +214,7 @@ function IntegrationCard({
                 save.mutate();
               }}
             >
-              Save
+              {t('integrations.save')}
             </Button>
             <Button
               variant="secondary"
@@ -221,7 +224,7 @@ function IntegrationCard({
                 test.mutate();
               }}
             >
-              Test connection
+              {t('integrations.testConnection')}
             </Button>
             {connection.enabled ? (
               <Button
@@ -232,7 +235,7 @@ function IntegrationCard({
                   disconnect.mutate();
                 }}
               >
-                Disconnect
+                {t('integrations.disconnect')}
               </Button>
             ) : (
               <Button
@@ -243,12 +246,14 @@ function IntegrationCard({
                   connect.mutate();
                 }}
               >
-                Connect
+                {t('integrations.connect')}
               </Button>
             )}
           </div>
 
-          {!isConfigured && <p className="muted">Save the configuration before connecting.</p>}
+          {!isConfigured && (
+            <p className="muted">{t('integrations.saveTheConfigurationBeforeConnecting')}</p>
+          )}
         </>
       )}
 
@@ -287,16 +292,11 @@ export function IntegrationsPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Integrations"
-        description="Per-organization configuration of Jira, TestRail and GitHub. Credentials are never shown, and no token is accepted until the encrypted credential store exists."
+        title={t('integrations.integrations')}
+        description={t('integrations.perOrganizationConfigurationOfJira')}
       />
 
-      {!canManage && (
-        <p className="muted">
-          Only organization owners and admins can change these settings. You can see how they are
-          configured.
-        </p>
-      )}
+      {!canManage && <p className="muted">{t('integrations.onlyOrganizationOwnersAndAdmins')}</p>}
 
       <DataState
         isPending={integrations.isPending}

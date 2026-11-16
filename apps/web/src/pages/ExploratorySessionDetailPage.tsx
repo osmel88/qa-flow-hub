@@ -10,14 +10,51 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { EXPLORATORY_TONE, formatDuration } from './ExploratorySessionsPage';
+import { t } from '../i18n/i18n';
 
 const ACTIONS: Array<{ action: ExploratoryAction; label: string; from: ExploratoryStatus[] }> = [
-  { action: 'start', label: 'Start session', from: ['planned'] },
-  { action: 'pause', label: 'Pause session', from: ['active'] },
-  { action: 'resume', label: 'Resume session', from: ['paused'] },
-  { action: 'complete', label: 'Complete session', from: ['active', 'paused'] },
-  { action: 'cancel', label: 'Cancel session', from: ['planned', 'active', 'paused'] },
-  { action: 'archive', label: 'Archive session', from: ['planned', 'completed', 'cancelled'] },
+  {
+    action: 'start',
+    get label() {
+      return t('exploratorySessionDetail.startSession');
+    },
+    from: ['planned'],
+  },
+  {
+    action: 'pause',
+    get label() {
+      return t('exploratorySessionDetail.pauseSession');
+    },
+    from: ['active'],
+  },
+  {
+    action: 'resume',
+    get label() {
+      return t('exploratorySessionDetail.resumeSession');
+    },
+    from: ['paused'],
+  },
+  {
+    action: 'complete',
+    get label() {
+      return t('exploratorySessionDetail.completeSession');
+    },
+    from: ['active', 'paused'],
+  },
+  {
+    action: 'cancel',
+    get label() {
+      return t('exploratorySessionDetail.cancelSession');
+    },
+    from: ['planned', 'active', 'paused'],
+  },
+  {
+    action: 'archive',
+    get label() {
+      return t('exploratorySessionDetail.archiveSession');
+    },
+    from: ['planned', 'completed', 'cancelled'],
+  },
 ];
 
 /** One exploratory session (S7-F5): run it, record findings, review it. */
@@ -69,7 +106,11 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['exploratory-sessions'] });
     },
     onError: async (cause: unknown) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not update the session.');
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : t('exploratorySessionDetail.couldNotUpdateTheSession'),
+      );
       await queryClient.invalidateQueries({ queryKey: ['exploratory-session', sessionId] });
     },
   });
@@ -83,9 +124,14 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
     <DataState isPending={session.isPending} error={session.error} isEmpty={false}>
       {data !== undefined && (
         <>
-          <PageHeader title={`Session ${data.title}`} description={data.charter} />
+          <PageHeader
+            title={t('exploratorySessionDetail.session', { title: data.title })}
+            description={data.charter}
+          />
           <p>
-            <Link to="/exploratory-sessions">← Exploratory testing</Link>
+            <Link to="/exploratory-sessions">
+              {t('exploratorySessionDetail.exploratoryTesting')}
+            </Link>
           </p>
           {error !== null && (
             <p role="alert" className="error">
@@ -93,40 +139,47 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
             </p>
           )}
           <section className="card" aria-labelledby="session-summary">
-            <h2 id="session-summary">Summary</h2>
+            <h2 id="session-summary">{t('exploratorySessionDetail.summary')}</h2>
             <p>
               <Badge tone={EXPLORATORY_TONE[data.status]}>
                 <span data-testid="session-status">{data.status}</span>
               </Badge>{' '}
-              Owner {data.owner?.fullName ?? 'nobody'} · Environment{' '}
-              {data.environment?.name ?? 'none'} · Release{' '}
-              {data.release === null ? 'none' : data.release.version}
+              {t('exploratorySessionDetail.owner')}{' '}
+              {data.owner?.fullName ?? t('exploratorySessionDetail.nobody')}{' '}
+              {t('exploratorySessionDetail.environment')}{' '}
+              {data.environment?.name ?? t('exploratorySessionDetail.none')}{' '}
+              {t('exploratorySessionDetail.release')}{' '}
+              {data.release === null ? t('exploratorySessionDetail.none') : data.release.version}
               {data.testPlan !== null && (
                 <>
                   {' '}
-                  · Plan <Link to={`/test-plans/${data.testPlan.id}`}>{data.testPlan.name}</Link>
+                  {t('exploratorySessionDetail.plan')}{' '}
+                  <Link to={`/test-plans/${data.testPlan.id}`}>{data.testPlan.name}</Link>
                 </>
               )}
               {data.testCycle !== null && (
                 <>
                   {' '}
-                  · Cycle{' '}
+                  {t('exploratorySessionDetail.cycle')}{' '}
                   <Link to={`/test-cycles/${data.testCycle.id}`}>{data.testCycle.name}</Link>
                 </>
               )}
             </p>
             <p data-testid="session-metrics">
-              Duration {formatDuration(data.metrics.durationSeconds)}
+              {t('exploratorySessionDetail.duration')}{' '}
+              {formatDuration(data.metrics.durationSeconds)}
               {data.metrics.timeboxMinutes !== null && ` of ${data.metrics.timeboxMinutes}m`} ·{' '}
-              {data.metrics.findings} findings · {data.metrics.defectsCreated} defects created ·{' '}
-              {data.metrics.defectsLinked} defects related · {data.metrics.notes} notes
+              {data.metrics.findings} {t('exploratorySessionDetail.findings')}{' '}
+              {data.metrics.defectsCreated} {t('exploratorySessionDetail.defectsCreated')}{' '}
+              {data.metrics.defectsLinked} {t('exploratorySessionDetail.defectsRelated')}{' '}
+              {data.metrics.notes} {t('exploratorySessionDetail.notes')}
             </p>
             <p className="muted">
-              Severity:{' '}
+              {t('exploratorySessionDetail.severity')}{' '}
               {Object.entries(data.metrics.bySeverity)
                 .filter(([, count]) => count > 0)
                 .map(([name, count]) => `${name} ${count}`)
-                .join(', ') || 'no findings'}
+                .join(', ') || t('exploratorySessionDetail.noFindings')}
             </p>
             <div className="row-actions">
               {ACTIONS.filter(
@@ -156,7 +209,7 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
           </section>
 
           <section className="card" aria-labelledby="session-notes">
-            <h2 id="session-notes">Notes and risks</h2>
+            <h2 id="session-notes">{t('exploratorySessionDetail.notesAndRisks')}</h2>
             {open && canRun ? (
               <form
                 onSubmit={(event) => {
@@ -171,32 +224,38 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                 }}
               >
                 <TextAreaField
-                  label="Session notes"
+                  label={t('exploratorySessionDetail.sessionNotes')}
                   value={notes}
                   onChange={(event) => {
                     setNotes(event.target.value);
                   }}
                 />
                 <TextAreaField
-                  label="Risks"
+                  label={t('exploratorySessionDetail.risks')}
                   value={risks}
                   onChange={(event) => {
                     setRisks(event.target.value);
                   }}
                 />
-                <Button type="submit">Save session</Button>
+                <Button type="submit">{t('exploratorySessionDetail.saveSession')}</Button>
               </form>
             ) : (
               <>
-                <p>{data.notes ?? 'No notes.'}</p>
-                <p className="muted">Risks: {data.risks ?? 'none'}</p>
+                <p>{data.notes ?? t('exploratorySessionDetail.noNotes')}</p>
+                <p className="muted">
+                  {t('exploratorySessionDetail.risks2')}{' '}
+                  {data.risks ?? t('exploratorySessionDetail.none')}
+                </p>
               </>
             )}
-            <h3>Attachments and links</h3>
-            <ul className="plain-list" aria-label="Session links">
+            <h3>{t('exploratorySessionDetail.attachmentsAndLinks')}</h3>
+            <ul className="plain-list" aria-label={t('exploratorySessionDetail.sessionLinks')}>
               {data.links.map((link) => (
                 <li key={`${link.label}-${link.url}`}>
-                  {link.kind === 'attachment' ? 'Attachment' : 'Link'}:{' '}
+                  {link.kind === 'attachment'
+                    ? t('exploratorySessionDetail.attachment')
+                    : t('exploratorySessionDetail.link')}
+                  :{' '}
                   <a href={link.url} rel="noreferrer noopener" target="_blank">
                     {link.label}
                   </a>
@@ -206,14 +265,14 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
             {open && canRun && (
               <div className="row-actions">
                 <TextField
-                  label="Link label"
+                  label={t('exploratorySessionDetail.linkLabel')}
                   value={linkLabel}
                   onChange={(event) => {
                     setLinkLabel(event.target.value);
                   }}
                 />
                 <TextField
-                  label="Link URL"
+                  label={t('exploratorySessionDetail.linkUrl')}
                   value={linkUrl}
                   onChange={(event) => {
                     setLinkUrl(event.target.value);
@@ -236,17 +295,17 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                     });
                   }}
                 >
-                  Add link
+                  {t('exploratorySessionDetail.addLink')}
                 </Button>
               </div>
             )}
           </section>
 
           <section className="card" aria-labelledby="session-findings">
-            <h2 id="session-findings">Findings</h2>
+            <h2 id="session-findings">{t('exploratorySessionDetail.findings2')}</h2>
             {recording && canRun && (
               <form
-                aria-label="New finding"
+                aria-label={t('exploratorySessionDetail.newFinding')}
                 onSubmit={(event) => {
                   event.preventDefault();
                   mutate.mutate(async () => {
@@ -264,21 +323,21 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                 }}
               >
                 <TextField
-                  label="Finding title"
+                  label={t('exploratorySessionDetail.findingTitle')}
                   value={findingTitle}
                   onChange={(event) => {
                     setFindingTitle(event.target.value);
                   }}
                 />
                 <TextAreaField
-                  label="Finding description"
+                  label={t('exploratorySessionDetail.findingDescription')}
                   value={findingDescription}
                   onChange={(event) => {
                     setFindingDescription(event.target.value);
                   }}
                 />
                 <SelectField
-                  label="Finding kind"
+                  label={t('exploratorySessionDetail.findingKind')}
                   value={kind}
                   options={FINDING_KINDS.map((entry) => ({ value: entry, label: humanize(entry) }))}
                   onChange={(event) => {
@@ -286,7 +345,7 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                   }}
                 />
                 <SelectField
-                  label="Finding severity"
+                  label={t('exploratorySessionDetail.findingSeverity')}
                   value={severity}
                   options={DEFECT_SEVERITIES.map((entry) => ({
                     value: entry,
@@ -297,14 +356,14 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                   }}
                 />
                 <Button type="submit" disabled={findingTitle.trim().length < 3}>
-                  Record finding
+                  {t('exploratorySessionDetail.recordFinding')}
                 </Button>
               </form>
             )}
             {data.findings.length === 0 ? (
-              <p className="muted">No finding yet.</p>
+              <p className="muted">{t('exploratorySessionDetail.noFindingYet')}</p>
             ) : (
-              <ul className="plain-list" aria-label="Findings">
+              <ul className="plain-list" aria-label={t('exploratorySessionDetail.findings2')}>
                 {data.findings.map((finding) => (
                   <li key={finding.id} data-testid={`finding-${finding.title}`}>
                     <strong>{finding.title}</strong> · {humanize(finding.kind)} · {finding.severity}
@@ -313,8 +372,10 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                     )}
                     {finding.defect !== null ? (
                       <div>
-                        {finding.defectCreated ? 'Defect created' : 'Related defect'}:{' '}
-                        <Link to="/defects">{finding.defect.key}</Link> {finding.defect.title}
+                        {finding.defectCreated
+                          ? t('exploratorySessionDetail.defectCreated')
+                          : t('exploratorySessionDetail.relatedDefect')}
+                        : <Link to="/defects">{finding.defect.key}</Link> {finding.defect.title}
                       </div>
                     ) : (
                       recording && (
@@ -326,16 +387,18 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                                 mutate.mutate(() => exploratoryApi.convert(data.id, finding.id));
                               }}
                             >
-                              Create defect from {finding.title}
+                              {t('exploratorySessionDetail.createDefectFrom')} {finding.title}
                             </Button>
                           )}
                           {canRun && (
                             <>
                               <SelectField
-                                label={`Existing defect for ${finding.title}`}
+                                label={t('exploratorySessionDetail.existingDefectFor', {
+                                  title: finding.title,
+                                })}
                                 value={existingDefect}
                                 options={[
-                                  { value: '', label: 'Choose a defect' },
+                                  { value: '', label: t('exploratorySessionDetail.chooseADefect') },
                                   ...(defects.data?.data ?? []).map((entry) => ({
                                     value: entry.id,
                                     label: `${entry.key} ${entry.title}`,
@@ -355,7 +418,7 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                                   );
                                 }}
                               >
-                                Link defect to {finding.title}
+                                {t('exploratorySessionDetail.linkDefectTo')} {finding.title}
                               </Button>
                             </>
                           )}
@@ -366,7 +429,7 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                 ))}
               </ul>
             )}
-            <h3>Related work items</h3>
+            <h3>{t('exploratorySessionDetail.relatedWorkItems')}</h3>
             <ul className="plain-list">
               {data.workItems.map((item) => (
                 <li key={item.id}>
@@ -377,10 +440,10 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
             {open && canRun && (
               <div className="row-actions">
                 <SelectField
-                  label="Work item"
+                  label={t('exploratorySessionDetail.workItem')}
                   value={workItemId}
                   options={[
-                    { value: '', label: 'Choose a work item' },
+                    { value: '', label: t('exploratorySessionDetail.chooseAWorkItem') },
                     ...(workItems.data?.data ?? []).map((entry) => ({
                       value: entry.id,
                       label: `${entry.key} ${entry.title}`,
@@ -397,14 +460,14 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                     mutate.mutate(() => exploratoryApi.linkWorkItem(data.id, workItemId));
                   }}
                 >
-                  Link work item
+                  {t('exploratorySessionDetail.linkWorkItem')}
                 </Button>
               </div>
             )}
           </section>
 
           <section className="card" aria-labelledby="session-timeline">
-            <h2 id="session-timeline">Timeline</h2>
+            <h2 id="session-timeline">{t('exploratorySessionDetail.timeline')}</h2>
             {recording && canRun && (
               <form
                 className="row-actions"
@@ -417,18 +480,18 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
                 }}
               >
                 <TextField
-                  label="Timeline note"
+                  label={t('exploratorySessionDetail.timelineNote')}
                   value={note}
                   onChange={(event) => {
                     setNote(event.target.value);
                   }}
                 />
                 <Button type="submit" disabled={note.trim() === ''}>
-                  Add note
+                  {t('exploratorySessionDetail.addNote')}
                 </Button>
               </form>
             )}
-            <ol aria-label="Timeline">
+            <ol aria-label={t('exploratorySessionDetail.timeline')}>
               {data.timeline.map((event) => (
                 <li key={event.id}>
                   <span className="muted">{new Date(event.createdAt).toLocaleString()}</span>{' '}

@@ -12,6 +12,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export const SPRINT_TONE: Record<SprintStatus, BadgeTone> = {
   planned: 'neutral',
@@ -63,7 +64,7 @@ export function SprintsPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['sprints'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the sprint.');
+      setError(cause instanceof ApiError ? cause.message : t('sprints.couldNotCreateTheSprint'));
     },
   });
 
@@ -74,35 +75,32 @@ export function SprintsPage(): React.JSX.Element {
 
   return (
     <>
-      <PageHeader
-        title="Sprints"
-        description="Time boxes of the backlog. One sprint per project is active at a time; completed and cancelled sprints are kept as history."
-      />
+      <PageHeader title={t('sprints.sprints')} description={t('sprints.timeBoxesOfTheBacklog')} />
 
       {can('work_items.manage') && (
         <section className="card" aria-labelledby="new-sprint">
-          <h2 id="new-sprint">New sprint</h2>
+          <h2 id="new-sprint">{t('sprints.newSprint')}</h2>
           {error !== null && (
             <p className="ui-field__error" role="alert">
               {error}
             </p>
           )}
           <TextField
-            label="Sprint name"
+            label={t('sprints.sprintName')}
             value={name}
             onChange={(event) => {
               setName(event.target.value);
             }}
           />
           <TextField
-            label="Goal"
+            label={t('sprints.goal')}
             value={goal}
             onChange={(event) => {
               setGoal(event.target.value);
             }}
           />
           <TextField
-            label="Start date"
+            label={t('sprints.startDate')}
             type="date"
             value={startDate}
             onChange={(event) => {
@@ -110,7 +108,7 @@ export function SprintsPage(): React.JSX.Element {
             }}
           />
           <TextField
-            label="End date"
+            label={t('sprints.endDate')}
             type="date"
             value={endDate}
             onChange={(event) => {
@@ -118,7 +116,7 @@ export function SprintsPage(): React.JSX.Element {
             }}
           />
           <TextField
-            label="Capacity (points)"
+            label={t('sprints.capacityPoints')}
             type="number"
             min={0}
             value={capacity}
@@ -133,24 +131,25 @@ export function SprintsPage(): React.JSX.Element {
               create.mutate();
             }}
           >
-            Create sprint
+            {t('sprints.createSprint')}
           </Button>
         </section>
       )}
 
       <section className="card" aria-labelledby="velocity">
-        <h2 id="velocity">Velocity</h2>
+        <h2 id="velocity">{t('sprints.velocity')}</h2>
         <p>
-          <strong data-testid="velocity">{formatPoints(velocity?.velocity ?? null)}</strong> points
-          per sprint, average of the last {velocity?.sprints.length ?? 0} completed sprint(s).
+          <strong data-testid="velocity">{formatPoints(velocity?.velocity ?? null)}</strong>{' '}
+          {t('sprints.pointsPerSprintAverageOf')} {velocity?.sprints.length ?? 0}{' '}
+          {t('sprints.completedSprintS')}
         </p>
       </section>
 
       <SelectField
-        label="Status filter"
+        label={t('sprints.statusFilter')}
         value={status}
         options={[
-          { value: '', label: 'Any status' },
+          { value: '', label: t('sprints.anyStatus') },
           ...SPRINT_STATUSES.map((value) => ({ value, label: humanize(value) })),
         ]}
         onChange={(event) => {
@@ -162,17 +161,17 @@ export function SprintsPage(): React.JSX.Element {
         isPending={sprints.isPending}
         error={sprints.error}
         isEmpty={(sprints.data?.data.length ?? 0) === 0}
-        emptyMessage="No sprint yet."
+        emptyMessage={t('sprints.noSprintYet')}
       >
-        <table className="table card" aria-label="Sprints">
+        <table className="table card" aria-label={t('sprints.sprints')}>
           <thead>
             <tr>
-              <th scope="col">Sprint</th>
-              <th scope="col">Status</th>
-              <th scope="col">Dates</th>
-              <th scope="col">Capacity</th>
-              <th scope="col">Committed</th>
-              <th scope="col">Completed</th>
+              <th scope="col">{t('sprints.sprint')}</th>
+              <th scope="col">{t('sprints.status')}</th>
+              <th scope="col">{t('sprints.dates')}</th>
+              <th scope="col">{t('sprints.capacity')}</th>
+              <th scope="col">{t('sprints.committed')}</th>
+              <th scope="col">{t('sprints.completed')}</th>
             </tr>
           </thead>
           <tbody>

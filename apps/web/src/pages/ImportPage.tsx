@@ -10,10 +10,15 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 const FORMAT_LABELS: Record<ImportFormat, string> = {
-  qaflow_csv: 'qa-flow-hub CSV',
-  testrail_csv: 'TestRail CSV export',
+  get qaflow_csv() {
+    return t('import.qaFlowHubCsv');
+  },
+  get testrail_csv() {
+    return t('import.testrailCsvExport');
+  },
 };
 
 const STATUS_TONE: Record<ImportJobView['status'], BadgeTone> = {
@@ -36,7 +41,7 @@ export function ImportPage(): React.JSX.Element {
   const { can, isPending: permissionsPending } = useProjectPermissions(activeProjectId);
   const [format, setFormat] = useState<ImportFormat>('qaflow_csv');
   const [suiteChoice, setSuiteChoice] = useState(NEW_SUITE);
-  const [suiteName, setSuiteName] = useState('Imported');
+  const [suiteName, setSuiteName] = useState(() => t('import.importedSuiteName'));
   const [file, setFile] = useState<File | null>(null);
   const [job, setJob] = useState<ImportJobView | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -80,9 +85,13 @@ export function ImportPage(): React.JSX.Element {
       setJob(null);
       setFile(null);
       setMessage(
-        `Imported ${result.created.cases} test cases with ${result.created.steps} steps ` +
-          `(${result.created.suites} new suites, ${result.created.sections} new sections, ` +
-          `${result.created.links} requirement links).`,
+        t('import.importedSummary', {
+          cases: result.created.cases,
+          steps: result.created.steps,
+          suites: result.created.suites,
+          sections: result.created.sections,
+          links: result.created.links,
+        }),
       );
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['imports', activeProjectId] }),
@@ -99,8 +108,8 @@ export function ImportPage(): React.JSX.Element {
   if (!permissionsPending && !allowed) {
     return (
       <>
-        <PageHeader title="Import test cases" />
-        <p className="card">You do not have permission to import test cases in this project.</p>
+        <PageHeader title={t('import.importTestCases')} />
+        <p className="card">{t('import.youDoNotHavePermission')}</p>
       </>
     );
   }
@@ -110,8 +119,8 @@ export function ImportPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Import test cases"
-        description="Upload a CSV, review the dry run, then confirm. Nothing is created until you confirm."
+        title={t('import.importTestCases')}
+        description={t('import.uploadACsvReviewThe')}
       />
 
       {message !== null && (
@@ -130,7 +139,7 @@ export function ImportPage(): React.JSX.Element {
         }}
       >
         <label className="ui-field">
-          <span className="ui-field__label">Format</span>
+          <span className="ui-field__label">{t('import.format')}</span>
           <select
             className="ui-input"
             value={format}
@@ -147,7 +156,7 @@ export function ImportPage(): React.JSX.Element {
         </label>
 
         <label className="ui-field">
-          <span className="ui-field__label">Target suite</span>
+          <span className="ui-field__label">{t('import.targetSuite')}</span>
           <select
             className="ui-input"
             value={suiteChoice}
@@ -155,7 +164,7 @@ export function ImportPage(): React.JSX.Element {
               setSuiteChoice(event.target.value);
             }}
           >
-            <option value={NEW_SUITE}>New or existing suite by name…</option>
+            <option value={NEW_SUITE}>{t('import.newOrExistingSuiteBy')}</option>
             {suites.data?.map((suite) => (
               <option key={suite.id} value={suite.id}>
                 {suite.name}
@@ -166,7 +175,7 @@ export function ImportPage(): React.JSX.Element {
 
         {suiteChoice === NEW_SUITE && (
           <label className="ui-field">
-            <span className="ui-field__label">Suite name</span>
+            <span className="ui-field__label">{t('import.suiteName')}</span>
             <input
               className="ui-input"
               value={suiteName}
@@ -181,7 +190,7 @@ export function ImportPage(): React.JSX.Element {
         )}
 
         <label className="ui-field">
-          <span className="ui-field__label">CSV file</span>
+          <span className="ui-field__label">{t('import.csvFile')}</span>
           <input
             className="ui-input"
             type="file"
@@ -193,16 +202,16 @@ export function ImportPage(): React.JSX.Element {
           />
           {limits.data !== undefined && (
             <span className="ui-field__hint">
-              Up to {Math.round(limits.data.maxBytes / (1024 * 1024))} MiB,{' '}
-              {limits.data.maxRows.toLocaleString()} rows and{' '}
-              {limits.data.maxCases.toLocaleString()} cases. UTF-8, comma or semicolon separated.
+              {t('import.upTo')} {Math.round(limits.data.maxBytes / (1024 * 1024))}{' '}
+              {t('import.mib')} {limits.data.maxRows.toLocaleString()} {t('import.rowsAnd')}{' '}
+              {limits.data.maxCases.toLocaleString()} {t('import.casesUtf8CommaOr')}
             </span>
           )}
         </label>
 
         <div className="row-actions">
           <Button type="submit" disabled={file === null || dryRun.isPending}>
-            {dryRun.isPending ? 'Checking…' : 'Run dry run'}
+            {dryRun.isPending ? t('import.checking') : t('import.runDryRun')}
           </Button>
         </div>
         {dryRun.error !== null && (
@@ -213,14 +222,16 @@ export function ImportPage(): React.JSX.Element {
       </form>
 
       {job !== null && (
-        <section className="card" aria-label="Dry run report">
+        <section className="card" aria-label={t('import.dryRunReport')}>
           <h2>
-            Dry run <Badge tone={STATUS_TONE[job.status]}>{humanize(job.status)}</Badge>
+            {t('import.dryRun')}{' '}
+            <Badge tone={STATUS_TONE[job.status]}>{humanize(job.status)}</Badge>
           </h2>
           <ImportSummaryLine job={job} />
           {errors > 0 && (
             <p className="ui-field__error">
-              Fix the {errors} error{errors === 1 ? '' : 's'} in the file and run the dry run again.
+              {t('import.fixThe')} {errors} {t('import.error')}
+              {errors === 1 ? '' : 's'} {t('import.inTheFileAndRun')}
             </p>
           )}
           <IssueTable issues={job.issues ?? []} total={job.issueCount} />
@@ -232,7 +243,9 @@ export function ImportPage(): React.JSX.Element {
                 commit.mutate(job.id);
               }}
             >
-              {commit.isPending ? 'Importing…' : `Import ${job.summary.cases} test cases`}
+              {commit.isPending
+                ? t('import.importing')
+                : t('import.importTestCases2', { cases: job.summary.cases })}
             </Button>
           </div>
           {commit.error !== null && (
@@ -244,22 +257,22 @@ export function ImportPage(): React.JSX.Element {
       )}
 
       <section className="card">
-        <h2>History</h2>
+        <h2>{t('import.history')}</h2>
         <DataState
           isPending={history.isPending}
           error={history.error}
           isEmpty={(history.data?.length ?? 0) === 0}
-          emptyMessage="No imports yet."
+          emptyMessage={t('import.noImportsYet')}
         >
-          <table className="table table--compact" aria-label="Import history">
+          <table className="table table--compact" aria-label={t('import.importHistory')}>
             <thead>
               <tr>
-                <th scope="col">File</th>
-                <th scope="col">Format</th>
-                <th scope="col">Status</th>
-                <th scope="col">Cases</th>
-                <th scope="col">Issues</th>
-                <th scope="col">Created</th>
+                <th scope="col">{t('import.file')}</th>
+                <th scope="col">{t('import.format')}</th>
+                <th scope="col">{t('import.status')}</th>
+                <th scope="col">{t('import.cases')}</th>
+                <th scope="col">{t('import.issues')}</th>
+                <th scope="col">{t('import.created')}</th>
               </tr>
             </thead>
             <tbody>
@@ -287,9 +300,11 @@ function ImportSummaryLine({ job }: { job: ImportJobView }): React.JSX.Element {
   const { summary } = job;
   return (
     <p>
-      {summary.rows} rows: {summary.cases} new cases, {summary.steps} steps, {summary.newSuites} new
-      suites, {summary.newSections} new sections, {summary.links} requirement links.{' '}
-      {summary.duplicates} duplicates skipped, {summary.errors} errors, {summary.warnings} warnings.
+      {summary.rows} {t('import.rows')} {summary.cases} {t('import.newCases')} {summary.steps}{' '}
+      {t('import.steps')} {summary.newSuites} {t('import.newSuites')} {summary.newSections}{' '}
+      {t('import.newSections')} {summary.links} {t('import.requirementLinks')} {summary.duplicates}{' '}
+      {t('import.duplicatesSkipped')} {summary.errors} {t('import.errors')} {summary.warnings}{' '}
+      {t('import.warnings')}
     </p>
   );
 }
@@ -308,17 +323,18 @@ function IssueTable({
     <div className="table-scroll">
       {total > issues.length && (
         <p className="muted">
-          Showing the first {issues.length} of {total} issues.
+          {t('import.showingTheFirst')} {issues.length} {t('import.of')} {total}{' '}
+          {t('import.issues2')}
         </p>
       )}
-      <table className="table table--compact" aria-label="Import issues">
+      <table className="table table--compact" aria-label={t('import.importIssues')}>
         <thead>
           <tr>
-            <th scope="col">Row</th>
-            <th scope="col">Column</th>
-            <th scope="col">Severity</th>
-            <th scope="col">Code</th>
-            <th scope="col">Message</th>
+            <th scope="col">{t('import.row')}</th>
+            <th scope="col">{t('import.column')}</th>
+            <th scope="col">{t('import.severity')}</th>
+            <th scope="col">{t('import.code')}</th>
+            <th scope="col">{t('import.message')}</th>
           </tr>
         </thead>
         <tbody>

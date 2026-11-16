@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { requirementsApi, testDesignApi, traceabilityApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
+import { t } from '../i18n/i18n';
 
 /**
  * Coverage editing, from either end of the same link.
@@ -93,7 +94,9 @@ export function CoverageLinks({
       await refresh();
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the link.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('c_coverageLinks.couldNotCreateTheLink'),
+      );
     },
   });
 
@@ -104,15 +107,19 @@ export function CoverageLinks({
       await refresh();
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not remove the link.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('c_coverageLinks.couldNotRemoveTheLink'),
+      );
     },
   });
 
   const available = counterparts.filter((item) => !linkedIds.has(item.id));
 
   return (
-    <section className="card" aria-label="Traceability links">
-      <h3>{side === 'requirement' ? 'Verified by' : 'Verifies'}</h3>
+    <section className="card" aria-label={t('c_coverageLinks.traceabilityLinks')}>
+      <h3>
+        {side === 'requirement' ? t('c_coverageLinks.verifiedBy') : t('c_coverageLinks.verifies')}
+      </h3>
 
       {error !== null && (
         <p className="ui-field__error" role="alert">
@@ -126,8 +133,8 @@ export function CoverageLinks({
         isEmpty={relevant.length === 0}
         emptyMessage={
           side === 'requirement'
-            ? 'No test case verifies this requirement yet.'
-            : 'This case is not linked to any requirement yet.'
+            ? t('c_coverageLinks.noTestCaseVerifiesThis')
+            : t('c_coverageLinks.thisCaseIsNotLinked')
         }
       >
         <ul className="plain-list">
@@ -145,7 +152,7 @@ export function CoverageLinks({
                     unlink.mutate(traceLink.id);
                   }}
                 >
-                  Unlink
+                  {t('c_coverageLinks.unlink')}
                 </Button>
               </li>
             );
@@ -155,9 +162,13 @@ export function CoverageLinks({
 
       <div className="row-actions">
         <SelectField
-          label={side === 'requirement' ? 'Link a test case' : 'Link a requirement'}
+          label={
+            side === 'requirement'
+              ? t('c_coverageLinks.linkATestCase')
+              : t('c_coverageLinks.linkARequirement')
+          }
           options={[
-            { value: '', label: 'Choose…' },
+            { value: '', label: t('c_coverageLinks.choose') },
             ...available.map((item) => ({ value: item.id, label: item.label })),
           ]}
           value={choice}
@@ -173,7 +184,7 @@ export function CoverageLinks({
             link.mutate(choice);
           }}
         >
-          Link
+          {t('c_coverageLinks.link')}
         </Button>
       </div>
     </section>

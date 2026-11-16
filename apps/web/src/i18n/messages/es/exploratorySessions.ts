@@ -1,0 +1,31 @@
+import type { exploratorySessions as source } from '../en/exploratorySessions';
+
+export const exploratorySessions: Partial<Record<keyof typeof source, string>> = {
+  'exploratorySessions.notStarted': 'sin iniciar',
+  'exploratorySessions.couldNotCreateTheSession': 'No se pudo crear la sesión.',
+  'exploratorySessions.exploratoryTesting': 'Testing exploratorio',
+  'exploratorySessions.timeBoxedSessionsWithA':
+    'Sesiones con tiempo limitado y un charter. Las sesiones completadas se conservan como histórico inmutable.',
+  'exploratorySessions.newExploratorySession': 'Nueva sesión exploratoria',
+  'exploratorySessions.sessionTitle': 'Título de la sesión',
+  'exploratorySessions.charter': 'Charter',
+  'exploratorySessions.sessionEnvironment': 'Entorno de la sesión',
+  'exploratorySessions.noEnvironment': 'Sin entorno',
+  'exploratorySessions.sessionRelease': 'Release de la sesión',
+  'exploratorySessions.noRelease': 'Sin release',
+  'exploratorySessions.timeboxMinutes': 'Tiempo límite (minutos)',
+  'exploratorySessions.createSession': 'Crear sesión',
+  'exploratorySessions.sessions': 'Sesiones',
+  'exploratorySessions.filterByStatus': 'Filtrar por estado',
+  'exploratorySessions.allButArchived': 'Todas salvo archivadas',
+  'exploratorySessions.noSessionYet': 'Todavía no hay sesiones.',
+  'exploratorySessions.exploratorySessions': 'Sesiones exploratorias',
+  'exploratorySessions.session': 'Sesión',
+  'exploratorySessions.status': 'Estado',
+  'exploratorySessions.owner': 'Responsable',
+  'exploratorySessions.environment': 'Entorno',
+  'exploratorySessions.findings': 'Hallazgos',
+  'exploratorySessions.duration': 'Duración',
+  'exploratorySessions.nobody': 'nadie',
+  'exploratorySessions.none': 'ninguno',
+};

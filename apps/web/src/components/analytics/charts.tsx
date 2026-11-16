@@ -1,6 +1,7 @@
 import type { ExecutionKpis, TrendPoint } from '@qa-flow-hub/shared';
 import { useId } from 'react';
 import { humanize } from '../status';
+import { t } from '../../i18n/i18n';
 
 /**
  * Dependency-free, accessible chart primitives for the analytics dashboards.
@@ -47,7 +48,7 @@ export function BarList({
   title,
   rows,
   max,
-  empty = 'Nothing to compare yet.',
+  empty = t('c_charts.nothingToCompareYet'),
 }: {
   title: string;
   rows: readonly BarRow[];
@@ -103,7 +104,7 @@ export function ExecutionDistribution({
     <section className="card" aria-labelledby={headingId}>
       <h3 id={headingId}>{title}</h3>
       {execution.planned === 0 ? (
-        <p className="muted">No run case in this window.</p>
+        <p className="muted">{t('c_charts.noRunCaseInThis')}</p>
       ) : (
         <>
           <div className="distribution" aria-hidden="true">
@@ -119,9 +120,9 @@ export function ExecutionDistribution({
           <table className="table table--compact">
             <thead>
               <tr>
-                <th scope="col">Status</th>
-                <th scope="col">Cases</th>
-                <th scope="col">Rate</th>
+                <th scope="col">{t('c_charts.status')}</th>
+                <th scope="col">{t('c_charts.cases')}</th>
+                <th scope="col">{t('c_charts.rate')}</th>
               </tr>
             </thead>
             <tbody>
@@ -144,8 +145,10 @@ export function ExecutionDistribution({
             </tbody>
           </table>
           <p className="muted small">
-            Pass, failed and blocked rates are over verdicts ({execution.verdicts}); skipped and
-            untested are over planned cases ({execution.planned}).
+            {t('c_charts.passFailedAndBlockedRates')}
+            {execution.verdicts}
+            {t('c_charts.skippedAndUntestedAreOver')}
+            {execution.planned}).
           </p>
         </>
       )}
@@ -213,10 +216,16 @@ export function TrendChart({
     .map((spec) => {
       const values = points.map((point) => point[spec.key]).filter((value) => value !== null);
       if (values.length === 0) {
-        return `${spec.label}: no data`;
+        return t('c_charts.noData', { label: spec.label });
       }
       const suffix = spec.unit === 'percent' ? '%' : '';
-      return `${spec.label}: from ${values[0]}${suffix} to ${values.at(-1)}${suffix}`;
+      return t('c_charts.fromTo', {
+        label: spec.label,
+        value: values[0] ?? 0,
+        suffix,
+        value2: values.at(-1) ?? 0,
+        suffix2: suffix,
+      });
     })
     .join('; ');
 
@@ -274,12 +283,12 @@ export function TrendChart({
         {unit === 'count' && ` · scale 0–${max}`}
       </p>
       <details>
-        <summary>Show data table</summary>
+        <summary>{t('c_charts.showDataTable')}</summary>
         <div className="table-scroll">
           <table className="table table--compact">
             <thead>
               <tr>
-                <th scope="col">Bucket</th>
+                <th scope="col">{t('c_charts.bucket')}</th>
                 {series.map((spec) => (
                   <th key={spec.key} scope="col">
                     {spec.label}

@@ -10,6 +10,7 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { SPRINT_TONE, formatPoints } from './SprintsPage';
+import { t } from '../i18n/i18n';
 
 function messageOf(cause: unknown, fallback: string): string {
   return cause instanceof ApiError ? cause.message : fallback;
@@ -67,11 +68,11 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
   const start = useMutation({
     mutationFn: () => sprintsApi.start(sprint.id),
     onSuccess: async () => {
-      setNotice('Sprint started.');
+      setNotice(t('sprintDetail.sprintStarted'));
       await refresh();
     },
     onError: (cause) => {
-      setError(messageOf(cause, 'Could not start the sprint.'));
+      setError(messageOf(cause, t('sprintDetail.couldNotStartTheSprint')));
     },
   });
   const close = useMutation({
@@ -79,26 +80,29 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
       sprintsApi.close(sprint.id, action, { carryOverTo }),
     onSuccess: async (result) => {
       setNotice(
-        `Sprint ${humanize(result.sprint.status).toLowerCase()}; ${result.carriedOver} unfinished item(s) carried over.`,
+        t('sprintDetail.sprintUnfinishedItemSCarried', {
+          value: humanize(result.sprint.status).toLowerCase(),
+          carriedOver: result.carriedOver,
+        }),
       );
       await refresh();
     },
     onError: (cause) => {
-      setError(messageOf(cause, 'Could not close the sprint.'));
+      setError(messageOf(cause, t('sprintDetail.couldNotCloseTheSprint')));
     },
   });
   const add = useMutation({
     mutationFn: () => sprintsApi.addItems(sprint.id, [...selected]),
     onSuccess: refresh,
     onError: (cause) => {
-      setError(messageOf(cause, 'Could not plan the items.'));
+      setError(messageOf(cause, t('sprintDetail.couldNotPlanTheItems')));
     },
   });
   const remove = useMutation({
     mutationFn: (id: string) => sprintsApi.removeItems(sprint.id, [id]),
     onSuccess: refresh,
     onError: (cause) => {
-      setError(messageOf(cause, 'Could not move the item to the backlog.'));
+      setError(messageOf(cause, t('sprintDetail.couldNotMoveToBacklog')));
     },
   });
 
@@ -106,13 +110,13 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
 
   return (
     <>
-      <PageHeader title={sprint.name} description={sprint.goal ?? 'No goal set.'} />
+      <PageHeader title={sprint.name} description={sprint.goal ?? t('sprintDetail.noGoalSet')} />
       <p>
         <Badge tone={SPRINT_TONE[sprint.status]}>{humanize(sprint.status)}</Badge>{' '}
         <span>
           {sprint.startDate ?? '—'} → {sprint.endDate ?? '—'}
         </span>{' '}
-        <Link to="/sprints">All sprints</Link>
+        <Link to="/sprints">{t('sprintDetail.allSprints')}</Link>
       </p>
       {error !== null && (
         <p className="ui-field__error" role="alert">
@@ -122,7 +126,7 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
       {notice !== null && <p role="status">{notice}</p>}
 
       {manage && (
-        <section className="card actions" aria-label="Sprint actions">
+        <section className="card actions" aria-label={t('sprintDetail.sprintActions')}>
           {SPRINT_TRANSITIONS[sprint.status].includes('active') && (
             <Button
               loading={start.isPending}
@@ -130,14 +134,14 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
                 start.mutate();
               }}
             >
-              Start sprint
+              {t('sprintDetail.startSprint')}
             </Button>
           )}
           <SelectField
-            label="Carry unfinished items to"
+            label={t('sprintDetail.carryUnfinishedItemsTo')}
             value={carryOverTo}
             options={[
-              { value: 'backlog', label: 'Backlog' },
+              { value: 'backlog', label: t('sprintDetail.backlog') },
               ...(planned.data?.data ?? [])
                 .filter((row) => row.id !== sprint.id)
                 .map((row) => ({ value: row.id, label: row.name })),
@@ -153,7 +157,7 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
                 close.mutate('complete');
               }}
             >
-              Complete sprint
+              {t('sprintDetail.completeSprint')}
             </Button>
           )}
           <Button
@@ -163,42 +167,42 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
               close.mutate('cancel');
             }}
           >
-            Cancel sprint
+            {t('sprintDetail.cancelSprint')}
           </Button>
         </section>
       )}
 
       <section className="card" aria-labelledby="sprint-metrics">
-        <h2 id="sprint-metrics">Metrics</h2>
+        <h2 id="sprint-metrics">{t('sprintDetail.metrics')}</h2>
         <dl className="kpis">
           <div>
-            <dt>Capacity</dt>
+            <dt>{t('sprintDetail.capacity')}</dt>
             <dd>{formatPoints(metrics.capacity)}</dd>
           </div>
           <div>
-            <dt>Committed</dt>
+            <dt>{t('sprintDetail.committed')}</dt>
             <dd data-testid="committed">{metrics.committedEstimate}</dd>
           </div>
           <div>
-            <dt>Scope</dt>
+            <dt>{t('sprintDetail.scope')}</dt>
             <dd>{metrics.scopeEstimate}</dd>
           </div>
           <div>
-            <dt>Completed</dt>
+            <dt>{t('sprintDetail.completed')}</dt>
             <dd data-testid="completed">{metrics.completedEstimate}</dd>
           </div>
           <div>
-            <dt>Load</dt>
+            <dt>{t('sprintDetail.load')}</dt>
             <dd>{metrics.load === null ? '—' : `${metrics.load}%`}</dd>
           </div>
           <div>
-            <dt>Progress</dt>
+            <dt>{t('sprintDetail.progress')}</dt>
             <dd data-testid="progress">
               {metrics.progress === null ? '—' : `${metrics.progress}%`}
             </dd>
           </div>
         </dl>
-        <ul className="inline-list" aria-label="Progress by status">
+        <ul className="inline-list" aria-label={t('sprintDetail.progressByStatus')}>
           {WORK_ITEM_STATUSES.filter((status) => metrics.byStatus[status] > 0).map((status) => (
             <li key={status}>
               <Badge tone={toneFor(status)}>
@@ -212,18 +216,18 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
       {can('work_items.manage') && open && <SprintEditor sprint={sprint} onSaved={refresh} />}
 
       <section className="card" aria-labelledby="sprint-backlog">
-        <h2 id="sprint-backlog">Sprint backlog</h2>
+        <h2 id="sprint-backlog">{t('sprintDetail.sprintBacklog')}</h2>
         {sprint.items.length === 0 ? (
-          <p>No work item in this sprint.</p>
+          <p>{t('sprintDetail.noWorkItemInThis')}</p>
         ) : (
-          <table className="table" aria-label="Sprint backlog">
+          <table className="table" aria-label={t('sprintDetail.sprintBacklog')}>
             <thead>
               <tr>
-                <th scope="col">Key</th>
-                <th scope="col">Title</th>
-                <th scope="col">Status</th>
-                <th scope="col">Estimate</th>
-                {plan && <th scope="col">Actions</th>}
+                <th scope="col">{t('sprintDetail.key')}</th>
+                <th scope="col">{t('sprintDetail.title')}</th>
+                <th scope="col">{t('sprintDetail.status')}</th>
+                <th scope="col">{t('sprintDetail.estimate')}</th>
+                {plan && <th scope="col">{t('sprintDetail.actions')}</th>}
               </tr>
             </thead>
             <tbody>
@@ -241,13 +245,13 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
                     <td>
                       <Button
                         variant="secondary"
-                        aria-label={`Move ${item.key} to the backlog`}
+                        aria-label={t('sprintDetail.moveToTheBacklog', { key: item.key })}
                         loading={remove.isPending && remove.variables === item.id}
                         onClick={() => {
                           remove.mutate(item.id);
                         }}
                       >
-                        To backlog
+                        {t('sprintDetail.toBacklog')}
                       </Button>
                     </td>
                   )}
@@ -260,9 +264,9 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
 
       {plan && (
         <section className="card" aria-labelledby="sprint-candidates">
-          <h2 id="sprint-candidates">Plan from the backlog</h2>
+          <h2 id="sprint-candidates">{t('sprintDetail.planFromTheBacklog')}</h2>
           {candidates.length === 0 ? (
-            <p>Every open item is already planned.</p>
+            <p>{t('sprintDetail.everyOpenItemIsAlready')}</p>
           ) : (
             <>
               <ul className="plain-list">
@@ -271,7 +275,7 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
                     <label>
                       <input
                         type="checkbox"
-                        aria-label={`Plan ${item.key}`}
+                        aria-label={t('sprintDetail.plan', { key: item.key })}
                         checked={selected.has(item.id)}
                         onChange={(event) => {
                           const next = new Set(selected);
@@ -295,7 +299,7 @@ function SprintDetail({ sprint }: { sprint: SprintDetailView }): React.JSX.Eleme
                   add.mutate();
                 }}
               >
-                Add to sprint
+                {t('sprintDetail.addToSprint')}
               </Button>
             </>
           )}
@@ -333,33 +337,33 @@ function SprintEditor({
       await onSaved();
     },
     onError: (cause) => {
-      setError(messageOf(cause, 'Could not save the sprint.'));
+      setError(messageOf(cause, t('sprintDetail.couldNotSaveTheSprint')));
     },
   });
   return (
     <section className="card" aria-labelledby="edit-sprint">
-      <h2 id="edit-sprint">Edit sprint</h2>
+      <h2 id="edit-sprint">{t('sprintDetail.editSprint')}</h2>
       {error !== null && (
         <p className="ui-field__error" role="alert">
           {error}
         </p>
       )}
       <TextField
-        label="Name"
+        label={t('sprintDetail.name')}
         value={name}
         onChange={(event) => {
           setName(event.target.value);
         }}
       />
       <TextField
-        label="Sprint goal"
+        label={t('sprintDetail.sprintGoal')}
         value={goal}
         onChange={(event) => {
           setGoal(event.target.value);
         }}
       />
       <TextField
-        label="Starts"
+        label={t('sprintDetail.starts')}
         type="date"
         value={startDate}
         onChange={(event) => {
@@ -367,7 +371,7 @@ function SprintEditor({
         }}
       />
       <TextField
-        label="Ends"
+        label={t('sprintDetail.ends')}
         type="date"
         value={endDate}
         onChange={(event) => {
@@ -375,7 +379,7 @@ function SprintEditor({
         }}
       />
       <TextField
-        label="Capacity"
+        label={t('sprintDetail.capacity')}
         type="number"
         min={0}
         value={capacity}
@@ -390,7 +394,7 @@ function SprintEditor({
           save.mutate();
         }}
       >
-        Save sprint
+        {t('sprintDetail.saveSprint')}
       </Button>
     </section>
   );

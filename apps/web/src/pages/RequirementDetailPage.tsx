@@ -9,6 +9,7 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { WORK_ITEM_TONE } from './WorkItemsPage';
+import { t } from '../i18n/i18n';
 
 /** A requirement and the work items that implement it (S4-F4). */
 export function RequirementDetailPage(): React.JSX.Element {
@@ -26,13 +27,13 @@ export function RequirementDetailPage(): React.JSX.Element {
         <>
           <PageHeader
             title={`${requirement.data.key} · ${requirement.data.title}`}
-            description="Requirement detail and the work items that implement it."
+            description={t('requirementDetail.requirementDetailAndTheWork')}
           />
           <p>
-            <Link to="/requirements">← All requirements</Link>
+            <Link to="/requirements">{t('requirementDetail.allRequirements')}</Link>
           </p>
           <section className="card" aria-labelledby="requirement-summary">
-            <h2 id="requirement-summary">Summary</h2>
+            <h2 id="requirement-summary">{t('requirementDetail.summary')}</h2>
             <p>
               <Badge tone={toneFor(requirement.data.status)}>
                 {humanize(requirement.data.status)}
@@ -84,7 +85,9 @@ function ImplementingWorkItems({
     ]);
   };
   const onError = (cause: unknown) => {
-    setError(cause instanceof ApiError ? cause.message : 'Could not update the link.');
+    setError(
+      cause instanceof ApiError ? cause.message : t('requirementDetail.couldNotUpdateTheLink'),
+    );
   };
   const link = useMutation({
     mutationFn: (workItemId: string) => requirementsApi.linkWorkItem(requirementId, workItemId),
@@ -104,7 +107,7 @@ function ImplementingWorkItems({
 
   return (
     <section className="card" aria-labelledby="requirement-work-items">
-      <h2 id="requirement-work-items">Implemented by</h2>
+      <h2 id="requirement-work-items">{t('requirementDetail.implementedBy')}</h2>
       {links.data !== undefined && (
         <p>
           <ImplementationBadge implementation={links.data.implementation} />
@@ -116,7 +119,7 @@ function ImplementingWorkItems({
         isPending={links.isPending}
         error={links.error}
         isEmpty={(links.data?.workItems.length ?? 0) === 0}
-        emptyMessage="No work item implements this requirement yet."
+        emptyMessage={t('requirementDetail.noWorkItemImplementsThis')}
       >
         <ul className="link-list">
           {links.data?.workItems.map((item) => (
@@ -129,12 +132,12 @@ function ImplementingWorkItems({
                 <Button
                   size="sm"
                   variant="secondary"
-                  aria-label={`Unlink ${item.key}`}
+                  aria-label={t('requirementDetail.unlink', { key: item.key })}
                   onClick={() => {
                     unlink.mutate(item.workItemId);
                   }}
                 >
-                  Unlink
+                  {t('requirementDetail.unlink2')}
                 </Button>
               )}
             </li>
@@ -152,10 +155,10 @@ function ImplementingWorkItems({
           }}
         >
           <SelectField
-            label="Link work item"
+            label={t('requirementDetail.linkWorkItem')}
             value={choice}
             options={[
-              { value: '', label: 'Choose a work item…' },
+              { value: '', label: t('requirementDetail.chooseAWorkItem') },
               ...options.map((item) => ({ value: item.id, label: `${item.key} · ${item.title}` })),
             ]}
             onChange={(event) => {
@@ -163,7 +166,7 @@ function ImplementingWorkItems({
             }}
           />
           <Button type="submit" disabled={choice === '' || link.isPending}>
-            Link
+            {t('requirementDetail.link')}
           </Button>
         </form>
       )}

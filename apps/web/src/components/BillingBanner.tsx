@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { billingApi } from '../api/endpoints';
 import { useAuth } from '../auth/auth-context';
 import { formatDate } from './billing-format';
+import { t } from '../i18n/i18n';
 
 /**
  * One line above every screen when billing needs attention: a trial or a
@@ -28,12 +29,15 @@ export function BillingBanner(): React.JSX.Element | null {
   let message: string | null = null;
   let danger = false;
   if (data.reason === 'trial') {
-    message = `Team trial — ends ${formatDate(data.until)}.`;
+    message = t('c_billingBanner.teamTrialEnds', { date: formatDate(data.until) });
   } else if (data.reason === 'past_due_grace') {
-    message = `Payment failed. Your plan stays active until ${formatDate(data.until)}.`;
+    message = t('c_billingBanner.paymentFailed', { date: formatDate(data.until) });
     danger = true;
   } else if (data.overLimit.length > 0) {
-    message = `Usage is above the ${data.effectivePlan} plan for ${data.overLimit.join(', ')}. Existing data is kept; new items are blocked.`;
+    message = t('c_billingBanner.overLimit', {
+      plan: data.effectivePlan,
+      resources: data.overLimit.join(', '),
+    });
     danger = true;
   }
   if (message === null) {
@@ -43,10 +47,10 @@ export function BillingBanner(): React.JSX.Element | null {
   return (
     <aside
       className={danger ? 'billing-banner billing-banner--danger' : 'billing-banner'}
-      aria-label="Billing notice"
+      aria-label={t('c_billingBanner.billingNotice')}
       data-testid="billing-banner"
     >
-      {message} <Link to="/billing">Billing</Link>
+      {message} <Link to="/billing">{t('c_billingBanner.billing')}</Link>
     </aside>
   );
 }

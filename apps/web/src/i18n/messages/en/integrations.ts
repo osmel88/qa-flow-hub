@@ -1,0 +1,38 @@
+export const integrations = {
+  'integrations.configurationSaved': 'Configuration saved.',
+  'integrations.couldNotSaveTheConfiguration': 'Could not save the configuration.',
+  'integrations.enabledWaitingForAProvider': 'Enabled, waiting for a provider implementation.',
+  'integrations.connected': 'Connected.',
+  'integrations.couldNotConnect': 'Could not connect.',
+  'integrations.disconnectedTheConfigurationAndIts':
+    'Disconnected. The configuration and its references were kept.',
+  'integrations.couldNotDisconnect': 'Could not disconnect.',
+  'integrations.couldNotTestTheConnection': 'Could not test the connection.',
+  'integrations.mock': 'Mock',
+  'integrations.real': 'Real',
+  'integrations.enabled': 'Enabled',
+  'integrations.disabled': 'Disabled',
+  'integrations.lastSynchronised': 'Last synchronised',
+  'integrations.lastConnectionTest': 'Last connection test',
+  'integrations.credential': 'Credential',
+  'integrations.stored': 'Stored',
+  'integrations.none': 'None',
+  'integrations.mode': 'Mode',
+  'integrations.whichSideOfTheProvider': 'Which side of the provider this organization talks to.',
+  'integrations.baseUrl': 'Base URL',
+  'integrations.absoluteHttpSUrlOf': 'Absolute http(s) URL of the provider instance.',
+  'integrations.configuration': 'Configuration',
+  'integrations.oneKeyValuePairPer':
+    'One key=value pair per line. Credentials are not accepted here.',
+  'integrations.save': 'Save',
+  'integrations.testConnection': 'Test connection',
+  'integrations.disconnect': 'Disconnect',
+  'integrations.connect': 'Connect',
+  'integrations.saveTheConfigurationBeforeConnecting': 'Save the configuration before connecting.',
+  'integrations.integrations': 'Integrations',
+  'integrations.perOrganizationConfigurationOfJira':
+    'Per-organization configuration of Jira, TestRail and GitHub. Credentials are never shown, and no token is accepted until the encrypted credential store exists.',
+  'integrations.onlyOrganizationOwnersAndAdmins':
+    'Only organization owners and admins can change these settings. You can see how they are configured.',
+  'integrations.useOneKeyValuePerLine': 'Use one key=value pair per line.',
+} as const;

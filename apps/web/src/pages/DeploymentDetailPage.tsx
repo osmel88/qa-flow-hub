@@ -11,6 +11,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { formatDuration } from './BuildsPage';
 import { DEPLOYMENT_TONE } from './DeploymentsPage';
+import { t } from '../i18n/i18n';
 
 /** A deployment: lifecycle, build, release, environment, work items and rollback (S5-F5). */
 export function DeploymentDetailPage(): React.JSX.Element {
@@ -36,7 +37,9 @@ export function DeploymentDetailPage(): React.JSX.Element {
     ]);
   };
   const onError = (cause: unknown) => {
-    setError(cause instanceof ApiError ? cause.message : 'Could not update the deployment.');
+    setError(
+      cause instanceof ApiError ? cause.message : t('deploymentDetail.couldNotUpdateTheDeployment'),
+    );
   };
   const transition = useMutation({
     mutationFn: (status: 'deploying' | 'succeeded' | 'failed' | 'cancelled') =>
@@ -68,11 +71,13 @@ export function DeploymentDetailPage(): React.JSX.Element {
       {data !== undefined && (
         <>
           <PageHeader
-            title={`Deployment ${data.identifier ?? ''}`}
-            description={`To ${data.environmentRef?.name ?? data.environment ?? 'an environment'}.`}
+            title={t('deploymentDetail.deployment', { value: data.identifier ?? '' })}
+            description={t('deploymentDetail.to', {
+              value: data.environmentRef?.name ?? data.environment ?? 'an environment',
+            })}
           />
           <p>
-            <Link to="/deployments">← All deployments</Link>
+            <Link to="/deployments">{t('deploymentDetail.allDeployments')}</Link>
           </p>
           {error !== null && (
             <p role="alert" className="error">
@@ -80,7 +85,7 @@ export function DeploymentDetailPage(): React.JSX.Element {
             </p>
           )}
           <section className="card" aria-labelledby="deployment-summary">
-            <h2 id="deployment-summary">Summary</h2>
+            <h2 id="deployment-summary">{t('deploymentDetail.summary')}</h2>
             <p>
               <span data-testid="deployment-status">
                 <Badge tone={DEPLOYMENT_TONE[status]}>{humanize(status)}</Badge>
@@ -93,25 +98,25 @@ export function DeploymentDetailPage(): React.JSX.Element {
             </p>
             <dl className="kpis">
               <div>
-                <dt>Started</dt>
+                <dt>{t('deploymentDetail.started')}</dt>
                 <dd>{data.startedAt === null ? '—' : new Date(data.startedAt).toLocaleString()}</dd>
               </div>
               <div>
-                <dt>Finished</dt>
+                <dt>{t('deploymentDetail.finished')}</dt>
                 <dd>
                   {data.finishedAt === null ? '—' : new Date(data.finishedAt).toLocaleString()}
                 </dd>
               </div>
               <div>
-                <dt>Duration</dt>
+                <dt>{t('deploymentDetail.duration')}</dt>
                 <dd>{formatDuration(data.durationMs)}</dd>
               </div>
             </dl>
-            <ul aria-label="Deployment references">
+            <ul aria-label={t('deploymentDetail.deploymentReferences')}>
               <li>
-                Build:{' '}
+                {t('deploymentDetail.build')}{' '}
                 {data.build === null ? (
-                  'none'
+                  t('deploymentDetail.none')
                 ) : (
                   <Link to={`/builds/${data.build.id}`}>{data.build.identifier}</Link>
                 )}
@@ -123,9 +128,9 @@ export function DeploymentDetailPage(): React.JSX.Element {
                 )}
               </li>
               <li>
-                Release:{' '}
+                {t('deploymentDetail.release')}{' '}
                 {data.release === null ? (
-                  'none'
+                  t('deploymentDetail.none')
                 ) : (
                   <Link to={`/releases/${data.release.id}`}>
                     {data.release.version} · {data.release.name}
@@ -134,13 +139,13 @@ export function DeploymentDetailPage(): React.JSX.Element {
               </li>
               {data.rollbackOf !== null && (
                 <li data-testid="deployment-rollback">
-                  Rolled back from{' '}
+                  {t('deploymentDetail.rolledBackFrom')}{' '}
                   <Link to={`/deployments/${data.rollbackOf.id}`}>
                     {data.rollbackOf.identifier}
                   </Link>{' '}
-                  to{' '}
+                  {t('deploymentDetail.to2')}{' '}
                   {data.rollbackTarget === null ? (
-                    'an earlier build'
+                    t('deploymentDetail.anEarlierBuild')
                   ) : (
                     <Link to={`/deployments/${data.rollbackTarget.id}`}>
                       {data.rollbackTarget.identifier}
@@ -149,15 +154,19 @@ export function DeploymentDetailPage(): React.JSX.Element {
                   {data.rollbackEmergency && (
                     <>
                       {' '}
-                      <Badge tone="danger">emergency</Badge>
+                      <Badge tone="danger">{t('deploymentDetail.emergency')}</Badge>
                     </>
                   )}
                 </li>
               )}
-              {data.rollbackReason !== null && <li>Rollback reason: {data.rollbackReason}</li>}
+              {data.rollbackReason !== null && (
+                <li>
+                  {t('deploymentDetail.rollbackReason')} {data.rollbackReason}
+                </li>
+              )}
               {data.rolledBackBy !== null && (
                 <li>
-                  Rolled back by{' '}
+                  {t('deploymentDetail.rolledBackBy')}{' '}
                   <Link to={`/deployments/${data.rolledBackBy.id}`}>
                     {data.rolledBackBy.identifier}
                   </Link>
@@ -178,12 +187,12 @@ export function DeploymentDetailPage(): React.JSX.Element {
                         transition.mutate(next);
                       }}
                     >
-                      Mark {humanize(next)}
+                      {t('deploymentDetail.mark')} {humanize(next)}
                     </Button>
                   ))}
                 {status === 'succeeded' && data.rolledBackBy === null && (
                   <TextField
-                    label="Rollback reason"
+                    label={t('deploymentDetail.rollbackReason2')}
                     value={reason}
                     onChange={(event) => {
                       setReason(event.target.value);
@@ -199,18 +208,18 @@ export function DeploymentDetailPage(): React.JSX.Element {
                       rollback.mutate();
                     }}
                   >
-                    Roll back
+                    {t('deploymentDetail.rollBack')}
                   </Button>
                 )}
               </p>
             )}
           </section>
           <section className="card" aria-labelledby="deployment-work-items">
-            <h2 id="deployment-work-items">Work items</h2>
+            <h2 id="deployment-work-items">{t('deploymentDetail.workItems')}</h2>
             {data.workItems.length === 0 ? (
-              <p>No work item.</p>
+              <p>{t('deploymentDetail.noWorkItem')}</p>
             ) : (
-              <ul aria-label="Deployed work items">
+              <ul aria-label={t('deploymentDetail.deployedWorkItems')}>
                 {data.workItems.map((item) => (
                   <li key={item.workItemId}>
                     <Link to={`/work-items/${item.workItemId}`}>
@@ -223,7 +232,7 @@ export function DeploymentDetailPage(): React.JSX.Element {
           </section>
           {data.logSummary !== null && (
             <section className="card" aria-labelledby="deployment-log">
-              <h2 id="deployment-log">Log</h2>
+              <h2 id="deployment-log">{t('deploymentDetail.log')}</h2>
               <pre className="log">{data.logSummary}</pre>
             </section>
           )}

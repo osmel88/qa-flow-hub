@@ -1,0 +1,20 @@
+export const testCaseEditor = {
+  'testCaseEditor.couldNotSaveTheCase': 'Could not save the case.',
+  'testCaseEditor.testCase': 'Test case',
+  'testCaseEditor.editor': '{key} — editor',
+  'testCaseEditor.savingAContentChangeCreates':
+    'Saving a content change creates a new version; runs already created keep the version they executed.',
+  'testCaseEditor.backToCases': 'Back to cases',
+  'testCaseEditor.savedAsVersion': 'Saved as version',
+  'testCaseEditor.title': 'Title',
+  'testCaseEditor.steps': 'Steps',
+  'testCaseEditor.noStepsYetAddThe': 'No steps yet. Add the first one.',
+  'testCaseEditor.stepAction': 'Step {value} action',
+  'testCaseEditor.stepExpectedResult': 'Step {value} expected result',
+  'testCaseEditor.removeStep': 'Remove step',
+  'testCaseEditor.changeReasonOptional': 'Change reason (optional)',
+  'testCaseEditor.addStep': 'Add step',
+  'testCaseEditor.saveCase': 'Save case',
+  'testCaseEditor.aCaseIsCappedAt': 'A case is capped at',
+  'testCaseEditor.steps2': 'steps.',
+} as const;

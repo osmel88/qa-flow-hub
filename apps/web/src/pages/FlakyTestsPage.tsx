@@ -10,6 +10,7 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export const FLAKY_TONE: Record<FlakyStatus, BadgeTone> = {
   flaky: 'danger',
@@ -74,17 +75,17 @@ export function FlakyTestsPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Flaky tests"
-        description="Stability of each case over its latest 20 passed/failed results, manual and automated. Recalculated on every visit."
+        title={t('flakyTests.flakyTests')}
+        description={t('flakyTests.stabilityOfEachCaseOver')}
       />
       <section className="card" aria-labelledby="flaky-heading">
-        <h2 id="flaky-heading">Test cases</h2>
+        <h2 id="flaky-heading">{t('flakyTests.testCases')}</h2>
         <div className="filters">
           <SelectField
-            label="Stability"
+            label={t('flakyTests.stability')}
             value={status}
             options={[
-              { value: '', label: 'Any stability' },
+              { value: '', label: t('flakyTests.anyStability') },
               ...FLAKY_STATUSES.map((entry) => ({ value: entry, label: humanize(entry) })),
             ]}
             onChange={(event) => {
@@ -92,7 +93,7 @@ export function FlakyTestsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Result source"
+            label={t('flakyTests.resultSource')}
             value={source}
             options={FLAKY_SOURCES.map((entry) => ({ value: entry, label: humanize(entry) }))}
             onChange={(event) => {
@@ -100,10 +101,10 @@ export function FlakyTestsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Suite"
+            label={t('flakyTests.suite')}
             value={suiteId}
             options={[
-              { value: '', label: 'Every suite' },
+              { value: '', label: t('flakyTests.everySuite') },
               ...(suites.data ?? []).map((entry) => ({ value: entry.id, label: entry.name })),
             ]}
             onChange={(event) => {
@@ -111,19 +112,19 @@ export function FlakyTestsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Manual mark"
+            label={t('flakyTests.manualMark')}
             value={marked}
             options={[
-              { value: '', label: 'Marked or not' },
-              { value: 'true', label: 'Marked' },
-              { value: 'false', label: 'Not marked' },
+              { value: '', label: t('flakyTests.markedOrNot') },
+              { value: 'true', label: t('flakyTests.marked') },
+              { value: 'false', label: t('flakyTests.notMarked') },
             ]}
             onChange={(event) => {
               setMarked(event.target.value as '' | 'true' | 'false');
             }}
           />
           <SelectField
-            label="Sort by"
+            label={t('flakyTests.sortBy')}
             value={sort}
             options={FLAKY_SORTS.map((entry) => ({ value: entry, label: humanize(entry) }))}
             onChange={(event) => {
@@ -131,18 +132,18 @@ export function FlakyTestsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Order"
+            label={t('flakyTests.order')}
             value={order}
             options={[
-              { value: 'desc', label: 'Descending' },
-              { value: 'asc', label: 'Ascending' },
+              { value: 'desc', label: t('flakyTests.descending') },
+              { value: 'asc', label: t('flakyTests.ascending') },
             ]}
             onChange={(event) => {
               setOrder(event.target.value as 'asc' | 'desc');
             }}
           />
           <TextField
-            label="Search cases"
+            label={t('flakyTests.searchCases')}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -153,19 +154,19 @@ export function FlakyTestsPage(): React.JSX.Element {
           isPending={rows.isPending}
           error={rows.error}
           isEmpty={data.length === 0}
-          emptyMessage="No executed case matches."
+          emptyMessage={t('flakyTests.noExecutedCaseMatches')}
         >
-          <table className="table" aria-label="Flaky tests">
+          <table className="table" aria-label={t('flakyTests.flakyTests')}>
             <thead>
               <tr>
-                <th scope="col">Case</th>
-                <th scope="col">Stability</th>
-                <th scope="col">Executions</th>
-                <th scope="col">Pass rate</th>
-                <th scope="col">Fail rate</th>
-                <th scope="col">Flips</th>
-                <th scope="col">Flip rate</th>
-                <th scope="col">Last result</th>
+                <th scope="col">{t('flakyTests.case')}</th>
+                <th scope="col">{t('flakyTests.stability')}</th>
+                <th scope="col">{t('flakyTests.executions')}</th>
+                <th scope="col">{t('flakyTests.passRate')}</th>
+                <th scope="col">{t('flakyTests.failRate')}</th>
+                <th scope="col">{t('flakyTests.flips')}</th>
+                <th scope="col">{t('flakyTests.flipRate')}</th>
+                <th scope="col">{t('flakyTests.lastResult')}</th>
               </tr>
             </thead>
             <tbody>
@@ -180,12 +181,12 @@ export function FlakyTestsPage(): React.JSX.Element {
                   </td>
                   <td>
                     <Badge tone={FLAKY_TONE[row.status]}>{humanize(row.status)}</Badge>
-                    {row.confirmed && <small> confirmed</small>}
-                    {row.dismissed && <small> dismissed</small>}
+                    {row.confirmed && <small> {t('flakyTests.confirmed')}</small>}
+                    {row.dismissed && <small> {t('flakyTests.dismissed')}</small>}
                   </td>
                   <td>
-                    {row.executions} ({row.manualExecutions} manual · {row.automatedExecutions}{' '}
-                    automated)
+                    {row.executions} ({row.manualExecutions} {t('flakyTests.manual')}{' '}
+                    {row.automatedExecutions} {t('flakyTests.automated')}
                   </td>
                   <td>{percent(row.passRate)}</td>
                   <td>{percent(row.failRate)}</td>

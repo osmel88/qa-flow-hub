@@ -1,0 +1,18 @@
+export const printableMatrix = {
+  'printableMatrix.traceabilityMatrix': 'Traceability matrix —',
+  'printableMatrix.generated': 'Generated',
+  'printableMatrix.of': 'of',
+  'printableMatrix.requirementsCovered': 'requirements covered (',
+  'printableMatrix.verified': 'verified,',
+  'printableMatrix.openDefects': 'open defects.',
+  'printableMatrix.traceabilityMatrix2': 'Traceability matrix',
+  'printableMatrix.requirement': 'Requirement',
+  'printableMatrix.cases': 'Cases',
+  'printableMatrix.covered': 'Covered',
+  'printableMatrix.verified2': 'Verified',
+  'printableMatrix.openDefects2': 'Open defects',
+  'printableMatrix.none': 'None',
+  'printableMatrix.yes': 'Yes',
+  'printableMatrix.no': 'No',
+  'printableMatrix.printSaveAsPdf': 'Print / Save as PDF',
+} as const;

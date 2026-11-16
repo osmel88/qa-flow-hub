@@ -10,6 +10,7 @@ import { GitHubRunCell, useGitHubReferences } from '../components/GitHubRunPanel
 import { TestRailSyncCell, useTestRailReferences } from '../components/TestRailSyncCell';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export function TestRunsPage(): React.JSX.Element {
   const { activeProjectId } = useProject();
@@ -76,7 +77,7 @@ export function TestRunsPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['releases'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the run.');
+      setError(cause instanceof ApiError ? cause.message : t('testRuns.couldNotCreateTheRun'));
     },
   });
 
@@ -86,27 +87,24 @@ export function TestRunsPage(): React.JSX.Element {
 
   return (
     <>
-      <PageHeader
-        title="Test runs"
-        description="A run freezes the cases it contains, so editing a case later never rewrites history."
-      />
+      <PageHeader title={t('testRuns.testRuns')} description={t('testRuns.aRunFreezesTheCases')} />
 
       <section className="card" aria-labelledby="new-run">
-        <h2 id="new-run">New run</h2>
+        <h2 id="new-run">{t('testRuns.newRun')}</h2>
         {error !== null && (
           <p className="ui-field__error" role="alert">
             {error}
           </p>
         )}
         <TextField
-          label="Name"
+          label={t('testRuns.name')}
           value={name}
           onChange={(event) => {
             setName(event.target.value);
           }}
         />
         <label className="ui-field">
-          <span className="ui-field__label">Cases from suite</span>
+          <span className="ui-field__label">{t('testRuns.casesFromSuite')}</span>
           <select
             className="ui-input"
             value={suiteId}
@@ -114,7 +112,7 @@ export function TestRunsPage(): React.JSX.Element {
               setSuiteId(event.target.value);
             }}
           >
-            <option value="">Every case in the project</option>
+            <option value="">{t('testRuns.everyCaseInTheProject')}</option>
             {suites.data?.map((suite) => (
               <option key={suite.id} value={suite.id}>
                 {suite.name}
@@ -123,16 +121,16 @@ export function TestRunsPage(): React.JSX.Element {
           </select>
         </label>
         <label className="ui-field">
-          <span className="ui-field__label">Release</span>
+          <span className="ui-field__label">{t('testRuns.release')}</span>
           <select
             className="ui-input"
-            aria-label="Release"
+            aria-label={t('testRuns.release')}
             value={releaseId}
             onChange={(event) => {
               setReleaseId(event.target.value);
             }}
           >
-            <option value="">No release</option>
+            <option value="">{t('testRuns.noRelease')}</option>
             {openReleases.map((release) => (
               <option key={release.id} value={release.id}>
                 {release.name} ({release.version})
@@ -147,21 +145,21 @@ export function TestRunsPage(): React.JSX.Element {
             create.mutate();
           }}
         >
-          Create run
+          {t('testRuns.createRun')}
         </Button>
       </section>
 
       <label className="ui-field">
-        <span className="ui-field__label">Filter by release</span>
+        <span className="ui-field__label">{t('testRuns.filterByRelease')}</span>
         <select
           className="ui-input"
-          aria-label="Filter by release"
+          aria-label={t('testRuns.filterByRelease')}
           value={releaseFilter}
           onChange={(event) => {
             setReleaseFilter(event.target.value);
           }}
         >
-          <option value="">All runs</option>
+          <option value="">{t('testRuns.allRuns')}</option>
           {releaseList.map((release) => (
             <option key={release.id} value={release.id}>
               {release.name} ({release.version})
@@ -174,18 +172,18 @@ export function TestRunsPage(): React.JSX.Element {
         isPending={runs.isPending}
         error={runs.error}
         isEmpty={(runs.data?.data.length ?? 0) === 0}
-        emptyMessage="No run yet. Create one to start executing."
+        emptyMessage={t('testRuns.noRunYetCreateOne')}
       >
         <table className="table card">
           <thead>
             <tr>
-              <th scope="col">Run</th>
-              <th scope="col">Status</th>
-              <th scope="col">Release</th>
-              <th scope="col">Cases</th>
-              <th scope="col">Progress</th>
-              <th scope="col">TestRail</th>
-              <th scope="col">GitHub</th>
+              <th scope="col">{t('testRuns.run')}</th>
+              <th scope="col">{t('testRuns.status')}</th>
+              <th scope="col">{t('testRuns.release')}</th>
+              <th scope="col">{t('testRuns.cases')}</th>
+              <th scope="col">{t('testRuns.progress')}</th>
+              <th scope="col">{t('testRuns.testrail')}</th>
+              <th scope="col">{t('testRuns.github')}</th>
             </tr>
           </thead>
           <tbody>
@@ -199,10 +197,10 @@ export function TestRunsPage(): React.JSX.Element {
                 </td>
                 <td>
                   {run.releaseId === null ? (
-                    <span className="muted">No release</span>
+                    <span className="muted">{t('testRuns.noRelease')}</span>
                   ) : (
                     <Link to={`/releases/${run.releaseId}`}>
-                      {releaseName.get(run.releaseId) ?? 'Release'}
+                      {releaseName.get(run.releaseId) ?? t('testRuns.release')}
                     </Link>
                   )}
                 </td>

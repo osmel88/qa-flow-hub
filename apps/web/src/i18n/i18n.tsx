@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { UiStringsProvider } from '@qa-flow-hub/ui';
 import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, SUPPORTED_LOCALES, isLocale } from './locales';
 import type { Locale } from './locales';
 import { en } from './messages/en';
@@ -10,6 +11,11 @@ type Catalog = Partial<Record<MessageKey, string>>;
 
 const CATALOGS: Record<Locale, Catalog> = { en, es };
 
+// The locale the module-level `t` reads. The provider sets it while rendering
+// and remounts the routed tree on change, so plain functions (event handlers,
+// helpers) translate too without a hook.
+let activeLocale: Locale = DEFAULT_LOCALE;
+
 export type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 /** Looks the key up in the locale, then in English; fills `{name}` placeholders. */
@@ -18,10 +24,36 @@ export function translate(
   key: MessageKey,
   vars: Record<string, string | number> = {},
 ): string {
-  const template = CATALOGS[locale][key] ?? en[key];
+  const template = lookupMessage(CATALOGS[locale], key);
   return template.replace(/\{(\w+)\}/g, (match, name: string) =>
     name in vars ? String(vars[name]) : match,
   );
+}
+
+/** A catalog lookup with the English fallback, exposed for tests. */
+export function lookupMessage(catalog: Catalog, key: MessageKey): string {
+  return catalog[key] ?? en[key];
+}
+
+/** BCP 47 tag for `Intl` formatting in the active locale. */
+export function intlLocale(): string {
+  return activeLocale === 'es' ? 'es-ES' : 'en-US';
+}
+
+/** Translate in the active locale; usable outside React components. */
+export function t(key: MessageKey, vars?: Record<string, string | number>): string {
+  return translate(activeLocale, key, vars);
+}
+
+/**
+ * Display label of a domain value (status, type, role...). Values are data,
+ * not keys, so the lookup is by `value.<raw>` and falls back to the raw value
+ * with underscores as spaces.
+ */
+export function valueLabel(value: string): string {
+  const key = `value.${value}`;
+  const catalog = CATALOGS[activeLocale] as Record<string, string | undefined>;
+  return catalog[key] ?? value.replace(/_/g, ' ');
 }
 
 function storedLocale(): Locale {
@@ -48,6 +80,7 @@ const I18nContext = createContext<I18nValue>({
 
 export function I18nProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const [locale, setLocaleState] = useState<Locale>(storedLocale);
+  activeLocale = locale;
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -66,7 +99,21 @@ export function I18nProvider({ children }: { children: ReactNode }): React.JSX.E
     () => ({ locale, setLocale, t: (key, vars) => translate(locale, key, vars) }),
     [locale, setLocale],
   );
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+  const uiStrings = useMemo(
+    () => ({
+      loading: translate(locale, 'common.loading'),
+      genericError: translate(locale, 'common.genericError'),
+      empty: translate(locale, 'common.nothingHereYet'),
+      showPassword: translate(locale, 'common.showPassword'),
+      hidePassword: translate(locale, 'common.hidePassword'),
+    }),
+    [locale],
+  );
+  return (
+    <I18nContext.Provider value={value}>
+      <UiStringsProvider value={uiStrings}>{children}</UiStringsProvider>
+    </I18nContext.Provider>
+  );
 }
 
 export function useI18n(): I18nValue {

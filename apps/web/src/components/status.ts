@@ -1,3 +1,4 @@
+import { valueLabel } from '../i18n/i18n';
 import type { BadgeTone } from '@qa-flow-hub/ui';
 
 /**
@@ -40,6 +41,7 @@ export function toneFor(status: string): BadgeTone {
   return TONES[status] ?? 'neutral';
 }
 
+/** A domain value as shown to people, in the active language. */
 export function humanize(value: string): string {
-  return value.replace(/_/g, ' ');
+  return valueLabel(value);
 }

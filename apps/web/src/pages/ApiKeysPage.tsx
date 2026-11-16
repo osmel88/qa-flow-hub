@@ -9,6 +9,7 @@ import { PageHeader } from '../components/PageHeader';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 /**
  * API keys let CI upload JUnit XML or Playwright JSON reports into this
@@ -68,7 +69,7 @@ export function ApiKeysPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['api-keys'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the key.');
+      setError(cause instanceof ApiError ? cause.message : t('apiKeys.couldNotCreateTheKey'));
     },
   });
 
@@ -82,7 +83,7 @@ export function ApiKeysPage(): React.JSX.Element {
       await queryClient.invalidateQueries({ queryKey: ['api-keys'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not revoke the key.');
+      setError(cause instanceof ApiError ? cause.message : t('apiKeys.couldNotRevokeTheKey'));
     },
   });
 
@@ -92,8 +93,8 @@ export function ApiKeysPage(): React.JSX.Element {
   if (!permissionsPending && !allowed) {
     return (
       <>
-        <PageHeader title="API keys" />
-        <p className="card">You do not have permission to manage API keys in this project.</p>
+        <PageHeader title={t('apiKeys.apiKeys')} />
+        <p className="card">{t('apiKeys.youDoNotHavePermission')}</p>
       </>
     );
   }
@@ -101,8 +102,8 @@ export function ApiKeysPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title={`API keys for ${activeProject?.key ?? 'this project'}`}
-        description="A key can only upload test reports (JUnit XML or Playwright JSON) into this project. Revoking it takes effect on the very next request."
+        title={t('apiKeys.apiKeysFor', { value: activeProject?.key ?? 'this project' })}
+        description={t('apiKeys.aKeyCanOnlyUpload')}
       />
 
       {error !== null && (
@@ -119,7 +120,7 @@ export function ApiKeysPage(): React.JSX.Element {
         }}
       >
         <TextField
-          label="Key name"
+          label={t('apiKeys.keyName')}
           value={name}
           maxLength={100}
           required
@@ -128,29 +129,29 @@ export function ApiKeysPage(): React.JSX.Element {
           }}
         />
         <TextField
-          label="Expires in days"
+          label={t('apiKeys.expiresInDays')}
           type="number"
           min={1}
           max={365}
           value={expiresInDays}
-          hint="Leave empty for a key that never expires."
+          hint={t('apiKeys.leaveEmptyForAKey')}
           onChange={(event) => {
             setExpiresInDays(event.target.value);
           }}
         />
         <div className="row-actions">
           <Button type="submit" disabled={name.trim() === '' || create.isPending}>
-            {create.isPending ? 'Creating…' : 'Create key'}
+            {create.isPending ? t('apiKeys.creating') : t('apiKeys.createKey')}
           </Button>
         </div>
       </form>
 
       {created !== null && (
         <section className="card" aria-labelledby="new-key-heading">
-          <h2 id="new-key-heading">Copy the token now</h2>
-          <p>It will not be shown again. Store it as a CI secret, for example QAFLOW_API_KEY.</p>
+          <h2 id="new-key-heading">{t('apiKeys.copyTheTokenNow')}</h2>
+          <p>{t('apiKeys.itWillNotBeShown')}</p>
           <label className="ui-field">
-            <span className="ui-field__label">New API key token</span>
+            <span className="ui-field__label">{t('apiKeys.newApiKeyToken')}</span>
             <input className="ui-input" readOnly value={created.token} />
           </label>
           <div className="row-actions">
@@ -160,7 +161,7 @@ export function ApiKeysPage(): React.JSX.Element {
                 setCreated(null);
               }}
             >
-              I have copied it
+              {t('apiKeys.iHaveCopiedIt')}
             </Button>
           </div>
         </section>
@@ -172,15 +173,15 @@ export function ApiKeysPage(): React.JSX.Element {
         isEmpty={(keys.data?.length ?? 0) === 0}
       >
         <table className="table card">
-          <caption className="visually-hidden">API keys of this project</caption>
+          <caption className="visually-hidden">{t('apiKeys.apiKeysOfThisProject')}</caption>
           <thead>
             <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Prefix</th>
-              <th scope="col">State</th>
-              <th scope="col">Expires</th>
-              <th scope="col">Last used</th>
-              <th scope="col">Actions</th>
+              <th scope="col">{t('apiKeys.name')}</th>
+              <th scope="col">{t('apiKeys.prefix')}</th>
+              <th scope="col">{t('apiKeys.state')}</th>
+              <th scope="col">{t('apiKeys.expires')}</th>
+              <th scope="col">{t('apiKeys.lastUsed')}</th>
+              <th scope="col">{t('apiKeys.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -199,13 +200,13 @@ export function ApiKeysPage(): React.JSX.Element {
                   {key.state !== 'revoked' && (
                     <Button
                       variant="secondary"
-                      aria-label={`Revoke ${key.name}`}
+                      aria-label={t('apiKeys.revoke', { name: key.name })}
                       disabled={revoke.isPending}
                       onClick={() => {
                         revoke.mutate(key);
                       }}
                     >
-                      Revoke
+                      {t('apiKeys.revoke2')}
                     </Button>
                   )}
                 </td>
@@ -215,30 +216,34 @@ export function ApiKeysPage(): React.JSX.Element {
         </table>
       </DataState>
 
-      <h2>Ingested reports</h2>
+      <h2>{t('apiKeys.ingestedReports')}</h2>
       <DataState
         isPending={reports.isPending}
         error={reports.error}
         isEmpty={(reports.data?.length ?? 0) === 0}
       >
         <table className="table card">
-          <caption className="visually-hidden">Reports uploaded with API keys</caption>
+          <caption className="visually-hidden">{t('apiKeys.reportsUploadedWithApiKeys')}</caption>
           <thead>
             <tr>
-              <th scope="col">File</th>
-              <th scope="col">Format</th>
-              <th scope="col">Tests</th>
-              <th scope="col">Recorded</th>
-              <th scope="col">Unmatched</th>
-              <th scope="col">Key</th>
-              <th scope="col">Received</th>
+              <th scope="col">{t('apiKeys.file')}</th>
+              <th scope="col">{t('apiKeys.format')}</th>
+              <th scope="col">{t('apiKeys.tests')}</th>
+              <th scope="col">{t('apiKeys.recorded')}</th>
+              <th scope="col">{t('apiKeys.unmatched')}</th>
+              <th scope="col">{t('apiKeys.key')}</th>
+              <th scope="col">{t('apiKeys.received')}</th>
             </tr>
           </thead>
           <tbody>
             {reports.data?.map((report) => (
               <tr key={report.id}>
                 <td>{report.fileName}</td>
-                <td>{report.format === 'junit_xml' ? 'JUnit XML' : 'Playwright JSON'}</td>
+                <td>
+                  {report.format === 'junit_xml'
+                    ? t('apiKeys.junitXml')
+                    : t('apiKeys.playwrightJson')}
+                </td>
                 <td>{report.summary.tests}</td>
                 <td>{report.summary.recorded}</td>
                 <td>{report.summary.unmatched}</td>

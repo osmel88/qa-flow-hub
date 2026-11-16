@@ -10,6 +10,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { TEST_PLAN_TONE } from './TestPlansPage';
 import { TestCyclesSection } from './TestCyclesSection';
+import { t } from '../i18n/i18n';
 
 const ACTION_OF = {
   active: 'start',
@@ -58,7 +59,7 @@ export function TestPlanDetailPage(): React.JSX.Element {
     await queryClient.invalidateQueries({ queryKey: ['test-plans'] });
   };
   const onError = async (cause: unknown) => {
-    setError(cause instanceof ApiError ? cause.message : 'Could not update the test plan.');
+    setError(cause instanceof ApiError ? cause.message : t('testPlanDetail.couldNotUpdateTheTest'));
     await queryClient.invalidateQueries({ queryKey: ['test-plan'] });
   };
   const mutate = useMutation({
@@ -74,9 +75,12 @@ export function TestPlanDetailPage(): React.JSX.Element {
     <DataState isPending={plan.isPending} error={plan.error} isEmpty={false}>
       {data !== undefined && (
         <>
-          <PageHeader title={`Test plan ${data.name}`} description={data.description ?? ''} />
+          <PageHeader
+            title={t('testPlanDetail.testPlan', { name: data.name })}
+            description={data.description ?? ''}
+          />
           <p>
-            <Link to="/test-plans">← All test plans</Link>
+            <Link to="/test-plans">{t('testPlanDetail.allTestPlans')}</Link>
           </p>
           {error !== null && (
             <p role="alert" className="error">
@@ -84,22 +88,26 @@ export function TestPlanDetailPage(): React.JSX.Element {
             </p>
           )}
           <section className="card" aria-labelledby="plan-summary">
-            <h2 id="plan-summary">Summary</h2>
+            <h2 id="plan-summary">{t('testPlanDetail.summary')}</h2>
             <p>
               <span data-testid="plan-status">
                 <Badge tone={TEST_PLAN_TONE[data.status]}>{humanize(data.status)}</Badge>
               </span>{' '}
               <span className="muted" data-testid="plan-scope">
-                {data.scope.caseCount} cases
-                {data.scope.frozen ? ` · scope frozen (v${data.scope.version})` : ' · live scope'}
+                {data.scope.caseCount} {t('testPlanDetail.cases')}
+                {data.scope.frozen
+                  ? t('testPlanDetail.scopeFrozenV', { version: data.scope.version })
+                  : t('testPlanDetail.liveScope')}
               </span>
             </p>
-            <ul aria-label="Plan facts">
-              <li>Owner: {data.owner?.fullName ?? 'nobody'}</li>
+            <ul aria-label={t('testPlanDetail.planFacts')}>
               <li>
-                Release:{' '}
+                {t('testPlanDetail.owner')} {data.owner?.fullName ?? t('testPlanDetail.nobody')}
+              </li>
+              <li>
+                {t('testPlanDetail.release')}{' '}
                 {data.release === null ? (
-                  'none'
+                  t('testPlanDetail.none')
                 ) : (
                   <Link to={`/releases/${data.release.id}`}>
                     {data.release.version} · {data.release.name}
@@ -107,9 +115,9 @@ export function TestPlanDetailPage(): React.JSX.Element {
                 )}
               </li>
               <li>
-                Environments:{' '}
+                {t('testPlanDetail.environments')}{' '}
                 {data.environments.length === 0
-                  ? 'none'
+                  ? t('testPlanDetail.none')
                   : data.environments.map((env, index) => (
                       <span key={env.id}>
                         {index > 0 && ', '}
@@ -118,11 +126,15 @@ export function TestPlanDetailPage(): React.JSX.Element {
                     ))}
               </li>
               <li>
-                Dates: {data.startDate ?? '—'} → {data.endDate ?? '—'}
+                {t('testPlanDetail.dates')} {data.startDate ?? '—'} → {data.endDate ?? '—'}
               </li>
-              <li>Suites: {data.suites.map((entry) => entry.name).join(', ') || 'none'}</li>
               <li>
-                Direct cases: {data.directCases.map((entry) => entry.key).join(', ') || 'none'}
+                {t('testPlanDetail.suites')}{' '}
+                {data.suites.map((entry) => entry.name).join(', ') || t('testPlanDetail.none')}
+              </li>
+              <li>
+                {t('testPlanDetail.directCases')}{' '}
+                {data.directCases.map((entry) => entry.key).join(', ') || t('testPlanDetail.none')}
               </li>
             </ul>
             {can('testruns.manage') && (
@@ -141,7 +153,7 @@ export function TestPlanDetailPage(): React.JSX.Element {
                         );
                       }}
                     >
-                      {humanize(ACTION_OF[next])} plan
+                      {humanize(ACTION_OF[next])} {t('testPlanDetail.plan')}
                     </Button>
                   ))}
               </p>
@@ -155,15 +167,15 @@ export function TestPlanDetailPage(): React.JSX.Element {
                   mutate.mutate(() => testPlansApi.action(data.id, 'scope/refresh', data.version));
                 }}
               >
-                Refresh frozen scope
+                {t('testPlanDetail.refreshFrozenScope')}
               </Button>
             )}
           </section>
           {canEdit && (
             <section className="card" aria-labelledby="plan-edit">
-              <h2 id="plan-edit">Edit</h2>
+              <h2 id="plan-edit">{t('testPlanDetail.edit')}</h2>
               <TextField
-                label="Plan description"
+                label={t('testPlanDetail.planDescription')}
                 value={description ?? data.description ?? ''}
                 onChange={(event) => {
                   setDescription(event.target.value);
@@ -182,15 +194,15 @@ export function TestPlanDetailPage(): React.JSX.Element {
                   );
                 }}
               >
-                Save description
+                {t('testPlanDetail.saveDescription')}
               </Button>
               {!data.scope.frozen && (
                 <>
                   <SelectField
-                    label="Add suite to plan"
+                    label={t('testPlanDetail.addSuiteToPlan')}
                     value={suiteId}
                     options={[
-                      { value: '', label: 'Choose a suite' },
+                      { value: '', label: t('testPlanDetail.chooseASuite') },
                       ...(suites.data ?? [])
                         .filter((entry) => !data.suites.some((own) => own.id === entry.id))
                         .map((entry) => ({ value: entry.id, label: entry.name })),
@@ -212,18 +224,18 @@ export function TestPlanDetailPage(): React.JSX.Element {
                       });
                     }}
                   >
-                    Add suite
+                    {t('testPlanDetail.addSuite')}
                   </Button>
                 </>
               )}
             </section>
           )}
           <section className="card" aria-labelledby="plan-runs">
-            <h2 id="plan-runs">Runs</h2>
+            <h2 id="plan-runs">{t('testPlanDetail.runs')}</h2>
             {data.runs.length === 0 ? (
-              <p className="muted">No run attached.</p>
+              <p className="muted">{t('testPlanDetail.noRunAttached')}</p>
             ) : (
-              <ul aria-label="Plan runs">
+              <ul aria-label={t('testPlanDetail.planRuns')}>
                 {data.runs.map((entry) => (
                   <li key={entry.id}>
                     <Link to={`/test-runs/${entry.id}`}>{entry.name}</Link> ·{' '}
@@ -238,7 +250,7 @@ export function TestPlanDetailPage(): React.JSX.Element {
                             mutate.mutate(() => testPlansApi.detachRun(data.id, entry.id));
                           }}
                         >
-                          Detach
+                          {t('testPlanDetail.detach')}
                         </Button>
                       </>
                     )}
@@ -249,10 +261,10 @@ export function TestPlanDetailPage(): React.JSX.Element {
             {canEdit && (
               <>
                 <SelectField
-                  label="Attach run"
+                  label={t('testPlanDetail.attachRun')}
                   value={runId}
                   options={[
-                    { value: '', label: 'Choose a run' },
+                    { value: '', label: t('testPlanDetail.chooseARun') },
                     ...(runs.data?.data ?? [])
                       .filter((entry) => !data.runs.some((own) => own.id === entry.id))
                       .map((entry) => ({ value: entry.id, label: entry.name })),
@@ -271,7 +283,7 @@ export function TestPlanDetailPage(): React.JSX.Element {
                     });
                   }}
                 >
-                  Attach run
+                  {t('testPlanDetail.attachRun')}
                 </Button>
               </>
             )}
@@ -279,31 +291,36 @@ export function TestPlanDetailPage(): React.JSX.Element {
           <TestCyclesSection plan={data} canCreate={can('testruns.create') && editable} />
           {stats !== undefined && (
             <section className="card" aria-labelledby="plan-progress">
-              <h2 id="plan-progress">Progress</h2>
-              <ul aria-label="Plan metrics">
-                <li data-testid="plan-completion">Completion: {stats.completion}%</li>
+              <h2 id="plan-progress">{t('testPlanDetail.progress')}</h2>
+              <ul aria-label={t('testPlanDetail.planMetrics')}>
+                <li data-testid="plan-completion">
+                  {t('testPlanDetail.completion')} {stats.completion}%
+                </li>
                 <li data-testid="plan-pass-rate">
-                  Pass rate: {stats.passRate === null ? 'n/a' : `${stats.passRate}%`}
+                  {t('testPlanDetail.passRate')}{' '}
+                  {stats.passRate === null ? 'n/a' : `${stats.passRate}%`}
                 </li>
                 <li data-testid="plan-coverage">
-                  Coverage: {stats.coverage.planned}/{stats.coverage.total} (
+                  {t('testPlanDetail.coverage')} {stats.coverage.planned}/{stats.coverage.total} (
                   {stats.coverage.percent}%)
                 </li>
                 <li data-testid="plan-counts">
-                  passed {stats.counts.passed} · failed {stats.counts.failed} · blocked{' '}
-                  {stats.counts.blocked} · untested {stats.counts.untested}
+                  {t('testPlanDetail.passed')} {stats.counts.passed} {t('testPlanDetail.failed')}{' '}
+                  {stats.counts.failed} {t('testPlanDetail.blocked')} {stats.counts.blocked}{' '}
+                  {t('testPlanDetail.untested')} {stats.counts.untested}
                 </li>
                 <li data-testid="plan-defects">
-                  Defects: {stats.defects.open} open of {stats.defects.total}
+                  {t('testPlanDetail.defects')} {stats.defects.open} {t('testPlanDetail.openOf')}{' '}
+                  {stats.defects.total}
                 </li>
               </ul>
-              <table className="table" aria-label="Plan cases">
+              <table className="table" aria-label={t('testPlanDetail.planCases')}>
                 <thead>
                   <tr>
-                    <th scope="col">Case</th>
-                    <th scope="col">Suite</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Run</th>
+                    <th scope="col">{t('testPlanDetail.case')}</th>
+                    <th scope="col">{t('testPlanDetail.suite')}</th>
+                    <th scope="col">{t('testPlanDetail.status')}</th>
+                    <th scope="col">{t('testPlanDetail.run')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -314,11 +331,11 @@ export function TestPlanDetailPage(): React.JSX.Element {
                         {entry.title} <span className="muted">v{entry.caseVersion}</span>
                         {entry.source === 'direct' && ' (direct)'}
                       </td>
-                      <td>{entry.suite ?? 'none'}</td>
+                      <td>{entry.suite ?? t('testPlanDetail.none')}</td>
                       <td>{humanize(entry.status)}</td>
                       <td>
                         {entry.run === null ? (
-                          'not planned'
+                          t('testPlanDetail.notPlanned')
                         ) : (
                           <Link to={`/test-runs/${entry.run.id}`}>{entry.run.name}</Link>
                         )}
@@ -328,7 +345,7 @@ export function TestPlanDetailPage(): React.JSX.Element {
                 </tbody>
               </table>
               {stats.defects.items.length > 0 && (
-                <ul aria-label="Plan defects">
+                <ul aria-label={t('testPlanDetail.planDefects')}>
                   {stats.defects.items.map((entry) => (
                     <li key={entry.id}>
                       <Link to="/defects">{entry.key}</Link> {entry.title} ·{' '}

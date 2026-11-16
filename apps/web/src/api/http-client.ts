@@ -5,6 +5,7 @@ import {
   getActiveOrganizationId,
   storeSession,
 } from './session-store';
+import { t } from '../i18n/i18n';
 
 export class ApiError extends Error {
   constructor(
@@ -139,7 +140,7 @@ export async function apiFetchBlob(
     throw new ApiError(
       response.status,
       error?.code ?? 'INTERNAL_ERROR',
-      error?.message ?? `Request failed with status ${response.status}`,
+      error?.message ?? t('c_httpClient.requestFailed', { status: response.status }),
       error?.details,
     );
   }
@@ -197,7 +198,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     throw new ApiError(
       response.status,
       error?.code ?? 'INTERNAL_ERROR',
-      error?.message ?? `Request failed with status ${response.status}`,
+      error?.message ?? t('c_httpClient.requestFailed', { status: response.status }),
       error?.details,
     );
   }

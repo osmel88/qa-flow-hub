@@ -33,6 +33,7 @@ import { useProject } from '../project/project-context';
 import { dropPlacement } from './BoardPage';
 import { NoProject } from './NoProject';
 import { WORK_ITEM_TONE } from './WorkItemsPage';
+import { t } from '../i18n/i18n';
 
 type Placement = Pick<MoveKanbanCardInput, 'beforeId' | 'afterId'>;
 
@@ -107,7 +108,7 @@ export function KanbanPage(): React.JSX.Element {
       setError(null);
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not move the card.');
+      setError(cause instanceof ApiError ? cause.message : t('kanban.couldNotMoveTheCard'));
     },
     onSettled: invalidate,
   });
@@ -128,7 +129,7 @@ export function KanbanPage(): React.JSX.Element {
     },
     onError: (cause) => {
       setSaved(false);
-      setError(cause instanceof ApiError ? cause.message : 'Could not save the WIP limits.');
+      setError(cause instanceof ApiError ? cause.message : t('kanban.couldNotSaveTheWip'));
     },
   });
 
@@ -151,18 +152,15 @@ export function KanbanPage(): React.JSX.Element {
 
   return (
     <>
-      <PageHeader
-        title="Kanban"
-        description="The flow of every work item of the project, with no sprint. Drag cards between columns, or use the controls on each card."
-      />
-      <section className="card filters" aria-label="Kanban filters">
+      <PageHeader title={t('kanban.kanban')} description={t('kanban.theFlowOfEveryWork')} />
+      <section className="card filters" aria-label={t('kanban.kanbanFilters')}>
         <SelectField
-          label="Assignee"
+          label={t('kanban.assignee')}
           value={assigneeId}
           options={[
-            { value: '', label: 'Anyone' },
-            { value: 'me', label: 'Me' },
-            { value: 'none', label: 'Unassigned' },
+            { value: '', label: t('kanban.anyone') },
+            { value: 'me', label: t('kanban.me') },
+            { value: 'none', label: t('kanban.unassigned') },
             ...uniqueAssignees(view).map((entry) => ({ value: entry.id, label: entry.fullName })),
           ]}
           onChange={(event) => {
@@ -170,10 +168,10 @@ export function KanbanPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Priority"
+          label={t('kanban.priority')}
           value={priority}
           options={[
-            { value: '', label: 'Any priority' },
+            { value: '', label: t('kanban.anyPriority') },
             ...PRIORITIES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -181,10 +179,10 @@ export function KanbanPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Type"
+          label={t('kanban.type')}
           value={type}
           options={[
-            { value: '', label: 'Any type' },
+            { value: '', label: t('kanban.anyType') },
             ...WORK_ITEM_TYPES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -192,11 +190,11 @@ export function KanbanPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Epic"
+          label={t('kanban.epic')}
           value={epicId}
           options={[
-            { value: '', label: 'Any epic' },
-            { value: 'none', label: 'No epic' },
+            { value: '', label: t('kanban.anyEpic') },
+            { value: 'none', label: t('kanban.noEpic') },
             ...(view?.epics ?? []).map((ref) => ({
               value: ref.id,
               label: `${ref.key} ${ref.title}`,
@@ -207,11 +205,11 @@ export function KanbanPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Feature"
+          label={t('kanban.feature')}
           value={featureId}
           options={[
-            { value: '', label: 'Any feature' },
-            { value: 'none', label: 'No feature' },
+            { value: '', label: t('kanban.anyFeature') },
+            { value: 'none', label: t('kanban.noFeature') },
             ...(view?.features ?? []).map((ref) => ({
               value: ref.id,
               label: `${ref.key} ${ref.title}`,
@@ -222,11 +220,11 @@ export function KanbanPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Release"
+          label={t('kanban.release')}
           value={releaseId}
           options={[
-            { value: '', label: 'Any release' },
-            { value: 'none', label: 'No release' },
+            { value: '', label: t('kanban.anyRelease') },
+            { value: 'none', label: t('kanban.noRelease') },
             ...(releases.data?.data ?? []).map((row) => ({ value: row.id, label: row.name })),
           ]}
           onChange={(event) => {
@@ -234,14 +232,14 @@ export function KanbanPage(): React.JSX.Element {
           }}
         />
         <TextField
-          label="Search the Kanban board"
+          label={t('kanban.searchTheKanbanBoard')}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
           }}
         />
         <SelectField
-          label="Development filter"
+          label={t('kanban.developmentFilter')}
           value={developmentStatus}
           options={DEVELOPMENT_STATUS_OPTIONS}
           onChange={(event) => {
@@ -249,22 +247,22 @@ export function KanbanPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Swimlanes"
+          label={t('kanban.swimlanes')}
           value={swimlane}
           options={BOARD_SWIMLANES.map((value) => ({
             value,
-            label: value === 'none' ? 'No swimlanes' : `By ${value}`,
+            label: value === 'none' ? t('kanban.noSwimlanes') : t('kanban.by', { value }),
           }))}
           onChange={(event) => {
             setSwimlane(event.target.value as BoardSwimlane);
           }}
         />
         <SelectField
-          label="Window"
+          label={t('kanban.window')}
           value={String(windowDays)}
           options={[7, 14, 30, 90].map((value) => ({
             value: String(value),
-            label: `Last ${value} days`,
+            label: t('kanban.lastDays', { value }),
           }))}
           onChange={(event) => {
             setWindowDays(Number(event.target.value));
@@ -282,42 +280,44 @@ export function KanbanPage(): React.JSX.Element {
         {view !== undefined && (
           <>
             <section className="card" aria-labelledby="kanban-flow">
-              <h2 id="kanban-flow">Flow (last {view.windowDays} days)</h2>
+              <h2 id="kanban-flow">
+                {t('kanban.flowLast')} {view.windowDays} {t('kanban.days')}
+              </h2>
               <dl className="kpis">
                 <div>
-                  <dt>Throughput</dt>
+                  <dt>{t('kanban.throughput')}</dt>
                   <dd data-testid="kanban-throughput">{view.metrics.throughput.total}</dd>
                 </div>
                 <div>
-                  <dt>Cycle time (avg)</dt>
+                  <dt>{t('kanban.cycleTimeAvg')}</dt>
                   <dd data-testid="kanban-cycle-time">
                     {formatDays(view.metrics.cycleTime.averageDays)}
                   </dd>
                 </div>
                 <div>
-                  <dt>Cycle time (85%)</dt>
+                  <dt>{t('kanban.cycleTime85')}</dt>
                   <dd>{formatDays(view.metrics.cycleTime.p85Days)}</dd>
                 </div>
                 <div>
-                  <dt>In progress</dt>
+                  <dt>{t('kanban.inProgress')}</dt>
                   <dd data-testid="kanban-wip">{view.metrics.aging.count}</dd>
                 </div>
                 <div>
-                  <dt>Average age</dt>
+                  <dt>{t('kanban.averageAge')}</dt>
                   <dd>{formatDays(view.metrics.aging.averageDays)}</dd>
                 </div>
               </dl>
               <p className="muted" data-testid="kanban-shown">
-                {view.shown} of {view.total} cards shown
-                {view.truncated ? ' (board truncated)' : ''}
+                {view.shown} {t('kanban.of')} {view.total} {t('kanban.cardsShown')}
+                {view.truncated ? t('kanban.boardTruncated') : ''}
               </p>
-              {!editable && <p role="note">Read-only: you do not have permission to move cards.</p>}
+              {!editable && <p role="note">{t('kanban.readOnlyYouDoNot')}</p>}
             </section>
 
             {manager && (
               <form
                 className="card wip-limits"
-                aria-label="WIP limits"
+                aria-label={t('kanban.wipLimits')}
                 onSubmit={(event) => {
                   event.preventDefault();
                   setSaved(false);
@@ -327,7 +327,9 @@ export function KanbanPage(): React.JSX.Element {
                 {WIP_LIMITED_COLUMNS.map((column) => (
                   <TextField
                     key={column}
-                    label={`WIP limit ${KANBAN_COLUMNS.find((entry) => entry.id === column)?.label ?? column}`}
+                    label={t('kanban.wipLimit', {
+                      value: KANBAN_COLUMNS.find((entry) => entry.id === column)?.label ?? column,
+                    })}
                     type="number"
                     min={1}
                     max={999}
@@ -339,9 +341,9 @@ export function KanbanPage(): React.JSX.Element {
                   />
                 ))}
                 <Button type="submit" disabled={saveLimits.isPending}>
-                  Save WIP limits
+                  {t('kanban.saveWipLimits')}
                 </Button>
-                {saved && <p role="status">WIP limits saved.</p>}
+                {saved && <p role="status">{t('kanban.wipLimitsSaved')}</p>}
               </form>
             )}
 
@@ -349,7 +351,11 @@ export function KanbanPage(): React.JSX.Element {
               <section
                 key={lane.id ?? 'none'}
                 className="board-lane"
-                aria-label={lane.title === '' ? 'Kanban board' : `Swimlane ${lane.title}`}
+                aria-label={
+                  lane.title === ''
+                    ? t('kanban.kanbanBoard')
+                    : t('kanban.swimlane', { title: lane.title })
+                }
               >
                 {lane.title !== '' && <h2>{lane.title}</h2>}
                 <div className="board board--kanban">
@@ -370,7 +376,7 @@ export function KanbanPage(): React.JSX.Element {
                       <section
                         key={column.id}
                         className={`board-column${state === 'open' ? '' : ` board-column--${state}`}`}
-                        aria-label={`${column.label} column`}
+                        aria-label={t('kanban.column', { label: column.label })}
                         data-testid={`kanban-column-${column.id}`}
                         onDragOver={(event) => {
                           if (editable) {
@@ -385,12 +391,14 @@ export function KanbanPage(): React.JSX.Element {
                         <h3>
                           {column.label}{' '}
                           <span className="muted" data-testid={`kanban-count-${column.id}`}>
-                            ({columnCount(column)} · {column.estimate} pts)
+                            ({columnCount(column)} · {column.estimate} {t('kanban.pts')}
                           </span>
                         </h3>
                         {state !== 'open' && (
                           <p className="muted">
-                            {state === 'full' ? 'WIP limit reached' : 'Over the WIP limit'}
+                            {state === 'full'
+                              ? t('kanban.wipLimitReached')
+                              : t('kanban.overTheWipLimit')}
                           </p>
                         )}
                         <ul>
@@ -427,26 +435,30 @@ export function KanbanPage(): React.JSX.Element {
                                 <DevelopmentStatusBadge status={card.developmentStatus} />
                                 <Badge tone="info">{humanize(card.priority)}</Badge>
                                 {card.status === 'blocked' && (
-                                  <Badge tone={WORK_ITEM_TONE.blocked}>Blocked</Badge>
+                                  <Badge tone={WORK_ITEM_TONE.blocked}>{t('kanban.blocked')}</Badge>
                                 )}
                                 <span>
-                                  {card.estimate === null ? '— pts' : `${card.estimate} pts`}
+                                  {card.estimate === null
+                                    ? t('kanban.pts2')
+                                    : t('kanban.pts3', { estimate: card.estimate })}
                                 </span>
-                                <span>{card.assignee?.fullName ?? 'Unassigned'}</span>
+                                <span>{card.assignee?.fullName ?? t('kanban.unassigned')}</span>
                                 <span title={card.requirements.keys.join(', ')}>
                                   {card.requirements.count === 0
-                                    ? 'No requirement'
-                                    : `${card.requirements.count} requirement(s)`}
+                                    ? t('kanban.noRequirement')
+                                    : t('kanban.requirementS', { count: card.requirements.count })}
                                 </span>
                                 <span data-testid={`kanban-time-${card.key}`}>
-                                  {card.inStatusDays} d in {humanize(card.status)}
-                                  {card.ageDays === null ? '' : ` · age ${card.ageDays} d`}
+                                  {card.inStatusDays} {t('kanban.dIn')} {humanize(card.status)}
+                                  {card.ageDays === null
+                                    ? ''
+                                    : t('kanban.ageD', { ageDays: card.ageDays })}
                                 </span>
                               </div>
                               {editable && (
                                 <div className="row-actions">
                                   <select
-                                    aria-label={`Move ${card.key} to column`}
+                                    aria-label={t('kanban.moveToColumn', { key: card.key })}
                                     value={column.id}
                                     onChange={(event) => {
                                       const target = event.target.value as KanbanColumnId;
@@ -464,7 +476,7 @@ export function KanbanPage(): React.JSX.Element {
                                   </select>
                                   <button
                                     type="button"
-                                    aria-label={`Move ${card.key} up`}
+                                    aria-label={t('kanban.moveUp', { key: card.key })}
                                     disabled={index === 0 || move.isPending}
                                     onClick={() => {
                                       send(card, column.id, { beforeId: ids[index - 1] ?? '' });
@@ -474,7 +486,7 @@ export function KanbanPage(): React.JSX.Element {
                                   </button>
                                   <button
                                     type="button"
-                                    aria-label={`Move ${card.key} down`}
+                                    aria-label={t('kanban.moveDown', { key: card.key })}
                                     disabled={index === ids.length - 1 || move.isPending}
                                     onClick={() => {
                                       send(card, column.id, { afterId: ids[index + 1] ?? '' });

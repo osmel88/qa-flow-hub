@@ -16,6 +16,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { DeploymentsOf } from './DeploymentsPage';
 import { EnvironmentBadges } from './EnvironmentsPage';
+import { t } from '../i18n/i18n';
 
 function EditEnvironment({
   env,
@@ -37,7 +38,7 @@ function EditEnvironment({
   return (
     <form
       className="card"
-      aria-label="Edit environment"
+      aria-label={t('environmentDetail.editEnvironment')}
       onSubmit={(event) => {
         event.preventDefault();
         onSave({
@@ -53,9 +54,9 @@ function EditEnvironment({
         });
       }}
     >
-      <h2>Edit</h2>
+      <h2>{t('environmentDetail.edit')}</h2>
       <TextField
-        label="Name"
+        label={t('environmentDetail.name')}
         value={name}
         required
         onChange={(event) => {
@@ -63,7 +64,7 @@ function EditEnvironment({
         }}
       />
       <SelectField
-        label="Type"
+        label={t('environmentDetail.type')}
         value={kind}
         options={ENVIRONMENT_KINDS.map((value) => ({ value, label: humanize(value) }))}
         onChange={(event) => {
@@ -71,21 +72,21 @@ function EditEnvironment({
         }}
       />
       <TextField
-        label="Description"
+        label={t('environmentDetail.description')}
         value={description}
         onChange={(event) => {
           setDescription(event.target.value);
         }}
       />
       <TextField
-        label="URL"
+        label={t('environmentDetail.url')}
         value={url}
         onChange={(event) => {
           setUrl(event.target.value);
         }}
       />
       <TextField
-        label="Order"
+        label={t('environmentDetail.order')}
         type="number"
         min={0}
         max={999}
@@ -102,14 +103,17 @@ function EditEnvironment({
             setProtected(event.target.checked);
           }}
         />{' '}
-        Protected (deploying needs work item management)
+        {t('environmentDetail.protectedDeployingNeedsWorkItem')}
       </label>
       <SelectField
-        label="Rollback checks"
+        label={t('environmentDetail.rollbackChecks')}
         value={rollbackChecks}
         options={ROLLBACK_CHECK_POLICIES.map((value) => ({
           value,
-          label: value === 'enforce' ? 'Enforce gates and approvals' : 'Skip gates and approvals',
+          label:
+            value === 'enforce'
+              ? t('environmentDetail.enforceGatesAndApprovals')
+              : t('environmentDetail.skipGatesAndApprovals'),
         }))}
         onChange={(event) => {
           setRollbackChecks(event.target.value as RollbackCheckPolicy);
@@ -123,10 +127,10 @@ function EditEnvironment({
             setActive(event.target.checked);
           }}
         />{' '}
-        Active (takes new deployments)
+        {t('environmentDetail.activeTakesNewDeployments')}
       </label>
       <Button type="submit" disabled={pending}>
-        Save environment
+        {t('environmentDetail.saveEnvironment')}
       </Button>
     </form>
   );
@@ -180,13 +184,13 @@ function EnvironmentRollback({ env }: { env: EnvironmentView }): React.JSX.Eleme
       ]);
     },
     onError: async (cause: unknown) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not roll back.');
+      setError(cause instanceof ApiError ? cause.message : t('environmentDetail.couldNotRollBack'));
       await queryClient.invalidateQueries({ queryKey: ['environment'] });
     },
   });
   return (
     <section className="card" aria-labelledby="environment-rollback">
-      <h2 id="environment-rollback">Rollback</h2>
+      <h2 id="environment-rollback">{t('environmentDetail.rollback')}</h2>
       {error !== null && (
         <p role="alert" className="error">
           {error}
@@ -194,20 +198,24 @@ function EnvironmentRollback({ env }: { env: EnvironmentView }): React.JSX.Eleme
       )}
       {allowed && env.status === 'active' && env.current !== null && (
         <form
-          aria-label="Roll back environment"
+          aria-label={t('environmentDetail.rollBackEnvironment')}
           onSubmit={(event) => {
             event.preventDefault();
             rollback.mutate();
           }}
         >
           <SelectField
-            label="Rollback target"
+            label={t('environmentDetail.rollbackTarget')}
             value={target}
             options={[
-              { value: '', label: 'Choose an earlier deployment' },
+              { value: '', label: t('environmentDetail.chooseAnEarlierDeployment') },
               ...targets.map((row) => ({
                 value: row.id,
-                label: `${row.identifier ?? row.id} · build ${row.build?.identifier ?? ''} · ${humanize(row.status ?? '')}`,
+                label: t('environmentDetail.build', {
+                  value: row.identifier ?? row.id,
+                  value2: row.build?.identifier ?? '',
+                  value3: humanize(row.status ?? ''),
+                }),
               })),
             ]}
             onChange={(event) => {
@@ -215,7 +223,7 @@ function EnvironmentRollback({ env }: { env: EnvironmentView }): React.JSX.Eleme
             }}
           />
           <TextField
-            label="Reason for the rollback"
+            label={t('environmentDetail.reasonForTheRollback')}
             value={reason}
             required
             onChange={(event) => {
@@ -231,7 +239,7 @@ function EnvironmentRollback({ env }: { env: EnvironmentView }): React.JSX.Eleme
                   setEmergency(event.target.checked);
                 }}
               />{' '}
-              Emergency rollback (skips quality gates and approvals)
+              {t('environmentDetail.emergencyRollbackSkipsQualityGates')}
             </label>
           )}
           <Button
@@ -239,32 +247,34 @@ function EnvironmentRollback({ env }: { env: EnvironmentView }): React.JSX.Eleme
             variant="secondary"
             disabled={rollback.isPending || target === '' || reason.trim().length < 10}
           >
-            Roll back environment
+            {t('environmentDetail.rollBackEnvironment')}
           </Button>
         </form>
       )}
-      <h3>Rollback history</h3>
+      <h3>{t('environmentDetail.rollbackHistory')}</h3>
       {(history.data?.length ?? 0) === 0 ? (
-        <p className="muted">No rollback yet.</p>
+        <p className="muted">{t('environmentDetail.noRollbackYet')}</p>
       ) : (
-        <ul aria-label="Rollback history">
+        <ul aria-label={t('environmentDetail.rollbackHistory')}>
           {(history.data ?? []).map((row) => (
             <li key={row.id} data-testid={`rollback-${row.identifier ?? row.id}`}>
-              <Link to={`/deployments/${row.id}`}>{row.identifier}</Link>: Rolled back from{' '}
+              <Link to={`/deployments/${row.id}`}>{row.identifier}</Link>
+              {t('environmentDetail.rolledBackFrom')}{' '}
               {row.rollbackOf === null ? (
-                'unknown'
+                t('environmentDetail.unknown')
               ) : (
                 <Link to={`/deployments/${row.rollbackOf.id}`}>{row.rollbackOf.identifier}</Link>
               )}{' '}
-              to{' '}
+              {t('environmentDetail.to')}{' '}
               {row.rollbackTarget === null ? (
-                'an earlier build'
+                t('environmentDetail.anEarlierBuild')
               ) : (
                 <Link to={`/deployments/${row.rollbackTarget.id}`}>
                   {row.rollbackTarget.identifier}
                 </Link>
               )}
-              {row.rollbackEmergency && ' (emergency)'} · {row.actor?.fullName ?? 'someone'} ·{' '}
+              {row.rollbackEmergency && ' (emergency)'} ·{' '}
+              {row.actor?.fullName ?? t('environmentDetail.someone')} ·{' '}
               {new Date(row.createdAt).toLocaleString()}
               {row.rollbackReason !== null && (
                 <>
@@ -302,7 +312,11 @@ export function EnvironmentDetailPage(): React.JSX.Element {
     ]);
   };
   const onError = (cause: unknown) => {
-    setError(cause instanceof ApiError ? cause.message : 'Could not update the environment.');
+    setError(
+      cause instanceof ApiError
+        ? cause.message
+        : t('environmentDetail.couldNotUpdateTheEnvironment'),
+    );
   };
   const update = useMutation({
     mutationFn: (body: UpdateEnvironmentInput) => environmentsApi.update(environmentId, body),
@@ -334,11 +348,13 @@ export function EnvironmentDetailPage(): React.JSX.Element {
       {env !== undefined && (
         <>
           <PageHeader
-            title={`Environment ${env.name}`}
-            description={env.description ?? `${humanize(env.kind)} environment.`}
+            title={t('environmentDetail.environment', { name: env.name })}
+            description={
+              env.description ?? t('environmentDetail.environment2', { value: humanize(env.kind) })
+            }
           />
           <p>
-            <Link to="/environments">← All environments</Link>
+            <Link to="/environments">{t('environmentDetail.allEnvironments')}</Link>
           </p>
           {error !== null && (
             <p role="alert" className="error">
@@ -346,28 +362,32 @@ export function EnvironmentDetailPage(): React.JSX.Element {
             </p>
           )}
           <section className="card" aria-labelledby="environment-summary">
-            <h2 id="environment-summary">Summary</h2>
+            <h2 id="environment-summary">{t('environmentDetail.summary')}</h2>
             <p>
               <EnvironmentBadges env={env} />{' '}
               <span className="muted" data-testid="environment-status">
                 {humanize(env.status)}
               </span>
             </p>
-            <ul aria-label="Environment facts">
-              <li>Type: {humanize(env.kind)}</li>
-              <li>Order: {env.position}</li>
+            <ul aria-label={t('environmentDetail.environmentFacts')}>
+              <li>
+                {t('environmentDetail.type2')} {humanize(env.kind)}
+              </li>
+              <li>
+                {t('environmentDetail.order2')} {env.position}
+              </li>
               {env.url !== null && (
                 <li>
-                  URL:{' '}
+                  {t('environmentDetail.url2')}{' '}
                   <a href={env.url} target="_blank" rel="noreferrer">
                     {env.url}
                   </a>
                 </li>
               )}
               <li data-testid="environment-current">
-                Running:{' '}
+                {t('environmentDetail.running')}{' '}
                 {env.current === null ? (
-                  'nothing deployed'
+                  t('environmentDetail.nothingDeployed')
                 ) : (
                   <>
                     <Link to={`/deployments/${env.current.deploymentId}`}>
@@ -376,7 +396,7 @@ export function EnvironmentDetailPage(): React.JSX.Element {
                     {env.current.buildId !== null && (
                       <>
                         {' '}
-                        · build{' '}
+                        {t('environmentDetail.build2')}{' '}
                         <Link to={`/builds/${env.current.buildId}`}>
                           {env.current.buildIdentifier}
                         </Link>
@@ -385,7 +405,7 @@ export function EnvironmentDetailPage(): React.JSX.Element {
                     {env.current.release !== null && (
                       <>
                         {' '}
-                        · release{' '}
+                        {t('environmentDetail.release')}{' '}
                         <Link to={`/releases/${env.current.release.id}`}>
                           {env.current.release.version}
                         </Link>
@@ -395,19 +415,21 @@ export function EnvironmentDetailPage(): React.JSX.Element {
                 )}
               </li>
               <li>
-                Last deployment:{' '}
+                {t('environmentDetail.lastDeployment')}{' '}
                 {env.lastDeployment === null ? (
-                  'none'
+                  t('environmentDetail.none')
                 ) : (
                   <Link to={`/deployments/${env.lastDeployment.id}`}>
                     {env.lastDeployment.identifier} ({humanize(env.lastDeployment.status)})
                   </Link>
                 )}
               </li>
-              <li>Deployments: {env.deploymentCount}</li>
+              <li>
+                {t('environmentDetail.deployments')} {env.deploymentCount}
+              </li>
             </ul>
             {env.metadata !== null && (
-              <dl aria-label="Environment metadata">
+              <dl aria-label={t('environmentDetail.environmentMetadata')}>
                 {Object.entries(env.metadata).map(([key, value]) => (
                   <div key={key}>
                     <dt>{key}</dt>
@@ -426,7 +448,7 @@ export function EnvironmentDetailPage(): React.JSX.Element {
                       restore.mutate();
                     }}
                   >
-                    Restore environment
+                    {t('environmentDetail.restoreEnvironment')}
                   </Button>
                 ) : (
                   <Button
@@ -437,7 +459,7 @@ export function EnvironmentDetailPage(): React.JSX.Element {
                       archive.mutate();
                     }}
                   >
-                    Archive environment
+                    {t('environmentDetail.archiveEnvironment')}
                   </Button>
                 )}{' '}
                 {env.deploymentCount === 0 && (
@@ -449,7 +471,7 @@ export function EnvironmentDetailPage(): React.JSX.Element {
                       remove.mutate();
                     }}
                   >
-                    Delete environment
+                    {t('environmentDetail.deleteEnvironment')}
                   </Button>
                 )}
               </p>

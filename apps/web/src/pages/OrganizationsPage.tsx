@@ -6,6 +6,7 @@ import { organizationsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
 import { PageHeader } from '../components/PageHeader';
+import { t } from '../i18n/i18n';
 
 /**
  * The organization picker, and the only screen a brand-new user can reach:
@@ -29,7 +30,11 @@ export function OrganizationsPage(): React.JSX.Element {
       void navigate('/dashboard');
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the organization.');
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : t('organizations.couldNotCreateTheOrganization'),
+      );
     },
   });
 
@@ -41,15 +46,17 @@ export function OrganizationsPage(): React.JSX.Element {
       void navigate('/dashboard');
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not accept the invitation.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('organizations.couldNotAcceptTheInvitation'),
+      );
     },
   });
 
   return (
     <main className="page">
       <PageHeader
-        title="Your organizations"
-        description="Pick one to work in, create your own, or join with an invitation token."
+        title={t('organizations.yourOrganizations')}
+        description={t('organizations.pickOneToWorkIn')}
       />
 
       {error !== null && (
@@ -59,12 +66,12 @@ export function OrganizationsPage(): React.JSX.Element {
       )}
 
       <section className="card" aria-labelledby="pick-heading">
-        <h2 id="pick-heading">Switch organization</h2>
+        <h2 id="pick-heading">{t('organizations.switchOrganization')}</h2>
         <DataState
           isPending={false}
           error={null}
           isEmpty={organizations.length === 0}
-          emptyMessage="You do not belong to any organization yet."
+          emptyMessage={t('organizations.youDoNotBelongTo')}
         >
           <ul className="plain-list">
             {organizations.map((organization) => (
@@ -87,17 +94,17 @@ export function OrganizationsPage(): React.JSX.Element {
 
       <div className="grid-2">
         <section className="card" aria-labelledby="create-heading">
-          <h2 id="create-heading">Create an organization</h2>
+          <h2 id="create-heading">{t('organizations.createAnOrganization')}</h2>
           <TextField
-            label="Name"
+            label={t('organizations.name')}
             value={name}
             onChange={(event) => {
               setName(event.target.value);
             }}
           />
           <TextField
-            label="Slug"
-            hint="Lowercase, used in URLs. For example: acme-qa"
+            label={t('organizations.slug')}
+            hint={t('organizations.lowercaseUsedInUrlsFor')}
             value={slug}
             onChange={(event) => {
               setSlug(event.target.value);
@@ -110,15 +117,15 @@ export function OrganizationsPage(): React.JSX.Element {
               create.mutate();
             }}
           >
-            Create
+            {t('organizations.create')}
           </Button>
         </section>
 
         <section className="card" aria-labelledby="join-heading">
-          <h2 id="join-heading">Join with an invitation</h2>
+          <h2 id="join-heading">{t('organizations.joinWithAnInvitation')}</h2>
           <TextField
-            label="Invitation token"
-            hint="Until email delivery exists, an admin passes this token to you directly."
+            label={t('organizations.invitationToken')}
+            hint={t('organizations.untilEmailDeliveryExistsAn')}
             value={token}
             onChange={(event) => {
               setToken(event.target.value);
@@ -132,7 +139,7 @@ export function OrganizationsPage(): React.JSX.Element {
               accept.mutate();
             }}
           >
-            Join
+            {t('organizations.join')}
           </Button>
         </section>
       </div>

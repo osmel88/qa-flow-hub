@@ -1,0 +1,16 @@
+export const printableRun = {
+  'printableRun.testRun': 'Test run —',
+  'printableRun.generated': '· Generated',
+  'printableRun.of': 'of',
+  'printableRun.executed': 'executed (',
+  'printableRun.passed': 'passed,',
+  'printableRun.failed': 'failed,',
+  'printableRun.blocked': 'blocked,',
+  'printableRun.skipped': 'skipped.',
+  'printableRun.runCases': 'Run cases',
+  'printableRun.key': 'Key',
+  'printableRun.title': 'Title',
+  'printableRun.priority': 'Priority',
+  'printableRun.version': 'Version',
+  'printableRun.status': 'Status',
+} as const;

@@ -12,6 +12,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export const BUILD_TONE: Record<BuildStatus, BadgeTone> = {
   queued: 'neutral',
@@ -42,12 +43,12 @@ export function BuildList({
     <table className="table" aria-label={label}>
       <thead>
         <tr>
-          <th>Build</th>
-          <th>Status</th>
-          <th>Branch</th>
-          <th>Duration</th>
-          <th>Release</th>
-          <th>Work items</th>
+          <th>{t('builds.build')}</th>
+          <th>{t('builds.status')}</th>
+          <th>{t('builds.branch')}</th>
+          <th>{t('builds.duration')}</th>
+          <th>{t('builds.release')}</th>
+          <th>{t('builds.workItems')}</th>
         </tr>
       </thead>
       <tbody>
@@ -62,11 +63,11 @@ export function BuildList({
                 {humanize(build.status ?? 'queued')}
               </Badge>
             </td>
-            <td>{build.branchName ?? <span className="muted">none</span>}</td>
+            <td>{build.branchName ?? <span className="muted">{t('builds.none')}</span>}</td>
             <td>{formatDuration(build.durationMs)}</td>
             <td>
               {build.release === null ? (
-                <span className="muted">none</span>
+                <span className="muted">{t('builds.none')}</span>
               ) : (
                 <Link to={`/releases/${build.release.id}`}>{build.release.version}</Link>
               )}
@@ -154,7 +155,7 @@ export function BuildsPage(): React.JSX.Element {
       void navigate(`/builds/${result.build.id}`);
     },
     onError: (cause: unknown) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not report the build.');
+      setError(cause instanceof ApiError ? cause.message : t('builds.couldNotReportTheBuild'));
     },
   });
 
@@ -169,42 +170,44 @@ export function BuildsPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Builds"
-        description="Local CI builds: status, duration, release and the work items they built."
+        title={t('builds.builds')}
+        description={t('builds.localCiBuildsStatusDuration')}
       />
       {metrics.data !== undefined && (
         <section className="card" aria-labelledby="build-metrics">
-          <h2 id="build-metrics">Last {metrics.data.windowDays} days</h2>
+          <h2 id="build-metrics">
+            {t('builds.last')} {metrics.data.windowDays} {t('builds.days')}
+          </h2>
           <dl className="kpis">
             <div>
-              <dt>Builds</dt>
+              <dt>{t('builds.builds')}</dt>
               <dd data-testid="build-metric-total">{metrics.data.total}</dd>
             </div>
             <div>
-              <dt>Success rate</dt>
+              <dt>{t('builds.successRate')}</dt>
               <dd data-testid="build-metric-success">{percent(metrics.data.successRate)}</dd>
             </div>
             <div>
-              <dt>Failure rate</dt>
+              <dt>{t('builds.failureRate')}</dt>
               <dd>{percent(metrics.data.failureRate)}</dd>
             </div>
             <div>
-              <dt>Median duration</dt>
+              <dt>{t('builds.medianDuration')}</dt>
               <dd>{formatDuration(metrics.data.durationMs.median)}</dd>
             </div>
             <div>
-              <dt>P85 duration</dt>
+              <dt>{t('builds.p85Duration')}</dt>
               <dd>{formatDuration(metrics.data.durationMs.p85)}</dd>
             </div>
           </dl>
         </section>
       )}
-      <section className="card filters" aria-label="Build filters">
+      <section className="card filters" aria-label={t('builds.buildFilters')}>
         <SelectField
-          label="Status filter"
+          label={t('builds.statusFilter')}
           value={status}
           options={[
-            { value: '', label: 'Any status' },
+            { value: '', label: t('builds.anyStatus') },
             ...BUILD_STATUSES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -212,10 +215,10 @@ export function BuildsPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Provider filter"
+          label={t('builds.providerFilter')}
           value={provider}
           options={[
-            { value: '', label: 'Any provider' },
+            { value: '', label: t('builds.anyProvider') },
             ...DEVELOPMENT_PROVIDERS.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -223,18 +226,18 @@ export function BuildsPage(): React.JSX.Element {
           }}
         />
         <TextField
-          label="Branch filter"
+          label={t('builds.branchFilter')}
           value={branch}
           onChange={(event) => {
             setBranch(event.target.value);
           }}
         />
         <SelectField
-          label="Release filter"
+          label={t('builds.releaseFilter')}
           value={releaseId}
           options={[
-            { value: '', label: 'Any release' },
-            { value: 'none', label: 'No release' },
+            { value: '', label: t('builds.anyRelease') },
+            { value: 'none', label: t('builds.noRelease') },
             ...releaseOptions,
           ]}
           onChange={(event) => {
@@ -245,16 +248,16 @@ export function BuildsPage(): React.JSX.Element {
       {writable && (
         <form
           className="card"
-          aria-label="Report a build"
+          aria-label={t('builds.reportABuild')}
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
             create.mutate();
           }}
         >
-          <h2>Report a build</h2>
+          <h2>{t('builds.reportABuild')}</h2>
           <TextField
-            label="Build identifier"
+            label={t('builds.buildIdentifier')}
             value={identifier}
             required
             onChange={(event) => {
@@ -262,14 +265,14 @@ export function BuildsPage(): React.JSX.Element {
             }}
           />
           <TextField
-            label="Build branch"
+            label={t('builds.buildBranch')}
             value={newBranch}
             onChange={(event) => {
               setNewBranch(event.target.value);
             }}
           />
           <SelectField
-            label="Initial status"
+            label={t('builds.initialStatus')}
             value={newStatus}
             options={BUILD_STATUSES.map((value) => ({ value, label: humanize(value) }))}
             onChange={(event) => {
@@ -277,7 +280,7 @@ export function BuildsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Trigger"
+            label={t('builds.trigger')}
             value={trigger}
             options={BUILD_TRIGGERS.map((value) => ({ value, label: humanize(value) }))}
             onChange={(event) => {
@@ -285,18 +288,18 @@ export function BuildsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Build release"
+            label={t('builds.buildRelease')}
             value={newRelease}
-            options={[{ value: '', label: 'No release' }, ...releaseOptions]}
+            options={[{ value: '', label: t('builds.noRelease') }, ...releaseOptions]}
             onChange={(event) => {
               setNewRelease(event.target.value);
             }}
           />
           <SelectField
-            label="Built work item"
+            label={t('builds.builtWorkItem')}
             value={workItemId}
             options={[
-              { value: '', label: 'No work item' },
+              { value: '', label: t('builds.noWorkItem') },
               ...(workItems.data?.data ?? []).map((item) => ({
                 value: item.id,
                 label: `${item.key} · ${item.title}`,
@@ -312,7 +315,7 @@ export function BuildsPage(): React.JSX.Element {
             </p>
           )}
           <Button type="submit" disabled={create.isPending}>
-            Report build
+            {t('builds.reportBuild')}
           </Button>
         </form>
       )}
@@ -320,10 +323,10 @@ export function BuildsPage(): React.JSX.Element {
         isPending={builds.isPending}
         error={builds.error}
         isEmpty={(builds.data?.data.length ?? 0) === 0}
-        emptyMessage="No builds match."
+        emptyMessage={t('builds.noBuildsMatch')}
       >
         <section className="card">
-          <BuildList builds={builds.data?.data ?? []} label="Builds" />
+          <BuildList builds={builds.data?.data ?? []} label={t('builds.builds')} />
         </section>
       </DataState>
     </>

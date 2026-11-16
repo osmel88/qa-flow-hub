@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { testCyclesApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { humanize } from '../components/status';
+import { t } from '../i18n/i18n';
 
 export const TEST_CYCLE_TONE: Record<TestCycleStatus, BadgeTone> = {
   planned: 'neutral',
@@ -47,24 +48,26 @@ export function TestCyclesSection({
       await queryClient.invalidateQueries({ queryKey: ['test-cycles', plan.id] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not create the cycle.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('testCyclesSection.couldNotCreateTheCycle'),
+      );
     },
   });
   const rows = cycles.data?.data ?? [];
   return (
     <section className="card" aria-labelledby="plan-cycles">
-      <h2 id="plan-cycles">Cycles</h2>
+      <h2 id="plan-cycles">{t('testCyclesSection.cycles')}</h2>
       {rows.length === 0 ? (
-        <p className="muted">No cycle yet.</p>
+        <p className="muted">{t('testCyclesSection.noCycleYet')}</p>
       ) : (
-        <table className="table" aria-label="Plan cycles">
+        <table className="table" aria-label={t('testCyclesSection.planCycles')}>
           <thead>
             <tr>
-              <th scope="col">Cycle</th>
-              <th scope="col">Status</th>
-              <th scope="col">Environment</th>
-              <th scope="col">Release</th>
-              <th scope="col">Cases</th>
+              <th scope="col">{t('testCyclesSection.cycle')}</th>
+              <th scope="col">{t('testCyclesSection.status')}</th>
+              <th scope="col">{t('testCyclesSection.environment')}</th>
+              <th scope="col">{t('testCyclesSection.release')}</th>
+              <th scope="col">{t('testCyclesSection.cases')}</th>
             </tr>
           </thead>
           <tbody>
@@ -76,11 +79,14 @@ export function TestCyclesSection({
                 <td>
                   <Badge tone={TEST_CYCLE_TONE[entry.status]}>{humanize(entry.status)}</Badge>
                 </td>
-                <td>{entry.environment?.name ?? 'any'}</td>
-                <td>{entry.release?.version ?? 'none'}</td>
+                <td>{entry.environment?.name ?? t('testCyclesSection.any')}</td>
+                <td>{entry.release?.version ?? t('testCyclesSection.none')}</td>
                 <td>
                   {entry.scope.caseCount}
-                  {entry.scope.frozen && ` (frozen from plan v${entry.scope.planVersion ?? 0})`}
+                  {entry.scope.frozen &&
+                    t('testCyclesSection.frozenFromPlan', {
+                      version: entry.scope.planVersion ?? 0,
+                    })}
                 </td>
               </tr>
             ))}
@@ -89,7 +95,7 @@ export function TestCyclesSection({
       )}
       {canCreate && (
         <form
-          aria-label="New cycle"
+          aria-label={t('testCyclesSection.newCycle')}
           onSubmit={(event) => {
             event.preventDefault();
             create.mutate();
@@ -101,17 +107,17 @@ export function TestCyclesSection({
             </p>
           )}
           <TextField
-            label="Cycle name"
+            label={t('testCyclesSection.cycleName')}
             value={name}
             onChange={(event) => {
               setName(event.target.value);
             }}
           />
           <SelectField
-            label="Cycle environment"
+            label={t('testCyclesSection.cycleEnvironment')}
             value={environmentId}
             options={[
-              { value: '', label: 'Any environment' },
+              { value: '', label: t('testCyclesSection.anyEnvironment') },
               ...plan.environments.map((entry) => ({ value: entry.id, label: entry.name })),
             ]}
             onChange={(event) => {
@@ -119,7 +125,7 @@ export function TestCyclesSection({
             }}
           />
           <Button type="submit" size="sm" disabled={create.isPending || name.trim().length < 3}>
-            Create cycle
+            {t('testCyclesSection.createCycle')}
           </Button>
         </form>
       )}

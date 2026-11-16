@@ -1,0 +1,22 @@
+export const testRuns = {
+  'testRuns.couldNotCreateTheRun': 'Could not create the run.',
+  'testRuns.testRuns': 'Test runs',
+  'testRuns.aRunFreezesTheCases':
+    'A run freezes the cases it contains, so editing a case later never rewrites history.',
+  'testRuns.newRun': 'New run',
+  'testRuns.name': 'Name',
+  'testRuns.casesFromSuite': 'Cases from suite',
+  'testRuns.everyCaseInTheProject': 'Every case in the project',
+  'testRuns.release': 'Release',
+  'testRuns.noRelease': 'No release',
+  'testRuns.createRun': 'Create run',
+  'testRuns.filterByRelease': 'Filter by release',
+  'testRuns.allRuns': 'All runs',
+  'testRuns.noRunYetCreateOne': 'No run yet. Create one to start executing.',
+  'testRuns.run': 'Run',
+  'testRuns.status': 'Status',
+  'testRuns.cases': 'Cases',
+  'testRuns.progress': 'Progress',
+  'testRuns.testrail': 'TestRail',
+  'testRuns.github': 'GitHub',
+} as const;

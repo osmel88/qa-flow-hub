@@ -5,6 +5,7 @@ import { traceabilityApi } from '../api/endpoints';
 import { humanize } from '../components/status';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 /**
  * Print-friendly traceability matrix: the browser's "Save as PDF" is the PDF
@@ -27,24 +28,30 @@ export function PrintableMatrixPage(): React.JSX.Element {
   return (
     <main className="print-page">
       <PrintToolbar />
-      <h1>Traceability matrix — {activeProject?.name}</h1>
-      <p className="muted">Generated {new Date().toLocaleString()}</p>
+      <h1>
+        {t('printableMatrix.traceabilityMatrix')} {activeProject?.name}
+      </h1>
+      <p className="muted">
+        {t('printableMatrix.generated')} {new Date().toLocaleString()}
+      </p>
       <DataState isPending={matrix.isPending} error={matrix.error}>
         {matrix.data !== undefined && (
           <>
             <p>
-              {matrix.data.summary.covered} of {matrix.data.summary.requirements} requirements
-              covered ({matrix.data.summary.coverage}%), {matrix.data.summary.verified} verified,{' '}
-              {matrix.data.summary.openDefects} open defects.
+              {matrix.data.summary.covered} {t('printableMatrix.of')}{' '}
+              {matrix.data.summary.requirements} {t('printableMatrix.requirementsCovered')}
+              {matrix.data.summary.coverage}%), {matrix.data.summary.verified}{' '}
+              {t('printableMatrix.verified')} {matrix.data.summary.openDefects}{' '}
+              {t('printableMatrix.openDefects')}
             </p>
-            <table className="print-table" aria-label="Traceability matrix">
+            <table className="print-table" aria-label={t('printableMatrix.traceabilityMatrix2')}>
               <thead>
                 <tr>
-                  <th scope="col">Requirement</th>
-                  <th scope="col">Cases</th>
-                  <th scope="col">Covered</th>
-                  <th scope="col">Verified</th>
-                  <th scope="col">Open defects</th>
+                  <th scope="col">{t('printableMatrix.requirement')}</th>
+                  <th scope="col">{t('printableMatrix.cases')}</th>
+                  <th scope="col">{t('printableMatrix.covered')}</th>
+                  <th scope="col">{t('printableMatrix.verified2')}</th>
+                  <th scope="col">{t('printableMatrix.openDefects2')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -55,13 +62,13 @@ export function PrintableMatrixPage(): React.JSX.Element {
                     </td>
                     <td>
                       {row.cases.length === 0
-                        ? 'None'
+                        ? t('printableMatrix.none')
                         : row.cases
                             .map((testCase) => `${testCase.key} (${humanize(testCase.lastStatus)})`)
                             .join(', ')}
                     </td>
-                    <td>{row.covered ? 'Yes' : 'No'}</td>
-                    <td>{row.verified ? 'Yes' : 'No'}</td>
+                    <td>{row.covered ? t('printableMatrix.yes') : t('printableMatrix.no')}</td>
+                    <td>{row.verified ? t('printableMatrix.yes') : t('printableMatrix.no')}</td>
                     <td>{row.defectIds.length}</td>
                   </tr>
                 ))}
@@ -84,7 +91,7 @@ export function PrintToolbar(): React.JSX.Element {
           window.print();
         }}
       >
-        Print / Save as PDF
+        {t('printableMatrix.printSaveAsPdf')}
       </button>
     </div>
   );

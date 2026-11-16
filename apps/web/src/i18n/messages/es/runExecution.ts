@@ -1,0 +1,37 @@
+import type { runExecution as source } from '../en/runExecution';
+
+export const runExecution: Partial<Record<keyof typeof source, string>> = {
+  'runExecution.couldNotRecordTheResult': 'No se pudo registrar el resultado.',
+  'runExecution.couldNotCompleteTheRun': 'No se pudo completar la ejecución.',
+  'runExecution.fails': '{title} falla',
+  'runExecution.couldNotRaiseTheDefect': 'No se pudo crear el defecto.',
+  'runExecution.run': 'Ejecución',
+  'runExecution.resultsAreAppendOnlyA':
+    'Los resultados solo se añaden: una reejecución añade una fila, nunca sobrescribe otra.',
+  'runExecution.exportCsv': 'Exportar CSV',
+  'runExecution.printableView': 'Vista para imprimir',
+  'runExecution.backToRuns': 'Volver a las ejecuciones',
+  'runExecution.of': 'de',
+  'runExecution.executed': 'ejecutados —',
+  'runExecution.startRun': 'Iniciar ejecución',
+  'runExecution.completeRun': 'Completar ejecución',
+  'runExecution.runEvidence': 'Evidencias de la ejecución',
+  'runExecution.theResultWasNotA':
+    'El resultado no fue correcto. ¿Crear un defecto vinculado a él?',
+  'runExecution.raiseDefect': 'Crear defecto',
+  'runExecution.dismiss': 'Descartar',
+  'runExecution.thisRunHasNoCases': 'Esta ejecución no tiene casos.',
+  'runExecution.datasetRow': 'Fila del dataset',
+  'runExecution.allExecutions': 'Todas las ejecuciones',
+  'runExecution.withoutDataset': 'Sin dataset',
+  'runExecution.executedVersion': 'Versión ejecutada:',
+  'runExecution.thisCaseHadNoSteps': 'Este caso no tenía pasos cuando se creó la ejecución.',
+  'runExecution.data': 'Datos:',
+  'runExecution.expected': 'Esperado:',
+  'runExecution.comment': 'Comentario',
+  'runExecution.latestResult': 'Último resultado:',
+  'runExecution.evidenceForLatestResult': 'Evidencias del último resultado ({value})',
+  'runExecution.parametersUsed': 'Parámetros usados',
+  'runExecution.withIteration': ' con {label}',
+  'runExecution.onVersion': ' en la versión {version}',
+};

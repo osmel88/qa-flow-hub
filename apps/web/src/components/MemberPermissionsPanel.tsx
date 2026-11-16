@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { permissionsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { humanize } from './status';
+import { t } from '../i18n/i18n';
 
 type Choice = 'default' | PermissionEffectName;
 
@@ -98,14 +99,18 @@ export function MemberPermissionsPanel({
       await queryClient.invalidateQueries({ queryKey: ['project-permission-overrides'] });
     },
     onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not save the overrides.');
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : t('c_memberPermissionsPanel.couldNotSaveTheOverrides'),
+      );
     },
   });
 
   if (view.data === undefined) {
     return (
       <DataState isPending={view.isPending} error={view.error}>
-        <span className="muted">Loading permissions…</span>
+        <span className="muted">{t('c_memberPermissionsPanel.loadingPermissions')}</span>
       </DataState>
     );
   }
@@ -118,35 +123,37 @@ export function MemberPermissionsPanel({
   const editable = canEdit && !isOwner;
 
   return (
-    <section className="permissions" aria-label={`Permissions of ${email} in this project`}>
+    <section
+      className="permissions"
+      aria-label={t('c_memberPermissionsPanel.permissionsOfInThisProject', { email })}
+    >
       <dl className="details">
-        <dt>Organization role</dt>
+        <dt>{t('c_memberPermissionsPanel.organizationRole')}</dt>
         <dd>{humanize(data.organizationRole)}</dd>
-        <dt>Project role</dt>
+        <dt>{t('c_memberPermissionsPanel.projectRole')}</dt>
         <dd>
           {data.projectRole === null ? (
-            <span className="muted">Inherited</span>
+            <span className="muted">{t('c_memberPermissionsPanel.inherited')}</span>
           ) : (
             humanize(data.projectRole)
           )}
         </dd>
-        <dt>Enforced role</dt>
+        <dt>{t('c_memberPermissionsPanel.enforcedRole')}</dt>
         <dd>{humanize(data.effectiveRole)}</dd>
-        <dt>Overrides</dt>
+        <dt>{t('c_memberPermissionsPanel.overrides')}</dt>
         <dd>
           {data.overrides.length === 0 ? (
-            <span className="muted">None — the role decides everything.</span>
+            <span className="muted">
+              {t('c_memberPermissionsPanel.noneTheRoleDecidesEverything')}
+            </span>
           ) : (
-            `${data.overrides.length} in this project`
+            t('c_memberPermissionsPanel.inThisProject', { length: data.overrides.length })
           )}
         </dd>
       </dl>
 
       {isOwner && (
-        <p className="callout">
-          An organization owner holds every permission in every project. Overrides do not apply to
-          them.
-        </p>
+        <p className="callout">{t('c_memberPermissionsPanel.anOrganizationOwnerHoldsEvery')}</p>
       )}
 
       {error !== null && (
@@ -156,7 +163,7 @@ export function MemberPermissionsPanel({
       )}
       {saved && !dirty && (
         <p className="muted" role="status">
-          Overrides saved. The API applies them from the next request on.
+          {t('c_memberPermissionsPanel.overridesSavedTheApiApplies')}
         </p>
       )}
 
@@ -171,10 +178,10 @@ export function MemberPermissionsPanel({
               <caption>{PERMISSION_MODULE_LABELS[module]}</caption>
               <thead className="visually-hidden">
                 <tr>
-                  <th scope="col">Permission</th>
-                  <th scope="col">Held</th>
-                  <th scope="col">Source</th>
-                  {editable && <th scope="col">Override</th>}
+                  <th scope="col">{t('c_memberPermissionsPanel.permission')}</th>
+                  <th scope="col">{t('c_memberPermissionsPanel.held')}</th>
+                  <th scope="col">{t('c_memberPermissionsPanel.source')}</th>
+                  {editable && <th scope="col">{t('c_memberPermissionsPanel.override')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -196,7 +203,9 @@ export function MemberPermissionsPanel({
                       </td>
                       <td>
                         <Badge tone={entry.granted ? 'success' : 'neutral'}>
-                          {entry.granted ? 'Allowed' : 'Not allowed'}
+                          {entry.granted
+                            ? t('c_memberPermissionsPanel.allowed')
+                            : t('c_memberPermissionsPanel.notAllowed')}
                         </Badge>
                       </td>
                       <td>
@@ -206,7 +215,10 @@ export function MemberPermissionsPanel({
                         <td>
                           <select
                             className="ui-input"
-                            aria-label={`Override ${entry.permission} for ${email}`}
+                            aria-label={t('c_memberPermissionsPanel.overrideFor', {
+                              permission: entry.permission,
+                              email,
+                            })}
                             value={choice}
                             onChange={(event) => {
                               const next = new Map(choices);
@@ -215,11 +227,14 @@ export function MemberPermissionsPanel({
                               setSaved(false);
                             }}
                           >
-                            <option value="default">Role default</option>
-                            <option value="grant" disabled={!mayGrant}>
-                              Grant{mayGrant ? '' : ' (you do not hold it)'}
+                            <option value="default">
+                              {t('c_memberPermissionsPanel.roleDefault')}
                             </option>
-                            <option value="revoke">Revoke</option>
+                            <option value="grant" disabled={!mayGrant}>
+                              {t('c_memberPermissionsPanel.grant')}
+                              {mayGrant ? '' : t('c_memberPermissionsPanel.youDoNotHoldIt')}
+                            </option>
+                            <option value="revoke">{t('c_memberPermissionsPanel.revoke')}</option>
                           </select>
                         </td>
                       )}
@@ -240,7 +255,9 @@ export function MemberPermissionsPanel({
             }}
             disabled={!dirty || save.isPending}
           >
-            {save.isPending ? 'Saving…' : 'Save overrides'}
+            {save.isPending
+              ? t('c_memberPermissionsPanel.saving')
+              : t('c_memberPermissionsPanel.saveOverrides')}
           </Button>
           <Button
             variant="ghost"
@@ -249,7 +266,7 @@ export function MemberPermissionsPanel({
               setChoices(toChoices(data));
             }}
           >
-            Discard
+            {t('c_memberPermissionsPanel.discard')}
           </Button>
         </div>
       )}

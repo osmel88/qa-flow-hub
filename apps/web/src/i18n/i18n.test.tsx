@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { I18nProvider, LanguageSelector, translate, useI18n } from './i18n';
+import { I18nProvider, LanguageSelector, lookupMessage, translate, useI18n } from './i18n';
 import { LOCALE_STORAGE_KEY } from './locales';
 import { en } from './messages/en';
 import { es } from './messages/es';
@@ -22,7 +22,18 @@ describe('i18n', () => {
   });
 
   it('has a Spanish entry for every English key', () => {
-    expect(Object.keys(es).sort()).toEqual(Object.keys(en).sort());
+    const missing = Object.keys(en).filter((key) => !(key in es));
+    expect(missing).toEqual([]);
+  });
+
+  it('has no Spanish key that English lacks, apart from domain value labels', () => {
+    const extra = Object.keys(es).filter((key) => !(key in en) && !key.startsWith('value.'));
+    expect(extra).toEqual([]);
+  });
+
+  it('falls back to English for a key the catalog lacks', () => {
+    expect(lookupMessage({}, 'projects.createProject')).toBe('Create project');
+    expect(translate('es', 'projects.createProject')).toBe('Crear proyecto');
   });
 
   it('fills placeholders and falls back to English', () => {

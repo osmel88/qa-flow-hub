@@ -9,6 +9,7 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { CODE_REVIEW_TONE, ReadinessBadge } from './CodeReviewsPage';
+import { t } from '../i18n/i18n';
 
 /** A code review: decisions, reviewers, work items and history (S5-F3). */
 export function CodeReviewDetailPage(): React.JSX.Element {
@@ -53,7 +54,9 @@ export function CodeReviewDetailPage(): React.JSX.Element {
       ]);
     },
     onError: (cause: unknown) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not update the review.');
+      setError(
+        cause instanceof ApiError ? cause.message : t('codeReviewDetail.couldNotUpdateTheReview'),
+      );
     },
   });
 
@@ -67,9 +70,9 @@ export function CodeReviewDetailPage(): React.JSX.Element {
     <DataState isPending={review.isPending} error={review.error} isEmpty={false}>
       {data !== undefined && (
         <>
-          <PageHeader title={data.title} description="Code review detail." />
+          <PageHeader title={data.title} description={t('codeReviewDetail.codeReviewDetail')} />
           <p>
-            <Link to="/code-reviews">← All code reviews</Link>
+            <Link to="/code-reviews">{t('codeReviewDetail.allCodeReviews')}</Link>
           </p>
           {error !== null && (
             <p role="alert" className="error">
@@ -77,7 +80,7 @@ export function CodeReviewDetailPage(): React.JSX.Element {
             </p>
           )}
           <section className="card" aria-labelledby="review-summary">
-            <h2 id="review-summary">Summary</h2>
+            <h2 id="review-summary">{t('codeReviewDetail.summary')}</h2>
             <p>
               <span data-testid="review-status">
                 <Badge tone={CODE_REVIEW_TONE[data.status]}>{humanize(data.status)}</Badge>
@@ -86,15 +89,16 @@ export function CodeReviewDetailPage(): React.JSX.Element {
             </p>
             {data.mergeReadiness.blockers.length > 0 && (
               <p className="muted" data-testid="merge-blockers">
-                Blocked by: {data.mergeReadiness.blockers.map(humanize).join(', ')}
+                {t('codeReviewDetail.blockedBy')}{' '}
+                {data.mergeReadiness.blockers.map(humanize).join(', ')}
               </p>
             )}
             <p>
-              Author: {data.author.fullName}
+              {t('codeReviewDetail.author')} {data.author.fullName}
               {data.pullRequest !== null && (
                 <>
                   {' '}
-                  · Pull request{' '}
+                  {t('codeReviewDetail.pullRequest')}{' '}
                   <Link to={`/development?kind=pull_request`}>
                     #{data.pullRequest.prNumber} {data.pullRequest.title ?? ''}
                   </Link>{' '}
@@ -110,18 +114,20 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                   act.mutate(() => codeReviewsApi.dismiss(data.id));
                 }}
               >
-                Dismiss review
+                {t('codeReviewDetail.dismissReview')}
               </Button>
             )}
           </section>
 
           <section className="card" aria-labelledby="review-reviewers">
-            <h2 id="review-reviewers">Reviewers</h2>
-            <ul aria-label="Reviewers">
+            <h2 id="review-reviewers">{t('codeReviewDetail.reviewers')}</h2>
+            <ul aria-label={t('codeReviewDetail.reviewers')}>
               {data.reviewers.map((entry) => (
                 <li key={entry.user.id} data-testid={`reviewer-${entry.user.fullName}`}>
                   {entry.user.fullName}: <strong>{humanize(entry.decision)}</strong>
-                  {!entry.canReview && <span className="muted"> (cannot review any more)</span>}
+                  {!entry.canReview && (
+                    <span className="muted"> {t('codeReviewDetail.cannotReviewAnyMore')}</span>
+                  )}
                   {entry.comment !== null && <span className="muted"> — {entry.comment}</span>}{' '}
                   {manager &&
                     open &&
@@ -133,19 +139,21 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                           act.mutate(() => codeReviewsApi.dismissDecision(data.id, entry.user.id));
                         }}
                       >
-                        Dismiss decision
+                        {t('codeReviewDetail.dismissDecision')}
                       </Button>
                     )}
                   {writable && open && (
                     <Button
                       size="sm"
                       variant="ghost"
-                      aria-label={`Remove reviewer ${entry.user.fullName}`}
+                      aria-label={t('codeReviewDetail.removeReviewer', {
+                        fullName: entry.user.fullName,
+                      })}
                       onClick={() => {
                         act.mutate(() => codeReviewsApi.removeReviewer(data.id, entry.user.id));
                       }}
                     >
-                      Remove
+                      {t('codeReviewDetail.remove')}
                     </Button>
                   )}
                 </li>
@@ -161,10 +169,10 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                 }}
               >
                 <SelectField
-                  label="Add reviewer"
+                  label={t('codeReviewDetail.addReviewer')}
                   value={newReviewer}
                   options={[
-                    { value: '', label: 'Choose a member' },
+                    { value: '', label: t('codeReviewDetail.chooseAMember') },
                     ...(members.data?.data ?? [])
                       .filter(
                         (member) =>
@@ -178,7 +186,7 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                   }}
                 />
                 <Button type="submit" size="sm">
-                  Add
+                  {t('codeReviewDetail.add')}
                 </Button>
               </form>
             )}
@@ -186,9 +194,11 @@ export function CodeReviewDetailPage(): React.JSX.Element {
 
           {(canDecide || (writable && open)) && (
             <section className="card" aria-labelledby="review-decision">
-              <h2 id="review-decision">{canDecide ? 'Your review' : 'Comment'}</h2>
+              <h2 id="review-decision">
+                {canDecide ? t('codeReviewDetail.yourReview') : t('codeReviewDetail.comment')}
+              </h2>
               <TextAreaField
-                label="Review comment"
+                label={t('codeReviewDetail.reviewComment')}
                 value={comment}
                 onChange={(event) => {
                   setComment(event.target.value);
@@ -204,7 +214,7 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                       );
                     }}
                   >
-                    Approve
+                    {t('codeReviewDetail.approve')}
                   </Button>{' '}
                   <Button
                     variant="secondary"
@@ -215,7 +225,7 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                       );
                     }}
                   >
-                    Request changes
+                    {t('codeReviewDetail.requestChanges')}
                   </Button>{' '}
                   {(mine.decision === 'approved' || mine.decision === 'changes_requested') && (
                     <Button
@@ -224,7 +234,7 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                         act.mutate(() => codeReviewsApi.decide(data.id, { decision: 'revoke' }));
                       }}
                     >
-                      Revoke my decision
+                      {t('codeReviewDetail.revokeMyDecision')}
                     </Button>
                   )}{' '}
                 </>
@@ -237,15 +247,15 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                     act.mutate(() => codeReviewsApi.comment(data.id, comment.trim()));
                   }}
                 >
-                  Add comment
+                  {t('codeReviewDetail.addComment')}
                 </Button>
               )}
             </section>
           )}
 
           <section className="card" aria-labelledby="review-work-items">
-            <h2 id="review-work-items">Work items</h2>
-            <ul aria-label="Reviewed work items">
+            <h2 id="review-work-items">{t('codeReviewDetail.workItems')}</h2>
+            <ul aria-label={t('codeReviewDetail.reviewedWorkItems')}>
               {data.workItems.map((item) => (
                 <li key={item.id}>
                   <Link to={`/work-items/${item.id}`}>
@@ -256,12 +266,12 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                     <Button
                       size="sm"
                       variant="ghost"
-                      aria-label={`Unlink ${item.key}`}
+                      aria-label={t('codeReviewDetail.unlink', { key: item.key })}
                       onClick={() => {
                         act.mutate(() => codeReviewsApi.unlink(data.id, item.id));
                       }}
                     >
-                      Unlink
+                      {t('codeReviewDetail.unlink2')}
                     </Button>
                   )}
                 </li>
@@ -277,10 +287,10 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                 }}
               >
                 <SelectField
-                  label="Link work item"
+                  label={t('codeReviewDetail.linkWorkItem')}
                   value={newWorkItem}
                   options={[
-                    { value: '', label: 'Choose a work item' },
+                    { value: '', label: t('codeReviewDetail.chooseAWorkItem') },
                     ...(workItems.data?.data ?? [])
                       .filter((item) => !data.workItems.some((linked) => linked.id === item.id))
                       .map((item) => ({ value: item.id, label: `${item.key} · ${item.title}` })),
@@ -290,19 +300,19 @@ export function CodeReviewDetailPage(): React.JSX.Element {
                   }}
                 />
                 <Button type="submit" size="sm">
-                  Link
+                  {t('codeReviewDetail.link')}
                 </Button>
               </form>
             )}
           </section>
 
           <section className="card" aria-labelledby="review-history">
-            <h2 id="review-history">History</h2>
-            <ol aria-label="Review history">
+            <h2 id="review-history">{t('codeReviewDetail.history')}</h2>
+            <ol aria-label={t('codeReviewDetail.reviewHistory')}>
               {data.events.map((event) => (
                 <li key={event.id}>
                   <span className="muted">{new Date(event.createdAt).toLocaleString()}</span>{' '}
-                  {event.actor?.fullName ?? 'Someone'} {humanize(event.kind)}
+                  {event.actor?.fullName ?? t('codeReviewDetail.someone')} {humanize(event.kind)}
                   {event.subject !== null && ` (${event.subject.fullName})`}
                   {event.comment !== null && `: ${event.comment}`}
                 </li>

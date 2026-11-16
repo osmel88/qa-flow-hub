@@ -28,6 +28,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 import { WORK_ITEM_TONE, parseLabels } from './WorkItemsPage';
+import { t } from '../i18n/i18n';
 
 type Move = { id: string; beforeId: string } | { id: string; afterId: string };
 
@@ -46,7 +47,11 @@ export function dropMove(
 }
 
 function totalsText(totals: { count: number; estimate: number; unestimated: number }): string {
-  return `${totals.count} items · ${totals.estimate} estimated · ${totals.unestimated} unestimated`;
+  return t('backlog.itemsEstimatedUnestimated', {
+    count: totals.count,
+    estimate: totals.estimate,
+    unestimated: totals.unestimated,
+  });
 }
 
 export function BacklogPage(): React.JSX.Element {
@@ -134,7 +139,7 @@ export function BacklogPage(): React.JSX.Element {
       setError(null);
       await refresh();
     },
-    onError: failed('Could not reorder the backlog.'),
+    onError: failed(t('backlog.couldNotReorderTheBacklog')),
   });
 
   const bulk = useMutation({
@@ -162,7 +167,7 @@ export function BacklogPage(): React.JSX.Element {
       setBulkLabels('');
       await refresh();
     },
-    onError: failed('Could not update the selected items.'),
+    onError: failed(t('backlog.couldNotUpdateTheSelected')),
   });
 
   if (activeProjectId === null) {
@@ -203,29 +208,26 @@ export function BacklogPage(): React.JSX.Element {
 
   return (
     <>
-      <PageHeader
-        title="Backlog"
-        description="The project's work in priority order. Drag rows or use the arrows to reorder; the order is shared by the whole team."
-      />
+      <PageHeader title={t('backlog.backlog')} description={t('backlog.theProjectSWorkIn')} />
 
-      <section className="card filters" aria-label="Backlog filters">
+      <section className="card filters" aria-label={t('backlog.backlogFilters')}>
         <SelectField
-          label="Group by"
+          label={t('backlog.groupBy')}
           value={groupBy}
           options={BACKLOG_GROUPINGS.map((value) => ({
             value,
-            label: value === 'none' ? 'No grouping' : humanize(value),
+            label: value === 'none' ? t('backlog.noGrouping') : humanize(value),
           }))}
           onChange={(event) => {
             setGroupBy(event.target.value as BacklogGrouping);
           }}
         />
         <SelectField
-          label="Release filter"
+          label={t('backlog.releaseFilter')}
           value={releaseId}
           options={[
-            { value: '', label: 'Any release' },
-            { value: 'none', label: 'No release' },
+            { value: '', label: t('backlog.anyRelease') },
+            { value: 'none', label: t('backlog.noRelease') },
             ...(releases.data?.data ?? []).map((release) => ({
               value: release.id,
               label: `${release.name} (${release.version})`,
@@ -236,11 +238,11 @@ export function BacklogPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Sprint filter"
+          label={t('backlog.sprintFilter')}
           value={sprintId}
           options={[
-            { value: '', label: 'Any sprint' },
-            { value: 'none', label: 'Not in a sprint' },
+            { value: '', label: t('backlog.anySprint') },
+            { value: 'none', label: t('backlog.notInASprint') },
             ...(sprints.data?.data ?? []).map((sprint) => ({
               value: sprint.id,
               label: `${sprint.name} (${humanize(sprint.status)})`,
@@ -251,7 +253,7 @@ export function BacklogPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Development filter"
+          label={t('backlog.developmentFilter')}
           value={developmentStatus}
           options={DEVELOPMENT_STATUS_OPTIONS}
           onChange={(event) => {
@@ -259,10 +261,10 @@ export function BacklogPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Type filter"
+          label={t('backlog.typeFilter')}
           value={type}
           options={[
-            { value: '', label: 'Any type' },
+            { value: '', label: t('backlog.anyType') },
             ...WORK_ITEM_TYPES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -270,7 +272,7 @@ export function BacklogPage(): React.JSX.Element {
           }}
         />
         <TextField
-          label="Search backlog"
+          label={t('backlog.searchBacklog')}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
@@ -284,7 +286,7 @@ export function BacklogPage(): React.JSX.Element {
               setMine(event.target.checked);
             }}
           />
-          Only my items
+          {t('backlog.onlyMyItems')}
         </label>
         <label className="checkbox">
           <input
@@ -294,7 +296,7 @@ export function BacklogPage(): React.JSX.Element {
               setIncludeClosed(event.target.checked);
             }}
           />
-          Include done and cancelled
+          {t('backlog.includeDoneAndCancelled')}
         </label>
       </section>
 
@@ -306,19 +308,21 @@ export function BacklogPage(): React.JSX.Element {
       {backlog.data !== undefined && (
         <p className="muted" data-testid="backlog-totals">
           {totalsText(backlog.data.totals)}
-          {backlog.data.truncated && ' · showing the first 500'}
+          {backlog.data.truncated && t('backlog.showingTheFirst500')}
         </p>
       )}
 
       {editable && selected.size > 0 && (
         <section className="card" aria-labelledby="bulk-actions">
-          <h2 id="bulk-actions">Change {selected.size} selected</h2>
+          <h2 id="bulk-actions">
+            {t('backlog.change')} {selected.size} {t('backlog.selected')}
+          </h2>
           <div className="form-grid">
             <SelectField
-              label="Set status"
+              label={t('backlog.setStatus')}
               value={bulkStatus}
               options={[
-                { value: '', label: 'Keep' },
+                { value: '', label: t('backlog.keep') },
                 ...WORK_ITEM_STATUSES.map((value) => ({ value, label: humanize(value) })),
               ]}
               onChange={(event) => {
@@ -326,10 +330,10 @@ export function BacklogPage(): React.JSX.Element {
               }}
             />
             <SelectField
-              label="Set priority"
+              label={t('backlog.setPriority')}
               value={bulkPriority}
               options={[
-                { value: '', label: 'Keep' },
+                { value: '', label: t('backlog.keep') },
                 ...PRIORITIES.map((value) => ({ value, label: humanize(value) })),
               ]}
               onChange={(event) => {
@@ -337,11 +341,11 @@ export function BacklogPage(): React.JSX.Element {
               }}
             />
             <SelectField
-              label="Set assignee"
+              label={t('backlog.setAssignee')}
               value={bulkAssignee}
               options={[
-                { value: '', label: 'Keep' },
-                { value: 'none', label: 'Unassigned' },
+                { value: '', label: t('backlog.keep') },
+                { value: 'none', label: t('backlog.unassigned') },
                 ...(members.data?.data ?? [])
                   .filter((member) => member.hasAccess)
                   .map((member) => ({ value: member.userId, label: member.fullName })),
@@ -351,11 +355,11 @@ export function BacklogPage(): React.JSX.Element {
               }}
             />
             <SelectField
-              label="Set release"
+              label={t('backlog.setRelease')}
               value={bulkRelease}
               options={[
-                { value: '', label: 'Keep' },
-                { value: 'none', label: 'No release' },
+                { value: '', label: t('backlog.keep') },
+                { value: 'none', label: t('backlog.noRelease') },
                 ...(releases.data?.data ?? [])
                   .filter((release) => isOpenRelease(release.status))
                   .map((release) => ({
@@ -368,7 +372,7 @@ export function BacklogPage(): React.JSX.Element {
               }}
             />
             <TextField
-              label="Set estimate"
+              label={t('backlog.setEstimate')}
               type="number"
               min={0}
               step={0.5}
@@ -378,8 +382,8 @@ export function BacklogPage(): React.JSX.Element {
               }}
             />
             <TextField
-              label="Add labels"
-              hint="Comma separated"
+              label={t('backlog.addLabels')}
+              hint={t('backlog.commaSeparated')}
               value={bulkLabels}
               onChange={(event) => {
                 setBulkLabels(event.target.value);
@@ -394,7 +398,7 @@ export function BacklogPage(): React.JSX.Element {
                 bulk.mutate();
               }}
             >
-              Apply to {selected.size} items
+              {t('backlog.applyTo')} {selected.size} {t('backlog.items')}
             </Button>
             <Button
               variant="secondary"
@@ -402,7 +406,7 @@ export function BacklogPage(): React.JSX.Element {
                 setSelected(new Set());
               }}
             >
-              Clear selection
+              {t('backlog.clearSelection')}
             </Button>
           </div>
         </section>
@@ -412,19 +416,19 @@ export function BacklogPage(): React.JSX.Element {
         isPending={backlog.isPending}
         error={backlog.error}
         isEmpty={items.length === 0}
-        emptyMessage="The backlog is empty for these filters."
+        emptyMessage={t('backlog.theBacklogIsEmptyFor')}
       >
-        <table className="table card" aria-label="Backlog">
+        <table className="table card" aria-label={t('backlog.backlog')}>
           <thead>
             <tr>
-              {editable && <th scope="col">Select</th>}
-              <th scope="col">Key</th>
-              <th scope="col">Title</th>
-              <th scope="col">Type</th>
-              <th scope="col">Status</th>
-              <th scope="col">Priority</th>
-              <th scope="col">Estimate</th>
-              {editable && <th scope="col">Order</th>}
+              {editable && <th scope="col">{t('backlog.select')}</th>}
+              <th scope="col">{t('backlog.key')}</th>
+              <th scope="col">{t('backlog.title')}</th>
+              <th scope="col">{t('backlog.type')}</th>
+              <th scope="col">{t('backlog.status')}</th>
+              <th scope="col">{t('backlog.priority')}</th>
+              <th scope="col">{t('backlog.estimate')}</th>
+              {editable && <th scope="col">{t('backlog.order')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -474,7 +478,7 @@ export function BacklogPage(): React.JSX.Element {
                         <td>
                           <input
                             type="checkbox"
-                            aria-label={`Select ${item.key}`}
+                            aria-label={t('backlog.select2', { key: item.key })}
                             checked={selected.has(item.id)}
                             onChange={() => {
                               toggle(item.id);
@@ -500,13 +504,13 @@ export function BacklogPage(): React.JSX.Element {
                         <Badge tone={WORK_ITEM_TONE[item.status]}>{humanize(item.status)}</Badge>
                       </td>
                       <td>{humanize(item.priority)}</td>
-                      <td>{item.estimate ?? 'None'}</td>
+                      <td>{item.estimate ?? t('backlog.none')}</td>
                       {editable && (
                         <td>
                           <Button
                             size="sm"
                             variant="ghost"
-                            aria-label={`Move ${item.key} up`}
+                            aria-label={t('backlog.moveUp', { key: item.key })}
                             disabled={previous === undefined || move.isPending}
                             onClick={() => {
                               if (previous !== undefined) {
@@ -519,7 +523,7 @@ export function BacklogPage(): React.JSX.Element {
                           <Button
                             size="sm"
                             variant="ghost"
-                            aria-label={`Move ${item.key} down`}
+                            aria-label={t('backlog.moveDown', { key: item.key })}
                             disabled={next === undefined || move.isPending}
                             onClick={() => {
                               if (next !== undefined) {

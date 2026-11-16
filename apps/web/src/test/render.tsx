@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import type { RenderResult } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { I18nProvider } from '../i18n/i18n';
 
 /**
  * Every screen needs a query client and a router. A fresh client per test
@@ -15,8 +16,10 @@ export function renderScreen(ui: ReactNode, initialPath = '/'): RenderResult {
   });
 
   return render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[initialPath]}>{ui}</MemoryRouter>
-    </QueryClientProvider>,
+    <I18nProvider>
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[initialPath]}>{ui}</MemoryRouter>
+      </QueryClientProvider>
+    </I18nProvider>,
   );
 }

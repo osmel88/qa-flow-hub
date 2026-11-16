@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
+import { t } from '../i18n/i18n';
 
 /**
  * A gate for the router, not for security. The API rejects every request on
@@ -13,7 +14,7 @@ export function ProtectedRoute(): React.JSX.Element {
   if (isRestoring) {
     return (
       <p className="ui-state" role="status">
-        Restoring your session…
+        {t('c_protectedRoute.restoringYourSession')}
       </p>
     );
   }

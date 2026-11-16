@@ -104,9 +104,9 @@ not "no data".
 - **No design system beyond primitives.** `packages/ui` holds what is reused;
   everything else is plain CSS in `styles/`.
 - **No SSR.** There is nothing public to index; the app is behind a login.
-- **No i18n.** Interface strings are in English, hardcoded. Adding a locale later is
-  a mechanical change and a real one — it is not free, and pretending the strings are
-  "ready" would be false.
+- **No i18n library.** The translation layer is ~100 lines of our own (see
+  § Internationalization); a library would add plural rules and ICU syntax the
+  product does not need yet.
 
 ## Testing
 
@@ -141,11 +141,35 @@ over a tested endpoint. That is a deliberate allocation of effort, not an oversi
 - `LanguageSelector` is shown in the app header and in `AuthScreen`, the frame
   of the public authentication pages. Pages are never duplicated per language.
 
-Translated today: Login (with the MFA step), Register, Forgot/Reset password,
-the main navigation and the header (organization, project, sign out, skip
-link). Still in English and pending migration to keys: every product page
-(dashboard, requirements, backlog, test design, runs, plans, cycles,
-exploratory, flaky tests, defects, releases, environments, pipelines,
-settings, members, billing, notifications, profile), the shared UI package
-defaults (`DataState` messages), validation messages that come from the
-shared Zod schemas, and error messages returned by the API.
+- Catalogs are split by screen: `messages/en/<namespace>.ts` (source) and
+  `messages/es/<namespace>.ts`, merged in `messages/<locale>/index.ts`. Keys
+  are `<namespace>.<camelCaseOfTheEnglishText>`; `{name}` placeholders carry
+  the dynamic parts, so a sentence is never assembled from fragments with
+  per-language word order baked in.
+- A module-level `t()` reads the active locale, so plain functions (mutation
+  error handlers, column definitions, validators) translate without a hook.
+  The provider remounts the routed tree when the locale changes, so every
+  screen re-renders in the new language.
+- Domain values (statuses, types, roles, severities) are data, not keys:
+  `humanize(value)` (in `components/status.ts`) calls `valueLabel()`, which
+  looks up `value.<raw>` in the active catalog and otherwise shows the raw
+  value with spaces. Adding an enum value needs no change to render; it is
+  translated when `es/values.ts` gains the entry.
+- `packages/ui` does not depend on the Web i18n: its default strings
+  (`DataState` loading/error/empty, `PasswordField` show/hide) come from a
+  `UiStringsProvider` context that `I18nProvider` fills.
+- Validation messages from the shared Zod schemas stay in English in the
+  schemas (the API uses the same ones). `i18n/validation.ts` maps the known
+  messages to `validation.*` keys in one place; unknown ones pass through.
+- `intlLocale()` returns the BCP 47 tag for `Intl` formatting.
+
+Never translated: project keys, readable IDs, names and any text a user typed,
+URLs, API paths and technical values. API error messages are shown as the API
+sends them (English); see technical debt 69.
+
+Translated: every product page and shared component listed in the
+navigation, plus Login, Register and password recovery. Tests:
+`i18n/i18n.test.tsx` (coverage of every English key in Spanish, fallback,
+switching, persistence, login), `i18n/screens.test.tsx` (Projects and Test
+plans in Spanish, value labels, validation mapping) and
+`e2e/i18n.e2e.spec.ts`.

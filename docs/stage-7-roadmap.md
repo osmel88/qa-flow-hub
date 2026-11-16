@@ -248,3 +248,17 @@ lastExecutedAt|key`, `order`), detail with rules, history (result, run,
   while typing and shows `PROJECT_KEY_RULE` ("2 to 8 uppercase letters or
   digits, starting with a letter.") as hint and error; Create project stays
   disabled until Name and Key are valid. The API keeps the same schema.
+
+## Web i18n completion (between S7-F6 and S7-F7)
+
+- Every product screen and shared component uses `t()` keys with English
+  and Spanish catalogs split by screen (`apps/web/src/i18n/messages/<locale>/`).
+  No page is duplicated and no screen branches on the language.
+- Domain values go through `humanize()` → `valueLabel()` (`value.<raw>`).
+- `packages/ui` defaults (`DataState`, `PasswordField`) come from
+  `UiStringsProvider`, filled by `I18nProvider`.
+- Shared Zod messages shown by the Web are mapped centrally in
+  `i18n/validation.ts`. The project key rule is a catalog key
+  (`projects.keyRule`); the API keeps `PROJECT_KEY_RULE`.
+- API error messages stay English (debt 69). No API, migration or
+  environment change.

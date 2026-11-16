@@ -16,11 +16,18 @@ import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 const ENTITY_LABELS: Record<CustomFieldEntity, string> = {
-  requirement: 'Requirements',
-  test_case: 'Test cases',
-  defect: 'Defects',
+  get requirement() {
+    return t('customization.requirements');
+  },
+  get test_case() {
+    return t('customization.testCases');
+  },
+  get defect() {
+    return t('customization.defects');
+  },
 };
 
 function errorText(cause: unknown, fallback: string): string {
@@ -36,8 +43,8 @@ export function CustomizationPage(): React.JSX.Element {
   return (
     <>
       <PageHeader
-        title="Customization"
-        description="Fields this project adds to requirements, cases and defects, and the moves a defect can make."
+        title={t('customization.customization')}
+        description={t('customization.fieldsThisProjectAddsTo')}
       />
       <CustomFieldsSection projectId={activeProjectId} />
       <WorkflowSection projectId={activeProjectId} />
@@ -90,7 +97,7 @@ function CustomFieldsSection({ projectId }: { projectId: string }): React.JSX.El
       await refresh();
     },
     onError: (cause) => {
-      setError(errorText(cause, 'Could not create the field.'));
+      setError(errorText(cause, t('customization.couldNotCreateTheField')));
     },
   });
   const toggle = useMutation({
@@ -100,7 +107,7 @@ function CustomFieldsSection({ projectId }: { projectId: string }): React.JSX.El
         : customFieldsApi.restore(field.id),
     onSuccess: refresh,
     onError: (cause) => {
-      setError(errorText(cause, 'Could not change the field.'));
+      setError(errorText(cause, t('customization.couldNotChangeTheField')));
     },
   });
 
@@ -108,7 +115,7 @@ function CustomFieldsSection({ projectId }: { projectId: string }): React.JSX.El
 
   return (
     <section className="card" aria-labelledby="custom-fields">
-      <h2 id="custom-fields">Custom fields</h2>
+      <h2 id="custom-fields">{t('customization.customFields')}</h2>
       {error !== null && (
         <p className="ui-field__error" role="alert">
           {error}
@@ -116,7 +123,7 @@ function CustomFieldsSection({ projectId }: { projectId: string }): React.JSX.El
       )}
       <div className="form-grid">
         <SelectField
-          label="Entity"
+          label={t('customization.entity')}
           options={CUSTOM_FIELD_ENTITIES.map((value) => ({ value, label: ENTITY_LABELS[value] }))}
           value={entityType}
           onChange={(event) => {
@@ -124,22 +131,22 @@ function CustomFieldsSection({ projectId }: { projectId: string }): React.JSX.El
           }}
         />
         <TextField
-          label="Key"
-          hint="Lowercase letters, digits and underscores. Cannot change later."
+          label={t('customization.key')}
+          hint={t('customization.lowercaseLettersDigitsAndUnderscores')}
           value={key}
           onChange={(event) => {
             setKey(event.target.value);
           }}
         />
         <TextField
-          label="Label"
+          label={t('customization.label')}
           value={label}
           onChange={(event) => {
             setLabel(event.target.value);
           }}
         />
         <SelectField
-          label="Type"
+          label={t('customization.type')}
           options={CUSTOM_FIELD_TYPES.map((value) => ({ value, label: humanize(value) }))}
           value={type}
           onChange={(event) => {
@@ -148,8 +155,8 @@ function CustomFieldsSection({ projectId }: { projectId: string }): React.JSX.El
         />
         {choice && (
           <TextField
-            label="Options"
-            hint="Comma separated"
+            label={t('customization.options')}
+            hint={t('customization.commaSeparated')}
             value={options}
             onChange={(event) => {
               setOptions(event.target.value);
@@ -164,7 +171,7 @@ function CustomFieldsSection({ projectId }: { projectId: string }): React.JSX.El
               setRequired(event.target.checked);
             }}
           />
-          Required
+          {t('customization.required')}
         </label>
       </div>
       <Button
@@ -174,25 +181,25 @@ function CustomFieldsSection({ projectId }: { projectId: string }): React.JSX.El
           create.mutate();
         }}
       >
-        Add field
+        {t('customization.addField')}
       </Button>
 
       <DataState
         isPending={fields.isPending}
         error={fields.error}
         isEmpty={fields.data?.length === 0}
-        emptyMessage="No custom fields yet."
+        emptyMessage={t('customization.noCustomFieldsYet')}
       >
         <table className="table">
           <thead>
             <tr>
-              <th scope="col">Entity</th>
-              <th scope="col">Key</th>
-              <th scope="col">Label</th>
-              <th scope="col">Type</th>
-              <th scope="col">Options</th>
-              <th scope="col">State</th>
-              <th scope="col">Actions</th>
+              <th scope="col">{t('customization.entity')}</th>
+              <th scope="col">{t('customization.key')}</th>
+              <th scope="col">{t('customization.label')}</th>
+              <th scope="col">{t('customization.type')}</th>
+              <th scope="col">{t('customization.options')}</th>
+              <th scope="col">{t('customization.state')}</th>
+              <th scope="col">{t('customization.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -210,13 +217,17 @@ function CustomFieldsSection({ projectId }: { projectId: string }): React.JSX.El
                 <td className="muted">
                   {field.options
                     .map((option) =>
-                      option.archived ? `${option.label} (archived)` : option.label,
+                      option.archived
+                        ? t('customization.archived', { label: option.label })
+                        : option.label,
                     )
                     .join(', ')}
                 </td>
                 <td>
                   <Badge tone={field.archivedAt === null ? 'success' : 'neutral'}>
-                    {field.archivedAt === null ? 'Active' : 'Archived'}
+                    {field.archivedAt === null
+                      ? t('customization.active')
+                      : t('customization.archived2')}
                   </Badge>
                 </td>
                 <td>
@@ -227,7 +238,9 @@ function CustomFieldsSection({ projectId }: { projectId: string }): React.JSX.El
                       toggle.mutate(field);
                     }}
                   >
-                    {field.archivedAt === null ? `Archive ${field.key}` : `Restore ${field.key}`}
+                    {field.archivedAt === null
+                      ? t('customization.archive', { key: field.key })
+                      : t('customization.restore', { key: field.key })}
                   </Button>
                 </td>
               </tr>
@@ -273,7 +286,7 @@ function WorkflowSection({ projectId }: { projectId: string }): React.JSX.Elemen
     },
     onError: (cause) => {
       setSaved(false);
-      setError(errorText(cause, 'Could not save the workflow.'));
+      setError(errorText(cause, t('customization.couldNotSaveTheWorkflow')));
     },
   });
 
@@ -287,28 +300,28 @@ function WorkflowSection({ projectId }: { projectId: string }): React.JSX.Elemen
 
   return (
     <section className="card" aria-labelledby="defect-workflow">
-      <h2 id="defect-workflow">Defect workflow</h2>
+      <h2 id="defect-workflow">{t('customization.defectWorkflow')}</h2>
       <p className="muted">
         {workflow.data?.customized === true
-          ? `Customized (version ${workflow.data.version}).`
-          : 'Built-in workflow. Saving creates a project-specific one.'}{' '}
-        Every status must still be able to reach Closed or Rejected.
+          ? t('customization.customizedVersion', { version: workflow.data.version })
+          : t('customization.builtInWorkflowSavingCreates')}{' '}
+        {t('customization.everyStatusMustStillBe')}
       </p>
       {error !== null && (
         <p className="ui-field__error" role="alert">
           {error}
         </p>
       )}
-      {saved && <p role="status">Workflow saved.</p>}
+      {saved && <p role="status">{t('customization.workflowSaved')}</p>}
       <DataState isPending={workflow.isPending} error={workflow.error}>
         <table className="table">
           <thead>
             <tr>
-              <th scope="col">From</th>
-              <th scope="col">To</th>
-              <th scope="col">Who</th>
-              <th scope="col">Fields required</th>
-              <th scope="col">Remove</th>
+              <th scope="col">{t('customization.from')}</th>
+              <th scope="col">{t('customization.to')}</th>
+              <th scope="col">{t('customization.who')}</th>
+              <th scope="col">{t('customization.fieldsRequired')}</th>
+              <th scope="col">{t('customization.remove')}</th>
             </tr>
           </thead>
           <tbody>
@@ -319,7 +332,10 @@ function WorkflowSection({ projectId }: { projectId: string }): React.JSX.Elemen
                 <td>
                   <select
                     className="ui-input"
-                    aria-label={`Who may move ${transition.from} to ${transition.to}`}
+                    aria-label={t('customization.whoMayMoveTo', {
+                      from: transition.from,
+                      to: transition.to,
+                    })}
                     value={transition.permission}
                     onChange={(event) => {
                       change(index, {
@@ -327,15 +343,20 @@ function WorkflowSection({ projectId }: { projectId: string }): React.JSX.Elemen
                       });
                     }}
                   >
-                    <option value="defects.create">Anyone who reports defects</option>
-                    <option value="defects.manage">Defect managers only</option>
+                    <option value="defects.create">
+                      {t('customization.anyoneWhoReportsDefects')}
+                    </option>
+                    <option value="defects.manage">{t('customization.defectManagersOnly')}</option>
                   </select>
                 </td>
                 <td>
                   <select
                     className="ui-input"
                     multiple
-                    aria-label={`Fields required to move ${transition.from} to ${transition.to}`}
+                    aria-label={t('customization.fieldsRequiredToMoveTo', {
+                      from: transition.from,
+                      to: transition.to,
+                    })}
                     value={transition.requiredFieldIds}
                     onChange={(event) => {
                       change(index, {
@@ -361,7 +382,8 @@ function WorkflowSection({ projectId }: { projectId: string }): React.JSX.Elemen
                       setDraft((current) => current.filter((_, position) => position !== index));
                     }}
                   >
-                    Remove {transition.from} to {transition.to}
+                    {t('customization.remove')} {transition.from} {t('customization.to2')}{' '}
+                    {transition.to}
                   </Button>
                 </td>
               </tr>
@@ -371,7 +393,7 @@ function WorkflowSection({ projectId }: { projectId: string }): React.JSX.Elemen
       </DataState>
       <div className="form-grid">
         <SelectField
-          label="New transition from"
+          label={t('customization.newTransitionFrom')}
           options={statusOptions}
           value={from}
           onChange={(event) => {
@@ -379,7 +401,7 @@ function WorkflowSection({ projectId }: { projectId: string }): React.JSX.Elemen
           }}
         />
         <SelectField
-          label="New transition to"
+          label={t('customization.newTransitionTo')}
           options={statusOptions}
           value={to}
           onChange={(event) => {
@@ -399,7 +421,7 @@ function WorkflowSection({ projectId }: { projectId: string }): React.JSX.Elemen
             ]);
           }}
         >
-          Add transition
+          {t('customization.addTransition')}
         </Button>
         <Button
           loading={save.isPending}
@@ -407,7 +429,7 @@ function WorkflowSection({ projectId }: { projectId: string }): React.JSX.Elemen
             save.mutate();
           }}
         >
-          Save workflow
+          {t('customization.saveWorkflow')}
         </Button>
       </div>
     </section>

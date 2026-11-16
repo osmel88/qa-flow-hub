@@ -12,6 +12,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
+import { t } from '../i18n/i18n';
 
 export const CODE_REVIEW_TONE: Record<CodeReviewStatus, BadgeTone> = {
   pending: 'neutral',
@@ -26,8 +27,11 @@ export function ReadinessBadge({ readiness }: { readiness: MergeReadiness }): Re
     <span data-testid="merge-readiness" title={readiness.blockers.map(humanize).join(', ')}>
       <Badge tone={readiness.ready ? 'success' : 'warning'}>
         {readiness.ready
-          ? 'Ready to merge'
-          : `Not ready (${readiness.approvals}/${readiness.requiredApprovals} approvals)`}
+          ? t('codeReviews.readyToMerge')
+          : t('codeReviews.notReadyApprovals', {
+              approvals: readiness.approvals,
+              requiredApprovals: readiness.requiredApprovals,
+            })}
       </Badge>
     </span>
   );
@@ -104,7 +108,7 @@ export function CodeReviewsPage(): React.JSX.Element {
       void navigate(`/code-reviews/${created.id}`);
     },
     onError: (cause: unknown) => {
-      setError(cause instanceof ApiError ? cause.message : 'Could not open the review.');
+      setError(cause instanceof ApiError ? cause.message : t('codeReviews.couldNotOpenTheReview'));
     },
   });
 
@@ -116,23 +120,23 @@ export function CodeReviewsPage(): React.JSX.Element {
     label: member.fullName,
   }));
   const userFilter = [
-    { value: '', label: 'Anyone' },
-    { value: 'me', label: 'Me' },
+    { value: '', label: t('codeReviews.anyone') },
+    { value: 'me', label: t('codeReviews.me') },
     ...memberOptions,
   ];
 
   return (
     <>
       <PageHeader
-        title="Code reviews"
-        description="Local code reviews: reviewers, approvals, change requests and merge readiness."
+        title={t('codeReviews.codeReviews')}
+        description={t('codeReviews.localCodeReviewsReviewersApprovals')}
       />
-      <section className="card filters" aria-label="Code review filters">
+      <section className="card filters" aria-label={t('codeReviews.codeReviewFilters')}>
         <SelectField
-          label="Status filter"
+          label={t('codeReviews.statusFilter')}
           value={status}
           options={[
-            { value: '', label: 'Any status' },
+            { value: '', label: t('codeReviews.anyStatus') },
             ...CODE_REVIEW_STATUSES.map((value) => ({ value, label: humanize(value) })),
           ]}
           onChange={(event) => {
@@ -140,7 +144,7 @@ export function CodeReviewsPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Reviewer filter"
+          label={t('codeReviews.reviewerFilter')}
           value={reviewer}
           options={userFilter}
           onChange={(event) => {
@@ -148,7 +152,7 @@ export function CodeReviewsPage(): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Author filter"
+          label={t('codeReviews.authorFilter')}
           value={author}
           options={userFilter}
           onChange={(event) => {
@@ -159,16 +163,16 @@ export function CodeReviewsPage(): React.JSX.Element {
       {writable && (
         <form
           className="card"
-          aria-label="Open a code review"
+          aria-label={t('codeReviews.openACodeReview')}
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
             create.mutate();
           }}
         >
-          <h2>Open a code review</h2>
+          <h2>{t('codeReviews.openACodeReview')}</h2>
           <TextField
-            label="Review title"
+            label={t('codeReviews.reviewTitle')}
             value={title}
             required
             minLength={3}
@@ -177,18 +181,18 @@ export function CodeReviewsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Reviewer"
+            label={t('codeReviews.reviewer')}
             value={reviewerId}
-            options={[{ value: '', label: 'No reviewer yet' }, ...memberOptions]}
+            options={[{ value: '', label: t('codeReviews.noReviewerYet') }, ...memberOptions]}
             onChange={(event) => {
               setReviewerId(event.target.value);
             }}
           />
           <SelectField
-            label="Pull request"
+            label={t('codeReviews.pullRequest')}
             value={pullRequestId}
             options={[
-              { value: '', label: 'No pull request' },
+              { value: '', label: t('codeReviews.noPullRequest') },
               ...(pullRequests.data?.data ?? []).map((pr) => ({
                 value: pr.id,
                 label: `#${pr.prNumber ?? ''} ${pr.title ?? ''}`.trim(),
@@ -199,10 +203,10 @@ export function CodeReviewsPage(): React.JSX.Element {
             }}
           />
           <SelectField
-            label="Work item"
+            label={t('codeReviews.workItem')}
             value={workItemId}
             options={[
-              { value: '', label: 'No work item' },
+              { value: '', label: t('codeReviews.noWorkItem') },
               ...(workItems.data?.data ?? []).map((item) => ({
                 value: item.id,
                 label: `${item.key} · ${item.title}`,
@@ -213,7 +217,7 @@ export function CodeReviewsPage(): React.JSX.Element {
             }}
           />
           <TextField
-            label="Required approvals (empty: project rule)"
+            label={t('codeReviews.requiredApprovalsEmptyProjectRule')}
             type="number"
             min={1}
             max={20}
@@ -228,7 +232,7 @@ export function CodeReviewsPage(): React.JSX.Element {
             </p>
           )}
           <Button type="submit" disabled={create.isPending}>
-            Open review
+            {t('codeReviews.openReview')}
           </Button>
         </form>
       )}
@@ -236,16 +240,16 @@ export function CodeReviewsPage(): React.JSX.Element {
         isPending={reviews.isPending}
         error={reviews.error}
         isEmpty={(reviews.data?.data.length ?? 0) === 0}
-        emptyMessage="No code reviews match."
+        emptyMessage={t('codeReviews.noCodeReviewsMatch')}
       >
-        <ul className="card" aria-label="Code reviews">
+        <ul className="card" aria-label={t('codeReviews.codeReviews')}>
           {(reviews.data?.data ?? []).map((review) => (
             <li key={review.id} data-testid={`code-review-${review.id}`}>
               <CodeReviewRow review={review} />{' '}
               <span className="muted">
-                by {review.author.fullName} · reviewers:{' '}
+                {t('codeReviews.by')} {review.author.fullName} {t('codeReviews.reviewers')}{' '}
                 {review.reviewers.length === 0
-                  ? 'none'
+                  ? t('codeReviews.none')
                   : review.reviewers
                       .map((entry) => `${entry.user.fullName} (${humanize(entry.decision)})`)
                       .join(', ')}

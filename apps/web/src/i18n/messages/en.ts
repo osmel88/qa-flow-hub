@@ -45,6 +45,7 @@ export const core = {
   'nav.testRuns': 'Test runs',
   'nav.exploratory': 'Exploratory testing',
   'nav.flakyTests': 'Flaky tests',
+  'nav.qaMetrics': 'QA metrics',
   'nav.defects': 'Defects',
   'nav.traceability': 'Traceability',
   'nav.customization': 'Customization',

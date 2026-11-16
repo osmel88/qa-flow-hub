@@ -574,7 +574,7 @@ export class AnalyticsRepository extends TenantAwareRepository {
 }
 
 /** `date_trunc` with the bucket inlined: it comes from a closed enum, never from input. */
-function truncate(bucket: AnalyticsBucket, column: Prisma.Sql): Prisma.Sql {
+export function truncate(bucket: AnalyticsBucket, column: Prisma.Sql): Prisma.Sql {
   return Prisma.sql`date_trunc(${Prisma.raw(`'${BUCKET_SQL[bucket]}'`)}, ${column})`;
 }
 

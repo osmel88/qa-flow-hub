@@ -11,5 +11,6 @@ import { TestPlansService } from './test-plans.service';
   imports: [ProjectsModule],
   controllers: [TestPlansController, TestCyclesController],
   providers: [TestPlansService, TestPlansRepository, TestCyclesService, TestCyclesRepository],
+  exports: [TestPlansService, TestCyclesService],
 })
 export class TestPlansModule {}

@@ -262,3 +262,68 @@ lastExecutedAt|key`, `order`), detail with rules, history (result, run,
   (`projects.keyRule`); the API keeps `PROJECT_KEY_RULE`.
 - API error messages stay English (debt 69). No API, migration or
   environment change.
+
+## S7-F7 — QA Metrics Dashboard
+
+A per-project page that consolidates the QA data that already exists. Nothing
+is stored: every number is computed on read from the same tables (and, where
+one exists, the same function) that feed the plan, cycle, run, defect,
+exploratory and flaky screens. Route: `GET /projects/:projectId/qa-metrics`,
+permission `analytics.read` (the dashboards permission), `@ProjectScoped`, so a
+hidden project answers 404 and a project-level revoke 403.
+
+### Filters
+
+- **Window** `from`/`to`/`bucket`: same rules as the analytics dashboards
+  (default last 30 days, at most 366 days, bucket sized to the window).
+- **Test plan / Test cycle / Release / Environment** (ids of the project; an id
+  of another project or tenant answers 404). They narrow the runs in scope:
+  - plan: runs attached to the plan (`test_plan_runs`) or to one of its cycles;
+  - cycle: runs attached to the cycle (`test_cycle_runs`);
+  - release: runs with that `releaseId`;
+  - environment: runs whose free-text `environment` equals the environment
+    name (case-insensitive) or that belong to a cycle in that environment.
+    The same filters narrow plans, cycles and exploratory sessions by their own
+    `releaseId`, `environmentId`, `testPlanId` and `testCycleId`.
+
+### KPIs and how each is computed
+
+- **Runs in scope:** non-deleted, non-aborted runs created before `to` and not
+  completed before `from` (the analytics definition), after the filters.
+- **Execution** (`executionKpis`, shared with the analytics dashboard): the
+  latest status of every run case in scope. `planned` = run cases;
+  `executed` = not `untested`; `pending` = `untested`; verdicts = passed +
+  failed + blocked; pass/fail/blocked rate = each / verdicts; progress =
+  executed / planned.
+- **Minimum sample:** rates are `null` (shown as "not enough data") while the
+  scope has fewer than 5 verdicts (`QA_METRICS_MIN_VERDICTS`); counts are
+  always shown.
+- **Trend:** per bucket, every result recorded (`test_results.executedAt`) on
+  runs in scope: passed, failed, blocked and pass rate (null for a bucket with
+  no verdicts).
+- **Plan and cycle progress:** the existing plan and cycle progress
+  (`computePlanProgress` over the frozen or live scope) for the plans and
+  cycles alive in the window, at most 20 of each, newest first.
+- **Open defects by severity:** non-deleted defects in an open status
+  (`open`, `triaged`, `in_progress`, `reopened`). Without a plan, cycle,
+  release or environment filter: every open defect of the project; with one:
+  only defects raised from a run in scope.
+- **Defect density:** defects raised from runs in scope during the window /
+  executed run cases, shown only with at least 20 executed run cases
+  (`QA_METRICS_MIN_EXECUTED_FOR_DENSITY`); otherwise `null`.
+- **Flaky tests:** counts by effective status (detected status plus the
+  current manual mark) with the S7-F6 rules over each case's newest 20
+  results. Flaky detection is per test case over its own window, so it does not
+  follow the time window or the run filters.
+- **Flaky evolution:** at the end of each bucket, the number of cases whose
+  detected status (S7-F6 rules over the newest 20 results before that instant,
+  without manual marks) is `flaky`, `suspect` or `failing`.
+- **Exploratory:** sessions alive in the window (created before `to`, not
+  ended before `from`) after the filters: count by status, total active
+  duration of ended sessions, findings by kind and severity, and defects
+  created from findings.
+
+### Isolation
+
+Every statement filters by `organizationId` and the authorized `projectId` and
+runs inside a tenant transaction, so RLS applies under `qaflow_app`.

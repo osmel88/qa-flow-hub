@@ -30,6 +30,7 @@ const NAV: ReadonlyArray<{ to: string; label: MessageKey }> = [
   { to: '/test-runs', label: 'nav.testRuns' },
   { to: '/exploratory-sessions', label: 'nav.exploratory' },
   { to: '/flaky-tests', label: 'nav.flakyTests' },
+  { to: '/qa-metrics', label: 'nav.qaMetrics' },
   { to: '/defects', label: 'nav.defects' },
   { to: '/traceability', label: 'nav.traceability' },
   { to: '/customization', label: 'nav.customization' },

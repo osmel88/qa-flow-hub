@@ -11,6 +11,7 @@ import {
   FlakyHistoryEntry,
   FlakyMarkRef,
   FlakyMarkState,
+  FlakyStatus,
   FlakyTestDetailView,
   FlakyTestView,
   ListFlakyTestsQuery,
@@ -79,6 +80,30 @@ export class FlakyService {
       data: rows.slice(start, start + query.pageSize),
       meta: buildPaginationMeta(query, rows.length),
     };
+  }
+
+  /** Cases of a project per effective status, with the same rules as {@link list}. */
+  async statusCounts(projectId: string): Promise<Record<FlakyStatus, number>> {
+    const samples = await this.flaky.samples(projectId, 'all');
+    const byCase = new Map<string, SampleRow[]>();
+    for (const sample of samples) {
+      byCase.set(sample.testCaseId, [...(byCase.get(sample.testCaseId) ?? []), sample]);
+    }
+    const ids = [...byCase.keys()];
+    const [cases, marks] = await Promise.all([
+      this.flaky.cases(projectId, ids, {}),
+      this.flaky.currentMarks(projectId, ids),
+    ]);
+    const counts = Object.fromEntries(FLAKY_STATUSES.map((status) => [status, 0])) as Record<
+      FlakyStatus,
+      number
+    >;
+    for (const testCase of cases) {
+      counts[
+        toView(testCase, byCase.get(testCase.id) ?? [], marks.get(testCase.id) ?? null).status
+      ] += 1;
+    }
+    return counts;
   }
 
   async get(testCaseId: string, query: FlakyDetailQuery): Promise<FlakyTestDetailView> {

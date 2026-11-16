@@ -8,5 +8,6 @@ import { FlakyService } from './flaky.service';
   imports: [ProjectsModule],
   controllers: [FlakyController],
   providers: [FlakyService, FlakyRepository],
+  exports: [FlakyService],
 })
 export class FlakyModule {}

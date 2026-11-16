@@ -40,6 +40,7 @@ import { exploratorySessions } from './exploratorySessions';
 import { externalTraceability } from './externalTraceability';
 import { flakyTestDetail } from './flakyTestDetail';
 import { flakyTests } from './flakyTests';
+import { qaMetrics } from './qaMetrics';
 import { hierarchy } from './hierarchy';
 import { importScreen } from './importScreen';
 import { integrations } from './integrations';
@@ -118,6 +119,7 @@ export const screens: Record<string, string | undefined> = {
   ...externalTraceability,
   ...flakyTestDetail,
   ...flakyTests,
+  ...qaMetrics,
   ...hierarchy,
   ...importScreen,
   ...integrations,

@@ -60,6 +60,7 @@ import { ExploratorySessionsPage } from '../pages/ExploratorySessionsPage';
 import { ExploratorySessionDetailPage } from '../pages/ExploratorySessionDetailPage';
 import { FlakyTestsPage } from '../pages/FlakyTestsPage';
 import { FlakyTestDetailPage } from '../pages/FlakyTestDetailPage';
+import { QaMetricsPage } from '../pages/QaMetricsPage';
 import { ExternalTraceabilityPage } from '../pages/ExternalTraceabilityPage';
 import { TraceabilityPage } from '../pages/TraceabilityPage';
 import { createQueryClient } from './query-client';
@@ -117,6 +118,7 @@ const router = createBrowserRouter([
           { path: '/exploratory-sessions', element: <ExploratorySessionsPage /> },
           { path: '/flaky-tests', element: <FlakyTestsPage /> },
           { path: '/flaky-tests/:testCaseId', element: <FlakyTestDetailPage /> },
+          { path: '/qa-metrics', element: <QaMetricsPage /> },
           {
             path: '/exploratory-sessions/:sessionId',
             element: <ExploratorySessionDetailPage />,

@@ -1458,3 +1458,23 @@ defaults use catalog keys in English and Spanish. What remains:
   Spanish-speaking teams.
 - **Bundle size:** both catalogs ship in the main chunk (~2,000 keys each);
   loading the non-default catalog lazily would trim the first load.
+
+## 70. QA metrics dashboard: what the first version leaves
+
+The S7-F7 dashboard computes everything on read. Known limits:
+
+- **Cost.** Plan and cycle progress reuse the per-plan and per-cycle services
+  (at most 20 of each, one transaction per row), and flaky counts and flaky
+  evolution classify every executed case in memory. Fine for hundreds of cases
+  and runs; tens of thousands need a materialized projection.
+- **Environment filter on runs.** `test_runs.environment` is free text, so a
+  run matches an environment by a case-insensitive name comparison (or through
+  a cycle in that environment). A run whose text differs from the environment
+  name is missed.
+- **Flaky scope.** Flaky counts follow the S7-F6 window per case and ignore the
+  period and the run filters; flaky evolution uses the detected status only
+  (manual marks are not replayed in time).
+- **Fixed thresholds.** The minimum of 5 verdicts for rates and 20 executed
+  cases for defect density are global constants, not configurable per project.
+- **Charts.** The trend and the flaky evolution are tables plus the existing
+  dependency-free bar list; there is no line chart for them yet.

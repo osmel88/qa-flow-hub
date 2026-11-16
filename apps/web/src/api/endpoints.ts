@@ -1,4 +1,6 @@
 import type {
+  QaMetricsQuery,
+  QaMetricsView,
   ForgotPasswordInput,
   ForgotPasswordView,
   ResetPasswordInput,
@@ -1076,6 +1078,11 @@ export const exploratoryApi = {
       method: 'POST',
       body: { workItemId },
     }),
+};
+
+export const qaMetricsApi = {
+  get: (projectId: string, params: Partial<Record<keyof QaMetricsQuery, string>>) =>
+    apiFetch<QaMetricsView>(`/projects/${projectId}/qa-metrics${query(params)}`),
 };
 
 export const flakyApi = {

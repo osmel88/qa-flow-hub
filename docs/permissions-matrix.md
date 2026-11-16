@@ -351,3 +351,14 @@ archived projects are read-only; every change is an audited `role_change`.
 | --------------------------------------------------------------- | ------------------- |
 | List cases by stability, view metrics, history and mark history | `testruns.read`     |
 | Confirm, dismiss or clear a flaky mark                          | `test_design.write` |
+
+## QA metrics (S7-F7)
+
+| Action                                                            | Permission       |
+| ----------------------------------------------------------------- | ---------------- |
+| View the QA metrics dashboard of a project (`GET .../qa-metrics`) | `analytics.read` |
+
+The dashboard reuses the plan and cycle progress services, which check the
+route permission of the current request (`analytics.read`), so a member with
+`analytics.read` but without `testruns.read` still sees the aggregates (never
+the individual cases or results).

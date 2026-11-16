@@ -42,6 +42,7 @@ const core: Record<keyof typeof enCore, string> = {
   'nav.testRuns': 'Ejecuciones de prueba',
   'nav.exploratory': 'Testing exploratorio',
   'nav.flakyTests': 'Tests inestables',
+  'nav.qaMetrics': 'Métricas de QA',
   'nav.defects': 'Defectos',
   'nav.traceability': 'Trazabilidad',
   'nav.customization': 'Personalización',

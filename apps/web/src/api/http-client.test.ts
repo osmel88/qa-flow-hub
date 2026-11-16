@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, apiFetch, refreshSession } from './http-client';
+import { ApiError, apiFetch, refreshSession, setSessionLostHandler } from './http-client';
 import {
   clearSession,
   setAccessToken,
@@ -86,6 +86,27 @@ describe('apiFetch', () => {
     // Rotation treats a replayed refresh token as theft and kills the family:
     // three parallel refreshes would log the user out for doing nothing wrong.
     expect(refreshCalls).toHaveLength(1);
+  });
+
+  it('keeps the session when a 401 only means a wrong current password', async () => {
+    storeSession({ accessToken: 'access-1', refreshToken: null, expiresIn: 900 });
+    const sessionLost = vi.fn();
+    setSessionLostHandler(sessionLost);
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(
+        { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } },
+        401,
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      apiFetch('/auth/change-password', { method: 'POST', body: {}, withoutOrganization: true }),
+    ).rejects.toMatchObject({ status: 401, code: 'INVALID_CREDENTIALS' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(sessionLost).not.toHaveBeenCalled();
+    setSessionLostHandler(() => {});
   });
 
   it('raises a typed error carrying the code the API sent', async () => {

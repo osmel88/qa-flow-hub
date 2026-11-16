@@ -35,6 +35,11 @@ export function lookupMessage(catalog: Catalog, key: MessageKey): string {
   return catalog[key] ?? en[key];
 }
 
+/** The locale `t` currently translates into. */
+export function currentLocale(): Locale {
+  return activeLocale;
+}
+
 /** BCP 47 tag for `Intl` formatting in the active locale. */
 export function intlLocale(): string {
   return activeLocale === 'es' ? 'es-ES' : 'en-US';

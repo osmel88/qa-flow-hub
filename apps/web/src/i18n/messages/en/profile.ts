@@ -25,5 +25,7 @@ export const profile = {
   'profile.memberships': 'Memberships',
   'profile.changePassword': 'Change password',
   'profile.currentPassword': 'Current password',
+  'profile.confirmNewPassword': 'Confirm new password',
+  'profile.currentPasswordIsIncorrect': 'The current password is not correct.',
   'profile.newPassword': 'New password',
 } as const;

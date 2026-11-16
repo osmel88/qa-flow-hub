@@ -3,7 +3,7 @@ import type { qaMetrics as source } from '../en/qaMetrics';
 export const qaMetrics: Partial<Record<keyof typeof source, string>> = {
   'qaMetrics.title': 'Métricas de QA',
   'qaMetrics.description':
-    'Ejecución, progreso de planes y ciclos, defectos, tests inestables y sesiones exploratorias de este proyecto, calculados en cada visita.',
+    'Ejecución, progreso de planes y ciclos, defectos, pruebas inestables y sesiones exploratorias de este proyecto, calculados en cada visita.',
   'qaMetrics.filters': 'Filtros',
   'qaMetrics.from': 'Desde',
   'qaMetrics.to': 'Hasta',
@@ -46,15 +46,15 @@ export const qaMetrics: Partial<Record<keyof typeof source, string>> = {
   'qaMetrics.defectDensity': 'Densidad de defectos',
   'qaMetrics.defectDensityDetail': 'Defectos por caso ejecutado',
   'qaMetrics.densityNeedsData': 'Necesita al menos {min} casos ejecutados.',
-  'qaMetrics.flakyTests': 'Tests inestables',
-  'qaMetrics.flakyEvolution': 'Evolución de los tests inestables',
+  'qaMetrics.flakyTests': 'Pruebas inestables',
+  'qaMetrics.flakyEvolution': 'Evolución de las pruebas inestables',
   'qaMetrics.flaky': 'Inestables',
   'qaMetrics.suspect': 'Sospechosos',
   'qaMetrics.failing': 'Fallando',
   'qaMetrics.noFlakyData': 'Ningún caso tiene aún resultados suficientes para clasificarlo.',
   'qaMetrics.flakyScopeNote':
     'La detección de inestabilidad usa los últimos 20 resultados de cada caso, así que ignora el periodo y los filtros de ejecuciones.',
-  'qaMetrics.exploratory': 'Testing exploratorio',
+  'qaMetrics.exploratory': 'Pruebas exploratorias',
   'qaMetrics.sessions': 'Sesiones',
   'qaMetrics.findings': 'Hallazgos',
   'qaMetrics.findingsBySeverity': 'Hallazgos por severidad',

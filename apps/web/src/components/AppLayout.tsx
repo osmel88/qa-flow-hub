@@ -64,43 +64,48 @@ export function AppLayout(): React.JSX.Element {
       <header className="shell__header">
         <div className="shell__brand">qa-flow-hub</div>
 
-        <label className="shell__selector">
-          <span className="shell__selector-label">{t('common.organization')}</span>
-          <select
-            className="ui-input"
-            value={activeOrganizationId ?? ''}
-            onChange={(event) => {
-              selectOrganization(event.target.value);
-            }}
-          >
-            {organizations.map((organization) => (
-              <option key={organization.id} value={organization.id}>
-                {organization.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="shell__controls">
+          <label className="shell__selector">
+            <span className="shell__selector-label">{t('common.organization')}</span>
+            <select
+              className="ui-input"
+              value={activeOrganizationId ?? ''}
+              onChange={(event) => {
+                selectOrganization(event.target.value);
+              }}
+            >
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.name}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label className="shell__selector">
-          <span className="shell__selector-label">{t('common.project')}</span>
-          <select
-            className="ui-input"
-            value={activeProjectId ?? ''}
-            disabled={projects.length === 0}
-            onChange={(event) => {
-              selectProject(event.target.value);
-            }}
-          >
-            {projects.length === 0 && <option value="">{t('common.noProjectsYet')}</option>}
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.key} — {project.name}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="shell__selector">
+            <span className="shell__selector-label">{t('common.project')}</span>
+            <select
+              className="ui-input"
+              value={activeProjectId ?? ''}
+              disabled={projects.length === 0}
+              onChange={(event) => {
+                selectProject(event.target.value);
+              }}
+            >
+              {projects.length === 0 && <option value="">{t('common.noProjectsYet')}</option>}
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.key} — {project.name}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <LanguageSelector className="shell__selector" labelClassName="shell__selector-label" />
+          <LanguageSelector
+            className="shell__selector shell__selector--language"
+            labelClassName="shell__selector-label"
+          />
+        </div>
 
         <div className="shell__user">
           <span className="muted">{user?.email}</span>

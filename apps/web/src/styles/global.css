@@ -102,7 +102,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-  gap: var(--space-4);
+  gap: var(--space-3) var(--space-6);
   padding: var(--space-3) var(--space-4);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
@@ -114,24 +114,62 @@ body {
   align-self: center;
 }
 
+/* Organization, project and language: they grow with longer translations and wrap before they overlap. */
+.shell__controls {
+  display: flex;
+  flex: 1 1 40rem;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3) var(--space-4);
+  min-width: 0;
+}
+
 .shell__selector {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 12rem;
+  flex: 1 1 14rem;
+  min-width: 14rem;
+  max-width: 24rem;
+}
+
+.shell__selector--language {
+  flex: 0 1 10rem;
+  min-width: 10rem;
+}
+
+.shell__selector .ui-input {
+  width: 100%;
 }
 
 .shell__selector-label {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .shell__user {
   margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
+}
+
+.shell__user .muted {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 40rem) {
+  .shell__selector,
+  .shell__selector--language {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
+  }
 }
 
 .shell__body {

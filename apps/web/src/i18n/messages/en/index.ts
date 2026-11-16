@@ -75,6 +75,7 @@ import { traceability } from './traceability';
 import { workItemDetail } from './workItemDetail';
 import { workItems } from './workItems';
 import { c_billingFormat } from './c_billingFormat';
+import { apiErrors } from './apiErrors';
 import { c_httpClient } from './c_httpClient';
 
 export const screens = {
@@ -154,5 +155,6 @@ export const screens = {
   ...workItemDetail,
   ...workItems,
   ...c_billingFormat,
+  ...apiErrors,
   ...c_httpClient,
 } as const;

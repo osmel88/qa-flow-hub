@@ -24,7 +24,7 @@ export const releaseDetail: Partial<Record<keyof typeof source, string>> = {
   'releaseDetail.casesAndLatestResultIn': 'Casos y último resultado en esta release',
   'releaseDetail.noVerifyingCase': 'Sin caso que lo verifique',
   'releaseDetail.in': 'en',
-  'releaseDetail.builds': 'Builds',
-  'releaseDetail.noBuildInThisRelease': 'Todavía no hay builds en esta release.',
-  'releaseDetail.releaseBuilds': 'Builds de la release',
+  'releaseDetail.builds': 'Compilaciones',
+  'releaseDetail.noBuildInThisRelease': 'Todavía no hay compilaciones en esta release.',
+  'releaseDetail.releaseBuilds': 'Compilaciones de la release',
 };

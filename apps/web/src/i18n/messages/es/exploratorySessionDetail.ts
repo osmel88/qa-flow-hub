@@ -1,7 +1,7 @@
 import type { exploratorySessionDetail as source } from '../en/exploratorySessionDetail';
 
 export const exploratorySessionDetail: Partial<Record<keyof typeof source, string>> = {
-  'exploratorySessionDetail.startSession': 'Iniciar sesión de testing',
+  'exploratorySessionDetail.startSession': 'Iniciar sesión de pruebas',
   'exploratorySessionDetail.pauseSession': 'Pausar sesión',
   'exploratorySessionDetail.resumeSession': 'Reanudar sesión',
   'exploratorySessionDetail.completeSession': 'Completar sesión',
@@ -9,7 +9,7 @@ export const exploratorySessionDetail: Partial<Record<keyof typeof source, strin
   'exploratorySessionDetail.archiveSession': 'Archivar sesión',
   'exploratorySessionDetail.couldNotUpdateTheSession': 'No se pudo actualizar la sesión.',
   'exploratorySessionDetail.session': 'Sesión {title}',
-  'exploratorySessionDetail.exploratoryTesting': '← Testing exploratorio',
+  'exploratorySessionDetail.exploratoryTesting': '← Pruebas exploratorias',
   'exploratorySessionDetail.summary': 'Resumen',
   'exploratorySessionDetail.owner': 'Responsable',
   'exploratorySessionDetail.nobody': 'nadie',
@@ -52,10 +52,10 @@ export const exploratorySessionDetail: Partial<Record<keyof typeof source, strin
   'exploratorySessionDetail.existingDefectFor': 'Defecto existente para {title}',
   'exploratorySessionDetail.chooseADefect': 'Elige un defecto',
   'exploratorySessionDetail.linkDefectTo': 'Vincular defecto a',
-  'exploratorySessionDetail.relatedWorkItems': 'Work items relacionados',
-  'exploratorySessionDetail.workItem': 'Work item',
-  'exploratorySessionDetail.chooseAWorkItem': 'Elige un work item',
-  'exploratorySessionDetail.linkWorkItem': 'Vincular work item',
+  'exploratorySessionDetail.relatedWorkItems': 'Elementos de trabajo relacionados',
+  'exploratorySessionDetail.workItem': 'Elemento de trabajo',
+  'exploratorySessionDetail.chooseAWorkItem': 'Elige un elemento de trabajo',
+  'exploratorySessionDetail.linkWorkItem': 'Vincular elemento de trabajo',
   'exploratorySessionDetail.timeline': 'Cronología',
   'exploratorySessionDetail.timelineNote': 'Nota de la cronología',
   'exploratorySessionDetail.addNote': 'Añadir nota',

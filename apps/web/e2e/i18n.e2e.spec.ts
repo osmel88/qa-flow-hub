@@ -58,12 +58,51 @@ test('product screens switch between English and Spanish', async ({ page }) => {
       'Casos de prueba',
       'Planes de prueba',
       'Defectos',
+      'Compilaciones',
+      'Puertas de calidad',
+      'Elementos de trabajo',
+      'Pruebas exploratorias',
+      'Pruebas inestables',
+      'Claves de API',
+      'Releases',
     ]) {
       await expect(nav.getByRole('link', { name: label, exact: true })).toBeVisible();
     }
-    for (const label of ['Dashboard', 'Requirements', 'Test cases', 'Test plans', 'Defects']) {
+    for (const label of [
+      'Dashboard',
+      'Requirements',
+      'Test cases',
+      'Test plans',
+      'Defects',
+      'Builds',
+      'Quality gates',
+      'Work items',
+      'API keys',
+    ]) {
       await expect(nav.getByRole('link', { name: label, exact: true })).toHaveCount(0);
     }
+  });
+
+  await test.step('the header gives the translated selectors room and keeps the user on the right', async () => {
+    const header = page.locator('.shell__header');
+    const boxes = [];
+    for (const name of ['Organización', 'Proyecto', 'Idioma']) {
+      const box = await header.getByText(name, { exact: true }).locator('..').boundingBox();
+      expect(box).not.toBeNull();
+      boxes.push(box!);
+    }
+    for (let i = 1; i < boxes.length; i += 1) {
+      expect(boxes[i]!.x).toBeGreaterThanOrEqual(boxes[i - 1]!.x + boxes[i - 1]!.width + 12);
+    }
+    expect(boxes[0]!.width).toBeGreaterThanOrEqual(224);
+    const signOut = await header.getByRole('button', { name: 'Cerrar sesión' }).boundingBox();
+    const headerBox = await header.boundingBox();
+    expect(signOut!.x + signOut!.width).toBeGreaterThan(headerBox!.x + headerBox!.width - 40);
+
+    await page.setViewportSize({ width: 390, height: 800 });
+    const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scroll).toBeLessThanOrEqual(390);
+    await page.setViewportSize({ width: 1280, height: 720 });
   });
 
   await test.step('a Test Management screen is translated and survives a reload', async () => {

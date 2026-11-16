@@ -3,7 +3,7 @@ import type { exploratorySessions as source } from '../en/exploratorySessions';
 export const exploratorySessions: Partial<Record<keyof typeof source, string>> = {
   'exploratorySessions.notStarted': 'sin iniciar',
   'exploratorySessions.couldNotCreateTheSession': 'No se pudo crear la sesión.',
-  'exploratorySessions.exploratoryTesting': 'Testing exploratorio',
+  'exploratorySessions.exploratoryTesting': 'Pruebas exploratorias',
   'exploratorySessions.timeBoxedSessionsWithA':
     'Sesiones con tiempo limitado y un charter. Las sesiones completadas se conservan como histórico inmutable.',
   'exploratorySessions.newExploratorySession': 'Nueva sesión exploratoria',

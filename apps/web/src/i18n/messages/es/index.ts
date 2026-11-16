@@ -15,6 +15,7 @@ import { c_customFieldInputs } from './c_customFieldInputs';
 import { c_developmentStatusBadge } from './c_developmentStatusBadge';
 import { c_exportButton } from './c_exportButton';
 import { c_gitHubRunPanel } from './c_gitHubRunPanel';
+import { apiErrors } from './apiErrors';
 import { c_httpClient } from './c_httpClient';
 import { c_jiraSyncCell } from './c_jiraSyncCell';
 import { c_memberPermissionsPanel } from './c_memberPermissionsPanel';
@@ -94,6 +95,7 @@ export const screens: Record<string, string | undefined> = {
   ...c_developmentStatusBadge,
   ...c_exportButton,
   ...c_gitHubRunPanel,
+  ...apiErrors,
   ...c_httpClient,
   ...c_jiraSyncCell,
   ...c_memberPermissionsPanel,

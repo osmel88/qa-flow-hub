@@ -116,6 +116,8 @@ export const core = {
   'validation.expectsNumber': 'expects a number',
   'validation.expectsBoolean': 'expects true or false',
   'validation.expectsDate': 'expects a YYYY-MM-DD date',
+  'validation.passwordSameAsCurrent': 'The new password must be different from the current one',
+  'validation.passwordsDoNotMatch': 'The passwords do not match',
   'validation.required': 'Required',
   'validation.invalidEmail': 'Invalid email',
   'validation.tooShort': 'Must contain at least {min} character(s)',

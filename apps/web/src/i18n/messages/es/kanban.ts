@@ -5,7 +5,7 @@ export const kanban: Partial<Record<keyof typeof source, string>> = {
   'kanban.couldNotSaveTheWip': 'No se pudieron guardar los límites WIP.',
   'kanban.kanban': 'Kanban',
   'kanban.theFlowOfEveryWork':
-    'El flujo de todos los work items del proyecto, sin sprint. Arrastra las tarjetas entre columnas o usa los controles de cada tarjeta.',
+    'El flujo de todos los elementos de trabajo del proyecto, sin sprint. Arrastra las tarjetas entre columnas o usa los controles de cada tarjeta.',
   'kanban.kanbanFilters': 'Filtros del Kanban',
   'kanban.assignee': 'Responsable',
   'kanban.anyone': 'Cualquiera',

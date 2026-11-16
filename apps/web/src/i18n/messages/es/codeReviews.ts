@@ -20,8 +20,8 @@ export const codeReviews: Partial<Record<keyof typeof source, string>> = {
   'codeReviews.noReviewerYet': 'Todavía sin revisor',
   'codeReviews.pullRequest': 'Pull request',
   'codeReviews.noPullRequest': 'Sin pull request',
-  'codeReviews.workItem': 'Work item',
-  'codeReviews.noWorkItem': 'Sin work item',
+  'codeReviews.workItem': 'Elemento de trabajo',
+  'codeReviews.noWorkItem': 'Sin elemento de trabajo',
   'codeReviews.requiredApprovalsEmptyProjectRule':
     'Aprobaciones necesarias (vacío: regla del proyecto)',
   'codeReviews.openReview': 'Abrir revisión',

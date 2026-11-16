@@ -14,7 +14,7 @@ export const traceability: Partial<Record<keyof typeof source, string>> = {
   'traceability.nothingToTraceYetAdd':
     'Todavía no hay nada que trazar. Añade requisitos y vincula casos a ellos.',
   'traceability.requirement': 'Requisito',
-  'traceability.workItems': 'Work items',
+  'traceability.workItems': 'Elementos de trabajo',
   'traceability.cases': 'Casos',
   'traceability.covered2': 'Cubierto',
   'traceability.verified2': 'Verificado',

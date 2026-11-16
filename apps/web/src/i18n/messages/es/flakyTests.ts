@@ -1,7 +1,7 @@
 import type { flakyTests as source } from '../en/flakyTests';
 
 export const flakyTests: Partial<Record<keyof typeof source, string>> = {
-  'flakyTests.flakyTests': 'Tests inestables',
+  'flakyTests.flakyTests': 'Pruebas inestables',
   'flakyTests.stabilityOfEachCaseOver':
     'Estabilidad de cada caso en sus últimos 20 resultados passed/failed, manuales y automatizados. Se recalcula en cada visita.',
   'flakyTests.testCases': 'Casos de prueba',

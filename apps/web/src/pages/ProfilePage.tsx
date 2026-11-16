@@ -5,10 +5,11 @@ import type {
   UpdateNotificationPreferencesInput,
 } from '@qa-flow-hub/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, DataState, TextField } from '@qa-flow-hub/ui';
+import { Button, DataState, PasswordField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { Link } from 'react-router-dom';
 import { authApi, notificationsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
@@ -17,6 +18,7 @@ import { MfaSettings } from '../components/MfaSettings';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { t } from '../i18n/i18n';
+import { validationMessage } from '../i18n/validation';
 
 type PreferenceKey = keyof UpdateNotificationPreferencesInput;
 
@@ -136,6 +138,29 @@ function NotificationPreferences(): React.JSX.Element {
   );
 }
 
+const PASSWORDS_DO_NOT_MATCH = 'The passwords do not match';
+
+/**
+ * The API schema plus a confirmation that never leaves the browser. The rules
+ * of the new password stay in the shared `changePasswordSchema`.
+ */
+function changePasswordFormSchema() {
+  return z
+    .object({ confirmPassword: z.string().min(1, 'Required') })
+    .and(changePasswordSchema)
+    .superRefine((value, context) => {
+      if (value.confirmPassword !== value.newPassword) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['confirmPassword'],
+          message: PASSWORDS_DO_NOT_MATCH,
+        });
+      }
+    });
+}
+
+type ChangePasswordForm = ChangePasswordInput & { confirmPassword: string };
+
 export function ProfilePage(): React.JSX.Element {
   const { user, organizations, logout } = useAuth();
   const [message, setMessage] = useState<string | null>(null);
@@ -145,23 +170,37 @@ export function ProfilePage(): React.JSX.Element {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
-  } = useForm<ChangePasswordInput>({ resolver: zodResolver(changePasswordSchema) });
+    formState: { errors, isSubmitting, isValid },
+  } = useForm<ChangePasswordForm>({
+    resolver: zodResolver(changePasswordFormSchema()),
+    mode: 'onChange',
+    defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
+  });
 
-  const onSubmit = handleSubmit(async (values) => {
+  const onSubmit = handleSubmit(async ({ currentPassword, newPassword }) => {
     setError(null);
     setMessage(null);
     try {
-      await authApi.changePassword(values);
+      // The confirmation is a Web-only check; the API contract has no such field.
+      await authApi.changePassword({ currentPassword, newPassword });
       reset();
       // Changing the password revokes every session, including this one, so
       // the honest thing is to send the user back to the login screen.
       setMessage(t('profile.passwordChangedEverySessionWas'));
       window.setTimeout(() => void logout(), 1500);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t('profile.couldNotChangeThePassword'));
+      setError(
+        cause instanceof ApiError && cause.code === 'INVALID_CREDENTIALS'
+          ? t('profile.currentPasswordIsIncorrect')
+          : cause instanceof ApiError
+            ? cause.message
+            : t('profile.couldNotChangeThePassword'),
+      );
     }
   });
+
+  const fieldError = (message: string | undefined) =>
+    message === undefined ? undefined : validationMessage(message);
 
   return (
     <>
@@ -192,8 +231,8 @@ export function ProfilePage(): React.JSX.Element {
 
       <NotificationPreferences />
 
-      <section className="card">
-        <h2>{t('profile.changePassword')}</h2>
+      <section className="card" aria-labelledby="change-password-title">
+        <h2 id="change-password-title">{t('profile.changePassword')}</h2>
         <form onSubmit={(event) => void onSubmit(event)} noValidate>
           {error !== null && (
             <p className="ui-field__error" role="alert">
@@ -205,21 +244,25 @@ export function ProfilePage(): React.JSX.Element {
               {message}
             </p>
           )}
-          <TextField
+          <PasswordField
             label={t('profile.currentPassword')}
-            type="password"
             autoComplete="current-password"
-            error={errors.currentPassword?.message}
+            error={fieldError(errors.currentPassword?.message)}
             {...register('currentPassword')}
           />
-          <TextField
+          <PasswordField
             label={t('profile.newPassword')}
-            type="password"
             autoComplete="new-password"
-            error={errors.newPassword?.message}
-            {...register('newPassword')}
+            error={fieldError(errors.newPassword?.message)}
+            {...register('newPassword', { deps: ['confirmPassword'] })}
           />
-          <Button type="submit" loading={isSubmitting}>
+          <PasswordField
+            label={t('profile.confirmNewPassword')}
+            autoComplete="new-password"
+            error={fieldError(errors.confirmPassword?.message)}
+            {...register('confirmPassword')}
+          />
+          <Button type="submit" loading={isSubmitting} disabled={!isValid || isSubmitting}>
             {t('profile.changePassword')}
           </Button>
         </form>

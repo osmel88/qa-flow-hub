@@ -5,17 +5,31 @@ import {
   getActiveOrganizationId,
   storeSession,
 } from './session-store';
+import { apiErrorMessage } from '../i18n/api-errors';
 import { t } from '../i18n/i18n';
 
+/**
+ * `message` is what screens show: it is translated from `code` in the active
+ * language each time it is read. `serverMessage`, `status`, `code` and
+ * `details` keep the API's answer untouched for debugging.
+ */
 export class ApiError extends Error {
+  readonly serverMessage: string;
+
   constructor(
     readonly status: number,
     readonly code: string,
-    message: string,
+    serverMessage: string,
     readonly details?: Array<{ path: string; message: string }>,
   ) {
-    super(message);
+    super(serverMessage);
     this.name = 'ApiError';
+    this.serverMessage = serverMessage;
+    Object.defineProperty(this, 'message', {
+      configurable: true,
+      enumerable: false,
+      get: () => apiErrorMessage(this.code, this.serverMessage),
+    });
   }
 }
 
@@ -166,6 +180,14 @@ function fileNameFrom(disposition: string | null): string | null {
   return /filename="([^"]*)"/i.exec(disposition)?.[1] ?? null;
 }
 
+async function errorCodeOf(response: Response): Promise<string | undefined> {
+  const payload: unknown = await response
+    .clone()
+    .json()
+    .catch(() => undefined);
+  return (payload as ApiErrorResponse | undefined)?.error?.code;
+}
+
 /**
  * One fetch wrapper for the whole client: JSON in, JSON out, a typed
  * `ApiError` carrying the server's code, and a transparent retry after
@@ -173,10 +195,14 @@ function fileNameFrom(disposition: string | null): string | null {
  */
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   let response = await send(path, options);
+  // A wrong current password (change password, MFA) is a 401 too, but the
+  // session is fine: neither refresh nor sign out.
+  const wrongPassword =
+    response.status === 401 && (await errorCodeOf(response)) === 'INVALID_CREDENTIALS';
 
   // Whether a refresh cookie exists is no longer knowable from script, so the
   // 401 itself is the trigger and the refresh call decides.
-  if (response.status === 401 && options.skipRefresh !== true) {
+  if (response.status === 401 && options.skipRefresh !== true && !wrongPassword) {
     if (await ensureRefresh()) {
       response = await send(path, options);
     } else {
@@ -192,7 +218,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   if (!response.ok) {
     const error = (payload as ApiErrorResponse | undefined)?.error;
-    if (response.status === 401) {
+    if (response.status === 401 && !wrongPassword) {
       onSessionLost();
     }
     throw new ApiError(

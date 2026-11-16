@@ -21,7 +21,7 @@ export const sprintDetail: Partial<Record<keyof typeof source, string>> = {
   'sprintDetail.progress': 'Progreso',
   'sprintDetail.progressByStatus': 'Progreso por estado',
   'sprintDetail.sprintBacklog': 'Backlog del sprint',
-  'sprintDetail.noWorkItemInThis': 'No hay work items en este sprint.',
+  'sprintDetail.noWorkItemInThis': 'No hay elementos de trabajo en este sprint.',
   'sprintDetail.key': 'Clave',
   'sprintDetail.title': 'Título',
   'sprintDetail.status': 'Estado',

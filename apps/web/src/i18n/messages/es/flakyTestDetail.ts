@@ -6,7 +6,7 @@ export const flakyTestDetail: Partial<Record<keyof typeof source, string>> = {
   'flakyTestDetail.clearMark': 'Quitar marca',
   'flakyTestDetail.couldNotSaveTheMark': 'No se pudo guardar la marca.',
   'flakyTestDetail.stabilityOf': 'Estabilidad de {key}',
-  'flakyTestDetail.flakyTests': '← Tests inestables',
+  'flakyTestDetail.flakyTests': '← Pruebas inestables',
   'flakyTestDetail.openTestCase': 'Abrir caso de prueba',
   'flakyTestDetail.stability': 'Estabilidad',
   'flakyTestDetail.detected': 'detectado:',

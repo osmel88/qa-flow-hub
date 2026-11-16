@@ -2,7 +2,7 @@ import type { hierarchy as source } from '../en/hierarchy';
 
 export const hierarchy: Partial<Record<keyof typeof source, string>> = {
   'hierarchy.doneEstimated': '{done}/{countable} terminados{progress} · {estimate} estimados',
-  'hierarchy.couldNotMoveTheWork': 'No se pudo mover el work item.',
+  'hierarchy.couldNotMoveTheWork': 'No se pudo mover el elemento de trabajo.',
   'hierarchy.moveUnder': 'Mover {key} bajo',
   'hierarchy.topLevel': 'Nivel superior',
   'hierarchy.hierarchy': 'Jerarquía',
@@ -20,8 +20,8 @@ export const hierarchy: Partial<Record<keyof typeof source, string>> = {
   'hierarchy.items': 'elementos ·',
   'hierarchy.done': 'terminados ·',
   'hierarchy.estimated': 'estimados',
-  'hierarchy.noWorkItemMatches': 'Ningún work item coincide.',
-  'hierarchy.workItemHierarchy': 'Jerarquía de work items',
+  'hierarchy.noWorkItemMatches': 'Ningún elemento de trabajo coincide.',
+  'hierarchy.workItemHierarchy': 'Jerarquía de elementos de trabajo',
   'hierarchy.collapseItem': 'Contraer {key}',
   'hierarchy.expandItem': 'Expandir {key}',
   'hierarchy.showingTheFirst2000': ' · se muestran los primeros 2000',

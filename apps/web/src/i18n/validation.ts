@@ -25,6 +25,11 @@ const PATTERNS: ReadonlyArray<{
   { pattern: /^Password must contain a lowercase letter$/, key: 'validation.passwordLowercase' },
   { pattern: /^Password must contain an uppercase letter$/, key: 'validation.passwordUppercase' },
   { pattern: /^Password must contain a digit$/, key: 'validation.passwordDigit' },
+  {
+    pattern: /^The new password must be different from the current one$/,
+    key: 'validation.passwordSameAsCurrent',
+  },
+  { pattern: /^The passwords do not match$/, key: 'validation.passwordsDoNotMatch' },
   { pattern: /^expects a number$/, key: 'validation.expectsNumber' },
   { pattern: /^expects true or false$/, key: 'validation.expectsBoolean' },
   { pattern: /^expects a YYYY-MM-DD date$/, key: 'validation.expectsDate' },

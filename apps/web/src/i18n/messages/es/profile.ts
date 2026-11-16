@@ -28,5 +28,7 @@ export const profile: Partial<Record<keyof typeof source, string>> = {
   'profile.memberships': 'Membresías',
   'profile.changePassword': 'Cambiar contraseña',
   'profile.currentPassword': 'Contraseña actual',
+  'profile.confirmNewPassword': 'Confirmar nueva contraseña',
+  'profile.currentPasswordIsIncorrect': 'La contraseña actual no es correcta.',
   'profile.newPassword': 'Nueva contraseña',
 };

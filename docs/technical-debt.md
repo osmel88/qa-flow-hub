@@ -1485,3 +1485,28 @@ The S7-F7 dashboard computes everything on read. Known limits:
   cases for defect density are global constants, not configurable per project.
 - **Charts.** The trend and the flaky evolution are tables plus the existing
   dependency-free bar list; there is no line chart for them yet.
+
+## 71. Staging stabilization: what the block leaves
+
+- **No brand yet.** `apps/web/src/branding.ts` holds a working name
+  (`qa-flow-hub`) and `public/brand/logo.svg` a placeholder mark. Changing the
+  product's identity is a two-file edit; `index.html`'s `<title>` and the
+  favicon still need updating by hand when the brand is chosen.
+- **No avatar upload.** The API stores `avatarUrl` and the Web shows it, with
+  initials as the fallback, but there is no upload: storing user images needs
+  the attachments storage, size and type checks, and resizing. The CSP
+  (`img-src 'self' data: blob:`) also blocks pictures on external hosts,
+  which the Web then renders as initials. Upload is a later feature.
+- **Project creation rule is mirrored in the Web.** `canCreateProjects()`
+  repeats `@Roles('organization_owner', 'organization_admin')` on
+  `POST /projects` only to explain the rule before the user tries. If the
+  rule changes, both must change; the API stays the boundary either way.
+- **Membership status.** The session lists only active memberships, so the
+  profile always shows "Active". Showing suspended ones needs the API to
+  return them.
+- **Destructive deletes stay out of the UI** (projects, releases, test runs,
+  defects, test cases): see `docs/crud-matrix.md`. A data-retention purge job
+  would be the place for real deletion.
+- **Duplicate-email message.** Register maps `DUPLICATE_RESOURCE` to the email
+  field because it is the only unique field on that form; a machine-readable
+  `field` in the error body would make that explicit.

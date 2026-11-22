@@ -143,7 +143,9 @@ import type {
   CreateInvitationInput,
   CreateOrganizationInput,
   CreateProjectInput,
+  UpdateProjectInput,
   CreateRequirementInput,
+  UpdateRequirementInput,
   CreateSectionInput,
   CreateSuiteInput,
   CreateTestCaseInput,
@@ -352,6 +354,8 @@ export const projectsApi = {
     apiFetch<Paginated<ProjectView>>(`/projects${query({ ...params, pageSize: 100 })}`),
   create: (body: CreateProjectInput) =>
     apiFetch<ProjectView>('/projects', { method: 'POST', body }),
+  update: (id: string, body: UpdateProjectInput) =>
+    apiFetch<ProjectView>(`/projects/${id}`, { method: 'PATCH', body }),
   archive: (id: string) => apiFetch<ProjectView>(`/projects/${id}/archive`, { method: 'POST' }),
   restore: (id: string) => apiFetch<ProjectView>(`/projects/${id}/restore`, { method: 'POST' }),
   members: (projectId: string) =>
@@ -427,6 +431,9 @@ export const requirementsApi = {
     apiFetch<RequirementView>('/requirements', { method: 'POST', body }),
   changeStatus: (id: string, status: string) =>
     apiFetch<RequirementView>(`/requirements/${id}/status`, { method: 'POST', body: { status } }),
+  update: (id: string, body: UpdateRequirementInput) =>
+    apiFetch<RequirementView>(`/requirements/${id}`, { method: 'PATCH', body }),
+  remove: (id: string) => apiFetch<void>(`/requirements/${id}`, { method: 'DELETE' }),
 };
 
 export const testDesignApi = {

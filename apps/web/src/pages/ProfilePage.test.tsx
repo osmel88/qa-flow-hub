@@ -17,8 +17,11 @@ vi.mock('../api/endpoints', () => ({
 }));
 vi.mock('../auth/auth-context', () => ({
   useAuth: () => ({
-    user: { fullName: 'Ana', email: 'ana@example.com' },
-    organizations: [],
+    user: { fullName: 'Ana García', email: 'ana@example.com', avatarUrl: null },
+    organizations: [
+      { id: 'org_1', name: 'Acme', slug: 'acme', role: 'qa_lead' },
+      { id: 'org_2', name: 'Globex', slug: 'globex', role: 'viewer' },
+    ],
     logout,
   }),
 }));
@@ -154,5 +157,36 @@ describe('Profile — change password', () => {
     ).toBeInTheDocument();
     expect(within(section).getByText('Las contraseñas no coinciden')).toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Cambiar contraseña' })).toBeDisabled();
+  });
+});
+
+describe('Profile — account and organizations', () => {
+  it('shows the email untranslated, the avatar initials and each organization with role and status (ES)', async () => {
+    await renderProfile('es');
+    expect(screen.getByText('Correo electrónico')).toBeInTheDocument();
+    expect(screen.getByText('ana@example.com')).toBeInTheDocument();
+    expect(screen.getByTestId('avatar')).toHaveTextContent('AG');
+
+    const section = screen
+      .getByRole('heading', { name: 'Organizaciones a las que perteneces' })
+      .closest('section') as HTMLElement;
+    const headers = within(section)
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent);
+    expect(headers).toEqual(['Organización', 'Rol en la organización', 'Estado de la membresía']);
+    const rows = within(section).getAllByRole('row').slice(1);
+    expect(rows.map((row) => row.textContent)).toEqual([
+      'Acmelíder de QAActiva',
+      'Globexsolo lecturaActiva',
+    ]);
+  });
+
+  it('keeps the English role labels', async () => {
+    await renderProfile('en');
+    const section = screen
+      .getByRole('heading', { name: 'Organizations you belong to' })
+      .closest('section') as HTMLElement;
+    expect(within(section).getByText('qa lead')).toBeInTheDocument();
+    expect(within(section).getByText('viewer')).toBeInTheDocument();
   });
 });

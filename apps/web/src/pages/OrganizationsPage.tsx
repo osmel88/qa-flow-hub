@@ -6,6 +6,7 @@ import { organizationsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
 import { PageHeader } from '../components/PageHeader';
+import { humanize } from '../components/status';
 import { t } from '../i18n/i18n';
 
 /**
@@ -84,7 +85,7 @@ export function OrganizationsPage(): React.JSX.Element {
                     void navigate('/dashboard');
                   }}
                 >
-                  {organization.name} — {organization.role.replace(/_/g, ' ')}
+                  {organization.name} — {humanize(organization.role)}
                 </button>
               </li>
             ))}

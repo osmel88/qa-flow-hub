@@ -29,4 +29,9 @@ export const c_mfaSettings: Partial<Record<keyof typeof source, string>> = {
   'c_mfaSettings.newRecoveryCodes': 'Nuevos códigos de recuperación',
   'c_mfaSettings.passwordToTurnMfaOff': 'Contraseña para desactivar MFA',
   'c_mfaSettings.turnOffMfa': 'Desactivar MFA',
+  'c_mfaSettings.passwordRequiredToSetUp':
+    'Introduce tu contraseña actual para empezar la configuración.',
+  'c_mfaSettings.enterTheSixDigitCode':
+    'El código de 6 dígitos que muestra ahora tu app de autenticación.',
+  'c_mfaSettings.codeMustBeSixDigits': 'El código debe tener exactamente 6 dígitos.',
 };

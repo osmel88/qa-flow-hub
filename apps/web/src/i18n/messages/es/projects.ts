@@ -18,4 +18,19 @@ export const projects: Partial<Record<keyof typeof source, string>> = {
   'projects.restore': 'Restaurar',
   'projects.archive': 'Archivar',
   'projects.keyRule': 'De 2 a 8 letras mayúsculas o dígitos, empezando por una letra.',
+  'projects.roleCannotCreate':
+    'Tu rol no permite crear proyectos en esta organización. Pueden crearlos los propietarios y administradores de la organización.',
+  'projects.noDeleteExplanation':
+    'Los proyectos se archivan, no se eliminan: eliminar uno borraría sus requisitos, casos de prueba, ejecuciones, defectos, releases e histórico de QA. Un proyecto archivado es de solo lectura y se puede restaurar.',
+  'projects.description': 'Descripción',
+  'projects.save': 'Guardar',
+  'projects.cancel': 'Cancelar',
+  'projects.open': 'Abrir',
+  'projects.openProject': 'Abrir {key}',
+  'projects.edit': 'Editar',
+  'projects.editProject': 'Editar {key}',
+  'projects.confirmArchive': '¿Archivar {key}? Quedará en solo lectura hasta que se restaure.',
+  'projects.confirmArchiveButton': 'Sí, archivar',
+  'projects.couldNotSaveTheProject': 'No se pudo guardar el proyecto.',
+  'projects.couldNotChangeTheProject': 'No se pudo cambiar el proyecto.',
 };

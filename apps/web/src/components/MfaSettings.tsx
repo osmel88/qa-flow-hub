@@ -1,5 +1,6 @@
 import { Button, DataState, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { mfaSetupSchema, totpCodeSchema } from '@qa-flow-hub/shared';
 import type { MfaSetupView } from '@qa-flow-hub/shared';
 import { useState } from 'react';
 import { mfaApi } from '../api/endpoints';
@@ -8,6 +9,18 @@ import { t } from '../i18n/i18n';
 
 const message = (cause: unknown, fallback: string) =>
   cause instanceof ApiError ? cause.message : fallback;
+
+/**
+ * The same shared schemas the API applies, checked before sending so the
+ * buttons stay disabled until the input can pass, and the reason is shown in
+ * the active language instead of a generic "invalid values".
+ */
+const passwordReady = (value: string) => mfaSetupSchema.safeParse({ password: value }).success;
+const codeReady = (value: string) => totpCodeSchema.safeParse(value).success;
+
+/** Shown once the user typed something that cannot be a 6-digit code. */
+const codeError = (value: string) =>
+  value !== '' && !codeReady(value) ? t('c_mfaSettings.codeMustBeSixDigits') : undefined;
 
 /** Shown once, right after the server generated them; never fetched again. */
 function RecoveryCodes({
@@ -100,7 +113,7 @@ export function MfaSettings(): React.JSX.Element {
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              setup.mutate();
+              if (passwordReady(password)) setup.mutate();
             }}
             noValidate
           >
@@ -110,9 +123,14 @@ export function MfaSettings(): React.JSX.Element {
               type="password"
               autoComplete="current-password"
               value={password}
+              hint={t('c_mfaSettings.passwordRequiredToSetUp')}
               onChange={(event) => setPassword(event.target.value)}
             />
-            <Button type="submit" loading={setup.isPending}>
+            <Button
+              type="submit"
+              loading={setup.isPending}
+              disabled={!passwordReady(password) || setup.isPending}
+            >
               {t('c_mfaSettings.setUpMfa')}
             </Button>
           </form>
@@ -122,7 +140,7 @@ export function MfaSettings(): React.JSX.Element {
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              confirm.mutate();
+              if (codeReady(code)) confirm.mutate();
             }}
             noValidate
           >
@@ -142,9 +160,15 @@ export function MfaSettings(): React.JSX.Element {
               autoComplete="one-time-code"
               inputMode="numeric"
               value={code}
+              hint={t('c_mfaSettings.enterTheSixDigitCode')}
+              error={codeError(code)}
               onChange={(event) => setCode(event.target.value)}
             />
-            <Button type="submit" loading={confirm.isPending}>
+            <Button
+              type="submit"
+              loading={confirm.isPending}
+              disabled={!codeReady(code) || confirm.isPending}
+            >
               {t('c_mfaSettings.turnOnMfa')}
             </Button>
           </form>
@@ -169,11 +193,14 @@ export function MfaSettings(): React.JSX.Element {
               autoComplete="one-time-code"
               inputMode="numeric"
               value={code}
+              hint={t('c_mfaSettings.enterTheSixDigitCode')}
+              error={codeError(code)}
               onChange={(event) => setCode(event.target.value)}
             />
             <Button
               type="button"
               variant="secondary"
+              disabled={!codeReady(code) || regenerate.isPending}
               loading={regenerate.isPending}
               onClick={() => regenerate.mutate()}
             >
@@ -189,6 +216,7 @@ export function MfaSettings(): React.JSX.Element {
             <Button
               type="button"
               variant="danger"
+              disabled={!codeReady(code) || !passwordReady(password) || disable.isPending}
               loading={disable.isPending}
               onClick={() => disable.mutate()}
             >

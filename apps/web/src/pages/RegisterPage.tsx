@@ -9,6 +9,7 @@ import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
 import { AuthScreen } from '../components/AuthScreen';
 import { useI18n } from '../i18n/i18n';
+import { validationMessage } from '../i18n/validation';
 
 export function RegisterPage(): React.JSX.Element {
   const { register: signUp } = useAuth();
@@ -21,8 +22,13 @@ export function RegisterPage(): React.JSX.Element {
   const {
     register,
     handleSubmit,
+    setError: setFieldError,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) });
+  } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema), mode: 'onTouched' });
+
+  // Shared-schema messages arrive in English; the active language shows them.
+  const fieldError = (message: string | undefined) =>
+    message === undefined ? undefined : validationMessage(message);
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -37,6 +43,16 @@ export function RegisterPage(): React.JSX.Element {
       });
       void navigate(invitationToken === undefined ? '/organizations' : '/dashboard');
     } catch (error) {
+      if (error instanceof ApiError && error.code === 'DUPLICATE_RESOURCE') {
+        // The API already says so (registration cannot hide it); naming the
+        // field tells the user what to change without any further detail.
+        setFieldError('email', { message: t('register.emailTaken') });
+        return;
+      }
+      if (error instanceof ApiError && error.code === 'VALIDATION_ERROR') {
+        setFormError(t('register.checkTheFields'));
+        return;
+      }
       setFormError(error instanceof ApiError ? error.message : t('register.failed'));
     }
   });
@@ -53,14 +69,14 @@ export function RegisterPage(): React.JSX.Element {
         )}
         <TextField
           label={t('register.fullName')}
-          error={errors.fullName?.message}
+          error={fieldError(errors.fullName?.message)}
           {...register('fullName')}
         />
         <TextField
           label={t('common.email')}
           type="email"
           autoComplete="email"
-          error={errors.email?.message}
+          error={fieldError(errors.email?.message)}
           {...register('email')}
         />
         <PasswordField
@@ -69,7 +85,7 @@ export function RegisterPage(): React.JSX.Element {
           showLabel={t('common.showPassword')}
           hideLabel={t('common.hidePassword')}
           hint={t('register.passwordHint')}
-          error={errors.password?.message}
+          error={fieldError(errors.password?.message)}
           {...register('password')}
         />
         <Button type="submit" loading={isSubmitting}>

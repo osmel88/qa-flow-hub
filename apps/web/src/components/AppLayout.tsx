@@ -2,6 +2,8 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { BillingBanner } from './BillingBanner';
 import { MfaBanner } from './MfaBanner';
+import { Avatar } from './Avatar';
+import { Brand } from './Brand';
 import { useProject } from '../project/project-context';
 import { LanguageSelector, useI18n } from '../i18n/i18n';
 import type { MessageKey } from '../i18n/messages/en';
@@ -62,11 +64,13 @@ export function AppLayout(): React.JSX.Element {
       </a>
 
       <header className="shell__header">
-        <div className="shell__brand">qa-flow-hub</div>
+        <div className="shell__brand">
+          <Brand />
+        </div>
 
         <div className="shell__controls">
           <label className="shell__selector">
-            <span className="shell__selector-label">{t('common.organization')}</span>
+            <span className="shell__selector-label">{t('common.organizations')}</span>
             <select
               className="ui-input"
               value={activeOrganizationId ?? ''}
@@ -83,7 +87,7 @@ export function AppLayout(): React.JSX.Element {
           </label>
 
           <label className="shell__selector">
-            <span className="shell__selector-label">{t('common.project')}</span>
+            <span className="shell__selector-label">{t('common.projects')}</span>
             <select
               className="ui-input"
               value={activeProjectId ?? ''}
@@ -108,6 +112,7 @@ export function AppLayout(): React.JSX.Element {
         </div>
 
         <div className="shell__user">
+          <Avatar name={user?.fullName} email={user?.email} avatarUrl={user?.avatarUrl} />
           <span className="muted">{user?.email}</span>
           <button
             className="ui-button ui-button--ghost ui-button--sm"

@@ -10,6 +10,8 @@ export const core = {
   'common.signOut': 'Sign out',
   'common.organization': 'Organization',
   'common.project': 'Project',
+  'common.organizations': 'Organizations',
+  'common.projects': 'Projects',
   'common.noProjectsYet': 'No projects yet',
   'common.skipToContent': 'Skip to content',
   'common.mainNavigation': 'Main',
@@ -79,11 +81,14 @@ export const core = {
   'register.title': 'Create your account',
   'register.invited': 'You are joining an organization you were invited to.',
   'register.fullName': 'Full name',
-  'register.passwordHint': 'At least 12 characters, with an uppercase letter and a digit.',
+  'register.passwordHint':
+    'At least 12 characters, with an uppercase letter, a lowercase letter and a digit.',
   'register.submit': 'Create account',
   'register.alreadyRegistered': 'Already registered?',
   'register.signIn': 'Sign in',
   'register.failed': 'Could not create the account.',
+  'register.emailTaken': 'An account with this email already exists. Sign in or use another email.',
+  'register.checkTheFields': 'Some fields are not valid. Check them and try again.',
 
   'forgot.title': 'Reset your password',
   'forgot.intro':
@@ -119,7 +124,7 @@ export const core = {
   'validation.passwordSameAsCurrent': 'The new password must be different from the current one',
   'validation.passwordsDoNotMatch': 'The passwords do not match',
   'validation.required': 'Required',
-  'validation.invalidEmail': 'Invalid email',
+  'validation.invalidEmail': 'Enter a valid email address',
   'validation.tooShort': 'Must contain at least {min} character(s)',
   'validation.tooLong': 'Must contain at most {max} character(s)',
   'validation.projectName': 'Use 2 to 120 characters.',

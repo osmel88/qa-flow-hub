@@ -27,4 +27,7 @@ export const c_mfaSettings = {
   'c_mfaSettings.newRecoveryCodes': 'New recovery codes',
   'c_mfaSettings.passwordToTurnMfaOff': 'Password to turn MFA off',
   'c_mfaSettings.turnOffMfa': 'Turn off MFA',
+  'c_mfaSettings.passwordRequiredToSetUp': 'Enter your current password to start the setup.',
+  'c_mfaSettings.enterTheSixDigitCode': 'The 6-digit code your authenticator app shows now.',
+  'c_mfaSettings.codeMustBeSixDigits': 'The code must have exactly 6 digits.',
 } as const;

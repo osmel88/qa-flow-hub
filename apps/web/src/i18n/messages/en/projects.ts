@@ -14,4 +14,19 @@ export const projects = {
   'projects.restore': 'Restore',
   'projects.archive': 'Archive',
   'projects.keyRule': '2 to 8 uppercase letters or digits, starting with a letter.',
+  'projects.roleCannotCreate':
+    'Your role does not allow creating projects in this organization. Organization owners and admins can create them.',
+  'projects.noDeleteExplanation':
+    'Projects are archived, not deleted: deleting one would erase its requirements, test cases, runs, defects, releases and QA history. An archived project is read-only and can be restored.',
+  'projects.description': 'Description',
+  'projects.save': 'Save',
+  'projects.cancel': 'Cancel',
+  'projects.open': 'Open',
+  'projects.openProject': 'Open {key}',
+  'projects.edit': 'Edit',
+  'projects.editProject': 'Edit {key}',
+  'projects.confirmArchive': 'Archive {key}? It becomes read-only until restored.',
+  'projects.confirmArchiveButton': 'Yes, archive',
+  'projects.couldNotSaveTheProject': 'Could not save the project.',
+  'projects.couldNotChangeTheProject': 'Could not change the project.',
 } as const;

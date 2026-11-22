@@ -38,8 +38,19 @@ vi.mock('../api/endpoints', () => ({
   testDesignApi: { suites: () => Promise.resolve([]) },
 }));
 
+vi.mock('../auth/auth-context', () => ({
+  useAuth: () => ({
+    activeOrganization: { id: 'org_1', name: 'Acme', role: 'organization_owner' },
+  }),
+}));
+
 vi.mock('../project/project-context', () => ({
-  useProject: () => ({ activeProjectId: 'proj_1', activeProject: project, projects: [project] }),
+  useProject: () => ({
+    activeProjectId: 'proj_1',
+    activeProject: project,
+    projects: [project],
+    selectProject: vi.fn(),
+  }),
 }));
 
 vi.mock('../components/use-project-permissions', () => ({

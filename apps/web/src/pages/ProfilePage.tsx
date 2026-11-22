@@ -5,7 +5,7 @@ import type {
   UpdateNotificationPreferencesInput,
 } from '@qa-flow-hub/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, DataState, PasswordField } from '@qa-flow-hub/ui';
+import { Badge, Button, DataState, PasswordField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { authApi, notificationsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
+import { Avatar } from '../components/Avatar';
 import { MfaSettings } from '../components/MfaSettings';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
@@ -211,20 +212,55 @@ export function ProfilePage(): React.JSX.Element {
 
       <section className="card">
         <h2>{t('profile.account')}</h2>
-        <dl className="details">
-          <dt>{t('profile.name')}</dt>
-          <dd>{user?.fullName}</dd>
-          <dt>{t('profile.email')}</dt>
-          <dd>{user?.email}</dd>
-        </dl>
-        <h3>{t('profile.memberships')}</h3>
-        <ul className="plain-list">
-          {organizations.map((organization) => (
-            <li key={organization.id}>
-              {organization.name} — {humanize(organization.role)}
-            </li>
-          ))}
-        </ul>
+        <div className="profile-identity">
+          <Avatar name={user?.fullName} email={user?.email} avatarUrl={user?.avatarUrl} size="lg" />
+          <dl className="details">
+            <dt>{t('profile.name')}</dt>
+            <dd>{user?.fullName}</dd>
+            <dt>{t('profile.email')}</dt>
+            <dd>
+              {user?.email}
+              <p className="muted">{t('profile.emailHint')}</p>
+            </dd>
+            <dt>{t('profile.avatar')}</dt>
+            <dd>
+              <p className="muted">{t('profile.avatarHint')}</p>
+            </dd>
+          </dl>
+        </div>
+      </section>
+
+      <section className="card" aria-labelledby="memberships-title">
+        <h2 id="memberships-title">{t('profile.memberships')}</h2>
+        <p className="muted">{t('profile.membershipsIntro')}</p>
+        <DataState
+          isPending={false}
+          error={null}
+          isEmpty={organizations.length === 0}
+          emptyMessage={t('profile.noMemberships')}
+        >
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">{t('profile.organization')}</th>
+                <th scope="col">{t('profile.organizationRole')}</th>
+                <th scope="col">{t('profile.membershipStatus')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {organizations.map((organization) => (
+                <tr key={organization.id}>
+                  <td>{organization.name}</td>
+                  <td>{humanize(organization.role)}</td>
+                  <td>
+                    {/* The session lists active memberships only; a suspended one is not returned. */}
+                    <Badge tone="success">{t('profile.membershipActive')}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </DataState>
       </section>
 
       <MfaSettings />

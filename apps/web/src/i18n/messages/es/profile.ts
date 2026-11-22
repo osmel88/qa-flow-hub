@@ -1,9 +1,9 @@
 import type { profile as source } from '../en/profile';
 
 export const profile: Partial<Record<keyof typeof source, string>> = {
-  'profile.emailNotifications': 'Notificaciones por email',
+  'profile.emailNotifications': 'Notificaciones por correo electrónico',
   'profile.masterSwitchForOptionalEmails':
-    'Interruptor general de los emails opcionales. Los avisos de seguridad, como los cambios de contraseña y las invitaciones a organizaciones, se envían siempre.',
+    'Interruptor general de los correos opcionales. Los avisos de seguridad, como los cambios de contraseña y las invitaciones a organizaciones, se envían siempre.',
   'profile.testRunAssignments': 'Asignaciones en ejecuciones',
   'profile.whenSomeoneAssignsTestCases':
     'Cuando alguien te asigna casos de prueba en una ejecución.',
@@ -24,8 +24,20 @@ export const profile: Partial<Record<keyof typeof source, string>> = {
   'profile.yourAccountAndTheOrganizations': 'Tu cuenta y las organizaciones a las que perteneces.',
   'profile.account': 'Cuenta',
   'profile.name': 'Nombre',
-  'profile.email': 'Email',
-  'profile.memberships': 'Membresías',
+  'profile.email': 'Correo electrónico',
+  'profile.memberships': 'Organizaciones a las que perteneces',
+  'profile.membershipsIntro':
+    'Tu membresía en cada organización y el rol que te da en ella. El acceso por proyecto puede ampliarlo en proyectos concretos.',
+  'profile.organization': 'Organización',
+  'profile.organizationRole': 'Rol en la organización',
+  'profile.membershipStatus': 'Estado de la membresía',
+  'profile.membershipActive': 'Activa',
+  'profile.noMemberships': 'Todavía no perteneces a ninguna organización.',
+  'profile.emailHint':
+    'Se usa para iniciar sesión y para las notificaciones. No se puede cambiar aquí.',
+  'profile.avatar': 'Foto de perfil',
+  'profile.avatarHint':
+    'Se muestran tus iniciales hasta que haya una foto. Todavía no se pueden subir fotos.',
   'profile.changePassword': 'Cambiar contraseña',
   'profile.currentPassword': 'Contraseña actual',
   'profile.confirmNewPassword': 'Confirmar nueva contraseña',

@@ -1,7 +1,14 @@
-import { Badge, Button, DataState, SelectField } from '@qa-flow-hub/ui';
+import {
+  PRIORITIES,
+  REQUIREMENT_STATUSES,
+  REQUIREMENT_TYPES,
+  updateRequirementSchema,
+} from '@qa-flow-hub/shared';
+import type { RequirementView } from '@qa-flow-hub/shared';
+import { Badge, Button, DataState, SelectField, TextAreaField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { requirementsApi, workItemsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { ImplementationBadge } from '../components/ImplementationBadge';
@@ -42,7 +49,14 @@ export function RequirementDetailPage(): React.JSX.Element {
               <ImplementationBadge implementation={requirement.data.implementation} />
             </p>
             {requirement.data.description !== null && <p>{requirement.data.description}</p>}
+            {requirement.data.acceptanceCriteria !== null && (
+              <>
+                <h3>{t('requirementDetail.acceptanceCriteria')}</h3>
+                <p>{requirement.data.acceptanceCriteria}</p>
+              </>
+            )}
           </section>
+          <ManageRequirement requirement={requirement.data} />
           <ImplementingWorkItems
             requirementId={requirement.data.id}
             projectId={requirement.data.projectId}
@@ -175,6 +189,172 @@ function ImplementingWorkItems({
           {error}
         </p>
       )}
+    </section>
+  );
+}
+
+const choices = (values: readonly string[]) =>
+  values.map((value) => ({ value, label: humanize(value) }));
+
+/**
+ * Edit, status and delete. Editing appends a version; the status follows the
+ * API's transition table, so an illegal move is reported, not hidden. Delete
+ * is a soft delete: the row and its history stay, its coverage links go.
+ */
+function ManageRequirement({ requirement }: { requirement: RequirementView }): React.JSX.Element {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { can } = useProjectPermissions(requirement.projectId);
+  const writable = can('requirements.write');
+  const manageable = can('requirements.manage');
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [title, setTitle] = useState(requirement.title);
+  const [description, setDescription] = useState(requirement.description ?? '');
+  const [criteria, setCriteria] = useState(requirement.acceptanceCriteria ?? '');
+  const [type, setType] = useState<string>(requirement.type);
+  const [priority, setPriority] = useState<string>(requirement.priority);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async () => {
+    setError(null);
+    await queryClient.invalidateQueries({ queryKey: ['requirement', requirement.id] });
+    await queryClient.invalidateQueries({ queryKey: ['requirements'] });
+  };
+  const fail = (fallback: string) => (cause: unknown) =>
+    setError(cause instanceof ApiError ? cause.message : fallback);
+
+  const draft = {
+    title: title.trim(),
+    description: description.trim() === '' ? null : description.trim(),
+    acceptanceCriteria: criteria.trim() === '' ? null : criteria.trim(),
+    type: type as RequirementView['type'],
+    priority: priority as RequirementView['priority'],
+  };
+  const valid = updateRequirementSchema.safeParse(draft).success;
+
+  const save = useMutation({
+    mutationFn: () => requirementsApi.update(requirement.id, draft),
+    onSuccess: async () => {
+      setEditing(false);
+      await refresh();
+    },
+    onError: fail(t('requirementDetail.couldNotSave')),
+  });
+  const changeStatus = useMutation({
+    mutationFn: (status: string) => requirementsApi.changeStatus(requirement.id, status),
+    onSuccess: refresh,
+    onError: fail(t('requirementDetail.couldNotChangeTheStatus')),
+  });
+  const remove = useMutation({
+    mutationFn: () => requirementsApi.remove(requirement.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['requirements'] });
+      void navigate('/requirements');
+    },
+    onError: fail(t('requirementDetail.couldNotDelete')),
+  });
+
+  if (!writable && !manageable) return <></>;
+
+  return (
+    <section className="card" aria-labelledby="manage-requirement">
+      <h2 id="manage-requirement">{t('requirementDetail.manage')}</h2>
+      {error !== null && (
+        <p className="ui-field__error" role="alert">
+          {error}
+        </p>
+      )}
+      {manageable && (
+        <SelectField
+          label={t('requirementDetail.changeStatus')}
+          options={[
+            { value: '', label: t('requirementDetail.chooseAStatus') },
+            ...choices(REQUIREMENT_STATUSES.filter((value) => value !== requirement.status)),
+          ]}
+          value=""
+          disabled={changeStatus.isPending}
+          onChange={(event) => {
+            if (event.target.value !== '') changeStatus.mutate(event.target.value);
+          }}
+        />
+      )}
+      {writable && editing && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (valid) save.mutate();
+          }}
+          noValidate
+        >
+          <TextField
+            label={t('requirementDetail.title')}
+            value={title}
+            error={title.trim().length < 3 ? t('requirementDetail.titleTooShort') : undefined}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+          <TextAreaField
+            label={t('requirementDetail.description')}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+          <TextAreaField
+            label={t('requirementDetail.acceptanceCriteria')}
+            value={criteria}
+            onChange={(event) => setCriteria(event.target.value)}
+          />
+          <div className="grid-2">
+            <SelectField
+              label={t('requirementDetail.type')}
+              options={choices(REQUIREMENT_TYPES)}
+              value={type}
+              onChange={(event) => setType(event.target.value)}
+            />
+            <SelectField
+              label={t('requirementDetail.priority')}
+              options={choices(PRIORITIES)}
+              value={priority}
+              onChange={(event) => setPriority(event.target.value)}
+            />
+          </div>
+          <div className="row-actions">
+            <Button type="submit" loading={save.isPending} disabled={!valid}>
+              {t('requirementDetail.save')}
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
+              {t('requirementDetail.cancel')}
+            </Button>
+          </div>
+        </form>
+      )}
+      {writable && !editing && (
+        <div className="row-actions">
+          <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
+            {t('requirementDetail.edit')}
+          </Button>
+          {confirmDelete ? (
+            <>
+              <span>{t('requirementDetail.confirmDelete', { key: requirement.key })}</span>
+              <Button
+                type="button"
+                variant="danger"
+                loading={remove.isPending}
+                onClick={() => remove.mutate()}
+              >
+                {t('requirementDetail.confirmDeleteButton')}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setConfirmDelete(false)}>
+                {t('requirementDetail.cancel')}
+              </Button>
+            </>
+          ) : (
+            <Button type="button" variant="danger" onClick={() => setConfirmDelete(true)}>
+              {t('requirementDetail.delete')}
+            </Button>
+          )}
+        </div>
+      )}
+      <p className="muted">{t('requirementDetail.deleteExplanation')}</p>
     </section>
   );
 }

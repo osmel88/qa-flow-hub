@@ -86,7 +86,7 @@ test('product screens switch between English and Spanish', async ({ page }) => {
   await test.step('the header gives the translated selectors room and keeps the user on the right', async () => {
     const header = page.locator('.shell__header');
     const boxes = [];
-    for (const name of ['Organización', 'Proyecto', 'Idioma']) {
+    for (const name of ['Organizaciones', 'Proyectos', 'Idioma']) {
       const box = await header.getByText(name, { exact: true }).locator('..').boundingBox();
       expect(box).not.toBeNull();
       boxes.push(box!);

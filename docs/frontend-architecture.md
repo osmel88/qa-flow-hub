@@ -71,7 +71,7 @@ not a credential.
 
 Forms validate with the schemas from `packages/shared` (ADR 0011), so the message a
 user sees for a too-long title is produced by the same rule the API enforces. The
-client cannot be more permissive, and it cannot be *stricter* either — which is the
+client cannot be more permissive, and it cannot be _stricter_ either — which is the
 failure people forget: a client that rejects what the API accepts is an invisible
 feature removal.
 
@@ -85,7 +85,7 @@ a per-project grant where one exists — and disable what it does not allow, wit
 reason attached via `aria-describedby`. The invitation form only offers roles at or
 below the actor's own level.
 
-This is deliberately *not* authorization: the API decides, and the same request from
+This is deliberately _not_ authorization: the API decides, and the same request from
 `curl` gets the same `403`. The UI's job is to not offer an action it knows will be
 refused, because a button that fails is worse than a button that is not there.
 
@@ -119,6 +119,15 @@ and PostgreSQL, plus a reload check that no credential is reachable from script.
 
 What is not covered: visual regression, and the screens whose logic is a thin form
 over a tested endpoint. That is a deliberate allocation of effort, not an oversight.
+
+## Branding and avatars
+
+The product name and logo live in `src/branding.ts` (logo file under
+`public/brand/`) and are rendered only by `components/Brand.tsx`, which the
+public `AuthScreen` and the app header use. Nothing else hardcodes the name,
+so a future brand is a two-file change. `components/Avatar.tsx` shows a
+user's `avatarUrl` and falls back to initials when there is none or the image
+fails to load (for example, a host the CSP does not allow).
 
 ## Related
 

@@ -35,6 +35,11 @@ const PATTERNS: ReadonlyArray<{
   { pattern: /^expects a YYYY-MM-DD date$/, key: 'validation.expectsDate' },
   { pattern: /^Required$/, key: 'validation.required' },
   { pattern: /^Invalid email$/, key: 'validation.invalidEmail' },
+  { pattern: /^A valid email address is required$/, key: 'validation.invalidEmail' },
+  {
+    pattern: /^Enter the 6-digit code from your authenticator app$/,
+    key: 'c_mfaSettings.codeMustBeSixDigits',
+  },
   {
     pattern: /^String must contain at least (\d+) character\(s\)$/,
     key: 'validation.tooShort',

@@ -36,7 +36,9 @@ describe('Register', () => {
 
   it('marks the email field when the address is already registered', async () => {
     register.mockRejectedValueOnce(
-      new ApiError(409, 'DUPLICATE_RESOURCE', 'An account with this email already exists'),
+      new ApiError(409, 'DUPLICATE_RESOURCE', 'An account with this email already exists', [
+        { path: 'email', message: 'An account with this email already exists' },
+      ]),
     );
     await renderRegister('es');
     await userEvent.type(screen.getByLabelText('Nombre completo'), 'Ana García');

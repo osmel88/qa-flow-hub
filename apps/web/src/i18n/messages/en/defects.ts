@@ -26,4 +26,11 @@ export const defects = {
   'defects.choose': 'Choose…',
   'defects.hideEvidence': 'Hide evidence',
   'defects.evidenceFor': 'Evidence for {key}',
+  'defects.edit': 'Edit',
+  'defects.editDefect': 'Edit defect {key}',
+  'defects.priority': 'Priority',
+  'defects.save': 'Save changes',
+  'defects.cancel': 'Cancel',
+  'defects.titleMustHaveAtLeast3': 'The title must have at least 3 characters',
+  'defects.couldNotSaveTheDefect': 'Could not save the defect',
 } as const;

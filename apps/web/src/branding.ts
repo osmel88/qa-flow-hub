@@ -7,4 +7,7 @@ export const BRANDING = {
   name: 'qa-flow-hub',
   /** Served from the Web origin, so the `img-src 'self'` policy allows it. */
   logoUrl: '/brand/logo.svg',
+  /** Browser tab icon; `index.html` gets it at build time from `vite.config.ts`. */
+  faviconUrl: '/brand/logo.svg',
+  description: 'QA management for software teams',
 } as const;

@@ -6,10 +6,14 @@ import { LOCALE_STORAGE_KEY } from '../i18n/locales';
 import { renderScreen } from '../test/render';
 
 const changePassword = vi.fn();
+const memberships = vi.fn();
 const logout = vi.fn();
 
 vi.mock('../api/endpoints', () => ({
-  authApi: { changePassword: (...args: unknown[]) => changePassword(...args) },
+  authApi: {
+    changePassword: (...args: unknown[]) => changePassword(...args),
+    memberships: () => memberships(),
+  },
   notificationsApi: {
     preferences: () => new Promise(() => undefined),
     updatePreferences: vi.fn(),
@@ -18,10 +22,6 @@ vi.mock('../api/endpoints', () => ({
 vi.mock('../auth/auth-context', () => ({
   useAuth: () => ({
     user: { fullName: 'Ana García', email: 'ana@example.com', avatarUrl: null },
-    organizations: [
-      { id: 'org_1', name: 'Acme', slug: 'acme', role: 'qa_lead' },
-      { id: 'org_2', name: 'Globex', slug: 'globex', role: 'viewer' },
-    ],
     logout,
   }),
 }));
@@ -40,6 +40,11 @@ async function renderProfile(locale: 'en' | 'es' = 'en') {
 
 beforeEach(() => {
   changePassword.mockReset();
+  memberships.mockReset();
+  memberships.mockResolvedValue([
+    { organizationId: 'org_1', organizationName: 'Acme', role: 'qa_lead', status: 'active' },
+    { organizationId: 'org_2', organizationName: 'Globex', role: 'viewer', status: 'suspended' },
+  ]);
   logout.mockReset();
 });
 afterEach(() => {
@@ -170,14 +175,16 @@ describe('Profile — account and organizations', () => {
     const section = screen
       .getByRole('heading', { name: 'Organizaciones a las que perteneces' })
       .closest('section') as HTMLElement;
+    expect(await within(section).findByText('Acme')).toBeInTheDocument();
     const headers = within(section)
       .getAllByRole('columnheader')
       .map((cell) => cell.textContent);
     expect(headers).toEqual(['Organización', 'Rol en la organización', 'Estado de la membresía']);
     const rows = within(section).getAllByRole('row').slice(1);
+    // The status comes from GET /auth/memberships, so a suspended one shows as such.
     expect(rows.map((row) => row.textContent)).toEqual([
       'Acmelíder de QAActiva',
-      'Globexsolo lecturaActiva',
+      'Globexsolo lecturaSuspendida',
     ]);
   });
 
@@ -186,7 +193,8 @@ describe('Profile — account and organizations', () => {
     const section = screen
       .getByRole('heading', { name: 'Organizations you belong to' })
       .closest('section') as HTMLElement;
-    expect(within(section).getByText('qa lead')).toBeInTheDocument();
+    expect(await within(section).findByText('qa lead')).toBeInTheDocument();
+    expect(within(section).getByText('Suspended')).toBeInTheDocument();
     expect(within(section).getByText('viewer')).toBeInTheDocument();
   });
 });

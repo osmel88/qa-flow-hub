@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { MembershipStatus, Prisma, User } from '@prisma/client';
-import { OrganizationSummary } from '@qa-flow-hub/shared';
+import { MembershipView, OrganizationSummary, canCreateProjects } from '@qa-flow-hub/shared';
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 
 /**
@@ -52,6 +52,27 @@ export class UsersRepository {
       slug: membership.organization.slug,
       role: membership.role,
       requireMfa: membership.organization.requireMfa,
+      capabilities: { createProjects: canCreateProjects(membership.role) },
+    }));
+  }
+
+  /**
+   * Every live membership of the user, suspended ones included, for the
+   * profile. A suspended membership grants nothing: `listOrganizations` above
+   * stays the only list the guards trust.
+   */
+  async listMemberships(userId: string): Promise<MembershipView[]> {
+    const memberships = await this.prisma.organizationMember.findMany({
+      where: { userId, deletedAt: null, organization: { deletedAt: null } },
+      include: { organization: { select: { id: true, name: true } } },
+      orderBy: { organization: { name: 'asc' } },
+    });
+
+    return memberships.map((membership) => ({
+      organizationId: membership.organization.id,
+      organizationName: membership.organization.name,
+      role: membership.role,
+      status: membership.status,
     }));
   }
 

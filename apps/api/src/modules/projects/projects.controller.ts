@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nes
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateProjectInput,
+  PROJECT_CREATOR_ROLES,
   ListProjectsQuery,
   UpdateProjectInput,
   createProjectSchema,
@@ -25,7 +26,7 @@ export class ProjectsController {
    * Not `@ProjectScoped`: there is no project yet, so no grant can widen this.
    * Creating projects stays an organization-level decision.
    */
-  @Roles('organization_owner', 'organization_admin')
+  @Roles(...PROJECT_CREATOR_ROLES)
   @Post()
   @ApiOperation({ summary: 'Create a project' })
   create(@Body(zodBody(createProjectSchema)) body: CreateProjectInput) {

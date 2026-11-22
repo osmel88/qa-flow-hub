@@ -46,7 +46,17 @@ vi.mock('../api/endpoints', () => ({
 }));
 
 vi.mock('../auth/auth-context', () => ({
-  useAuth: () => ({ activeOrganization: { id: 'org_1', name: 'Acme', role: state.role } }),
+  useAuth: () => ({
+    activeOrganization: {
+      id: 'org_1',
+      name: 'Acme',
+      role: state.role,
+      // What GET /auth/me derives from PROJECT_CREATOR_ROLES.
+      capabilities: {
+        createProjects: ['organization_owner', 'organization_admin'].includes(state.role),
+      },
+    },
+  }),
 }));
 
 vi.mock('../project/project-context', () => ({
@@ -107,13 +117,19 @@ describe('project key validation', () => {
 });
 
 describe('who may create a project', () => {
-  it('matches the roles of POST /projects', () => {
-    expect(canCreateProjects('organization_owner')).toBe(true);
-    expect(canCreateProjects('organization_admin')).toBe(true);
-    for (const role of ['project_manager', 'qa_lead', 'tester', 'viewer'] as const) {
-      expect(canCreateProjects(role)).toBe(false);
-    }
-    expect(canCreateProjects(undefined)).toBe(false);
+  it('follows the capability the API puts in the session, not a role list of its own', () => {
+    const org = {
+      id: 'o',
+      name: 'Acme',
+      slug: 'acme',
+      role: 'qa_lead',
+      requireMfa: false,
+    } as const;
+    expect(canCreateProjects({ ...org, capabilities: { createProjects: false } })).toBe(false);
+    expect(canCreateProjects({ ...org, capabilities: { createProjects: true } })).toBe(true);
+    // An older stored session without capabilities: let the API decide.
+    expect(canCreateProjects(org)).toBe(true);
+    expect(canCreateProjects(null)).toBe(false);
   });
 
   it('tells a QA lead in Spanish that the role cannot create projects, with the form disabled', () => {

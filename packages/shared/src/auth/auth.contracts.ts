@@ -111,7 +111,10 @@ export const ROLE_RANK: Record<OrganizationRoleName, number> = {
 };
 
 /** True when `actor` is at least as powerful as `other`. */
-export function outranksOrEquals(actor: OrganizationRoleName, other: OrganizationRoleName): boolean {
+export function outranksOrEquals(
+  actor: OrganizationRoleName,
+  other: OrganizationRoleName,
+): boolean {
   return ROLE_RANK[actor] <= ROLE_RANK[other];
 }
 
@@ -122,6 +125,25 @@ export interface AuthenticatedUser {
   avatarUrl: string | null;
 }
 
+/**
+ * Roles allowed to create projects. The API's `@Roles` guard on
+ * `POST /projects` reads this list, and the session derives
+ * `capabilities.createProjects` from it, so the client never decides on its own.
+ */
+export const PROJECT_CREATOR_ROLES = [
+  'organization_owner',
+  'organization_admin',
+] as const satisfies readonly OrganizationRoleName[];
+
+export function canCreateProjects(role: OrganizationRoleName): boolean {
+  return (PROJECT_CREATOR_ROLES as readonly OrganizationRoleName[]).includes(role);
+}
+
+/** Organization-level actions the API will accept from this member. */
+export interface OrganizationCapabilities {
+  createProjects: boolean;
+}
+
 export interface OrganizationSummary {
   id: string;
   name: string;
@@ -129,6 +151,22 @@ export interface OrganizationSummary {
   role: OrganizationRoleName;
   /** S3-F6: members need an MFA-verified session to act in it. */
   requireMfa: boolean;
+  /** Optional so sessions stored by an older client still parse. */
+  capabilities?: OrganizationCapabilities;
+}
+
+export const MEMBERSHIP_STATUSES = ['active', 'suspended'] as const;
+export type MembershipStatusName = (typeof MEMBERSHIP_STATUSES)[number];
+
+/**
+ * One of the caller's memberships as `GET /auth/memberships` returns it.
+ * Unlike the session's `organizations`, suspended memberships are included.
+ */
+export interface MembershipView {
+  organizationId: string;
+  organizationName: string;
+  role: OrganizationRoleName;
+  status: MembershipStatusName;
 }
 
 export interface AuthTokens {

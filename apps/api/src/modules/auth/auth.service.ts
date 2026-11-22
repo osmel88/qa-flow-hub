@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Session, User } from '@prisma/client';
 import {
   AuthSession,
+  MembershipView,
   AuthTokens,
   AuthenticatedUser,
   ChangePasswordInput,
@@ -87,10 +88,7 @@ export class AuthService {
 
     if (user.lockedUntil !== null && user.lockedUntil > new Date()) {
       const retryAfter = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000);
-      throw new RateLimitedError(
-        'Too many failed attempts. Try again later.',
-        retryAfter,
-      );
+      throw new RateLimitedError('Too many failed attempts. Try again later.', retryAfter);
     }
 
     if (!user.isActive) {
@@ -149,9 +147,7 @@ export class AuthService {
    * already rotated, and that is the signal to kill the whole family.
    */
   async refresh(refreshToken: string): Promise<AuthTokens> {
-    const session = await this.sessions.findByTokenHash(
-      this.tokens.hashRefreshToken(refreshToken),
-    );
+    const session = await this.sessions.findByTokenHash(this.tokens.hashRefreshToken(refreshToken));
 
     if (session === null) {
       throw new UnauthenticatedError('The refresh token is not valid');
@@ -210,9 +206,7 @@ export class AuthService {
 
   /** Logout is a database write, which is the whole point of opaque tokens. */
   async logout(refreshToken: string): Promise<void> {
-    const session = await this.sessions.findByTokenHash(
-      this.tokens.hashRefreshToken(refreshToken),
-    );
+    const session = await this.sessions.findByTokenHash(this.tokens.hashRefreshToken(refreshToken));
     if (session !== null && session.revokedAt === null) {
       await this.sessions.revoke(session.id, 'logout');
     }
@@ -252,12 +246,18 @@ export class AuthService {
     return toPublicUser(user);
   }
 
-  async getProfile(userId: string): Promise<AuthSession['user'] & { organizations: AuthSession['organizations'] }> {
+  async getProfile(
+    userId: string,
+  ): Promise<AuthSession['user'] & { organizations: AuthSession['organizations'] }> {
     const user = await this.users.findById(userId);
     if (user === null) {
       throw new UnauthenticatedError();
     }
     return { ...toPublicUser(user), organizations: await this.users.listOrganizations(user.id) };
+  }
+
+  listMemberships(userId: string): Promise<MembershipView[]> {
+    return this.users.listMemberships(userId);
   }
 
   listSessions(userId: string): Promise<Session[]> {

@@ -43,9 +43,13 @@ export function RegisterPage(): React.JSX.Element {
       });
       void navigate(invitationToken === undefined ? '/organizations' : '/dashboard');
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'DUPLICATE_RESOURCE') {
-        // The API already says so (registration cannot hide it); naming the
-        // field tells the user what to change without any further detail.
+      if (
+        error instanceof ApiError &&
+        error.code === 'DUPLICATE_RESOURCE' &&
+        (error.details ?? []).some((detail) => detail.path === 'email')
+      ) {
+        // Registration cannot hide that the address is taken; `details` names
+        // the field so the error lands on it without parsing the message.
         setFieldError('email', { message: t('register.emailTaken') });
         return;
       }

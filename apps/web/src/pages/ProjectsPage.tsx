@@ -1,5 +1,5 @@
 import { createProjectSchema, projectKeySchema, updateProjectSchema } from '@qa-flow-hub/shared';
-import type { OrganizationRoleName, ProjectView } from '@qa-flow-hub/shared';
+import type { OrganizationSummary, ProjectView } from '@qa-flow-hub/shared';
 import { Badge, Button, DataState, TextAreaField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -34,16 +34,13 @@ export function projectNameError(name: string): string | undefined {
 }
 
 /**
- * Mirrors `@Roles('organization_owner', 'organization_admin')` on
- * `POST /projects`, only to explain the rule up front; the API still decides.
+ * The session carries `capabilities.createProjects`, derived by the API from
+ * the same rule its guard enforces. When it is missing (a session stored by an
+ * older client) the form stays enabled and the API decides.
  */
-const PROJECT_CREATORS: readonly OrganizationRoleName[] = [
-  'organization_owner',
-  'organization_admin',
-];
-
-export function canCreateProjects(role: OrganizationRoleName | undefined): boolean {
-  return role !== undefined && PROJECT_CREATORS.includes(role);
+export function canCreateProjects(organization: OrganizationSummary | null | undefined): boolean {
+  if (organization === null || organization === undefined) return false;
+  return organization.capabilities?.createProjects ?? true;
 }
 
 export function ProjectsPage(): React.JSX.Element {
@@ -52,7 +49,7 @@ export function ProjectsPage(): React.JSX.Element {
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const allowed = canCreateProjects(activeOrganization?.role);
+  const allowed = canCreateProjects(activeOrganization);
 
   const {
     data,

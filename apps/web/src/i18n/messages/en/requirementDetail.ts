@@ -14,6 +14,9 @@ export const requirementDetail = {
   'requirementDetail.acceptanceCriteria': 'Acceptance criteria',
   'requirementDetail.manage': 'Edit and status',
   'requirementDetail.changeStatus': 'Change status',
+  'requirementDetail.retire': 'Retire (mark obsolete)',
+  'requirementDetail.retireHint':
+    'Keeps its history, coverage and versions; you can move it back to another status later.',
   'requirementDetail.chooseAStatus': 'Choose a status…',
   'requirementDetail.title': 'Title',
   'requirementDetail.titleTooShort': 'The title needs at least 3 characters.',

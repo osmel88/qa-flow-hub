@@ -125,7 +125,11 @@ over a tested endpoint. That is a deliberate allocation of effort, not an oversi
 The product name and logo live in `src/branding.ts` (logo file under
 `public/brand/`) and are rendered only by `components/Brand.tsx`, which the
 public `AuthScreen` and the app header use. Nothing else hardcodes the name,
-so a future brand is a two-file change. `components/Avatar.tsx` shows a
+so a future brand is a two-file change. `index.html` holds `%BRAND_NAME%`,
+`%BRAND_DESCRIPTION%` and `%BRAND_FAVICON%` placeholders that the
+`brandingHtml` plugin in `vite.config.ts` fills from the same `BRANDING`
+object at dev and build time, so the tab title and favicon follow too.
+`components/Avatar.tsx` shows a
 user's `avatarUrl` and falls back to initials when there is none or the image
 fails to load (for example, a host the CSP does not allow).
 

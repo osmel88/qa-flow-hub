@@ -42,12 +42,12 @@ require the header.
 
 ## Methods and state transitions
 
-| Method | Use |
-| --- | --- |
-| `GET` | Read. Never changes state |
-| `POST` | Create, or perform a named transition |
-| `PATCH` | Partial update of editable fields |
-| `DELETE` | Soft delete |
+| Method   | Use                                   |
+| -------- | ------------------------------------- |
+| `GET`    | Read. Never changes state             |
+| `POST`   | Create, or perform a named transition |
+| `PATCH`  | Partial update of editable fields     |
+| `DELETE` | Soft delete                           |
 
 Transitions with rules are `POST /resource/:id/<verb>`, not a writable `status`
 field:
@@ -65,18 +65,18 @@ instead of an intent.
 
 ## Status codes
 
-| Code | Meaning here |
-| --- | --- |
-| 200 | Success with a body |
-| 201 | Created |
-| 204 | Success with no body (delete, revoke) |
-| 400 | Failed schema validation |
-| 401 | Missing, invalid or revoked credentials |
-| 403 | Authenticated, but the role or membership does not allow it |
-| 404 | Does not exist **or belongs to another organization** |
-| 409 | Conflicts with current state (duplicate, expired, wrong state) |
-| 429 | Rate limited or account locked |
-| 500 | Our fault |
+| Code | Meaning here                                                   |
+| ---- | -------------------------------------------------------------- |
+| 200  | Success with a body                                            |
+| 201  | Created                                                        |
+| 204  | Success with no body (delete, revoke)                          |
+| 400  | Failed schema validation                                       |
+| 401  | Missing, invalid or revoked credentials                        |
+| 403  | Authenticated, but the role or membership does not allow it    |
+| 404  | Does not exist **or belongs to another organization**          |
+| 409  | Conflicts with current state (duplicate, expired, wrong state) |
+| 429  | Rate limited or account locked                                 |
+| 500  | Our fault                                                      |
 
 The 403/404 split is a security rule, not a preference: returning 403 for
 another tenant's resource would confirm that it exists. See
@@ -101,8 +101,11 @@ Every error, without exception:
   change without notice.
 - `requestId` appears in the response and in every log line for that request.
   Quote it in a support ticket and the operator can find everything.
-- `details` exists only for validation errors and contains field paths and
-  messages — never the submitted values, which may be a password.
+- `details` contains field paths and messages — never the submitted values,
+  which may be a password. Validation errors list every failing field;
+  `DUPLICATE_RESOURCE` lists the one unique field that clashed (for example
+  `[{ "path": "email" }]` on registration), so clients attach the error to a
+  field without parsing `message`.
 
 Codes: `VALIDATION_ERROR`, `UNAUTHENTICATED`, `UNAUTHORIZED`, `FORBIDDEN`,
 `NOT_FOUND`, `CONFLICT`, `DUPLICATE_RESOURCE`, `RATE_LIMITED`,

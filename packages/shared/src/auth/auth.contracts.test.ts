@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PROJECT_CREATOR_ROLES,
+  canCreateProjects,
   changePasswordSchema,
   emailSchema,
   loginSchema,
@@ -57,7 +59,9 @@ describe('loginSchema', () => {
   it('does not apply the password policy', () => {
     // A stored password may predate a policy change, and rejecting it here
     // would lock the user out with a message that also leaks the policy.
-    expect(loginSchema.safeParse({ email: 'ada@example.test', password: 'old' }).success).toBe(true);
+    expect(loginSchema.safeParse({ email: 'ada@example.test', password: 'old' }).success).toBe(
+      true,
+    );
   });
 });
 
@@ -69,5 +73,16 @@ describe('changePasswordSchema', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe('canCreateProjects', () => {
+  it('allows exactly the roles of PROJECT_CREATOR_ROLES', () => {
+    expect(PROJECT_CREATOR_ROLES).toEqual(['organization_owner', 'organization_admin']);
+    expect(canCreateProjects('organization_owner')).toBe(true);
+    expect(canCreateProjects('organization_admin')).toBe(true);
+    for (const role of ['project_manager', 'qa_lead', 'tester', 'viewer'] as const) {
+      expect(canCreateProjects(role)).toBe(false);
+    }
   });
 });

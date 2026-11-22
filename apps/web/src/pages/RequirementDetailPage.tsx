@@ -279,6 +279,20 @@ function ManageRequirement({ requirement }: { requirement: RequirementView }): R
           }}
         />
       )}
+      {manageable && requirement.status !== 'obsolete' && (
+        <p>
+          <Button
+            variant="secondary"
+            loading={changeStatus.isPending && changeStatus.variables === 'obsolete'}
+            onClick={() => {
+              changeStatus.mutate('obsolete');
+            }}
+          >
+            {t('requirementDetail.retire')}
+          </Button>{' '}
+          <span className="muted">{t('requirementDetail.retireHint')}</span>
+        </p>
+      )}
       {writable && editing && (
         <form
           onSubmit={(event) => {

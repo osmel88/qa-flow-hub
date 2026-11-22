@@ -163,7 +163,11 @@ function changePasswordFormSchema() {
 type ChangePasswordForm = ChangePasswordInput & { confirmPassword: string };
 
 export function ProfilePage(): React.JSX.Element {
-  const { user, organizations, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const memberships = useQuery({
+    queryKey: ['auth', 'memberships'],
+    queryFn: () => authApi.memberships(),
+  });
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -234,9 +238,9 @@ export function ProfilePage(): React.JSX.Element {
         <h2 id="memberships-title">{t('profile.memberships')}</h2>
         <p className="muted">{t('profile.membershipsIntro')}</p>
         <DataState
-          isPending={false}
-          error={null}
-          isEmpty={organizations.length === 0}
+          isPending={memberships.isPending}
+          error={memberships.error}
+          isEmpty={(memberships.data ?? []).length === 0}
           emptyMessage={t('profile.noMemberships')}
         >
           <table className="table">
@@ -248,13 +252,16 @@ export function ProfilePage(): React.JSX.Element {
               </tr>
             </thead>
             <tbody>
-              {organizations.map((organization) => (
-                <tr key={organization.id}>
-                  <td>{organization.name}</td>
-                  <td>{humanize(organization.role)}</td>
+              {(memberships.data ?? []).map((membership) => (
+                <tr key={membership.organizationId}>
+                  <td>{membership.organizationName}</td>
+                  <td>{humanize(membership.role)}</td>
                   <td>
-                    {/* The session lists active memberships only; a suspended one is not returned. */}
-                    <Badge tone="success">{t('profile.membershipActive')}</Badge>
+                    {membership.status === 'active' ? (
+                      <Badge tone="success">{t('profile.membershipActive')}</Badge>
+                    ) : (
+                      <Badge tone="warning">{t('profile.membershipSuspended')}</Badge>
+                    )}
                   </td>
                 </tr>
               ))}

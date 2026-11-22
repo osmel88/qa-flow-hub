@@ -196,6 +196,13 @@ export class AuthController {
   }
 
   @ApiBearerAuth()
+  @Get('memberships')
+  @ApiOperation({ summary: 'Every membership of the current user, suspended ones included' })
+  memberships(@CurrentUser() user: CurrentUserContext) {
+    return this.auth.listMemberships(user.userId);
+  }
+
+  @ApiBearerAuth()
   @Get('sessions')
   @ApiOperation({ summary: 'Active sessions, so the user can see and revoke them' })
   async sessions(@CurrentUser() user: CurrentUserContext) {

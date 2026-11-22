@@ -13,14 +13,14 @@ the audit log and history.
 | Entity              | Create                  | View               | Edit                                     | Archive / Close                        | Restore                | Delete                                  |
 | ------------------- | ----------------------- | ------------------ | ---------------------------------------- | -------------------------------------- | ---------------------- | --------------------------------------- |
 | Project             | API + Web (owner/admin) | API + Web (Open)   | API + Web (`project.manage`)             | Archive: API + Web                     | API + Web              | — (1)                                   |
-| Requirement         | API + Web               | API + Web (detail) | API + Web (detail, versioned)            | Status `obsolete`: API + Web           | Status back: API + Web | Soft delete: API + Web (2)              |
+| Requirement         | API + Web               | API + Web (detail) | API + Web (detail, versioned)            | Retire (`obsolete`): API + Web         | Status back: API + Web | Soft delete: API + Web (2)              |
 | Work item           | API + Web               | API + Web (detail) | API + Web                                | Status / workflow: API + Web           | Status back            | Soft delete: API + Web                  |
 | Test case           | API + Web               | API + Web          | API + Web (versioned, restore a version) | Archive: API + Web                     | API + Web              | API only (3)                            |
 | Test plan           | API + Web               | API + Web          | API + Web                                | Complete / cancel / archive: API + Web | — (4)                  | — (4)                                   |
 | Test cycle          | API + Web               | API + Web          | API + Web                                | Complete / cancel / archive: API + Web | — (4)                  | — (4)                                   |
 | Test run            | API + Web               | API + Web          | API (title, release, environment)        | Complete / abort: API + Web            | — (5)                  | Soft delete: API only (5)               |
-| Defect              | API + Web               | API + Web          | API                                      | Status `closed`: API + Web             | Reopen by status       | Soft delete: API only (6)               |
-| Release             | API + Web               | API + Web          | API (until archived)                     | Released / archive: API + Web          | — (4)                  | — (1)                                   |
+| Defect              | API + Web               | API + Web          | API + Web (title, severity, priority)    | Status `closed`: API + Web             | Reopen by status       | Soft delete: API only (6)               |
+| Release             | API + Web               | API + Web (detail) | API + Web (until archived)               | Released / archive: API + Web          | — (4)                  | — (1)                                   |
 | Environment         | API + Web               | API + Web          | API + Web                                | Archive: API + Web                     | API + Web              | Only without deployments: API + Web (7) |
 | Build               | API + Web (or CI)       | API + Web          | API (metadata)                           | Status transitions                     | —                      | — (8)                                   |
 | Deployment          | API + Web (or CI)       | API + Web          | API (metadata)                           | Status transitions, rollback           | —                      | — (8)                                   |
@@ -68,4 +68,5 @@ the audit log and history.
 Every operation above checks the permission listed in
 `docs/permissions-matrix.md`. The Web only hides or disables an action to
 explain the rule (for example, project creation for roles below
-`organization_admin`); the API remains the boundary.
+`organization_admin`, which the Web reads from the session's
+`capabilities.createProjects`); the API remains the boundary.

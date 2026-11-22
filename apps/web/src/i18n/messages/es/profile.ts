@@ -32,6 +32,7 @@ export const profile: Partial<Record<keyof typeof source, string>> = {
   'profile.organizationRole': 'Rol en la organización',
   'profile.membershipStatus': 'Estado de la membresía',
   'profile.membershipActive': 'Activa',
+  'profile.membershipSuspended': 'Suspendida',
   'profile.noMemberships': 'Todavía no perteneces a ninguna organización.',
   'profile.emailHint':
     'Se usa para iniciar sesión y para las notificaciones. No se puede cambiar aquí.',

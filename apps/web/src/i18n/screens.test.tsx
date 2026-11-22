@@ -40,7 +40,12 @@ vi.mock('../api/endpoints', () => ({
 
 vi.mock('../auth/auth-context', () => ({
   useAuth: () => ({
-    activeOrganization: { id: 'org_1', name: 'Acme', role: 'organization_owner' },
+    activeOrganization: {
+      id: 'org_1',
+      name: 'Acme',
+      role: 'organization_owner',
+      capabilities: { createProjects: true },
+    },
   }),
 }));
 

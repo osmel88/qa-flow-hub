@@ -28,4 +28,11 @@ export const defects: Partial<Record<keyof typeof source, string>> = {
   'defects.choose': 'Elige…',
   'defects.hideEvidence': 'Ocultar evidencias',
   'defects.evidenceFor': 'Evidencias de {key}',
+  'defects.edit': 'Editar',
+  'defects.editDefect': 'Editar el defecto {key}',
+  'defects.priority': 'Prioridad',
+  'defects.save': 'Guardar cambios',
+  'defects.cancel': 'Cancelar',
+  'defects.titleMustHaveAtLeast3': 'El título debe tener al menos 3 caracteres',
+  'defects.couldNotSaveTheDefect': 'No se pudo guardar el defecto',
 };

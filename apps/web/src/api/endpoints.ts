@@ -220,6 +220,7 @@ import type {
   ImportCommitResult,
   ImportJobView,
   ImportLimitsView,
+  MembershipView,
 } from '@qa-flow-hub/shared';
 import { apiFetch, apiFetchBlob, query } from './http-client';
 
@@ -259,6 +260,7 @@ export const authApi = {
     apiFetch<AuthSession['user'] & { organizations: OrganizationSummary[] }>('/auth/me', {
       withoutOrganization: true,
     }),
+  memberships: () => apiFetch<MembershipView[]>('/auth/memberships', { withoutOrganization: true }),
   changePassword: (body: ChangePasswordInput) =>
     apiFetch<void>('/auth/change-password', { method: 'POST', body, withoutOrganization: true }),
   forgotPassword: (body: ForgotPasswordInput) =>

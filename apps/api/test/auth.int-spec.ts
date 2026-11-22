@@ -4,7 +4,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../src/database/prisma.service';
 import { createTestApp } from './utils/create-test-app';
 
-const REGISTER = { email: 'Ada@Example.test', password: 'Str0ngPassword!', fullName: 'Ada Lovelace' };
+const REGISTER = {
+  email: 'Ada@Example.test',
+  password: 'Str0ngPassword!',
+  fullName: 'Ada Lovelace',
+};
 
 describe('authentication', () => {
   let app: NestFastifyApplication;
@@ -90,10 +94,15 @@ describe('authentication', () => {
 
     it('rejects a duplicate email regardless of casing', async () => {
       await register();
-      const response = await post('/api/v1/auth/register', { ...REGISTER, email: 'ADA@example.test' });
+      const response = await post('/api/v1/auth/register', {
+        ...REGISTER,
+        email: 'ADA@example.test',
+      });
 
       expect(response.statusCode).toBe(409);
       expect(response.json().error.code).toBe('DUPLICATE_RESOURCE');
+      // The field is machine-readable so the client never parses the message.
+      expect(response.json().error.details).toEqual([expect.objectContaining({ path: 'email' })]);
     });
 
     it('strips unknown fields instead of trusting them', async () => {
@@ -244,7 +253,9 @@ describe('authentication', () => {
 
     it('kills the whole family when a used token is replayed', async () => {
       const session = await register();
-      const second = (await post('/api/v1/auth/refresh', { refreshToken: session.refreshToken })).json();
+      const second = (
+        await post('/api/v1/auth/refresh', { refreshToken: session.refreshToken })
+      ).json();
 
       // The thief (or the confused client) replays the first token...
       await post('/api/v1/auth/refresh', { refreshToken: session.refreshToken });
@@ -294,8 +305,70 @@ describe('authentication', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json().email).toBe('ada@example.test');
       expect(response.json().organizations).toEqual([
-        expect.objectContaining({ slug: 'acme', role: 'qa_lead' }),
+        expect.objectContaining({
+          slug: 'acme',
+          role: 'qa_lead',
+          capabilities: { createProjects: false },
+        }),
       ]);
+    });
+
+    it('lists every membership with its real status, suspended ones only on /auth/memberships', async () => {
+      const session = await register();
+      const [acme, globex, other] = await Promise.all(
+        ['acme', 'globex', 'other'].map((slug) =>
+          prisma.organization.create({ data: { name: slug, slug } }),
+        ),
+      );
+      await prisma.organizationMember.createMany({
+        data: [
+          {
+            organizationId: acme!.id,
+            userId: session.user.id,
+            role: OrganizationRole.organization_admin,
+          },
+          {
+            organizationId: globex!.id,
+            userId: session.user.id,
+            role: OrganizationRole.viewer,
+            status: 'suspended',
+          },
+        ],
+      });
+      const stranger = await prisma.user.create({
+        data: { email: 'stranger@example.test', fullName: 'Stranger', passwordHash: 'x' },
+      });
+      await prisma.organizationMember.create({
+        data: { organizationId: other!.id, userId: stranger.id, role: OrganizationRole.viewer },
+      });
+
+      const memberships = await get('/api/v1/auth/memberships', bearer(session.accessToken));
+      expect(memberships.statusCode).toBe(200);
+      expect(memberships.json()).toEqual([
+        {
+          organizationId: acme!.id,
+          organizationName: 'acme',
+          role: 'organization_admin',
+          status: 'active',
+        },
+        {
+          organizationId: globex!.id,
+          organizationName: 'globex',
+          role: 'viewer',
+          status: 'suspended',
+        },
+      ]);
+
+      // The session still lists only what the user may act for.
+      const me = await get('/api/v1/auth/me', bearer(session.accessToken));
+      expect(me.json().organizations).toEqual([
+        expect.objectContaining({ id: acme!.id, capabilities: { createProjects: true } }),
+      ]);
+    });
+
+    it('requires authentication for /auth/memberships', async () => {
+      const response = await get('/api/v1/auth/memberships');
+      expect(response.statusCode).toBe(401);
     });
 
     it('stops accepting the access token as soon as its session is revoked', async () => {
@@ -367,7 +440,9 @@ describe('authentication', () => {
 
     it('refuses an organization the caller is not a member of', async () => {
       const session = await register();
-      const foreign = await prisma.organization.create({ data: { name: 'Foreign', slug: 'foreign' } });
+      const foreign = await prisma.organization.create({
+        data: { name: 'Foreign', slug: 'foreign' },
+      });
 
       const response = await get('/api/v1/auth/me', {
         ...bearer(session.accessToken),
@@ -381,7 +456,9 @@ describe('authentication', () => {
 
     it('accepts an organization where the membership is active', async () => {
       const session = await register();
-      const organization = await prisma.organization.create({ data: { name: 'Acme', slug: 'acme' } });
+      const organization = await prisma.organization.create({
+        data: { name: 'Acme', slug: 'acme' },
+      });
       await prisma.organizationMember.create({
         data: {
           organizationId: organization.id,

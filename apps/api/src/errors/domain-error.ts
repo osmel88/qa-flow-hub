@@ -50,7 +50,10 @@ export class DuplicateResourceError extends DomainError {
   readonly httpStatus = 409;
 
   constructor(resource: string, field: string) {
-    super(`A ${resource} with this ${field} already exists`, { resource, field });
+    const message = `A ${resource} with this ${field} already exists`;
+    // `details` names the field so a client can attach the error to it
+    // without parsing the English message.
+    super(message, { resource, field, details: [{ path: field, message }] });
   }
 }
 

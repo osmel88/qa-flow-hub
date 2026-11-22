@@ -1,4 +1,4 @@
-import { DEFECT_SEVERITIES, DEFECT_STATUSES } from '@qa-flow-hub/shared';
+import { DEFECT_SEVERITIES, DEFECT_STATUSES, PRIORITIES } from '@qa-flow-hub/shared';
 import type {
   CustomFieldView,
   DefectView,
@@ -224,6 +224,7 @@ function DefectRow({
   transitions,
   customFields,
 }: DefectRowProps): React.JSX.Element {
+  const [editing, setEditing] = useState(false);
   const targets =
     transitions === undefined
       ? DEFECT_STATUSES.filter((value) => value !== defect.status)
@@ -273,9 +274,31 @@ function DefectRow({
         <td>
           <Button size="sm" variant="ghost" aria-expanded={evidenceOpen} onClick={onToggleEvidence}>
             {evidenceOpen ? t('defects.hideEvidence') : t('defects.evidence')}
+          </Button>{' '}
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-expanded={editing}
+            onClick={() => {
+              setEditing(!editing);
+            }}
+          >
+            {t('defects.edit')}
           </Button>
         </td>
       </tr>
+      {editing && (
+        <tr>
+          <td colSpan={8}>
+            <EditDefect
+              defect={defect}
+              onDone={() => {
+                setEditing(false);
+              }}
+            />
+          </td>
+        </tr>
+      )}
       {evidenceOpen && (
         <tr>
           <td colSpan={8}>
@@ -288,5 +311,97 @@ function DefectRow({
         </tr>
       )}
     </>
+  );
+}
+
+/**
+ * Edits the descriptive fields; the status keeps its own workflow menu, and a
+ * defect is never deleted from the UI so metrics keep every defect found.
+ */
+export function EditDefect({
+  defect,
+  onDone,
+}: {
+  defect: DefectView;
+  onDone: () => void;
+}): React.JSX.Element {
+  const queryClient = useQueryClient();
+  const [title, setTitle] = useState(defect.title);
+  const [description, setDescription] = useState(defect.description ?? '');
+  const [severity, setSeverity] = useState<string>(defect.severity);
+  const [priority, setPriority] = useState<string>(defect.priority);
+  const [error, setError] = useState<string | null>(null);
+  const titleError = title.trim().length < 3 ? t('defects.titleMustHaveAtLeast3') : undefined;
+
+  const save = useMutation({
+    mutationFn: () =>
+      defectsApi.update(defect.id, {
+        title: title.trim(),
+        description: description.trim() === '' ? null : description.trim(),
+        severity: severity as DefectView['severity'],
+        priority: priority as (typeof PRIORITIES)[number],
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['defects'] });
+      onDone();
+    },
+    onError: (cause) => {
+      setError(cause instanceof ApiError ? cause.message : t('defects.couldNotSaveTheDefect'));
+    },
+  });
+
+  return (
+    <form
+      aria-label={t('defects.editDefect', { key: defect.key })}
+      onSubmit={(event) => {
+        event.preventDefault();
+        save.mutate();
+      }}
+    >
+      {error !== null && (
+        <p className="ui-field__error" role="alert">
+          {error}
+        </p>
+      )}
+      <TextField
+        label={t('defects.title')}
+        value={title}
+        error={titleError}
+        onChange={(event) => {
+          setTitle(event.target.value);
+        }}
+      />
+      <TextAreaField
+        label={t('defects.description')}
+        value={description}
+        onChange={(event) => {
+          setDescription(event.target.value);
+        }}
+      />
+      <SelectField
+        label={t('defects.severity')}
+        options={DEFECT_SEVERITIES.map((value) => ({ value, label: humanize(value) }))}
+        value={severity}
+        onChange={(event) => {
+          setSeverity(event.target.value);
+        }}
+      />
+      <SelectField
+        label={t('defects.priority')}
+        options={PRIORITIES.map((value) => ({ value, label: humanize(value) }))}
+        value={priority}
+        onChange={(event) => {
+          setPriority(event.target.value);
+        }}
+      />
+      <div className="actions">
+        <Button type="submit" loading={save.isPending} disabled={titleError !== undefined}>
+          {t('defects.save')}
+        </Button>
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {t('defects.cancel')}
+        </Button>
+      </div>
+    </form>
   );
 }

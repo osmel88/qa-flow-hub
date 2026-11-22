@@ -1490,23 +1490,32 @@ The S7-F7 dashboard computes everything on read. Known limits:
 
 - **No brand yet.** `apps/web/src/branding.ts` holds a working name
   (`qa-flow-hub`) and `public/brand/logo.svg` a placeholder mark. Changing the
-  product's identity is a two-file edit; `index.html`'s `<title>` and the
-  favicon still need updating by hand when the brand is chosen.
+  product's identity is a two-file edit; `index.html`'s title, description and
+  favicon are generated from the same object at build time.
 - **No avatar upload.** The API stores `avatarUrl` and the Web shows it, with
   initials as the fallback, but there is no upload: storing user images needs
   the attachments storage, size and type checks, and resizing. The CSP
   (`img-src 'self' data: blob:`) also blocks pictures on external hosts,
   which the Web then renders as initials. Upload is a later feature.
-- **Project creation rule is mirrored in the Web.** `canCreateProjects()`
-  repeats `@Roles('organization_owner', 'organization_admin')` on
-  `POST /projects` only to explain the rule before the user tries. If the
-  rule changes, both must change; the API stays the boundary either way.
-- **Membership status.** The session lists only active memberships, so the
-  profile always shows "Active". Showing suspended ones needs the API to
-  return them.
+- **Organization capabilities are a single flag.** `PROJECT_CREATOR_ROLES`
+  in `@qa-flow-hub/shared` feeds both the `@Roles` guard of `POST /projects`
+  and `capabilities.createProjects` in the session, so the Web holds no role
+  list. Other organization-level actions (members, billing, settings) still
+  decide visibility from the role; extend `OrganizationCapabilities` when one
+  of them needs the same treatment. The flag is computed at login/refresh:
+  a role change shows up in the UI after the next session refresh.
+- **Suspended memberships are listed, not actionable.** `GET /auth/memberships`
+  returns them with their status for the profile; the session's
+  `organizations` stays active-only, because that is the list the guards trust.
 - **Destructive deletes stay out of the UI** (projects, releases, test runs,
   defects, test cases): see `docs/crud-matrix.md`. A data-retention purge job
   would be the place for real deletion.
-- **Duplicate-email message.** Register maps `DUPLICATE_RESOURCE` to the email
-  field because it is the only unique field on that form; a machine-readable
-  `field` in the error body would make that explicit.
+- **Registration reveals that an email is taken.** `DUPLICATE_RESOURCE` now
+  carries `details: [{ path: "email" }]`, and the Web shows "An account with
+  this email already exists". This is the existing behaviour of the 409 made
+  explicit, not a new leak: hiding it would need an email-verification signup
+  flow (always answer "check your inbox"), which is a product decision.
+  Login and password reset keep their anti-enumeration answers.
+- **Test runs are edited only through the API.** `PATCH /test-runs/:id`
+  (name, description, milestone, environment, release) has no Web form yet;
+  defects and releases gained one in this block.

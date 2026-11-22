@@ -29,6 +29,7 @@ export const profile = {
   'profile.organizationRole': 'Role in the organization',
   'profile.membershipStatus': 'Membership status',
   'profile.membershipActive': 'Active',
+  'profile.membershipSuspended': 'Suspended',
   'profile.noMemberships': 'You do not belong to any organization yet.',
   'profile.emailHint': 'Used to sign in and for notifications. It cannot be changed here.',
   'profile.avatar': 'Profile picture',

@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+import { BRANDING } from './src/branding';
 
 /**
  * The browser talks to `/api/` and `/health` on its own origin and Vite forwards
@@ -45,8 +46,26 @@ const securityHeaders = {
   'Cross-Origin-Opener-Policy': 'same-origin',
 };
 
+/** Keeps `index.html` (title, description, favicon) on the single branding source. */
+function brandingHtml(): Plugin {
+  const escape = (value: string) =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  return {
+    name: 'branding-html',
+    transformIndexHtml: (html) =>
+      html
+        .replaceAll('%BRAND_NAME%', escape(BRANDING.name))
+        .replaceAll('%BRAND_DESCRIPTION%', escape(BRANDING.description))
+        .replaceAll('%BRAND_FAVICON%', escape(BRANDING.faviconUrl)),
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), brandingHtml()],
   server: { port: 5173, host: true, proxy: apiProxy },
   preview: { port: 4173, host: true, proxy: apiProxy, headers: securityHeaders },
   build: { outDir: 'dist', sourcemap: true },

@@ -1,6 +1,6 @@
 import { RELEASE_TRANSITIONS } from '@qa-flow-hub/shared';
-import type { ReleaseStatus } from '@qa-flow-hub/shared';
-import { Badge, Button, DataState } from '@qa-flow-hub/ui';
+import type { ReleaseStatus, ReleaseView } from '@qa-flow-hub/shared';
+import { Badge, Button, DataState, TextAreaField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -122,6 +122,10 @@ export function ReleaseDetailPage(): React.JSX.Element {
                 ),
               )}
             </div>
+          )}
+
+          {can('releases.manage') && release.status !== 'archived' && (
+            <EditRelease release={release} />
           )}
 
           <section className="card" aria-labelledby="release-kpis">
@@ -258,6 +262,137 @@ function ReleaseBuilds({
       ) : (
         <BuildList builds={builds.data?.data ?? []} label={t('releaseDetail.releaseBuilds')} />
       )}
+    </section>
+  );
+}
+
+/**
+ * Edits a release until it is archived (the API refuses after that). The
+ * version is fixed at creation because builds and gates are matched by it.
+ */
+export function EditRelease({ release }: { release: ReleaseView }): React.JSX.Element {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(release.name);
+  const [tag, setTag] = useState(release.tag ?? '');
+  const [description, setDescription] = useState(release.description ?? '');
+  const [startDate, setStartDate] = useState(release.startDate ?? '');
+  const [targetDate, setTargetDate] = useState(release.targetDate ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const nameError = name.trim() === '' ? t('releaseDetail.nameIsRequired') : undefined;
+  const datesError =
+    startDate !== '' && targetDate !== '' && startDate > targetDate
+      ? t('releaseDetail.targetDateBeforeStart')
+      : undefined;
+
+  const save = useMutation({
+    mutationFn: () =>
+      releasesApi.update(release.id, {
+        name: name.trim(),
+        tag: tag.trim() === '' ? null : tag.trim(),
+        description: description.trim() === '' ? null : description.trim(),
+        startDate: startDate === '' ? null : startDate,
+        targetDate: targetDate === '' ? null : targetDate,
+      }),
+    onSuccess: async () => {
+      setError(null);
+      setOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ['releases'] });
+    },
+    onError: (cause) => {
+      setError(
+        cause instanceof ApiError ? cause.message : t('releaseDetail.couldNotSaveTheRelease'),
+      );
+    },
+  });
+
+  if (!open) {
+    return (
+      <div className="actions">
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          {t('releaseDetail.editRelease')}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <section className="card" aria-labelledby="edit-release">
+      <h2 id="edit-release">{t('releaseDetail.editRelease')}</h2>
+      {error !== null && (
+        <p className="ui-field__error" role="alert">
+          {error}
+        </p>
+      )}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        <TextField
+          label={t('releaseDetail.name')}
+          value={name}
+          error={nameError}
+          onChange={(event) => {
+            setName(event.target.value);
+          }}
+        />
+        <TextField
+          label={t('releaseDetail.tag')}
+          value={tag}
+          onChange={(event) => {
+            setTag(event.target.value);
+          }}
+        />
+        <TextAreaField
+          label={t('releaseDetail.description')}
+          value={description}
+          onChange={(event) => {
+            setDescription(event.target.value);
+          }}
+        />
+        <TextField
+          type="date"
+          label={t('releaseDetail.startDate')}
+          value={startDate}
+          onChange={(event) => {
+            setStartDate(event.target.value);
+          }}
+        />
+        <TextField
+          type="date"
+          label={t('releaseDetail.targetDate')}
+          value={targetDate}
+          error={datesError}
+          onChange={(event) => {
+            setTargetDate(event.target.value);
+          }}
+        />
+        <div className="actions">
+          <Button
+            type="submit"
+            loading={save.isPending}
+            disabled={nameError !== undefined || datesError !== undefined}
+          >
+            {t('releaseDetail.save')}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setOpen(false);
+            }}
+          >
+            {t('releaseDetail.cancel')}
+          </Button>
+        </div>
+      </form>
     </section>
   );
 }

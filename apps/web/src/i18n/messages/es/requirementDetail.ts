@@ -17,6 +17,9 @@ export const requirementDetail: Partial<Record<keyof typeof source, string>> = {
   'requirementDetail.acceptanceCriteria': 'Criterios de aceptación',
   'requirementDetail.manage': 'Edición y estado',
   'requirementDetail.changeStatus': 'Cambiar estado',
+  'requirementDetail.retire': 'Retirar (marcar como obsoleto)',
+  'requirementDetail.retireHint':
+    'Conserva su histórico, cobertura y versiones; más adelante puedes devolverlo a otro estado.',
   'requirementDetail.chooseAStatus': 'Elige un estado…',
   'requirementDetail.title': 'Título',
   'requirementDetail.titleTooShort': 'El título necesita al menos 3 caracteres.',

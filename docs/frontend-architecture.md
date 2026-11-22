@@ -122,10 +122,12 @@ over a tested endpoint. That is a deliberate allocation of effort, not an oversi
 
 ## Branding and avatars
 
-The product name and logo live in `src/branding.ts` (logo file under
-`public/brand/`) and are rendered only by `components/Brand.tsx`, which the
-public `AuthScreen` and the app header use. Nothing else hardcodes the name,
-so a future brand is a two-file change. `index.html` holds `%BRAND_NAME%`,
+The product name (**Veritest**) and its images live in `src/branding.ts`
+(files under `public/brand/`) and are rendered only by `components/Brand.tsx`:
+the public `AuthScreen` shows the full logo (the name stays as visually hidden
+text), the app header shows the symbol next to the name. Setting `logoUrl` or
+`markUrl` to `null` falls back to the name alone. Catalog strings that mention
+the product interpolate `BRANDING.name` instead of hardcoding it. `index.html` holds `%BRAND_NAME%`,
 `%BRAND_DESCRIPTION%` and `%BRAND_FAVICON%` placeholders that the
 `brandingHtml` plugin in `vite.config.ts` fills from the same `BRANDING`
 object at dev and build time, so the tab title and favicon follow too.

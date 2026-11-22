@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
+import { hasCapability } from '../auth/capabilities';
 import { useProject } from '../project/project-context';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { projectsApi } from '../api/endpoints';
@@ -33,14 +34,8 @@ export function projectNameError(name: string): string | undefined {
     : t('validation.projectName');
 }
 
-/**
- * The session carries `capabilities.createProjects`, derived by the API from
- * the same rule its guard enforces. When it is missing (a session stored by an
- * older client) the form stays enabled and the API decides.
- */
 export function canCreateProjects(organization: OrganizationSummary | null | undefined): boolean {
-  if (organization === null || organization === undefined) return false;
-  return organization.capabilities?.createProjects ?? true;
+  return hasCapability(organization, 'createProjects');
 }
 
 export function ProjectsPage(): React.JSX.Element {

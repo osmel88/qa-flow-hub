@@ -1,6 +1,11 @@
 import type { profile as source } from '../en/profile';
 
 export const profile: Partial<Record<keyof typeof source, string>> = {
+  'profile.nameEdit': 'Editar nombre',
+  'profile.nameSave': 'Guardar nombre',
+  'profile.nameCancel': 'Cancelar',
+  'profile.nameTooShort': 'El nombre debe tener al menos 2 caracteres.',
+  'profile.nameSaveFailed': 'No se pudo guardar el nombre.',
   'profile.emailNotifications': 'Notificaciones por correo electrónico',
   'profile.masterSwitchForOptionalEmails':
     'Interruptor general de los correos opcionales. Los avisos de seguridad, como los cambios de contraseña y las invitaciones a organizaciones, se envían siempre.',

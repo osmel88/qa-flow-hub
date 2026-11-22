@@ -10,13 +10,18 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authApi, mfaApi } from '../api/endpoints';
-import { refreshSession, setSessionLostHandler } from '../api/http-client';
+import { ApiError, refreshSession, setSessionLostHandler } from '../api/http-client';
 import {
   clearSession,
   getActiveOrganizationId,
   setActiveOrganizationId,
   storeSession,
 } from '../api/session-store';
+
+/** Background session reloads that pick up role and grant changes. */
+const ROLE_POLL_MS = 5 * 60_000;
+const FOCUS_RELOAD_GAP_MS = 30_000;
+const FORBIDDEN_RELOAD_GAP_MS = 10_000;
 
 interface AuthState {
   user: AuthSession['user'] | null;
@@ -68,22 +73,25 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
     queryClient.clear();
   }, [queryClient]);
 
-  const applySession = useCallback((session: AuthSession) => {
-    forgetTenantData();
-    storeSession(session);
-    const stored = getActiveOrganizationId();
-    const active =
-      session.organizations.find((organization) => organization.id === stored)?.id ??
-      session.organizations[0]?.id ??
-      null;
-    setActiveOrganizationId(active);
-    setState({
-      user: session.user,
-      organizations: session.organizations,
-      activeOrganizationId: active,
-      isRestoring: false,
-    });
-  }, [forgetTenantData]);
+  const applySession = useCallback(
+    (session: AuthSession) => {
+      forgetTenantData();
+      storeSession(session);
+      const stored = getActiveOrganizationId();
+      const active =
+        session.organizations.find((organization) => organization.id === stored)?.id ??
+        session.organizations[0]?.id ??
+        null;
+      setActiveOrganizationId(active);
+      setState({
+        user: session.user,
+        organizations: session.organizations,
+        activeOrganizationId: active,
+        isRestoring: false,
+      });
+    },
+    [forgetTenantData],
+  );
 
   const signOut = useCallback(() => {
     clearSession();
@@ -94,6 +102,55 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
   useEffect(() => {
     setSessionLostHandler(signOut);
   }, [signOut]);
+
+  const reloadOrganizations = useCallback(async () => {
+    const profile = await authApi.me();
+    const { organizations, ...user } = profile;
+    setState((current) => ({ ...current, user, organizations }));
+    await queryClient.invalidateQueries({ queryKey: ['permissions', 'me'] });
+  }, [queryClient]);
+
+  // A role or grant changed by someone else reaches this tab without a new
+  // login: on focus, every few minutes, and right after the API answers 403.
+  const signedIn = state.user !== null;
+  useEffect(() => {
+    if (!signedIn) return;
+    let last = Date.now();
+    const reload = (minGapMs: number) => {
+      if (Date.now() - last < minGapMs) return;
+      last = Date.now();
+      void reloadOrganizations().catch(() => undefined);
+    };
+    const onFocus = () => {
+      reload(FOCUS_RELOAD_GAP_MS);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') reload(FOCUS_RELOAD_GAP_MS);
+    };
+    const isForbidden = (error: unknown) => error instanceof ApiError && error.status === 403;
+    const unsubscribeQueries = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'error') {
+        if (isForbidden(event.action.error)) reload(FORBIDDEN_RELOAD_GAP_MS);
+      }
+    });
+    const unsubscribeMutations = queryClient.getMutationCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'error') {
+        if (isForbidden(event.action.error)) reload(FORBIDDEN_RELOAD_GAP_MS);
+      }
+    });
+    const timer = window.setInterval(() => {
+      reload(0);
+    }, ROLE_POLL_MS);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      unsubscribeQueries();
+      unsubscribeMutations();
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [signedIn, queryClient, reloadOrganizations]);
 
   useEffect(() => {
     let cancelled = false;
@@ -169,13 +226,9 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
         forgetTenantData();
         setState((current) => ({ ...current, activeOrganizationId: organizationId }));
       },
-      refreshOrganizations: async () => {
-        const profile = await authApi.me();
-        const { organizations, ...user } = profile;
-        setState((current) => ({ ...current, user, organizations }));
-      },
+      refreshOrganizations: reloadOrganizations,
     }),
-    [state, applySession, signOut, forgetTenantData],
+    [state, applySession, signOut, forgetTenantData, reloadOrganizations],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

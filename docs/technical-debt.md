@@ -1488,22 +1488,36 @@ The S7-F7 dashboard computes everything on read. Known limits:
 
 ## 71. Staging stabilization: what the block leaves
 
-- **No brand yet.** `apps/web/src/branding.ts` holds a working name
-  (`qa-flow-hub`) and `public/brand/logo.svg` a placeholder mark. Changing the
-  product's identity is a two-file edit; `index.html`'s title, description and
-  favicon are generated from the same object at build time.
-- **No avatar upload.** The API stores `avatarUrl` and the Web shows it, with
-  initials as the fallback, but there is no upload: storing user images needs
-  the attachments storage, size and type checks, and resizing. The CSP
-  (`img-src 'self' data: blob:`) also blocks pictures on external hosts,
-  which the Web then renders as initials. Upload is a later feature.
-- **Organization capabilities are a single flag.** `PROJECT_CREATOR_ROLES`
-  in `@qa-flow-hub/shared` feeds both the `@Roles` guard of `POST /projects`
-  and `capabilities.createProjects` in the session, so the Web holds no role
-  list. Other organization-level actions (members, billing, settings) still
-  decide visibility from the role; extend `OrganizationCapabilities` when one
-  of them needs the same treatment. The flag is computed at login/refresh:
-  a role change shows up in the UI after the next session refresh.
+- **Brand.** The product is **Veritest** with the approved logo
+  (`apps/web/src/branding.ts`, images in `public/brand/`: `logo.png` full,
+  `mark.png` symbol, `favicon.png`), PNGs cut from the supplied artwork. An
+  SVG export of the logo would be sharper at every size. Internal identifiers
+  (`@qa-flow-hub/*` packages, the repository, the `qa-flow-hub:refresh` lock,
+  the `qafh_refresh` cookie, the "qa-flow-hub CSV" import parser id) keep the
+  old name on purpose: renaming them breaks stored sessions, imports and
+  deployments for no visible gain.
+- **No avatar upload.** The profile now edits the name (`PATCH /auth/me`),
+  and the Web shows `avatarUrl` with initials as the fallback, but there is no
+  upload: user images are not tenant data, so the tenant-scoped attachments
+  storage does not fit, and they need size/type checks and resizing. The CSP
+  (`img-src 'self' data: blob:`) blocks pictures on external hosts, so a URL
+  field would be useless. Needs a product decision (user-level storage, or a
+  generated avatar only).
+- **Organization capabilities.** `ORGANIZATION_CAPABILITY_ROLES` in
+  `@qa-flow-hub/shared` is the one rule for organization-level actions
+  (projects, organization settings, members, billing read/manage, audit log,
+  notification deliveries, seeing every project). The API's `@Roles` guards
+  and the services that check a role read it; the session carries the derived
+  `capabilities`, and the Web reads them through `hasCapability()` (falling
+  back to the same shared rule for an older stored session). Integrations use
+  the permission matrix (`integrations.manage`) instead. Project-level
+  actions keep using `GET /permissions/me`.
+- **Role changes reach an open tab within minutes, not instantly.** The Web
+  reloads `/auth/me` and the project permissions on focus (at most every
+  30 s), every 5 minutes, and right after any 403. There is no push channel;
+  the access token still carries the role until it expires, but the guards
+  read the membership from the database on every request, so the API is
+  never stale.
 - **Suspended memberships are listed, not actionable.** `GET /auth/memberships`
   returns them with their status for the profile; the session's
   `organizations` stays active-only, because that is the list the guards trust.
@@ -1516,6 +1530,7 @@ The S7-F7 dashboard computes everything on read. Known limits:
   explicit, not a new leak: hiding it would need an email-verification signup
   flow (always answer "check your inbox"), which is a product decision.
   Login and password reset keep their anti-enumeration answers.
-- **Test runs are edited only through the API.** `PATCH /test-runs/:id`
-  (name, description, milestone, environment, release) has no Web form yet;
-  defects and releases gained one in this block.
+- **Test-run release is changed only through the API.** The run page edits
+  name, description, milestone and environment of planned or in-progress runs;
+  moving a run to another release stays API-only (it changes readiness and
+  release metrics, and needs a release picker with the open-release rule).

@@ -5,7 +5,7 @@ import type {
   UpdateNotificationPreferencesInput,
 } from '@qa-flow-hub/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Badge, Button, DataState, PasswordField } from '@qa-flow-hub/ui';
+import { Badge, Button, DataState, PasswordField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -162,6 +162,80 @@ function changePasswordFormSchema() {
 
 type ChangePasswordForm = ChangePasswordInput & { confirmPassword: string };
 
+/** The one profile field a user edits here; the email is the login identity. */
+function ProfileName(): React.JSX.Element {
+  const { user, refreshOrganizations } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const nameError = name.trim().length < 2 ? t('profile.nameTooShort') : undefined;
+  const save = useMutation({
+    mutationFn: () => authApi.updateProfile({ fullName: name.trim() }),
+    onSuccess: async () => {
+      setError(null);
+      setEditing(false);
+      await refreshOrganizations();
+    },
+    onError: (cause) => {
+      setError(cause instanceof ApiError ? cause.message : t('profile.nameSaveFailed'));
+    },
+  });
+
+  if (!editing) {
+    return (
+      <>
+        {user?.fullName}{' '}
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setName(user?.fullName ?? '');
+            setEditing(true);
+          }}
+        >
+          {t('profile.nameEdit')}
+        </Button>
+      </>
+    );
+  }
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        save.mutate();
+      }}
+    >
+      {error !== null && (
+        <p className="ui-field__error" role="alert">
+          {error}
+        </p>
+      )}
+      <TextField
+        label={t('profile.name')}
+        value={name}
+        error={nameError}
+        autoComplete="name"
+        onChange={(event) => {
+          setName(event.target.value);
+        }}
+      />
+      <div className="actions">
+        <Button type="submit" loading={save.isPending} disabled={nameError !== undefined}>
+          {t('profile.nameSave')}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            setEditing(false);
+          }}
+        >
+          {t('profile.nameCancel')}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function ProfilePage(): React.JSX.Element {
   const { user, logout } = useAuth();
   const memberships = useQuery({
@@ -220,7 +294,9 @@ export function ProfilePage(): React.JSX.Element {
           <Avatar name={user?.fullName} email={user?.email} avatarUrl={user?.avatarUrl} size="lg" />
           <dl className="details">
             <dt>{t('profile.name')}</dt>
-            <dd>{user?.fullName}</dd>
+            <dd>
+              <ProfileName />
+            </dd>
             <dt>{t('profile.email')}</dt>
             <dd>
               {user?.email}

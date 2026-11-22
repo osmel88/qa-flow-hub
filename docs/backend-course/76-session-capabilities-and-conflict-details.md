@@ -68,10 +68,49 @@ Enumeration: registration already disclosed a taken email through the 409;
 the change only makes it machine-readable. Login and password reset keep their
 generic answers. Fully hiding it would require a verify-by-email signup.
 
+## From one flag to a capability map
+
+The first version had a single `PROJECT_CREATOR_ROLES` list. Billing, members,
+audit log and notifications each repeated `role === 'organization_owner' ||
+role === 'organization_admin'` in both the API and the Web. They now share one
+table:
+
+```ts
+export const ORGANIZATION_CAPABILITY_ROLES = {
+  createProjects: ['organization_owner', 'organization_admin'],
+  manageOrganization: ['organization_owner'],
+  manageMembers: ['organization_owner', 'organization_admin'],
+  readBilling: ['organization_owner', 'organization_admin'],
+  manageBilling: ['organization_owner'],
+  readAuditLog: ['organization_owner', 'organization_admin'],
+  inspectNotifications: ['organization_owner', 'organization_admin'],
+  seeEveryProject: ['organization_owner', 'organization_admin'],
+} as const satisfies Record<string, readonly OrganizationRoleName[]>;
+```
+
+- Controllers: `@Roles(...ORGANIZATION_CAPABILITY_ROLES.manageBilling)`.
+- Services: `hasOrganizationCapability(role, 'seeEveryProject')`.
+- Session: `capabilities: organizationCapabilities(membership.role)`.
+- Web: `hasCapability(activeOrganization, 'readBilling')`, which falls back to
+  `organizationCapabilities(role)` when an older stored session has none.
+
+Adding a capability is one line in the table plus the guard that uses it; the
+`satisfies` clause rejects a role that does not exist.
+
+## Keeping the session fresh after a role change
+
+The guards read the membership from the database on every request, so the API
+is never wrong about a demoted user. The Web, however, renders from the
+session it loaded at login. `AuthProvider` reloads `/auth/me` (and invalidates
+`['permissions', 'me']`) when the tab regains focus (throttled to 30 s), every
+5 minutes, and right after any 403 — subscribing to the TanStack query and
+mutation caches, so no page has to remember to do it. A push channel
+(WebSocket/SSE) would make it instant; it is not worth a new transport yet.
+
 ## Exercises
 
-1. Add `capabilities.manageMembers` and use it on the Members page. Which
-   guard owns the rule today?
+1. Add a `manageEnvironments` capability. Which guards and Web controls change,
+   and what does the `satisfies` clause protect you from?
 2. Write an integration test proving that `GET /auth/memberships` never
    returns another user's membership in the same organization.
 3. Make `DuplicateResourceError` accept several fields for composite unique

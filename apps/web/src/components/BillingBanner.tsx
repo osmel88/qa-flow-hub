@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { billingApi } from '../api/endpoints';
 import { useAuth } from '../auth/auth-context';
+import { hasCapability } from '../auth/capabilities';
 import { formatDate } from './billing-format';
 import { t } from '../i18n/i18n';
 
@@ -12,8 +13,7 @@ import { t } from '../i18n/i18n';
  */
 export function BillingBanner(): React.JSX.Element | null {
   const { activeOrganization } = useAuth();
-  const role = activeOrganization?.role;
-  const canRead = role === 'organization_owner' || role === 'organization_admin';
+  const canRead = hasCapability(activeOrganization, 'readBilling');
 
   const overview = useQuery({
     queryKey: ['billing', activeOrganization?.id],

@@ -17,8 +17,8 @@ describe('initialsOf', () => {
 
 describe('Avatar', () => {
   it('shows the picture when there is an avatarUrl', () => {
-    const { container } = render(<Avatar name="Ana García" avatarUrl="/brand/logo.svg" />);
-    expect(container.querySelector('img')).toHaveAttribute('src', '/brand/logo.svg');
+    const { container } = render(<Avatar name="Ana García" avatarUrl="/brand/mark.png" />);
+    expect(container.querySelector('img')).toHaveAttribute('src', '/brand/mark.png');
     expect(screen.getByTestId('avatar')).not.toHaveTextContent('AG');
   });
 
@@ -34,10 +34,16 @@ describe('Avatar', () => {
 });
 
 describe('Brand', () => {
-  it('renders the configured name and logo from one place', () => {
+  it('shows the symbol and the name in the header size', () => {
     const { container } = render(<Brand />);
     expect(screen.getByTestId('brand')).toHaveTextContent(BRANDING.name);
-    expect(container.querySelector('img')).toHaveAttribute('src', BRANDING.logoUrl);
-    expect(container.querySelector('img')).toHaveAttribute('alt', '');
+    expect(container.querySelector('.brand__logo')).toHaveAttribute('src', BRANDING.markUrl);
+  });
+
+  it('shows the full logo on the public screens, with the name once as text', () => {
+    const { container } = render(<Brand size="lg" />);
+    expect(screen.getByTestId('brand')).toHaveTextContent(BRANDING.name);
+    expect(container.querySelector('.brand__wordmark')).toHaveAttribute('src', BRANDING.logoUrl);
+    expect(container.querySelector('.brand__name')).toBeNull();
   });
 });

@@ -5,6 +5,7 @@ import {
   ListAuditQuery,
   dashboardQuerySchema,
   listAuditQuerySchema,
+  ORGANIZATION_CAPABILITY_ROLES,
 } from '@qa-flow-hub/shared';
 import { zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { ProjectScoped } from '../auth/decorators/project-scoped.decorator';
@@ -28,7 +29,7 @@ export class DashboardController {
   }
 
   /** Who did what is management information, not everyday reading. */
-  @Roles('organization_owner', 'organization_admin')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.readAuditLog)
   @Get('audit-log')
   @ApiOperation({ summary: 'Read the audit trail' })
   audit(@Query(zodQuery(listAuditQuerySchema)) query: ListAuditQuery) {

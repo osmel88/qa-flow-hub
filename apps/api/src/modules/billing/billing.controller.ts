@@ -9,6 +9,7 @@ import {
   checkoutSchema,
   completeMockCheckoutSchema,
   listInvoicesQuerySchema,
+  ORGANIZATION_CAPABILITY_ROLES,
 } from '@qa-flow-hub/shared';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, CurrentUserContext } from '../auth/decorators/current-user.decorator';
@@ -28,21 +29,21 @@ export class BillingController {
   constructor(private readonly billing: BillingService) {}
 
   @Get()
-  @Roles('organization_owner', 'organization_admin')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.readBilling)
   @ApiOperation({ summary: 'Effective plan, subscription, limits and usage' })
   overview() {
     return this.billing.overview();
   }
 
   @Get('invoices')
-  @Roles('organization_owner', 'organization_admin')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.readBilling)
   @ApiOperation({ summary: 'Invoices, newest first' })
   invoices(@Query(zodQuery(listInvoicesQuerySchema)) query: ListInvoicesQuery) {
     return this.billing.listInvoices(query);
   }
 
   @Post('checkout')
-  @Roles('organization_owner')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageBilling)
   @ApiOperation({ summary: 'Start a hosted checkout for a paid plan' })
   checkout(
     @Body(zodBody(checkoutSchema)) input: CheckoutInput,
@@ -53,7 +54,7 @@ export class BillingController {
 
   @Post('plan')
   @HttpCode(200)
-  @Roles('organization_owner')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageBilling)
   @ApiOperation({ summary: 'Upgrade now, or downgrade at the end of the period' })
   changePlan(@Body(zodBody(changePlanSchema)) input: ChangePlanInput) {
     return this.billing.changePlan(input.plan);
@@ -61,7 +62,7 @@ export class BillingController {
 
   @Post('cancel')
   @HttpCode(200)
-  @Roles('organization_owner')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageBilling)
   @ApiOperation({ summary: 'Cancel at the end of the period (idempotent)' })
   cancel() {
     return this.billing.cancel();
@@ -69,7 +70,7 @@ export class BillingController {
 
   @Post('resume')
   @HttpCode(200)
-  @Roles('organization_owner')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageBilling)
   @ApiOperation({ summary: 'Undo a scheduled cancellation' })
   resume() {
     return this.billing.resume();
@@ -79,7 +80,7 @@ export class BillingController {
   // to boot with the mock at all.
 
   @Get('mock/checkout/:sessionId')
-  @Roles('organization_owner')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageBilling)
   @ApiOperation({ summary: '[mock] Read a checkout session' })
   mockSession(@Param('sessionId') sessionId: string) {
     return this.billing.mockSession(sessionId);
@@ -87,7 +88,7 @@ export class BillingController {
 
   @Post('mock/checkout/:sessionId/complete')
   @HttpCode(200)
-  @Roles('organization_owner')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageBilling)
   @ApiOperation({ summary: '[mock] Pay or fail a checkout session' })
   completeMockCheckout(
     @Param('sessionId') sessionId: string,
@@ -98,7 +99,7 @@ export class BillingController {
 
   @Post('mock/end-period')
   @HttpCode(200)
-  @Roles('organization_owner')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageBilling)
   @ApiOperation({ summary: '[mock] End the current period (renewal, downgrade, cancellation)' })
   endMockPeriod(@Body(zodBody(completeMockCheckoutSchema)) input: CompleteMockCheckoutInput) {
     return this.billing.endMockPeriod(input.outcome);

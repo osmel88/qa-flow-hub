@@ -1,4 +1,8 @@
-import { ORGANIZATION_ROLES, outranksOrEquals } from '@qa-flow-hub/shared';
+import {
+  ORGANIZATION_ROLES,
+  hasOrganizationCapability,
+  outranksOrEquals,
+} from '@qa-flow-hub/shared';
 import type { OrganizationRoleName, Permission, ProjectMemberView } from '@qa-flow-hub/shared';
 import { Badge, Button, DataState } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,7 +30,7 @@ const ORGANIZATION_ROLE_OPTION = '__organization_role';
 
 /** Owners and admins see every project; everybody else needs a grant. */
 function seesEveryProject(role: OrganizationRoleName): boolean {
-  return role === 'organization_owner' || role === 'organization_admin';
+  return hasOrganizationCapability(role, 'seeEveryProject');
 }
 
 function reasonBlocked(

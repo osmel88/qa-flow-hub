@@ -1,3 +1,4 @@
+import { roleHasPermission } from '@qa-flow-hub/shared';
 import type { IntegrationConnectionView, IntegrationMode } from '@qa-flow-hub/shared';
 import { Badge, Button, DataState, SelectField, TextAreaField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -282,7 +283,8 @@ function IntegrationCard({
 export function IntegrationsPage(): React.JSX.Element {
   const { activeOrganization } = useAuth();
   const role = activeOrganization?.role ?? null;
-  const canManage = role === 'organization_owner' || role === 'organization_admin';
+  // Same check as `@RequirePermission('integrations.manage')` on the settings routes.
+  const canManage = role !== null && roleHasPermission(role, 'integrations.manage');
 
   const integrations = useQuery({
     queryKey: ['integrations', activeOrganization?.id],

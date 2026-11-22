@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { OrganizationRole } from '@prisma/client';
-import { PERMISSIONS, Permission, ROLE_PERMISSIONS, roleHasPermission } from '@qa-flow-hub/shared';
+import {
+  PERMISSIONS,
+  Permission,
+  ROLE_PERMISSIONS,
+  hasOrganizationCapability,
+  roleHasPermission,
+} from '@qa-flow-hub/shared';
 import { TenantContextService } from '../../database/tenant-context.service';
 import { ForbiddenError, NotFoundError } from '../../errors';
 import { PermissionOverridesRepository } from './permission-overrides.repository';
@@ -310,9 +316,7 @@ export class ProjectAccessService {
 
 /** The organization roles that see every project without a grant. */
 export function seesEveryProject(role: OrganizationRole): boolean {
-  return (
-    role === OrganizationRole.organization_owner || role === OrganizationRole.organization_admin
-  );
+  return hasOrganizationCapability(role, 'seeEveryProject');
 }
 
 const PERMISSION_SET: ReadonlySet<string> = new Set(PERMISSIONS);

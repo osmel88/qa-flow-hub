@@ -1,7 +1,9 @@
+import { BRANDING } from '../../../branding';
+
 import type { importScreen as source } from '../en/importScreen';
 
 export const importScreen: Partial<Record<keyof typeof source, string>> = {
-  'import.qaFlowHubCsv': 'CSV de qa-flow-hub',
+  'import.qaFlowHubCsv': `CSV de ${BRANDING.name}`,
   'import.testrailCsvExport': 'Exportación CSV de TestRail',
   'import.importTestCases': 'Importar casos de prueba',
   'import.youDoNotHavePermission':

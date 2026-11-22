@@ -8,11 +8,14 @@ import { renderScreen } from '../test/render';
 const changePassword = vi.fn();
 const memberships = vi.fn();
 const logout = vi.fn();
+const updateProfile = vi.fn();
+const refreshOrganizations = vi.fn();
 
 vi.mock('../api/endpoints', () => ({
   authApi: {
     changePassword: (...args: unknown[]) => changePassword(...args),
     memberships: () => memberships(),
+    updateProfile: (...args: unknown[]) => updateProfile(...args),
   },
   notificationsApi: {
     preferences: () => new Promise(() => undefined),
@@ -23,6 +26,7 @@ vi.mock('../auth/auth-context', () => ({
   useAuth: () => ({
     user: { fullName: 'Ana García', email: 'ana@example.com', avatarUrl: null },
     logout,
+    refreshOrganizations: () => refreshOrganizations(),
   }),
 }));
 vi.mock('../components/MfaSettings', () => ({ MfaSettings: () => null }));
@@ -196,5 +200,28 @@ describe('Profile — account and organizations', () => {
     expect(await within(section).findByText('qa lead')).toBeInTheDocument();
     expect(within(section).getByText('Suspended')).toBeInTheDocument();
     expect(within(section).getByText('viewer')).toBeInTheDocument();
+  });
+});
+
+describe('Profile — name', () => {
+  it('edits the name in Spanish, blocks a too-short one and reloads the session', async () => {
+    updateProfile.mockResolvedValue({});
+    refreshOrganizations.mockResolvedValue(undefined);
+    await renderProfile('es');
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Editar nombre' }));
+    const name = screen.getByRole('textbox', { name: 'Nombre' });
+    await user.clear(name);
+    await user.type(name, 'A');
+    expect(screen.getByText('El nombre debe tener al menos 2 caracteres.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar nombre' })).toBeDisabled();
+
+    await user.type(name, 'na Gil');
+    await user.click(screen.getByRole('button', { name: 'Guardar nombre' }));
+    await waitFor(() => {
+      expect(updateProfile).toHaveBeenCalledWith({ fullName: 'Ana Gil' });
+    });
+    expect(refreshOrganizations).toHaveBeenCalled();
   });
 });

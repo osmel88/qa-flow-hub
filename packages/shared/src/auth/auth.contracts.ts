@@ -126,22 +126,54 @@ export interface AuthenticatedUser {
 }
 
 /**
- * Roles allowed to create projects. The API's `@Roles` guard on
- * `POST /projects` reads this list, and the session derives
- * `capabilities.createProjects` from it, so the client never decides on its own.
+ * Organization-level actions and the roles allowed to perform them: the single
+ * source for both the API guards (`@Roles(...ORGANIZATION_CAPABILITY_ROLES.x)`
+ * and the services that check a role) and the session's `capabilities`, which
+ * the Web reads to enable or explain a control. The API stays the boundary.
  */
-export const PROJECT_CREATOR_ROLES = [
-  'organization_owner',
-  'organization_admin',
-] as const satisfies readonly OrganizationRoleName[];
+export const ORGANIZATION_CAPABILITY_ROLES = {
+  /** `POST /projects`. */
+  createProjects: ['organization_owner', 'organization_admin'],
+  /** `PATCH /organizations/current` (name, MFA policy). */
+  manageOrganization: ['organization_owner'],
+  /** Members and invitations of `/organizations/current`. */
+  manageMembers: ['organization_owner', 'organization_admin'],
+  /** `GET /billing/overview` and usage. */
+  readBilling: ['organization_owner', 'organization_admin'],
+  /** Plan changes, cancel, resume, mock checkout. */
+  manageBilling: ['organization_owner'],
+  /** `GET /audit-log`. */
+  readAuditLog: ['organization_owner', 'organization_admin'],
+  /** Organization-wide notification deliveries. */
+  inspectNotifications: ['organization_owner', 'organization_admin'],
+  /** Every project without a project grant. */
+  seeEveryProject: ['organization_owner', 'organization_admin'],
+} as const satisfies Record<string, readonly OrganizationRoleName[]>;
 
-export function canCreateProjects(role: OrganizationRoleName): boolean {
-  return (PROJECT_CREATOR_ROLES as readonly OrganizationRoleName[]).includes(role);
+export type OrganizationCapability = keyof typeof ORGANIZATION_CAPABILITY_ROLES;
+export type OrganizationCapabilities = Record<OrganizationCapability, boolean>;
+
+export function hasOrganizationCapability(
+  role: OrganizationRoleName,
+  capability: OrganizationCapability,
+): boolean {
+  return (ORGANIZATION_CAPABILITY_ROLES[capability] as readonly OrganizationRoleName[]).includes(
+    role,
+  );
 }
 
-/** Organization-level actions the API will accept from this member. */
-export interface OrganizationCapabilities {
-  createProjects: boolean;
+export function organizationCapabilities(role: OrganizationRoleName): OrganizationCapabilities {
+  const entries = (Object.keys(ORGANIZATION_CAPABILITY_ROLES) as OrganizationCapability[]).map(
+    (capability) => [capability, hasOrganizationCapability(role, capability)] as const,
+  );
+  return Object.fromEntries(entries) as OrganizationCapabilities;
+}
+
+/** Kept for readability at the call sites that only care about projects. */
+export const PROJECT_CREATOR_ROLES = ORGANIZATION_CAPABILITY_ROLES.createProjects;
+
+export function canCreateProjects(role: OrganizationRoleName): boolean {
+  return hasOrganizationCapability(role, 'createProjects');
 }
 
 export interface OrganizationSummary {

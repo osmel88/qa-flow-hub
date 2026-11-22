@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { MembershipStatus, Prisma, User } from '@prisma/client';
-import { MembershipView, OrganizationSummary, canCreateProjects } from '@qa-flow-hub/shared';
+import { MembershipView, OrganizationSummary, organizationCapabilities } from '@qa-flow-hub/shared';
 import { PrismaService, PrismaTransaction } from '../../database/prisma.service';
 
 /**
@@ -52,7 +52,7 @@ export class UsersRepository {
       slug: membership.organization.slug,
       role: membership.role,
       requireMfa: membership.organization.requireMfa,
-      capabilities: { createProjects: canCreateProjects(membership.role) },
+      capabilities: organizationCapabilities(membership.role),
     }));
   }
 

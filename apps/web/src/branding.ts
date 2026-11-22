@@ -1,13 +1,25 @@
 /**
- * The product's visible identity, in one place. The name is a working title
- * until a brand is chosen: replacing it, or the logo file under
- * `public/brand/`, changes every screen that shows the brand.
+ * The product's visible identity, in one place: the auth screens, the header,
+ * `<title>`, the meta description and the favicon all read it (the last three
+ * through the `brandingHtml` plugin in `vite.config.ts`). The images live in
+ * `public/brand/` and are served from the Web origin, so `img-src 'self'`
+ * allows them.
  */
-export const BRANDING = {
-  name: 'qa-flow-hub',
-  /** Served from the Web origin, so the `img-src 'self'` policy allows it. */
-  logoUrl: '/brand/logo.svg',
-  /** Browser tab icon; `index.html` gets it at build time from `vite.config.ts`. */
-  faviconUrl: '/brand/logo.svg',
+export interface Branding {
+  name: string;
+  /** Full logo (symbol + wordmark), shown large on the public screens. */
+  logoUrl: string | null;
+  /** The symbol alone, next to the name in the app header. */
+  markUrl: string | null;
+  /** Browser tab icon. */
+  faviconUrl: string;
+  description: string;
+}
+
+export const BRANDING: Branding = {
+  name: 'Veritest',
+  logoUrl: '/brand/logo.png',
+  markUrl: '/brand/mark.png',
+  faviconUrl: '/brand/favicon.png',
   description: 'QA management for software teams',
-} as const;
+};

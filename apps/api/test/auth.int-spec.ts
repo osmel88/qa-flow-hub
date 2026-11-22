@@ -308,7 +308,11 @@ describe('authentication', () => {
         expect.objectContaining({
           slug: 'acme',
           role: 'qa_lead',
-          capabilities: { createProjects: false },
+          capabilities: expect.objectContaining({
+            createProjects: false,
+            readBilling: false,
+            manageMembers: false,
+          }),
         }),
       ]);
     });
@@ -362,7 +366,14 @@ describe('authentication', () => {
       // The session still lists only what the user may act for.
       const me = await get('/api/v1/auth/me', bearer(session.accessToken));
       expect(me.json().organizations).toEqual([
-        expect.objectContaining({ id: acme!.id, capabilities: { createProjects: true } }),
+        expect.objectContaining({
+          id: acme!.id,
+          capabilities: expect.objectContaining({
+            createProjects: true,
+            manageMembers: true,
+            manageBilling: false,
+          }),
+        }),
       ]);
     });
 

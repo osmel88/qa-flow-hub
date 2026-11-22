@@ -1,4 +1,15 @@
 export const runExecution = {
+  'runExecution.editRun': 'Edit run',
+  'runExecution.editName': 'Name',
+  'runExecution.editDescription': 'Description',
+  'runExecution.editMilestone': 'Milestone',
+  'runExecution.editEnvironment': 'Environment',
+  'runExecution.editSave': 'Save',
+  'runExecution.editCancel': 'Cancel',
+  'runExecution.editNameTooShort': 'The name must have at least 3 characters.',
+  'runExecution.couldNotSaveTheRun': 'Could not save the run.',
+  'runExecution.editOnlyOpen':
+    'Only planned or in-progress runs can be edited; results are never rewritten.',
   'runExecution.couldNotRecordTheResult': 'Could not record the result.',
   'runExecution.couldNotCompleteTheRun': 'Could not complete the run.',
   'runExecution.fails': '{title} fails',

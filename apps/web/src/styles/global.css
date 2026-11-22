@@ -134,6 +134,12 @@ body {
   height: 2.5rem;
 }
 
+.brand__wordmark {
+  height: 3.5rem;
+  width: auto;
+  max-width: 100%;
+}
+
 .avatar {
   display: inline-flex;
   align-items: center;

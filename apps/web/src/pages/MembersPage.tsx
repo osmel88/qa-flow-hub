@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { organizationsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
+import { hasCapability } from '../auth/capabilities';
 import { PageHeader } from '../components/PageHeader';
 import { PlanLimitAlert } from '../components/PlanLimitAlert';
 import { humanize, toneFor } from '../components/status';
@@ -132,7 +133,7 @@ export function MembersPage(): React.JSX.Element {
   const [issuedToken, setIssuedToken] = useState<string | null>(null);
 
   const actorRole = activeOrganization?.role ?? null;
-  const canManage = actorRole === 'organization_owner' || actorRole === 'organization_admin';
+  const canManage = hasCapability(activeOrganization, 'manageMembers');
   // Two rules narrow the list: ownership is never handed out by invitation, and
   // nobody invites somebody more powerful than themselves.
   const invitable =
@@ -199,7 +200,7 @@ export function MembersPage(): React.JSX.Element {
         </p>
       )}
 
-      {actorRole === 'organization_owner' && <MfaPolicy />}
+      {hasCapability(activeOrganization, 'manageOrganization') && <MfaPolicy />}
 
       {canManage && (
         <section className="card" aria-labelledby="invite-heading">

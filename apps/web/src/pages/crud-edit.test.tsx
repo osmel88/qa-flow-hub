@@ -1,4 +1,4 @@
-import type { DefectView, ReleaseView } from '@qa-flow-hub/shared';
+import type { DefectView, ReleaseView, TestRunView } from '@qa-flow-hub/shared';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,10 +7,12 @@ import { renderScreen } from '../test/render';
 
 const updateDefect = vi.fn();
 const updateRelease = vi.fn();
+const updateRun = vi.fn();
 
 vi.mock('../api/endpoints', () => ({
   defectsApi: { update: (...args: unknown[]) => updateDefect(...args) },
   releasesApi: { update: (...args: unknown[]) => updateRelease(...args) },
+  testRunsApi: { update: (...args: unknown[]) => updateRun(...args) },
   defectWorkflowApi: {},
   buildsApi: {},
 }));
@@ -121,6 +123,52 @@ describe('editing a release', () => {
         description: null,
         startDate: '2026-10-01',
         targetDate: '2026-11-15',
+      });
+    });
+  });
+});
+
+const run: TestRunView = {
+  id: 'run_1',
+  projectId: 'proj_1',
+  name: 'Regression 2.4',
+  description: null,
+  milestone: null,
+  environment: 'staging',
+  releaseId: null,
+  status: 'in_progress',
+  startedAt: '2026-10-02T00:00:00.000Z',
+  completedAt: null,
+  createdById: null,
+  createdAt: '2026-10-01T00:00:00.000Z',
+  updatedAt: '2026-10-01T00:00:00.000Z',
+  progress: { total: 0, executed: 0, completion: 0 } as TestRunView['progress'],
+};
+
+describe('EditRun', () => {
+  it('edits the run fields in Spanish and blocks a short name', async () => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, 'es');
+    updateRun.mockResolvedValue(run);
+    const { EditRun } = await import('./RunExecutionPage');
+    const user = userEvent.setup();
+    renderScreen(<EditRun run={run} />);
+
+    await user.click(screen.getByRole('button', { name: 'Editar ejecución' }));
+    const name = screen.getByLabelText('Nombre');
+    await user.clear(name);
+    await user.type(name, 'ab');
+    expect(screen.getByText('El nombre debe tener al menos 3 caracteres.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+
+    await user.type(name, 'c');
+    await user.type(screen.getByLabelText('Hito'), 'M3');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => {
+      expect(updateRun).toHaveBeenCalledWith('run_1', {
+        name: 'abc',
+        description: null,
+        milestone: 'M3',
+        environment: 'staging',
       });
     });
   });

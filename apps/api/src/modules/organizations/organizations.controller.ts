@@ -13,6 +13,7 @@ import {
   listMembersQuerySchema,
   updateMemberSchema,
   updateOrganizationSchema,
+  ORGANIZATION_CAPABILITY_ROLES,
 } from '@qa-flow-hub/shared';
 import { Public } from '../../common/decorators/public.decorator';
 import { zodBody, zodQuery } from '../../common/pipes/zod-validation.pipe';
@@ -91,7 +92,7 @@ export class OrganizationsController {
   }
 
   @ApiHeader({ name: 'X-Organization-Id', required: true })
-  @Roles('organization_owner')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageOrganization)
   @Patch('current')
   @ApiOperation({ summary: 'Rename the organization or change its plan' })
   update(
@@ -112,7 +113,7 @@ export class OrganizationsController {
   }
 
   @ApiHeader({ name: 'X-Organization-Id', required: true })
-  @Roles('organization_owner', 'organization_admin')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageMembers)
   @Patch('current/members/:userId')
   @ApiOperation({ summary: "Change a member's role" })
   changeMemberRole(
@@ -129,7 +130,7 @@ export class OrganizationsController {
   }
 
   @ApiHeader({ name: 'X-Organization-Id', required: true })
-  @Roles('organization_owner', 'organization_admin')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageMembers)
   @Delete('current/members/:userId')
   @HttpCode(204)
   @ApiOperation({ summary: 'Remove a member from the organization' })
@@ -145,7 +146,7 @@ export class OrganizationsController {
   }
 
   @ApiHeader({ name: 'X-Organization-Id', required: true })
-  @Roles('organization_owner', 'organization_admin')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageMembers)
   @Post('current/invitations')
   @ApiOperation({ summary: 'Invite somebody by email, whether or not they have an account' })
   invite(
@@ -160,7 +161,7 @@ export class OrganizationsController {
   }
 
   @ApiHeader({ name: 'X-Organization-Id', required: true })
-  @Roles('organization_owner', 'organization_admin')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageMembers)
   @Get('current/invitations')
   @ApiOperation({ summary: 'Invitations of the active organization' })
   listInvitations(@CurrentUser() user: CurrentUserContext) {
@@ -168,7 +169,7 @@ export class OrganizationsController {
   }
 
   @ApiHeader({ name: 'X-Organization-Id', required: true })
-  @Roles('organization_owner', 'organization_admin')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageMembers)
   @Post('current/invitations/:id/resend')
   @HttpCode(200)
   @ApiOperation({ summary: 'Issue a fresh token for a pending invitation' })
@@ -177,14 +178,11 @@ export class OrganizationsController {
   }
 
   @ApiHeader({ name: 'X-Organization-Id', required: true })
-  @Roles('organization_owner', 'organization_admin')
+  @Roles(...ORGANIZATION_CAPABILITY_ROLES.manageMembers)
   @Delete('current/invitations/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Revoke a pending invitation' })
-  async revoke(
-    @CurrentUser() user: CurrentUserContext,
-    @Param('id') id: string,
-  ): Promise<void> {
+  async revoke(@CurrentUser() user: CurrentUserContext, @Param('id') id: string): Promise<void> {
     await this.invitations.revoke(user.organizationId, id);
   }
 }

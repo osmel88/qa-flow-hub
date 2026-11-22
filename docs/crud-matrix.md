@@ -18,7 +18,7 @@ the audit log and history.
 | Test case           | API + Web               | API + Web          | API + Web (versioned, restore a version) | Archive: API + Web                     | API + Web              | API only (3)                            |
 | Test plan           | API + Web               | API + Web          | API + Web                                | Complete / cancel / archive: API + Web | — (4)                  | — (4)                                   |
 | Test cycle          | API + Web               | API + Web          | API + Web                                | Complete / cancel / archive: API + Web | — (4)                  | — (4)                                   |
-| Test run            | API + Web               | API + Web          | API (title, release, environment)        | Complete / abort: API + Web            | — (5)                  | Soft delete: API only (5)               |
+| Test run            | API + Web               | API + Web          | API + Web (open runs; release API only)  | Complete / abort: API + Web            | — (5)                  | Soft delete: API only (5)               |
 | Defect              | API + Web               | API + Web          | API + Web (title, severity, priority)    | Status `closed`: API + Web             | Reopen by status       | Soft delete: API only (6)               |
 | Release             | API + Web               | API + Web (detail) | API + Web (until archived)               | Released / archive: API + Web          | — (4)                  | — (1)                                   |
 | Environment         | API + Web               | API + Web          | API + Web                                | Archive: API + Web                     | API + Web              | Only without deployments: API + Web (7) |
@@ -50,8 +50,9 @@ the audit log and history.
    end states (`completed`, `cancelled`, `archived`, `released`) are
    terminal by design: they are what reports and readiness read, so moving
    back would rewrite history. A new plan or cycle is the way to "reopen".
-5. **Test runs:** a run holds executed results. Completing or aborting
-   closes it; the soft delete exists for runs created by mistake through the
+5. **Test runs:** a run holds executed results. Its own fields (name,
+   description, milestone, environment) are editable while it is planned or
+   in progress; results are never rewritten. Completing or aborting closes it; the soft delete exists for runs created by mistake through the
    API and is not offered in the UI.
 6. **Defects:** the lifecycle is the status (`closed`, `rejected`, reopen).
    The soft delete route serves API clients and duplicates; the UI does not
@@ -67,6 +68,7 @@ the audit log and history.
 
 Every operation above checks the permission listed in
 `docs/permissions-matrix.md`. The Web only hides or disables an action to
-explain the rule (for example, project creation for roles below
-`organization_admin`, which the Web reads from the session's
-`capabilities.createProjects`); the API remains the boundary.
+explain the rule. Organization-level actions read the session's
+`capabilities` (derived from `ORGANIZATION_CAPABILITY_ROLES` in
+`@qa-flow-hub/shared`, the list the API guards use); project-level actions
+read `GET /permissions/me`. The API remains the boundary.

@@ -1,5 +1,7 @@
+import { BRANDING } from '../../../branding';
+
 export const importScreen = {
-  'import.qaFlowHubCsv': 'qa-flow-hub CSV',
+  'import.qaFlowHubCsv': `${BRANDING.name} CSV`,
   'import.testrailCsvExport': 'TestRail CSV export',
   'import.importTestCases': 'Import test cases',
   'import.youDoNotHavePermission':

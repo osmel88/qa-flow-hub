@@ -1,10 +1,11 @@
 import { RECORDABLE_RESULT_STATUSES } from '@qa-flow-hub/shared';
 import type {
+  TestRunView,
   ExternalReferenceView,
   RecordableResultStatus,
   RunCaseView,
 } from '@qa-flow-hub/shared';
-import { Badge, Button, DataState, TextAreaField } from '@qa-flow-hub/ui';
+import { Badge, Button, DataState, TextAreaField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -163,6 +164,12 @@ export function RunExecutionPage(): React.JSX.Element {
           {error}
         </p>
       )}
+
+      {run.data !== undefined &&
+        can('testruns.create') &&
+        (run.data.status === 'planned' || run.data.status === 'in_progress') && (
+          <EditRun run={run.data} />
+        )}
 
       <DataState isPending={run.isPending} error={run.error}>
         {run.data !== undefined && (
@@ -422,5 +429,116 @@ function ParameterValues({ runCase }: { runCase: RunCaseView }): React.JSX.Eleme
         </div>
       ))}
     </dl>
+  );
+}
+
+/** Edits the run's own fields; recorded results stay append-only. */
+export function EditRun({ run }: { run: TestRunView }): React.JSX.Element {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(run.name);
+  const [description, setDescription] = useState(run.description ?? '');
+  const [milestone, setMilestone] = useState(run.milestone ?? '');
+  const [environment, setEnvironment] = useState(run.environment ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const nameError = name.trim().length < 3 ? t('runExecution.editNameTooShort') : undefined;
+  const orNull = (value: string) => (value.trim() === '' ? null : value.trim());
+
+  const save = useMutation({
+    mutationFn: () =>
+      testRunsApi.update(run.id, {
+        name: name.trim(),
+        description: orNull(description),
+        milestone: orNull(milestone),
+        environment: orNull(environment),
+      }),
+    onSuccess: async () => {
+      setError(null);
+      setOpen(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['run', run.id] }),
+        queryClient.invalidateQueries({ queryKey: ['runs'] }),
+      ]);
+    },
+    onError: (cause) => {
+      setError(cause instanceof ApiError ? cause.message : t('runExecution.couldNotSaveTheRun'));
+    },
+  });
+
+  if (!open) {
+    return (
+      <div className="actions">
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          {t('runExecution.editRun')}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <section className="card" aria-labelledby="edit-run">
+      <h2 id="edit-run">{t('runExecution.editRun')}</h2>
+      <p className="muted">{t('runExecution.editOnlyOpen')}</p>
+      {error !== null && (
+        <p className="ui-field__error" role="alert">
+          {error}
+        </p>
+      )}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        <TextField
+          label={t('runExecution.editName')}
+          value={name}
+          error={nameError}
+          onChange={(event) => {
+            setName(event.target.value);
+          }}
+        />
+        <TextAreaField
+          label={t('runExecution.editDescription')}
+          value={description}
+          onChange={(event) => {
+            setDescription(event.target.value);
+          }}
+        />
+        <TextField
+          label={t('runExecution.editMilestone')}
+          value={milestone}
+          onChange={(event) => {
+            setMilestone(event.target.value);
+          }}
+        />
+        <TextField
+          label={t('runExecution.editEnvironment')}
+          value={environment}
+          onChange={(event) => {
+            setEnvironment(event.target.value);
+          }}
+        />
+        <div className="actions">
+          <Button type="submit" loading={save.isPending} disabled={nameError !== undefined}>
+            {t('runExecution.editSave')}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setOpen(false);
+            }}
+          >
+            {t('runExecution.editCancel')}
+          </Button>
+        </div>
+      </form>
+    </section>
   );
 }

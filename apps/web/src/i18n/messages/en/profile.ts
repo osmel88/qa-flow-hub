@@ -1,4 +1,9 @@
 export const profile = {
+  'profile.nameEdit': 'Edit name',
+  'profile.nameSave': 'Save name',
+  'profile.nameCancel': 'Cancel',
+  'profile.nameTooShort': 'The name must have at least 2 characters.',
+  'profile.nameSaveFailed': 'Could not save the name.',
   'profile.emailNotifications': 'Email notifications',
   'profile.masterSwitchForOptionalEmails':
     'Master switch for optional emails. Security notices such as password changes and organization invitations are always sent.',

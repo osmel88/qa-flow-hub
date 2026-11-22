@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { notificationsApi } from '../api/endpoints';
 import { useAuth } from '../auth/auth-context';
+import { hasCapability } from '../auth/capabilities';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { t } from '../i18n/i18n';
@@ -88,8 +89,7 @@ function MockOutbox(): React.JSX.Element {
 
 export function NotificationsPage(): React.JSX.Element {
   const { activeOrganization } = useAuth();
-  const role = activeOrganization?.role;
-  const canInspect = role === 'organization_owner' || role === 'organization_admin';
+  const canInspect = hasCapability(activeOrganization, 'inspectNotifications');
   const [scope, setScope] = useState<Scope>('mine');
   const [type, setType] = useState<NotificationType | ''>('');
   const [status, setStatus] = useState<NotificationStatus | ''>('');

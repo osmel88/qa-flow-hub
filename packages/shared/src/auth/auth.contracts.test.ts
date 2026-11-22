@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PROJECT_CREATOR_ROLES,
   canCreateProjects,
+  organizationCapabilities,
   changePasswordSchema,
   emailSchema,
   loginSchema,
@@ -84,5 +85,25 @@ describe('canCreateProjects', () => {
     for (const role of ['project_manager', 'qa_lead', 'tester', 'viewer'] as const) {
       expect(canCreateProjects(role)).toBe(false);
     }
+  });
+});
+
+describe('organizationCapabilities', () => {
+  it('derives every capability from ORGANIZATION_CAPABILITY_ROLES', () => {
+    expect(organizationCapabilities('organization_owner')).toEqual({
+      createProjects: true,
+      manageOrganization: true,
+      manageMembers: true,
+      readBilling: true,
+      manageBilling: true,
+      readAuditLog: true,
+      inspectNotifications: true,
+      seeEveryProject: true,
+    });
+    const admin = organizationCapabilities('organization_admin');
+    expect(admin.manageBilling).toBe(false);
+    expect(admin.manageOrganization).toBe(false);
+    expect(admin.manageMembers).toBe(true);
+    expect(Object.values(organizationCapabilities('tester')).some(Boolean)).toBe(false);
   });
 });

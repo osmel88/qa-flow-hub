@@ -16,6 +16,7 @@ import {
   Paginated,
   UpdateNotificationPreferencesInput,
   buildPaginationMeta,
+  ORGANIZATION_CAPABILITY_ROLES,
 } from '@qa-flow-hub/shared';
 import { AppConfigService } from '../../config/app-config.service';
 import { TenantContextService } from '../../database/tenant-context.service';
@@ -42,7 +43,7 @@ import {
   renderEmail,
 } from './templates/email-templates';
 
-const OPERATOR_ROLES = new Set(['organization_owner', 'organization_admin']);
+const OPERATOR_ROLES = new Set<string>(ORGANIZATION_CAPABILITY_ROLES.inspectNotifications);
 
 /** Defect transitions worth an email; the rest are noise to the people involved. */
 const NOTIFIED_DEFECT_STATUSES = new Set(['resolved', 'closed', 'rejected', 'reopened']);

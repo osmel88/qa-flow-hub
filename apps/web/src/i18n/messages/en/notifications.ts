@@ -1,3 +1,5 @@
+import { BRANDING } from '../../../branding';
+
 export const notifications = {
   'notifications.noMoreAutomaticRetries': '{reason} — no more automatic retries',
   'notifications.retry': '{reason} — retry {value}',
@@ -8,8 +10,7 @@ export const notifications = {
   'notifications.noCapturedEmailsYetInvite':
     'No captured emails yet. Invite someone or assign a run to see one.',
   'notifications.notifications': 'Notifications',
-  'notifications.everyEmailQaFlowHub':
-    'Every email qa-flow-hub decided to send you in this organization, and what happened to it. Change what you receive in your profile.',
+  'notifications.everyEmailQaFlowHub': `Every email ${BRANDING.name} decided to send you in this organization, and what happened to it. Change what you receive in your profile.`,
   'notifications.emailProvider': 'Email provider:',
   'notifications.nothingIsActuallyDelivered': ', nothing is actually delivered',
   'notifications.from': ') from',

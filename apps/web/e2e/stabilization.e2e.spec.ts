@@ -30,6 +30,12 @@ test('register reports each invalid field and a duplicate email', async ({ page,
     for (const path of ['/login', '/register', '/forgot-password', '/reset-password']) {
       await page.goto(path);
       await expect(page.getByTestId('brand')).toBeVisible();
+      await expect(page.getByTestId('brand')).toHaveText('Veritest');
+      await expect(page).toHaveTitle('Veritest');
+      const logoLoaded = await page
+        .locator('.brand__wordmark')
+        .evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0);
+      expect(logoLoaded).toBe(true);
     }
   });
 
@@ -122,6 +128,17 @@ test('header, profile, MFA, projects and requirements after the stabilization', 
     const row = memberships.getByRole('row', { name: new RegExp(`Stab ${unique}`) });
     await expect(row).toContainText('propietario de la organización');
     await expect(row).toContainText('Activa');
+  });
+
+  await test.step('the profile edits the name and the header follows', async () => {
+    await page.getByRole('button', { name: 'Editar nombre' }).click();
+    const name = page.getByRole('textbox', { name: 'Nombre' });
+    await name.fill('X');
+    await expect(page.getByRole('button', { name: 'Guardar nombre' })).toBeDisabled();
+    await name.fill('Zoe Ruiz');
+    await page.getByRole('button', { name: 'Guardar nombre' }).click();
+    await expect(page.getByRole('banner').getByTestId('avatar')).toHaveText('ZR');
+    await expect(page.getByRole('banner').getByTestId('brand')).toContainText('Veritest');
   });
 
   await test.step('MFA setup stays disabled until the current password is typed', async () => {

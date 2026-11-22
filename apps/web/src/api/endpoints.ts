@@ -214,6 +214,9 @@ import type {
   TraceLinkView,
   TraceabilityMatrix,
   UpdateDefectInput,
+  AuthenticatedUser,
+  UpdateProfileInput,
+  UpdateTestRunInput,
   UpdateTestCaseInput,
   UpsertIntegrationInput,
   CreateImportQuery,
@@ -233,6 +236,8 @@ import { apiFetch, apiFetchBlob, query } from './http-client';
  */
 
 export const authApi = {
+  updateProfile: (body: UpdateProfileInput) =>
+    apiFetch<AuthenticatedUser>('/auth/me', { method: 'PATCH', body, withoutOrganization: true }),
   register: (body: RegisterInput) =>
     apiFetch<AuthSession>('/auth/register', {
       method: 'POST',
@@ -487,6 +492,8 @@ export const testRunsApi = {
   list: (params: { projectId: string; status?: string; releaseId?: string }) =>
     apiFetch<Paginated<TestRunView>>(`/test-runs${query({ ...params, pageSize: 100 })}`),
   get: (id: string) => apiFetch<TestRunView>(`/test-runs/${id}`),
+  update: (id: string, body: UpdateTestRunInput) =>
+    apiFetch<TestRunView>(`/test-runs/${id}`, { method: 'PATCH', body }),
   create: (body: CreateTestRunInput) =>
     apiFetch<TestRunView>('/test-runs', { method: 'POST', body }),
   cases: (id: string) =>

@@ -1,6 +1,17 @@
 import type { runExecution as source } from '../en/runExecution';
 
 export const runExecution: Partial<Record<keyof typeof source, string>> = {
+  'runExecution.editRun': 'Editar ejecución',
+  'runExecution.editName': 'Nombre',
+  'runExecution.editDescription': 'Descripción',
+  'runExecution.editMilestone': 'Hito',
+  'runExecution.editEnvironment': 'Entorno',
+  'runExecution.editSave': 'Guardar',
+  'runExecution.editCancel': 'Cancelar',
+  'runExecution.editNameTooShort': 'El nombre debe tener al menos 3 caracteres.',
+  'runExecution.couldNotSaveTheRun': 'No se pudo guardar la ejecución.',
+  'runExecution.editOnlyOpen':
+    'Solo se pueden editar ejecuciones planificadas o en curso; los resultados nunca se reescriben.',
   'runExecution.couldNotRecordTheResult': 'No se pudo registrar el resultado.',
   'runExecution.couldNotCompleteTheRun': 'No se pudo completar la ejecución.',
   'runExecution.fails': '{title} falla',

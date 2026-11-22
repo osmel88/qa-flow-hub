@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { billingApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { useAuth } from '../auth/auth-context';
+import { hasCapability } from '../auth/capabilities';
 import { PageHeader } from '../components/PageHeader';
 import {
   APPROACHING_RATIO,
@@ -172,9 +173,8 @@ export function BillingPage(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
-  const role = activeOrganization?.role;
-  const canRead = role === 'organization_owner' || role === 'organization_admin';
-  const canManage = role === 'organization_owner';
+  const canRead = hasCapability(activeOrganization, 'readBilling');
+  const canManage = hasCapability(activeOrganization, 'manageBilling');
   const organizationId = activeOrganization?.id;
 
   const overview = useQuery({

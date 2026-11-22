@@ -1,3 +1,4 @@
+import { organizationCapabilities } from '@qa-flow-hub/shared';
 import { PROJECT_KEY_RULE } from '@qa-flow-hub/shared';
 import type { ProjectView } from '@qa-flow-hub/shared';
 import { screen, waitFor } from '@testing-library/react';
@@ -125,10 +126,12 @@ describe('who may create a project', () => {
       role: 'qa_lead',
       requireMfa: false,
     } as const;
-    expect(canCreateProjects({ ...org, capabilities: { createProjects: false } })).toBe(false);
-    expect(canCreateProjects({ ...org, capabilities: { createProjects: true } })).toBe(true);
-    // An older stored session without capabilities: let the API decide.
-    expect(canCreateProjects(org)).toBe(true);
+    const allowed = { ...organizationCapabilities('organization_admin') };
+    const denied = { ...organizationCapabilities('qa_lead') };
+    expect(canCreateProjects({ ...org, capabilities: denied })).toBe(false);
+    expect(canCreateProjects({ ...org, capabilities: allowed })).toBe(true);
+    // An older stored session without capabilities: the shared rule the API guard uses.
+    expect(canCreateProjects(org)).toBe(false);
     expect(canCreateProjects(null)).toBe(false);
   });
 

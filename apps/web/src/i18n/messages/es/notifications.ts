@@ -1,3 +1,5 @@
+import { BRANDING } from '../../../branding';
+
 import type { notifications as source } from '../en/notifications';
 
 export const notifications: Partial<Record<keyof typeof source, string>> = {
@@ -10,8 +12,7 @@ export const notifications: Partial<Record<keyof typeof source, string>> = {
   'notifications.noCapturedEmailsYetInvite':
     'Todavía no hay emails capturados. Invita a alguien o asigna una ejecución para ver uno.',
   'notifications.notifications': 'Notificaciones',
-  'notifications.everyEmailQaFlowHub':
-    'Todos los emails que qa-flow-hub decidió enviarte en esta organización y qué pasó con ellos. Cambia lo que recibes en tu perfil.',
+  'notifications.everyEmailQaFlowHub': `Todos los emails que ${BRANDING.name} decidió enviarte en esta organización y qué pasó con ellos. Cambia lo que recibes en tu perfil.`,
   'notifications.emailProvider': 'Proveedor de email:',
   'notifications.nothingIsActuallyDelivered': ', en realidad no se entrega nada',
   'notifications.from': ') desde',

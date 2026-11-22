@@ -17,6 +17,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { DeploymentsOf } from './DeploymentsPage';
 import { EnvironmentBadges } from './EnvironmentsPage';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 function EditEnvironment({
   env,
@@ -275,7 +276,7 @@ function EnvironmentRollback({ env }: { env: EnvironmentView }): React.JSX.Eleme
               )}
               {row.rollbackEmergency && ' (emergency)'} ·{' '}
               {row.actor?.fullName ?? t('environmentDetail.someone')} ·{' '}
-              {new Date(row.createdAt).toLocaleString()}
+              {formatDateTime(row.createdAt)}
               {row.rollbackReason !== null && (
                 <>
                   <br />

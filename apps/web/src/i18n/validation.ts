@@ -50,6 +50,19 @@ const PATTERNS: ReadonlyArray<{
     key: 'validation.tooLong',
     vars: (m) => ({ max: m[1] ?? '' }),
   },
+  { pattern: /^Invalid url$/, key: 'validation.invalidUrl' },
+  { pattern: /^Expected [\w ]+, received [\w ]+$/, key: 'validation.invalidType' },
+  { pattern: /^Invalid enum value\./, key: 'validation.invalidOption' },
+  {
+    pattern: /^Number must be greater than or equal to (-?[\d.]+)$/,
+    key: 'validation.numberMin',
+    vars: (m) => ({ min: m[1] ?? '' }),
+  },
+  {
+    pattern: /^Number must be less than or equal to (-?[\d.]+)$/,
+    key: 'validation.numberMax',
+    vars: (m) => ({ max: m[1] ?? '' }),
+  },
 ];
 
 /** A shared-schema validation message in the active language. */

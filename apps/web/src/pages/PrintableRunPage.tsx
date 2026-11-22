@@ -5,6 +5,7 @@ import { testRunsApi } from '../api/endpoints';
 import { humanize } from '../components/status';
 import { PrintToolbar } from './PrintableMatrixPage';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 /** Print-friendly run summary, built from the run's case snapshots. */
 export function PrintableRunPage(): React.JSX.Element {
@@ -28,7 +29,7 @@ export function PrintableRunPage(): React.JSX.Element {
               {humanize(run.data.status)}
               {run.data.milestone === null ? '' : ` · ${run.data.milestone}`}
               {run.data.environment === null ? '' : ` · ${run.data.environment}`}{' '}
-              {t('printableRun.generated')} {new Date().toLocaleString()}
+              {t('printableRun.generated')} {formatDateTime(new Date())}
             </p>
             <p>
               {run.data.progress.executed} {t('printableRun.of')} {run.data.progress.total}{' '}

@@ -1,15 +1,15 @@
-import { RECORDABLE_RESULT_STATUSES } from '@qa-flow-hub/shared';
+import { RECORDABLE_RESULT_STATUSES, isOpenRelease } from '@qa-flow-hub/shared';
 import type {
   TestRunView,
   ExternalReferenceView,
   RecordableResultStatus,
   RunCaseView,
 } from '@qa-flow-hub/shared';
-import { Badge, Button, DataState, TextAreaField, TextField } from '@qa-flow-hub/ui';
+import { Badge, Button, DataState, SelectField, TextAreaField, TextField } from '@qa-flow-hub/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { defectsApi, exportsApi, testRunsApi } from '../api/endpoints';
+import { defectsApi, exportsApi, releasesApi, testRunsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { AttachmentsPanel } from '../components/AttachmentsPanel';
 import { ExportButton } from '../components/ExportButton';
@@ -24,6 +24,7 @@ import {
 } from '../components/GitHubRunPanel';
 import { TestRailSyncCell, useTestRailReferences } from '../components/TestRailSyncCell';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 /**
  * The execution screen.
@@ -395,7 +396,7 @@ function LatestResult({
       <div className="external-sync">
         <span className="muted">
           {t('runExecution.latestResult')} {humanize(latest.status)} (
-          {new Date(latest.executedAt).toLocaleString()})
+          {formatDateTime(latest.executedAt)})
           {runCase.iteration !== null &&
             t('runExecution.withIteration', { label: runCase.iteration.label })}
           {latest.caseVersion !== null &&
@@ -441,6 +442,19 @@ export function EditRun({ run }: { run: TestRunView }): React.JSX.Element {
   const [milestone, setMilestone] = useState(run.milestone ?? '');
   const [environment, setEnvironment] = useState(run.environment ?? '');
   const [error, setError] = useState<string | null>(null);
+  const [releaseId, setReleaseId] = useState(run.releaseId ?? '');
+  const releases = useQuery({
+    queryKey: ['releases', run.projectId],
+    queryFn: () => releasesApi.list({ projectId: run.projectId }),
+    enabled: open,
+  });
+  // The API only attaches a run to an open release; the current one stays listed.
+  const releaseOptions = [
+    { value: '', label: t('runExecution.editNoRelease') },
+    ...(releases.data?.data ?? [])
+      .filter((release) => isOpenRelease(release.status) || release.id === run.releaseId)
+      .map((release) => ({ value: release.id, label: `${release.name} (${release.version})` })),
+  ];
   const nameError = name.trim().length < 3 ? t('runExecution.editNameTooShort') : undefined;
   const orNull = (value: string) => (value.trim() === '' ? null : value.trim());
 
@@ -451,6 +465,9 @@ export function EditRun({ run }: { run: TestRunView }): React.JSX.Element {
         description: orNull(description),
         milestone: orNull(milestone),
         environment: orNull(environment),
+        ...(releaseId === (run.releaseId ?? '')
+          ? {}
+          : { releaseId: releaseId === '' ? null : releaseId }),
       }),
     onSuccess: async () => {
       setError(null);
@@ -458,6 +475,7 @@ export function EditRun({ run }: { run: TestRunView }): React.JSX.Element {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['run', run.id] }),
         queryClient.invalidateQueries({ queryKey: ['runs'] }),
+        queryClient.invalidateQueries({ queryKey: ['releases'] }),
       ]);
     },
     onError: (cause) => {
@@ -522,6 +540,15 @@ export function EditRun({ run }: { run: TestRunView }): React.JSX.Element {
           value={environment}
           onChange={(event) => {
             setEnvironment(event.target.value);
+          }}
+        />
+        <SelectField
+          label={t('runExecution.editRelease')}
+          hint={t('runExecution.editReleaseHint')}
+          options={releaseOptions}
+          value={releaseId}
+          onChange={(event) => {
+            setReleaseId(event.target.value);
           }}
         />
         <div className="actions">

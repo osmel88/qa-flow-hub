@@ -1,6 +1,9 @@
 import type { runExecution as source } from '../en/runExecution';
 
 export const runExecution: Partial<Record<keyof typeof source, string>> = {
+  'runExecution.editRelease': 'Release',
+  'runExecution.editNoRelease': 'Sin release',
+  'runExecution.editReleaseHint': 'Solo las releases planificadas o en curso aceptan ejecuciones.',
   'runExecution.editRun': 'Editar ejecución',
   'runExecution.editName': 'Nombre',
   'runExecution.editDescription': 'Descripción',

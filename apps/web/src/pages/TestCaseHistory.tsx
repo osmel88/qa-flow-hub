@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import { testDesignApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 interface TestCaseHistoryProps {
   detail: TestCaseDetailView;
@@ -108,7 +109,7 @@ export function TestCaseHistory({ detail, canWrite }: TestCaseHistoryProps): Rea
                   t('testCaseHistory.restoredFrom', { version: row.restoredFromVersion })}
               </td>
               <td>{row.author?.fullName ?? t('testCaseHistory.unknown')}</td>
-              <td>{new Date(row.createdAt).toLocaleString()}</td>
+              <td>{formatDateTime(row.createdAt)}</td>
               <td>{show(row.changeReason)}</td>
               <td className="row-actions">
                 <Button

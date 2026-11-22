@@ -12,6 +12,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { formatDuration } from './BuildsPage';
 import { DEPLOYMENT_TONE } from './DeploymentsPage';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 /** A deployment: lifecycle, build, release, environment, work items and rollback (S5-F5). */
 export function DeploymentDetailPage(): React.JSX.Element {
@@ -99,13 +100,11 @@ export function DeploymentDetailPage(): React.JSX.Element {
             <dl className="kpis">
               <div>
                 <dt>{t('deploymentDetail.started')}</dt>
-                <dd>{data.startedAt === null ? '—' : new Date(data.startedAt).toLocaleString()}</dd>
+                <dd>{data.startedAt === null ? '—' : formatDateTime(data.startedAt)}</dd>
               </div>
               <div>
                 <dt>{t('deploymentDetail.finished')}</dt>
-                <dd>
-                  {data.finishedAt === null ? '—' : new Date(data.finishedAt).toLocaleString()}
-                </dd>
+                <dd>{data.finishedAt === null ? '—' : formatDateTime(data.finishedAt)}</dd>
               </div>
               <div>
                 <dt>{t('deploymentDetail.duration')}</dt>

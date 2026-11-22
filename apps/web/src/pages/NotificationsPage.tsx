@@ -15,6 +15,7 @@ import { hasCapability } from '../auth/capabilities';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 const STATUS_TONES: Record<NotificationStatus, BadgeTone> = {
   pending: 'info',
@@ -26,7 +27,7 @@ const STATUS_TONES: Record<NotificationStatus, BadgeTone> = {
 type Scope = 'mine' | 'organization';
 
 function formatMoment(value: string | null): string {
-  return value === null ? '—' : new Date(value).toLocaleString();
+  return value === null ? '—' : formatDateTime(value);
 }
 
 function outcomeOf(row: NotificationView): string {

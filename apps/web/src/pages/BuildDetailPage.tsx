@@ -12,6 +12,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { BUILD_TONE, formatDuration } from './BuildsPage';
 import { DeploymentsOf } from './DeploymentsPage';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 /** A build: lifecycle, release, work items and related branch/commit (S5-F4). */
 export function BuildDetailPage(): React.JSX.Element {
@@ -87,13 +88,11 @@ export function BuildDetailPage(): React.JSX.Element {
             <dl className="kpis">
               <div>
                 <dt>{t('buildDetail.started')}</dt>
-                <dd>{data.startedAt === null ? '—' : new Date(data.startedAt).toLocaleString()}</dd>
+                <dd>{data.startedAt === null ? '—' : formatDateTime(data.startedAt)}</dd>
               </div>
               <div>
                 <dt>{t('buildDetail.finished')}</dt>
-                <dd>
-                  {data.finishedAt === null ? '—' : new Date(data.finishedAt).toLocaleString()}
-                </dd>
+                <dd>{data.finishedAt === null ? '—' : formatDateTime(data.finishedAt)}</dd>
               </div>
               <div>
                 <dt>{t('buildDetail.duration')}</dt>

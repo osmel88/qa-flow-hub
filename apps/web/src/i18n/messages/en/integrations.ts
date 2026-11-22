@@ -1,4 +1,5 @@
 export const integrations = {
+  'integrations.never': 'never',
   'integrations.configurationSaved': 'Configuration saved.',
   'integrations.couldNotSaveTheConfiguration': 'Could not save the configuration.',
   'integrations.enabledWaitingForAProvider': 'Enabled, waiting for a provider implementation.',

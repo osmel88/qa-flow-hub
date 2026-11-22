@@ -21,6 +21,7 @@ import {
 import { humanize, toneFor } from '../components/status';
 import { useProject } from '../project/project-context';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 const WINDOWS = [
   {
@@ -108,7 +109,7 @@ function ProjectAnalytics({
             <>
               <p className="muted small">
                 {periodText(summary.data.period)} {t('dashboard.computed')}{' '}
-                {new Date(summary.data.computedAt).toLocaleString()}
+                {formatDateTime(summary.data.computedAt)}
               </p>
               <div className="metrics">
                 <Kpi
@@ -400,8 +401,7 @@ function OrganizationAnalytics({ window }: { window: AnalyticsWindow }): React.J
           <section className="dashboard-section" aria-labelledby="health-heading">
             <h2 id="health-heading">{t('dashboard.overallQaHealth')}</h2>
             <p className="muted small">
-              {periodText(data.period)} {t('dashboard.computed')}{' '}
-              {new Date(data.computedAt).toLocaleString()}
+              {periodText(data.period)} {t('dashboard.computed')} {formatDateTime(data.computedAt)}
             </p>
             <div className="metrics">
               <Kpi label={t('dashboard.projects')} value={String(data.health.projects)} />
@@ -524,7 +524,7 @@ function OrganizationAnalytics({ window }: { window: AnalyticsWindow }): React.J
                 {data.recentActivity.map((item) => (
                   <li key={`${item.kind}-${item.id}`}>
                     <time dateTime={item.at} className="muted small">
-                      {new Date(item.at).toLocaleString()}
+                      {formatDateTime(item.at)}
                     </time>
                     <span>
                       {item.projectKey} · {humanize(item.kind)}

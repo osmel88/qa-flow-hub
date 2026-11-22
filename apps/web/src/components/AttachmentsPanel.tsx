@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { attachmentsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 interface AttachmentsPanelProps {
   entityType: AttachableEntity;
@@ -195,7 +196,7 @@ export function AttachmentsPanel({
                     {attachment.contentType} · {formatBytes(attachment.sizeBytes)}
                     {attachment.uploadedByName !== null && ` · ${attachment.uploadedByName}`}
                     {' · '}
-                    {new Date(attachment.createdAt).toLocaleString()}
+                    {formatDateTime(attachment.createdAt)}
                   </span>
                 </div>
                 <div className="row-actions">

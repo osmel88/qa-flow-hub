@@ -25,6 +25,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 /** The label of the field that identifies an artifact of this kind. */
 export function referenceLabel(kind: DevelopmentArtifactKind): string {
@@ -411,7 +412,7 @@ export function DevelopmentPage(): React.JSX.Element {
                   {row.environment !== null && <span className="muted"> · {row.environment}</span>}
                 </td>
                 <td>{humanize(row.provider)}</td>
-                <td>{new Date(row.occurredAt ?? row.createdAt).toLocaleString()}</td>
+                <td>{formatDateTime(row.occurredAt ?? row.createdAt)}</td>
                 <td>
                   {row.workItems.length === 0 ? (
                     <span className="muted">{t('development.notLinked')}</span>

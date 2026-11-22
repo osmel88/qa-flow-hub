@@ -1,6 +1,7 @@
 import type { integrations as source } from '../en/integrations';
 
 export const integrations: Partial<Record<keyof typeof source, string>> = {
+  'integrations.never': 'nunca',
   'integrations.configurationSaved': 'Configuración guardada.',
   'integrations.couldNotSaveTheConfiguration': 'No se pudo guardar la configuración.',
   'integrations.enabledWaitingForAProvider':

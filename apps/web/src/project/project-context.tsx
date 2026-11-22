@@ -42,9 +42,7 @@ export function ProjectProvider({ children }: { children: ReactNode }): React.JS
       return;
     }
     const stored = localStorage.getItem(`${STORAGE_KEY}.${activeOrganizationId ?? ''}`);
-    setSelected(
-      projects.find((project) => project.id === stored)?.id ?? projects[0]?.id ?? null,
-    );
+    setSelected(projects.find((project) => project.id === stored)?.id ?? projects[0]?.id ?? null);
   }, [projects, activeOrganizationId]);
 
   const value = useMemo<ProjectContextValue>(() => {

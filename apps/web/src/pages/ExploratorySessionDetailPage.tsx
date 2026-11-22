@@ -11,6 +11,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { EXPLORATORY_TONE, formatDuration } from './ExploratorySessionsPage';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 const ACTIONS: Array<{ action: ExploratoryAction; label: string; from: ExploratoryStatus[] }> = [
   {
@@ -494,7 +495,7 @@ export function ExploratorySessionDetailPage(): React.JSX.Element {
             <ol aria-label={t('exploratorySessionDetail.timeline')}>
               {data.timeline.map((event) => (
                 <li key={event.id}>
-                  <span className="muted">{new Date(event.createdAt).toLocaleString()}</span>{' '}
+                  <span className="muted">{formatDateTime(event.createdAt)}</span>{' '}
                   <strong>{humanize(event.type)}</strong>
                   {event.body !== null && ` — ${event.body}`}
                   {event.actor !== null && <span className="muted"> · {event.actor.fullName}</span>}

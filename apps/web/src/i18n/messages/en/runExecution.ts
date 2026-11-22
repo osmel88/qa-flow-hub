@@ -1,4 +1,7 @@
 export const runExecution = {
+  'runExecution.editRelease': 'Release',
+  'runExecution.editNoRelease': 'No release',
+  'runExecution.editReleaseHint': 'Only planned or in-progress releases accept runs.',
   'runExecution.editRun': 'Edit run',
   'runExecution.editName': 'Name',
   'runExecution.editDescription': 'Description',

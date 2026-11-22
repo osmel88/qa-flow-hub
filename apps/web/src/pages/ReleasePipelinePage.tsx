@@ -19,6 +19,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { PageHeader } from '../components/PageHeader';
 import { humanize } from '../components/status';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 const STAGE_TONE: Record<PipelineStageStatus, BadgeTone> = {
   pending: 'neutral',
@@ -75,7 +76,7 @@ function DeploymentLine({ deployment }: { deployment: PipelineDeploymentRef }): 
       )}
       <br />
       <span className="muted">
-        {new Date(at).toLocaleString()}
+        {formatDateTime(at)}
         {deployment.actor !== null && ` · ${deployment.actor.fullName}`}
       </span>
       {deployment.build !== null && (

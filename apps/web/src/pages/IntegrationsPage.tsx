@@ -9,9 +9,11 @@ import { useAuth } from '../auth/auth-context';
 import { PageHeader } from '../components/PageHeader';
 import { humanize, toneFor } from '../components/status';
 import { t } from '../i18n/i18n';
+import { validationMessage } from '../i18n/validation';
+import { formatDateTime } from '../i18n/format';
 
 function formatMoment(value: string | null): string {
-  return value === null ? 'never' : new Date(value).toLocaleString();
+  return formatDateTime(value, t('integrations.never'));
 }
 
 /**
@@ -64,7 +66,7 @@ function IntegrationCard({
   const fail = (cause: unknown, fallback: string): void => {
     setNotice(null);
     if (cause instanceof ApiError && cause.details !== undefined && cause.details.length > 0) {
-      setError(cause.details.map((detail) => detail.message).join(' '));
+      setError(cause.details.map((detail) => validationMessage(detail.message)).join(' '));
       return;
     }
     setError(cause instanceof Error ? cause.message : fallback);

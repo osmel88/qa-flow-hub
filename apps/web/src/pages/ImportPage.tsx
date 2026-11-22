@@ -11,6 +11,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 import { t } from '../i18n/i18n';
+import { formatDateTime, formatNumber } from '../i18n/format';
 
 const FORMAT_LABELS: Record<ImportFormat, string> = {
   get qaflow_csv() {
@@ -203,8 +204,8 @@ export function ImportPage(): React.JSX.Element {
           {limits.data !== undefined && (
             <span className="ui-field__hint">
               {t('import.upTo')} {Math.round(limits.data.maxBytes / (1024 * 1024))}{' '}
-              {t('import.mib')} {limits.data.maxRows.toLocaleString()} {t('import.rowsAnd')}{' '}
-              {limits.data.maxCases.toLocaleString()} {t('import.casesUtf8CommaOr')}
+              {t('import.mib')} {formatNumber(limits.data.maxRows)} {t('import.rowsAnd')}{' '}
+              {formatNumber(limits.data.maxCases)} {t('import.casesUtf8CommaOr')}
             </span>
           )}
         </label>
@@ -285,7 +286,7 @@ export function ImportPage(): React.JSX.Element {
                   </td>
                   <td>{entry.summary.cases}</td>
                   <td>{entry.issueCount}</td>
-                  <td>{new Date(entry.createdAt).toLocaleString()}</td>
+                  <td>{formatDateTime(entry.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

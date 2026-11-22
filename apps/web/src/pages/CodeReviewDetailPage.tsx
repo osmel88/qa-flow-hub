@@ -10,6 +10,7 @@ import { humanize } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { CODE_REVIEW_TONE, ReadinessBadge } from './CodeReviewsPage';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 /** A code review: decisions, reviewers, work items and history (S5-F3). */
 export function CodeReviewDetailPage(): React.JSX.Element {
@@ -311,7 +312,7 @@ export function CodeReviewDetailPage(): React.JSX.Element {
             <ol aria-label={t('codeReviewDetail.reviewHistory')}>
               {data.events.map((event) => (
                 <li key={event.id}>
-                  <span className="muted">{new Date(event.createdAt).toLocaleString()}</span>{' '}
+                  <span className="muted">{formatDateTime(event.createdAt)}</span>{' '}
                   {event.actor?.fullName ?? t('codeReviewDetail.someone')} {humanize(event.kind)}
                   {event.subject !== null && ` (${event.subject.fullName})`}
                   {event.comment !== null && `: ${event.comment}`}

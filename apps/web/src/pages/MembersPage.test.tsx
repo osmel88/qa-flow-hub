@@ -71,7 +71,9 @@ describe('MembersPage', () => {
     expect(ownerSelect).toBeDisabled();
     // The API refuses this with a 403; the screen has to say so instead of
     // offering the action and surfacing the error afterwards.
-    expect(screen.getByText(/cannot change a member who is organization owner/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/cannot change a member who is organization owner/i),
+    ).toBeInTheDocument();
 
     expect(screen.getByLabelText('Change role of tester@example.test')).toBeEnabled();
   });
@@ -84,7 +86,9 @@ describe('MembersPage', () => {
     renderScreen(<Page />);
 
     const select = await screen.findByLabelText('Change role of tester@example.test');
-    const options = within(select).getAllByRole('option').map((option) => option.textContent);
+    const options = within(select)
+      .getAllByRole('option')
+      .map((option) => option.textContent);
     expect(options).not.toContain('organization owner');
     expect(options).toContain('organization admin');
   });

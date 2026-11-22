@@ -123,6 +123,11 @@ const core: Record<keyof typeof enCore, string> = {
   'validation.invalidEmail': 'Introduce un correo electrónico válido',
   'validation.tooShort': 'Debe tener al menos {min} carácter(es)',
   'validation.tooLong': 'Debe tener como mucho {max} carácter(es)',
+  'validation.invalidUrl': 'Introduce una URL válida',
+  'validation.invalidType': 'Este valor no tiene el tipo correcto',
+  'validation.invalidOption': 'Elige uno de los valores permitidos',
+  'validation.numberMin': 'Debe ser como mínimo {min}',
+  'validation.numberMax': 'Debe ser como máximo {max}',
   'validation.projectName': 'Usa de 2 a 120 caracteres.',
   'validation.aParameter': 'un parámetro',
 };

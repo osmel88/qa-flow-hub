@@ -8,10 +8,15 @@ import { renderScreen } from '../test/render';
 const updateDefect = vi.fn();
 const updateRelease = vi.fn();
 const updateRun = vi.fn();
+let releaseList: ReleaseView[] = [];
 
 vi.mock('../api/endpoints', () => ({
   defectsApi: { update: (...args: unknown[]) => updateDefect(...args) },
-  releasesApi: { update: (...args: unknown[]) => updateRelease(...args) },
+  releasesApi: {
+    update: (...args: unknown[]) => updateRelease(...args),
+    list: () =>
+      Promise.resolve({ data: releaseList, total: releaseList.length, page: 1, pageSize: 100 }),
+  },
   testRunsApi: { update: (...args: unknown[]) => updateRun(...args) },
   defectWorkflowApi: {},
   buildsApi: {},
@@ -170,6 +175,33 @@ describe('EditRun', () => {
         milestone: 'M3',
         environment: 'staging',
       });
+    });
+  });
+
+  it('moves the run to an open release and hides the closed ones', async () => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, 'en');
+    releaseList = [
+      { ...release, id: 'rel_open', name: 'Open one', version: '3.0.0', status: 'in_progress' },
+      { ...release, id: 'rel_done', name: 'Shipped', version: '1.0.0', status: 'released' },
+    ];
+    updateRun.mockResolvedValue(run);
+    const { EditRun } = await import('./RunExecutionPage');
+    const user = userEvent.setup();
+    renderScreen(<EditRun run={run} />);
+
+    await user.click(screen.getByRole('button', { name: 'Edit run' }));
+    const picker = screen.getByRole('combobox', { name: 'Release' });
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Open one (3.0.0)' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('option', { name: 'Shipped (1.0.0)' })).toBeNull();
+    await user.selectOptions(picker, 'rel_open');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(updateRun).toHaveBeenCalledWith(
+        'run_1',
+        expect.objectContaining({ releaseId: 'rel_open' }),
+      );
     });
   });
 });

@@ -19,6 +19,7 @@ import { humanize } from '../components/status';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 const STATUS_TONES: Record<ExternalSyncStatus, BadgeTone> = {
   synced: 'success',
@@ -41,7 +42,7 @@ const PROVIDER_LABELS: Record<SyncProvider, string> = {
 };
 
 function formatDate(value: string | null): string {
-  return value === null ? '—' : new Date(value).toLocaleString();
+  return value === null ? '—' : formatDateTime(value);
 }
 
 /**

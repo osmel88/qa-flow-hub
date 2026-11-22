@@ -6,6 +6,7 @@ import { humanize } from '../components/status';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 /**
  * Print-friendly traceability matrix: the browser's "Save as PDF" is the PDF
@@ -32,7 +33,7 @@ export function PrintableMatrixPage(): React.JSX.Element {
         {t('printableMatrix.traceabilityMatrix')} {activeProject?.name}
       </h1>
       <p className="muted">
-        {t('printableMatrix.generated')} {new Date().toLocaleString()}
+        {t('printableMatrix.generated')} {formatDateTime(new Date())}
       </p>
       <DataState isPending={matrix.isPending} error={matrix.error}>
         {matrix.data !== undefined && (

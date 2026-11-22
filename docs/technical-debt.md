@@ -1448,15 +1448,19 @@ defaults use catalog keys in English and Spanish. What remains:
   the suite). The ingest-only codes (`INVALID_REPORT`, `REPORT_TOO_LARGE`),
   `ORGANIZATION_CONTEXT_REQUIRED`, `TOKEN_REUSE_DETECTED` and `MFA_REQUIRED`
   are not shown by the Web as text and fall back to `apiError.unknown`.
-  `details[].message` of a `VALIDATION_ERROR` (used by Integrations) is still
-  English. Fix: a machine-readable reason per error (e.g. `reason:
+  `details[].message` of a `VALIDATION_ERROR` (used by Integrations) now goes
+  through `validationMessage()`, so Zod's default messages (length, required,
+  email, URL, type, enum, number bounds) are translated; a custom schema
+  message not listed there stays English. Fix: a machine-readable reason per error (e.g. `reason:
 'suite_name_taken'`) in the error body.
 - **Validation messages** are mapped only for the messages the Web shows
   today (password policy, parameter cell types, Zod length/required/email
   defaults) in `apps/web/src/i18n/validation.ts`. A new schema message
   appears in English until it is added there.
-- **Dates and numbers** are still formatted with the browser default;
-  `intlLocale()` exists but the formatters do not use it yet.
+- **Dates and numbers.** Dates/times go through `formatDateTime()` and counts
+  through `formatNumber()` in `apps/web/src/i18n/format.ts` (active language,
+  not the browser), and billing amounts use `intlLocale()`. The analytics
+  chart helpers (`components/analytics/charts.tsx`) still print raw numbers.
 - **Plurals** use neutral forms ("elemento(s)") instead of plural rules.
 - **Technical terms** kept in English on purpose in Spanish: Release(s),
   Sprint(s), Backlog, Kanban, Commit, Pull request, Rollback, CI, JUnit and
@@ -1530,7 +1534,6 @@ The S7-F7 dashboard computes everything on read. Known limits:
   explicit, not a new leak: hiding it would need an email-verification signup
   flow (always answer "check your inbox"), which is a product decision.
   Login and password reset keep their anti-enumeration answers.
-- **Test-run release is changed only through the API.** The run page edits
-  name, description, milestone and environment of planned or in-progress runs;
-  moving a run to another release stays API-only (it changes readiness and
-  release metrics, and needs a release picker with the open-release rule).
+- **Test-run editing.** The run page edits name, description, milestone,
+  environment and release of planned or in-progress runs; the release picker
+  lists only open releases (`isOpenRelease`), the rule the API enforces.

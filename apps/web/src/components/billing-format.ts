@@ -2,7 +2,7 @@ import type { LimitedResource } from '@qa-flow-hub/shared';
 import { intlLocale, t } from '../i18n/i18n';
 
 export function formatMoney(cents: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(intlLocale(), {
     style: 'currency',
     currency: currency.toUpperCase(),
   }).format(cents / 100);

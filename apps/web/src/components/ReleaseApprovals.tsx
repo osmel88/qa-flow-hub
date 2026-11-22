@@ -8,6 +8,7 @@ import { releaseApprovalsApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { humanize } from './status';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 export const APPROVAL_TONE: Record<ApprovalState, BadgeTone> = {
   approved: 'success',
@@ -163,7 +164,7 @@ export function ReleaseApprovals({
                   {APPROVAL_TYPE_LABELS[entry.type]}
                   {entry.environment !== null && ` for ${entry.environment.name}`}
                   {entry.comment !== null && `: ${entry.comment}`}{' '}
-                  <span className="muted">{new Date(entry.createdAt).toLocaleString()}</span>
+                  <span className="muted">{formatDateTime(entry.createdAt)}</span>
                   {entry.revokedAt !== null ? (
                     <span className="muted">
                       {' '}

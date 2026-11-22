@@ -10,6 +10,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { NoProject } from './NoProject';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 /**
  * API keys let CI upload JUnit XML or Playwright JSON reports into this
@@ -23,7 +24,7 @@ const STATE_TONE: Record<ApiKeyState, BadgeTone> = {
 };
 
 function formatDate(value: string | null): string {
-  return value === null ? '—' : new Date(value).toLocaleString();
+  return value === null ? '—' : formatDateTime(value);
 }
 
 export function ApiKeysPage(): React.JSX.Element {

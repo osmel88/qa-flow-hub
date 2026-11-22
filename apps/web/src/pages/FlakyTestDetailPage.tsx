@@ -12,6 +12,7 @@ import { useProjectPermissions } from '../components/use-project-permissions';
 import { useProject } from '../project/project-context';
 import { FLAKY_TONE, percent } from './FlakyTestsPage';
 import { t } from '../i18n/i18n';
+import { formatDateTime } from '../i18n/format';
 
 const MARK_LABEL: Record<FlakyMarkState, string> = {
   get flaky() {
@@ -155,7 +156,7 @@ export function FlakyTestDetailPage(): React.JSX.Element {
                 <tbody>
                   {data.history.map((entry) => (
                     <tr key={entry.resultId} data-testid={`history-${entry.resultId}`}>
-                      <td>{new Date(entry.executedAt).toLocaleString()}</td>
+                      <td>{formatDateTime(entry.executedAt)}</td>
                       <td>
                         {entry.status}
                         {entry.flip && <small> {t('flakyTestDetail.flip')}</small>}
@@ -182,8 +183,7 @@ export function FlakyTestDetailPage(): React.JSX.Element {
                   <li key={`${entry.markedAt}-${entry.state}`}>
                     {humanize(entry.state)} {t('flakyTestDetail.by')}{' '}
                     {entry.markedBy?.fullName ?? t('flakyTestDetail.aFormerMember')}{' '}
-                    {t('flakyTestDetail.on')} {new Date(entry.markedAt).toLocaleString()}:{' '}
-                    {entry.reason}
+                    {t('flakyTestDetail.on')} {formatDateTime(entry.markedAt)}: {entry.reason}
                   </li>
                 ))}
               </ul>

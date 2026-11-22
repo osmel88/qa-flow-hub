@@ -127,6 +127,11 @@ export const core = {
   'validation.invalidEmail': 'Enter a valid email address',
   'validation.tooShort': 'Must contain at least {min} character(s)',
   'validation.tooLong': 'Must contain at most {max} character(s)',
+  'validation.invalidUrl': 'Enter a valid URL',
+  'validation.invalidType': 'This value has the wrong type',
+  'validation.invalidOption': 'Choose one of the allowed values',
+  'validation.numberMin': 'Must be at least {min}',
+  'validation.numberMax': 'Must be at most {max}',
   'validation.projectName': 'Use 2 to 120 characters.',
   'validation.aParameter': 'a parameter',
 } as const;

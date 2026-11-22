@@ -47,7 +47,7 @@ export const board: Partial<Record<keyof typeof source, string>> = {
   'board.pts2': '— pts',
   'board.pts3': '{estimate} pts',
   'board.noRequirement': 'Sin requisito',
-  'board.requirementS': '{count} requisito(s)',
+  'board.requirementS': '{count, plural, one {# requisito} other {# requisitos}}',
   'board.moveToColumn': 'Mover {key} a la columna',
   'board.moveUp': 'Subir {key}',
   'board.moveDown': 'Bajar {key}',

@@ -56,7 +56,7 @@ export const kanban: Partial<Record<keyof typeof source, string>> = {
   'kanban.pts2': '— pts',
   'kanban.pts3': '{estimate} pts',
   'kanban.noRequirement': 'Sin requisito',
-  'kanban.requirementS': '{count} requisito(s)',
+  'kanban.requirementS': '{count, plural, one {# requisito} other {# requisitos}}',
   'kanban.dIn': 'd en',
   'kanban.ageD': ' · antigüedad {ageDays} d',
   'kanban.moveToColumn': 'Mover {key} a la columna',

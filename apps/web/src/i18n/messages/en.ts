@@ -125,8 +125,10 @@ export const core = {
   'validation.passwordsDoNotMatch': 'The passwords do not match',
   'validation.required': 'Required',
   'validation.invalidEmail': 'Enter a valid email address',
-  'validation.tooShort': 'Must contain at least {min} character(s)',
-  'validation.tooLong': 'Must contain at most {max} character(s)',
+  'validation.tooShort':
+    '{min, plural, one {Must contain at least # character} other {Must contain at least # characters}}',
+  'validation.tooLong':
+    '{max, plural, one {Must contain at most # character} other {Must contain at most # characters}}',
   'validation.invalidUrl': 'Enter a valid URL',
   'validation.invalidType': 'This value has the wrong type',
   'validation.invalidOption': 'Choose one of the allowed values',

@@ -3,7 +3,7 @@ import type { sprintDetail as source } from '../en/sprintDetail';
 export const sprintDetail: Partial<Record<keyof typeof source, string>> = {
   'sprintDetail.sprintStarted': 'Sprint iniciado.',
   'sprintDetail.sprintUnfinishedItemSCarried':
-    'Sprint {value}; {carriedOver} elemento(s) sin terminar trasladados.',
+    'Sprint {value}; {carriedOver, plural, one {# elemento sin terminar trasladado} other {# elementos sin terminar trasladados}}.',
   'sprintDetail.noGoalSet': 'Sin objetivo.',
   'sprintDetail.allSprints': 'Todos los sprints',
   'sprintDetail.sprintActions': 'Acciones del sprint',

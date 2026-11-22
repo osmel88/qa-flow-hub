@@ -121,8 +121,10 @@ const core: Record<keyof typeof enCore, string> = {
   'validation.passwordsDoNotMatch': 'Las contraseñas no coinciden',
   'validation.required': 'Obligatorio',
   'validation.invalidEmail': 'Introduce un correo electrónico válido',
-  'validation.tooShort': 'Debe tener al menos {min} carácter(es)',
-  'validation.tooLong': 'Debe tener como mucho {max} carácter(es)',
+  'validation.tooShort':
+    '{min, plural, one {Debe tener al menos # carácter} other {Debe tener al menos # caracteres}}',
+  'validation.tooLong':
+    '{max, plural, one {Debe tener como mucho # carácter} other {Debe tener como mucho # caracteres}}',
   'validation.invalidUrl': 'Introduce una URL válida',
   'validation.invalidType': 'Este valor no tiene el tipo correcto',
   'validation.invalidOption': 'Elige uno de los valores permitidos',

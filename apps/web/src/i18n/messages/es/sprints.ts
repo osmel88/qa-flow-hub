@@ -14,7 +14,8 @@ export const sprints: Partial<Record<keyof typeof source, string>> = {
   'sprints.createSprint': 'Crear sprint',
   'sprints.velocity': 'Velocidad',
   'sprints.pointsPerSprintAverageOf': 'puntos por sprint, media de los últimos',
-  'sprints.completedSprintS': 'sprint(s) completados.',
+  'sprints.completedSprintS':
+    '{count, plural, one {# sprint completado.} other {# sprints completados.}}',
   'sprints.statusFilter': 'Filtro de estado',
   'sprints.anyStatus': 'Cualquier estado',
   'sprints.noSprintYet': 'Todavía no hay sprints.',

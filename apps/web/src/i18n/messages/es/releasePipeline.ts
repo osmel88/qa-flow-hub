@@ -13,7 +13,7 @@ export const releasePipeline: Partial<Record<keyof typeof source, string>> = {
   'releasePipeline.neverDeployed': 'Nunca desplegado',
   'releasePipeline.gates': 'Gates:',
   'releasePipeline.approvals': '· Aprobaciones:',
-  'releasePipeline.deploymentS': 'despliegue(s)',
+  'releasePipeline.deploymentS': '{count, plural, one {# despliegue} other {# despliegues}}',
   'releasePipeline.qa': 'QA:',
   'releasePipeline.noRunForThisEnvironment': 'no hay ejecuciones para este entorno',
   'releasePipeline.couldNotOverrideTheGates': 'No se pudieron forzar los gates.',

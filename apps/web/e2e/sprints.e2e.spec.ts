@@ -88,7 +88,7 @@ test('sprint planning, start, completion with carry-over and velocity', async ({
   await test.step('completing carries the open story back to the backlog', async () => {
     await page.getByRole('button', { name: 'Complete sprint' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'carried over' })).toHaveText(
-      'Sprint completed; 1 unfinished item(s) carried over.',
+      'Sprint completed; 1 unfinished item carried over.',
     );
     await expect(page.getByRole('button', { name: 'Start sprint' })).toHaveCount(0);
 

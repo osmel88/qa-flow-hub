@@ -1,7 +1,7 @@
 import type { ExecutionKpis, TrendPoint } from '@qa-flow-hub/shared';
 import { useId } from 'react';
 import { humanize } from '../status';
-import { t } from '../../i18n/i18n';
+import { intlLocale, t } from '../../i18n/i18n';
 
 /**
  * Dependency-free, accessible chart primitives for the analytics dashboards.
@@ -11,11 +11,11 @@ import { t } from '../../i18n/i18n';
  */
 
 export function formatPercent(value: number | null): string {
-  return value === null ? '—' : `${value}%`;
+  return value === null ? '—' : `${new Intl.NumberFormat(intlLocale()).format(value)}%`;
 }
 
 export function formatNumber(value: number | null): string {
-  return value === null ? '—' : String(value);
+  return value === null ? '—' : new Intl.NumberFormat(intlLocale()).format(value);
 }
 
 export function Kpi({

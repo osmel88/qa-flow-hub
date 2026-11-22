@@ -1460,8 +1460,10 @@ defaults use catalog keys in English and Spanish. What remains:
 - **Dates and numbers.** Dates/times go through `formatDateTime()` and counts
   through `formatNumber()` in `apps/web/src/i18n/format.ts` (active language,
   not the browser), and billing amounts use `intlLocale()`. The analytics
-  chart helpers (`components/analytics/charts.tsx`) still print raw numbers.
-- **Plurals** use neutral forms ("elemento(s)") instead of plural rules.
+  chart helpers (`components/analytics/charts.tsx`) use the same locale.
+- **Plurals.** `translate()` resolves `{n, plural, one {# item} other {# items}}`
+  with `Intl.PluralRules`; only the `one`/`other` categories are supported,
+  which is enough for English and Spanish.
 - **Technical terms** kept in English on purpose in Spanish: Release(s),
   Sprint(s), Backlog, Kanban, Commit, Pull request, Rollback, CI, JUnit and
   Playwright. Build, Quality gate, Work item, API key and Test(s) are
@@ -1505,8 +1507,8 @@ The S7-F7 dashboard computes everything on read. Known limits:
   upload: user images are not tenant data, so the tenant-scoped attachments
   storage does not fit, and they need size/type checks and resizing. The CSP
   (`img-src 'self' data: blob:`) blocks pictures on external hosts, so a URL
-  field would be useless. Needs a product decision (user-level storage, or a
-  generated avatar only).
+  field would be useless. Decision (product owner): keep the initials avatar
+  for now; photo storage/upload is out of scope until asked for.
 - **Organization capabilities.** `ORGANIZATION_CAPABILITY_ROLES` in
   `@qa-flow-hub/shared` is the one rule for organization-level actions
   (projects, organization settings, members, billing read/manage, audit log,

@@ -11,7 +11,7 @@ export const releasePipeline = {
   'releasePipeline.neverDeployed': 'Never deployed',
   'releasePipeline.gates': 'Gates:',
   'releasePipeline.approvals': '· Approvals:',
-  'releasePipeline.deploymentS': 'deployment(s)',
+  'releasePipeline.deploymentS': '{count, plural, one {# deployment} other {# deployments}}',
   'releasePipeline.qa': 'QA:',
   'releasePipeline.noRunForThisEnvironment': 'no run for this environment',
   'releasePipeline.couldNotOverrideTheGates': 'Could not override the gates.',

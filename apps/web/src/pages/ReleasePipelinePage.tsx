@@ -155,7 +155,7 @@ function Stage({
         </span>
       </p>
       <p className="muted">
-        {stage.deploymentCount} {t('releasePipeline.deploymentS')}
+        {t('releasePipeline.deploymentS', { count: stage.deploymentCount })}
         {stage.environment.protected &&
           !stage.canDeploy &&
           t('releasePipeline.needsWorkItemManagement')}
@@ -424,7 +424,7 @@ export function ReleasePipelinePage(): React.JSX.Element {
                     <Link to={`/environments/${entry.environment.id}`}>
                       {entry.environment.name}
                     </Link>{' '}
-                    · {entry.deploymentCount} {t('releasePipeline.deploymentS')}
+                    · {t('releasePipeline.deploymentS', { count: entry.deploymentCount })}
                     {entry.lastDeployment !== null && (
                       <>
                         {' '}

@@ -54,7 +54,7 @@ export const kanban = {
   'kanban.pts2': '— pts',
   'kanban.pts3': '{estimate} pts',
   'kanban.noRequirement': 'No requirement',
-  'kanban.requirementS': '{count} requirement(s)',
+  'kanban.requirementS': '{count, plural, one {# requirement} other {# requirements}}',
   'kanban.dIn': 'd in',
   'kanban.ageD': ' · age {ageDays} d',
   'kanban.moveToColumn': 'Move {key} to column',

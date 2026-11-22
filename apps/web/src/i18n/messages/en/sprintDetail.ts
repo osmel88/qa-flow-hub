@@ -1,7 +1,7 @@
 export const sprintDetail = {
   'sprintDetail.sprintStarted': 'Sprint started.',
   'sprintDetail.sprintUnfinishedItemSCarried':
-    'Sprint {value}; {carriedOver} unfinished item(s) carried over.',
+    'Sprint {value}; {carriedOver, plural, one {# unfinished item} other {# unfinished items}} carried over.',
   'sprintDetail.noGoalSet': 'No goal set.',
   'sprintDetail.allSprints': 'All sprints',
   'sprintDetail.sprintActions': 'Sprint actions',

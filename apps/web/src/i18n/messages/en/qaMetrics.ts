@@ -20,7 +20,7 @@ export const qaMetrics = {
   'qaMetrics.passRate': 'Pass rate',
   'qaMetrics.failRate': 'Fail rate',
   'qaMetrics.blockedRate': 'Blocked rate',
-  'qaMetrics.verdicts': '{count} verdict(s)',
+  'qaMetrics.verdicts': '{count, plural, one {# verdict} other {# verdicts}}',
   'qaMetrics.notEnoughData': 'Not enough data',
   'qaMetrics.notEnoughVerdicts': 'Rates need at least {min} passed, failed or blocked results.',
   'qaMetrics.resultsOverTime': 'Results over time',

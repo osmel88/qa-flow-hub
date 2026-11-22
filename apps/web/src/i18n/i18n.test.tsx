@@ -21,6 +21,22 @@ describe('i18n', () => {
     window.localStorage.clear();
   });
 
+  it('picks the plural form of the locale', () => {
+    expect(translate('en', 'board.requirementS', { count: 1 })).toBe('1 requirement');
+    expect(translate('en', 'board.requirementS', { count: 3 })).toBe('3 requirements');
+    expect(translate('es', 'board.requirementS', { count: 1 })).toBe('1 requisito');
+    expect(translate('es', 'board.requirementS', { count: 0 })).toBe('0 requisitos');
+    expect(translate('es', 'validation.tooShort', { min: '1' })).toBe(
+      'Debe tener al menos 1 carácter',
+    );
+    expect(
+      translate('es', 'sprintDetail.sprintUnfinishedItemSCarried', {
+        value: 'completado',
+        carriedOver: 2,
+      }),
+    ).toBe('Sprint completado; 2 elementos sin terminar trasladados.');
+  });
+
   it('has a Spanish entry for every English key', () => {
     const missing = Object.keys(en).filter((key) => !(key in es));
     expect(missing).toEqual([]);

@@ -12,7 +12,8 @@ export const sprints = {
   'sprints.createSprint': 'Create sprint',
   'sprints.velocity': 'Velocity',
   'sprints.pointsPerSprintAverageOf': 'points per sprint, average of the last',
-  'sprints.completedSprintS': 'completed sprint(s).',
+  'sprints.completedSprintS':
+    '{count, plural, one {# completed sprint.} other {# completed sprints.}}',
   'sprints.statusFilter': 'Status filter',
   'sprints.anyStatus': 'Any status',
   'sprints.noSprintYet': 'No sprint yet.',

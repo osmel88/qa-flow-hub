@@ -18,13 +18,28 @@ let activeLocale: Locale = DEFAULT_LOCALE;
 
 export type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
-/** Looks the key up in the locale, then in English; fills `{name}` placeholders. */
+// `{n, plural, one {# item} other {# items}}`: the branch Intl.PluralRules picks
+// for `n` in the locale, with `#` replaced by the number.
+const PLURAL = /\{(\w+), plural, one \{([^{}]*)\} other \{([^{}]*)\}\}/g;
+
+/**
+ * Looks the key up in the locale, then in English; resolves plural blocks and
+ * fills `{name}` placeholders.
+ */
 export function translate(
   locale: Locale,
   key: MessageKey,
   vars: Record<string, string | number> = {},
 ): string {
-  const template = lookupMessage(CATALOGS[locale], key);
+  const rules = new Intl.PluralRules(locale);
+  const template = lookupMessage(CATALOGS[locale], key).replace(
+    PLURAL,
+    (match, name: string, one: string, other: string) => {
+      if (!(name in vars)) return match;
+      const count = Number(vars[name]);
+      return (rules.select(count) === 'one' ? one : other).replace(/#/g, String(vars[name]));
+    },
+  );
   return template.replace(/\{(\w+)\}/g, (match, name: string) =>
     name in vars ? String(vars[name]) : match,
   );

@@ -22,7 +22,7 @@ export const qaMetrics: Partial<Record<keyof typeof source, string>> = {
   'qaMetrics.passRate': 'Tasa de éxito',
   'qaMetrics.failRate': 'Tasa de fallo',
   'qaMetrics.blockedRate': 'Tasa de bloqueo',
-  'qaMetrics.verdicts': '{count} veredicto(s)',
+  'qaMetrics.verdicts': '{count, plural, one {# veredicto} other {# veredictos}}',
   'qaMetrics.notEnoughData': 'Datos insuficientes',
   'qaMetrics.notEnoughVerdicts':
     'Las tasas necesitan al menos {min} resultados aprobados, fallidos o bloqueados.',

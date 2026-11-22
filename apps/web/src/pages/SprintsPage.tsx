@@ -140,8 +140,8 @@ export function SprintsPage(): React.JSX.Element {
         <h2 id="velocity">{t('sprints.velocity')}</h2>
         <p>
           <strong data-testid="velocity">{formatPoints(velocity?.velocity ?? null)}</strong>{' '}
-          {t('sprints.pointsPerSprintAverageOf')} {velocity?.sprints.length ?? 0}{' '}
-          {t('sprints.completedSprintS')}
+          {t('sprints.pointsPerSprintAverageOf')}{' '}
+          {t('sprints.completedSprintS', { count: velocity?.sprints.length ?? 0 })}
         </p>
       </section>
 

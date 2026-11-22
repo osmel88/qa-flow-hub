@@ -45,7 +45,7 @@ export const board = {
   'board.pts2': '— pts',
   'board.pts3': '{estimate} pts',
   'board.noRequirement': 'No requirement',
-  'board.requirementS': '{count} requirement(s)',
+  'board.requirementS': '{count, plural, one {# requirement} other {# requirements}}',
   'board.moveToColumn': 'Move {key} to column',
   'board.moveUp': 'Move {key} up',
   'board.moveDown': 'Move {key} down',

@@ -34,6 +34,7 @@ import { HierarchyPage } from '../pages/HierarchyPage';
 import { CustomizationPage } from '../pages/CustomizationPage';
 import { ImportPage } from '../pages/ImportPage';
 import { PrintableMatrixPage } from '../pages/PrintableMatrixPage';
+import { PrintableReadinessPage } from '../pages/PrintableReadinessPage';
 import { PrintableRunPage } from '../pages/PrintableRunPage';
 import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { LoginPage } from '../pages/LoginPage';
@@ -78,6 +79,7 @@ const router = createBrowserRouter([
       { path: '/organizations', element: <OrganizationsPage /> },
       { path: '/print/traceability', element: <PrintableMatrixPage /> },
       { path: '/print/test-runs/:runId', element: <PrintableRunPage /> },
+      { path: '/print/releases/:releaseId/readiness', element: <PrintableReadinessPage /> },
       {
         element: <AppLayout />,
         children: [

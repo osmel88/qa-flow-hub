@@ -1539,3 +1539,23 @@ The S7-F7 dashboard computes everything on read. Known limits:
 - **Test-run editing.** The run page edits name, description, milestone,
   environment and release of planned or in-progress runs; the release picker
   lists only open releases (`isOpenRelease`), the rule the API enforces.
+
+## 72. Release readiness report: what the first version leaves
+
+- **Thresholds are global constants** (`READINESS_MIN_VERDICTS = 5`,
+  `READINESS_MAX_FAILED_RATE = 10`). Per-project or per-release thresholds
+  would need a setting and a migration.
+- **No "required" plans or cycles.** Every release cycle still `planned` or
+  `active` blocks; every plan still `draft` or `active` only warns. The model
+  has no flag to mark which ones are mandatory.
+- **Gates are evaluated for the default environment only**
+  (`QualityGatesService.evaluate(releaseId, {})`). Per-environment readiness
+  is not shown.
+- **Only bug findings without a defect count as open findings.** Notes,
+  questions and ideas from exploratory sessions do not affect the decision.
+- **Query volume grows with plans and cycles:** progress is computed per plan
+  and per cycle with the existing services. Fine for a handful per release; a
+  batched progress query would help at scale.
+- **No history.** The report is recomputed on every read; a snapshot at
+  release time ("what did readiness say when we shipped?") would need storage.
+- **The printable view is the export.** There is no server-side PDF.

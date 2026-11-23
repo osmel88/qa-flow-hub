@@ -84,26 +84,37 @@ export class FlakyService {
 
   /** Cases of a project per effective status, with the same rules as {@link list}. */
   async statusCounts(projectId: string): Promise<Record<FlakyStatus, number>> {
-    const samples = await this.flaky.samples(projectId, 'all');
-    const byCase = new Map<string, SampleRow[]>();
-    for (const sample of samples) {
-      byCase.set(sample.testCaseId, [...(byCase.get(sample.testCaseId) ?? []), sample]);
-    }
-    const ids = [...byCase.keys()];
-    const [cases, marks] = await Promise.all([
-      this.flaky.cases(projectId, ids, {}),
-      this.flaky.currentMarks(projectId, ids),
-    ]);
     const counts = Object.fromEntries(FLAKY_STATUSES.map((status) => [status, 0])) as Record<
       FlakyStatus,
       number
     >;
-    for (const testCase of cases) {
-      counts[
-        toView(testCase, byCase.get(testCase.id) ?? [], marks.get(testCase.id) ?? null).status
-      ] += 1;
+    for (const view of await this.views(projectId)) {
+      counts[view.status] += 1;
     }
     return counts;
+  }
+
+  /**
+   * The flaky view of every case of the project that has results, or only of
+   * `caseIds`. No access check: callers have already checked the project.
+   */
+  async views(projectId: string, caseIds?: readonly string[]): Promise<FlakyTestView[]> {
+    const only = caseIds === undefined ? null : new Set(caseIds);
+    const samples = await this.flaky.samples(projectId, 'all');
+    const byCase = new Map<string, SampleRow[]>();
+    for (const sample of samples) {
+      if (only !== null && !only.has(sample.testCaseId)) continue;
+      byCase.set(sample.testCaseId, [...(byCase.get(sample.testCaseId) ?? []), sample]);
+    }
+    const ids = [...byCase.keys()];
+    if (ids.length === 0) return [];
+    const [cases, marks] = await Promise.all([
+      this.flaky.cases(projectId, ids, {}),
+      this.flaky.currentMarks(projectId, ids),
+    ]);
+    return cases.map((testCase) =>
+      toView(testCase, byCase.get(testCase.id) ?? [], marks.get(testCase.id) ?? null),
+    );
   }
 
   async get(testCaseId: string, query: FlakyDetailQuery): Promise<FlakyTestDetailView> {

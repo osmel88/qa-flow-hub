@@ -327,3 +327,95 @@ hidden project answers 404 and a project-level revoke 403.
 
 Every statement filters by `organizationId` and the authorized `projectId` and
 runs inside a tenant transaction, so RLS applies under `qaflow_app`.
+
+## S7-F8 — Release Readiness Report
+
+**Goal:** one release-scoped answer to "can we ship?", derived on every read
+from the QA evidence that already exists, with the reason behind it. Nothing
+is stored: the report is recomputed from quality gates, release execution,
+plans and cycles, defects, traceability, flaky detection and exploratory
+testing.
+
+### API
+
+`GET /api/v1/releases/:id/readiness` — project-scoped (`@ProjectScoped()`),
+permission `analytics.read`. The release is loaded through
+`ReleasesService.get()`, so a release of another organization or project (or
+a project whose `analytics.read` was revoked) answers 404/403 exactly like
+the other release routes. The project is resolved from the release, never
+from a client-supplied id.
+
+The response (`ReleaseReadinessView` in `packages/shared`) carries:
+`release`, `project`, `decision`, `reasons`, `blockers`, `warnings`,
+`metrics` (quality gates, execution, plans, cycles, defects, requirements,
+flaky, exploratory), `thresholds` and `computedAt`. Each reason has a stable
+`code`, the `source` it comes from (`quality_gates`, `execution`, `defects`,
+`test_cycles`, `test_plans`, `requirements`, `flaky`, `exploratory`), a
+`severity` (`blocker`, `warning`, `info`), a `count`, an English `message`
+(for example `2 blocker/critical defects remain open.`) and the linked
+`items` (id + label) that caused it. The Web translates by `code`.
+
+### Sources reused
+
+| Evidence       | Source of truth                                                                |
+| -------------- | ------------------------------------------------------------------------------ |
+| Quality gates  | `QualityGatesService.evaluate(releaseId)` (default environment)                |
+| Execution      | `ReleasesService.summary()` → `executionKpis()`, `sampledRates()`              |
+| Plans / cycles | plans/cycles with `releaseId`, `TestPlansService/TestCyclesService.progress()` |
+| Defects        | non-deleted defects raised from runs of the release                            |
+| Requirements   | `ReleasesService.traceability()` rows                                          |
+| Flaky tests    | `FlakyService.views()` (S7-F6 rules + manual marks) for release cases          |
+| Exploratory    | sessions with `releaseId` and their findings                                   |
+
+### Decision rules (`decideReadiness()`, deterministic)
+
+Thresholds: `READINESS_MIN_VERDICTS = 5` (= `QA_METRICS_MIN_VERDICTS`) and
+`READINESS_MAX_FAILED_RATE = 10` (%). Rates are `null` below 5 verdicts.
+
+**Blockers** (any one → `NO-GO`):
+
+1. `required_gate_failed` — a required quality gate evaluates to `failed`.
+2. `critical_defects_open` — an open (`open`, `triaged`, `in_progress`,
+   `reopened`) defect with severity `blocker` or `critical`.
+3. `failed_rate_above_threshold` — failed rate > 10% (only with ≥ 5 verdicts).
+4. `cycle_incomplete` — a release cycle still `planned` or `active`.
+
+**Warnings** (no blocker, ≥ 5 verdicts, any one → `GO WITH RISKS`):
+
+`required_gate_pending`, `optional_gate_failed`, `high_defects_open` (open
+`major`), `defects_reopened`, `tests_failed` (failed rate ≤ 10%),
+`tests_blocked`, `executions_pending` (untested run cases),
+`requirements_uncovered` (no linked case), `requirements_not_executed` (all
+linked cases untested), `requirements_failing` (a linked case failed),
+`flaky_tests` (effective status `flaky`, `suspect` or `failing`; a dismissed
+mark removes the case), `plan_incomplete` (plan `draft` or `active`),
+`exploratory_incomplete` (session `planned`, `active` or `paused`),
+`findings_open` (bug finding without a defect).
+
+**Order:**
+
+1. any blocker → `NO-GO` (blockers win even with too few verdicts);
+2. fewer than 5 verdicts → `INSUFFICIENT DATA` (`not_enough_verdicts`);
+3. any warning → `GO WITH RISKS`;
+4. otherwise → `GO` (`all_checks_passed`).
+
+### Web
+
+Release Detail shows a "Release readiness" section (users with
+`analytics.read`): decision badge, executive summary, blockers, warnings,
+quality gates table, execution, plan/cycle progress, defects by severity,
+requirements coverage, flaky tests and exploratory testing, in English and
+Spanish. `/print/releases/:releaseId/readiness` is the printable report
+(release, project, generation date, decision, reasons, KPIs, blockers,
+warnings) using the existing print toolbar.
+
+### Tests
+
+- Shared: `release-readiness.contracts.test.ts` (every rule and the order).
+- Integration: `release-readiness.int-spec.ts` (empty release, < 5 verdicts,
+  GO, NO-GO by critical defects and failed rate, required vs optional gate,
+  incomplete cycle, risks, other tenant 404, revoked permission 403).
+- Web: `ReleaseReadiness.test.tsx` (EN/ES, sample threshold, printable).
+- E2E: `release-readiness.e2e.spec.ts`.
+
+No migration, no new environment variable.

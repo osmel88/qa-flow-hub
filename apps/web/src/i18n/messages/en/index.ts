@@ -39,6 +39,7 @@ import { externalTraceability } from './externalTraceability';
 import { flakyTestDetail } from './flakyTestDetail';
 import { flakyTests } from './flakyTests';
 import { qaMetrics } from './qaMetrics';
+import { releaseReadiness } from './releaseReadiness';
 import { hierarchy } from './hierarchy';
 import { importScreen } from './importScreen';
 import { integrations } from './integrations';
@@ -119,6 +120,7 @@ export const screens = {
   ...flakyTestDetail,
   ...flakyTests,
   ...qaMetrics,
+  ...releaseReadiness,
   ...hierarchy,
   ...importScreen,
   ...integrations,

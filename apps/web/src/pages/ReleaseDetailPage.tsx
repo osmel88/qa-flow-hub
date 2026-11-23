@@ -7,6 +7,7 @@ import { Link, useParams } from 'react-router-dom';
 import { buildsApi, releasesApi } from '../api/endpoints';
 import { ApiError } from '../api/http-client';
 import { PageHeader } from '../components/PageHeader';
+import { ReleaseReadinessSection } from '../components/ReleaseReadiness';
 import { humanize, toneFor } from '../components/status';
 import { useProjectPermissions } from '../components/use-project-permissions';
 import { BuildList } from './BuildsPage';
@@ -127,6 +128,8 @@ export function ReleaseDetailPage(): React.JSX.Element {
           {can('releases.manage') && release.status !== 'archived' && (
             <EditRelease release={release} />
           )}
+
+          {can('analytics.read') && <ReleaseReadinessSection releaseId={release.id} />}
 
           <section className="card" aria-labelledby="release-kpis">
             <h2 id="release-kpis">{t('releaseDetail.releaseHealth')}</h2>

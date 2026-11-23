@@ -113,6 +113,7 @@ import type {
   ListReleasesQuery,
   ReleaseSummaryView,
   ReleaseTraceabilityView,
+  ReleaseReadinessView,
   ReleaseView,
   UpdateReleaseInput,
   ApiKeyView,
@@ -739,6 +740,7 @@ export const releasesApi = {
   list: (params: Omit<ListReleasesQuery, 'page' | 'pageSize'>) =>
     apiFetch<Paginated<ReleaseView>>(`/releases${query({ ...params, pageSize: 100 })}`),
   get: (id: string) => apiFetch<ReleaseView>(`/releases/${id}`),
+  readiness: (id: string) => apiFetch<ReleaseReadinessView>(`/releases/${id}/readiness`),
   create: (body: CreateReleaseInput) =>
     apiFetch<ReleaseView>('/releases', { method: 'POST', body }),
   update: (id: string, body: UpdateReleaseInput) =>
